@@ -7,20 +7,20 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icon";
 import {
-  DitherShader,
+  AsciiShader,
   fillStyle,
   useDocumentVisible,
   useInView,
   usePrefersReducedMotion,
-} from "@/lib/dither";
-import type { DitherMatrix } from "@/lib/dither";
+} from "@/lib/ascii";
+import type { DitherMatrix } from "@/lib/ascii";
 import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 
 /**
  * Landing centrepiece: a sentence you might give your agent, sitting in a
  * composer on top of the dither it asks for. Each result is a short GLSL
- * field on the engine's DitherShader, written for this page, not an
+ * field on the engine's AsciiShader, written for this page, not an
  * installed example. When real agent runs replace them, `caption` carries
  * the credit ("Built by <model> from this sentence").
  *
@@ -98,7 +98,7 @@ const lineCount = (glsl: string) =>
   glsl.split("\n").filter((line) => line.trim() !== "").length;
 
 const techniqueCaption = (glsl: string) =>
-  `A ${lineCount(glsl)}-line GLSL field on DitherShader, written for this page.`;
+  `A ${lineCount(glsl)}-line GLSL field on AsciiShader, written for this page.`;
 
 interface ShowcaseItem {
   id: string;
@@ -251,7 +251,7 @@ const TabProgress = ({
     >
       <span
         ref={ref}
-        className="bg-dither-ink block size-full origin-left scale-x-0"
+        className="bg-ascii-ink block size-full origin-left scale-x-0"
         style={PROGRESS_FILL}
       />
     </span>
@@ -274,7 +274,7 @@ const Composer = ({ item }: { item: ShowcaseItem }) => (
 
 const Stage = ({ item }: { item: ShowcaseItem }) => (
   <div className="bg-background relative isolate flex h-[560px] flex-col items-center overflow-hidden rounded-[24px] border px-4 pt-10 pb-5 sm:h-[600px] sm:px-8 sm:pb-8 lg:h-[640px]">
-    <DitherShader
+    <AsciiShader
       field={item.field}
       matrix={item.matrix}
       uniforms={item.uniforms}

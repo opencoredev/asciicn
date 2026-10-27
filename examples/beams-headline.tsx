@@ -1,4 +1,4 @@
-import { Beams } from "@/components/dithercn/beams";
+import { Beams } from "@/components/asciicn/beams";
 
 export default function BeamsHeadline() {
   return (
@@ -9,7 +9,7 @@ export default function BeamsHeadline() {
         spread={50}
         rays={7}
         reach={0.8}
-        palette={["--dither-paper", "--chart-5", "--chart-1", "--chart-3"]}
+        palette={["--ascii-paper", "--chart-5", "--chart-1", "--chart-3"]}
         className="absolute inset-0 -z-10"
       />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance">

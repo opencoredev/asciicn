@@ -1,0 +1,166 @@
+---
+title: "Dithered logo"
+description: "An SVG or PNG logo redrawn on a pixel grid: exact edges, a dithered fill inside, and an optional shimmer or scan line."
+---
+
+import AsciiLogoDemo from "@/examples/ascii-logo-demo";
+import AsciiLogoSet from "@/examples/ascii-logo-set";
+import AsciiLogoColour from "@/examples/ascii-logo-colour";
+import AsciiLogoScan from "@/examples/ascii-logo-scan";
+import { controls as asciiLogoControls } from "@/examples/ascii-logo-controls";
+
+<ComponentPreview
+  src="examples/ascii-logo-demo.tsx"
+  controls={asciiLogoControls}
+>
+  <AsciiLogoDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-logo" />
+
+## Usage
+
+```tsx
+import { AsciiLogo } from "@/components/asciicn/ascii-logo";
+
+export function Brand() {
+  return <AsciiLogo src="/logo.svg" alt="Acme" className="h-8" />;
+}
+```
+
+Set a height with `className`; the width follows the logo's own ratio. The logo is drawn on a grid of whole device pixels and cut at half coverage, so every edge lands on a cell boundary instead of fraying into noise. A solid outline one cell wide keeps the shapes exact, and the inside takes the `fill`: a gradient that thins towards the bottom, dots, hatching, or solid ink.
+
+By default every part of the logo becomes one ink, `color`. With `tone="original"` it keeps the file's own colours.
+
+## Examples
+
+### One treatment for many logos
+
+Logos from different brands, drawn with the same fill and colour, read as one set. Here the hatched fill in grey.
+
+<ComponentPreview src="examples/ascii-logo-set.tsx">
+  <AsciiLogoSet />
+</ComponentPreview>
+
+### Colour
+
+The same three-colour mark with `tone="original"`, and in one palette colour.
+
+<ComponentPreview src="examples/ascii-logo-colour.tsx">
+  <AsciiLogoColour />
+</ComponentPreview>
+
+### Scan line
+
+A 3px cell turns the wordmark into pixel art. `effect="scan"` runs a bright line down it every `period` seconds and leaves solid ink behind for a moment.
+
+<ComponentPreview src="examples/ascii-logo-scan.tsx">
+  <AsciiLogoScan />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "src",
+      type: "string",
+      description:
+        "SVG or PNG URL. Files from another origin need CORS headers.",
+      required: true,
+    },
+    {
+      name: "alt",
+      type: "string",
+      description: 'The brand name for screen readers. "" hides the logo.',
+      required: true,
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description: "The ink. A palette name or any CSS colour.",
+    },
+    {
+      name: "tone",
+      type: '"mono" | "original"',
+      default: '"mono"',
+      description: "One ink, or the file's own colours.",
+    },
+    {
+      name: "fill",
+      type: '"gradient" | "dotted" | "hatched" | "solid"',
+      default: '"gradient"',
+      description: "Texture inside the shapes.",
+    },
+    {
+      name: "outline",
+      type: "boolean",
+      default: "true",
+      description:
+        "A solid outline one cell wide, so shapes stay exact with an open fill.",
+    },
+    {
+      name: "floor",
+      type: "number",
+      default: "0.3",
+      description:
+        "Gradient fill: the share of ink left at the bottom of the logo.",
+    },
+    {
+      name: "matrix",
+      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description: "Threshold pattern for the gradient fill and the effects.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "1",
+      description:
+        "Size of one cell in CSS pixels. Larger cells give a chunkier, pixel-art mark.",
+    },
+    {
+      name: "effect",
+      type: '"none" | "shimmer" | "scan"',
+      default: '"none"',
+      description:
+        "A diagonal band of solid ink, or a bright scan line, sweeping across the logo.",
+    },
+    {
+      name: "period",
+      type: "number",
+      default: "6",
+      description: "Seconds per sweep.",
+    },
+    {
+      name: "phase",
+      type: "number",
+      default: "0",
+      description:
+        "Where in the sweep this logo starts, 0 to 1. Offsets logos in a row.",
+    },
+    {
+      name: "source",
+      type: '"alpha" | "dark"',
+      default: '"alpha"',
+      description:
+        '"alpha" for transparent backgrounds, "dark" for a dark logo on an opaque light background.',
+    },
+    {
+      name: "ratio",
+      type: "number",
+      default: "The logo's ratio",
+      description:
+        "Width over height. Set it to reserve space before the logo loads.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The root has `role="img"` with the brand name as its label.
+- SVGs need a `width` and `height` (or a `viewBox` the browser can size) so the logo has a ratio. SVGs are rasterised by the browser at the exact cell size, so curves stay smooth.
+- Effects run at 30 fps only while the logo is on screen, and stop under reduced motion. Without one, the logo is drawn once and redrawn only on resize or theme change.

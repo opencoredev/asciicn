@@ -1,10 +1,10 @@
-import { EmptyState } from "@/components/dithercn/empty-state";
-import type { EmptyStateIllustration } from "@/components/dithercn/empty-state";
-import type { DitherColorName } from "@/lib/dither";
+import { EmptyState } from "@/components/asciicn/empty-state";
+import type { EmptyStateIllustration } from "@/components/asciicn/empty-state";
+import type { AsciiColorName } from "@/lib/ascii";
 
 const SCENES: readonly {
   illustration: EmptyStateIllustration;
-  color: DitherColorName;
+  color: AsciiColorName;
   title: string;
 }[] = [
   { color: "ink", illustration: "box", title: "No orders yet" },

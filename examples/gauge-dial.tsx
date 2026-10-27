@@ -1,4 +1,4 @@
-import { Gauge } from "@/components/dithercn/gauge";
+import { Gauge } from "@/components/asciicn/gauge";
 
 const HOSTS = [
   { label: "CPU", value: 42 },
@@ -8,7 +8,7 @@ const HOSTS = [
 
 export default function GaugeDial() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-medium">db-primary-01</span>
         <span className="text-muted-foreground font-mono text-xs">

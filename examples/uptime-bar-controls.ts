@@ -1,4 +1,4 @@
-import { BLOOMS, DITHER_COLOR_NAMES, FILL_VARIANTS } from "@/lib/dither";
+import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
 import { color, segmented, slider } from "@/lib/preview-controls";
 
 // Knobs for the uptime bar's main demo, shared by the page and the demo.
@@ -14,7 +14,7 @@ export const up = color({
   default: "green",
   id: "color",
   label: "Up colour",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const bloom = segmented({

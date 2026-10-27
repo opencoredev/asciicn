@@ -1,4 +1,4 @@
-import { MeshGradient } from "@/components/dithercn/mesh-gradient";
+import { MeshGradient } from "@/components/asciicn/mesh-gradient";
 
 export default function MeshGradientSunset() {
   return (
@@ -6,7 +6,7 @@ export default function MeshGradientSunset() {
       blobs={5}
       size={0.5}
       palette={[
-        "--dither-paper",
+        "--ascii-paper",
         "oklch(0.42 0.16 300)",
         "oklch(0.55 0.2 350)",
         "oklch(0.66 0.19 25)",

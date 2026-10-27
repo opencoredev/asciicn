@@ -1,4 +1,4 @@
-import type { DotMapArc, DotMapMarker } from "@/components/dithercn/dot-map";
+import type { DotMapArc, DotMapMarker } from "@/components/asciicn/dot-map";
 
 // Shared locations for the dot map demos. Coordinates are [lat, lon].
 

@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  ScrambleText,
-  SCRAMBLE_HEX,
-} from "@/components/dithercn/scramble-text";
-import { cssColor } from "@/lib/dither";
+import { ScrambleText, SCRAMBLE_HEX } from "@/components/asciicn/scramble-text";
+import { cssColor } from "@/lib/ascii";
 
 const STATES = [
   { color: "orange", detail: "build 7f3a2c1 · eu-west", label: "Deploying" },

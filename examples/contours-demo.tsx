@@ -1,6 +1,6 @@
 "use client";
 
-import { Contours } from "@/components/dithercn/contours";
+import { Contours } from "@/components/asciicn/contours";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/contours-controls";
@@ -13,7 +13,7 @@ export default function ContoursDemo() {
 
   return (
     <Contours
-      palette={["--dither-paper", toward(tint, 40), tint]}
+      palette={["--ascii-paper", toward(tint, 40), tint]}
       lines={lines}
       relief={relief}
       animate={animate}

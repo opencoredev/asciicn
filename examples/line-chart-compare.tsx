@@ -1,4 +1,4 @@
-import { LineChart } from "@/components/dithercn/line-chart";
+import { LineChart } from "@/components/asciicn/line-chart";
 
 const data = [
   { day: "Mon", lastWeek: 1240, thisWeek: 1310 },
@@ -12,7 +12,7 @@ const data = [
 
 export default function LineChartCompare() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-1">
           <span className="text-muted-foreground text-sm">Checkouts</span>

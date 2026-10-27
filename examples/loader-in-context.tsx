@@ -1,4 +1,4 @@
-import { Loader } from "@/components/dithercn/loader";
+import { Loader } from "@/components/asciicn/loader";
 
 export default function LoaderInContext() {
   return (

@@ -1,4 +1,4 @@
-import { BarChart } from "@/components/dithercn/bar-chart";
+import { BarChart } from "@/components/asciicn/bar-chart";
 
 const data = [
   { current: 412_000, previous: 356_000, quarter: "Q1" },
@@ -9,7 +9,7 @@ const data = [
 
 export default function BarChartGrouped() {
   return (
-    <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-5 flex flex-col gap-1">
         <span className="text-muted-foreground text-sm">
           Net revenue by quarter

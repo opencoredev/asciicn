@@ -19,7 +19,7 @@ import StatCardCompact from "@/examples/stat-card-compact";
 ## Usage
 
 ```tsx
-import { StatCard } from "@/components/dithercn/stat-card";
+import { StatCard } from "@/components/asciicn/stat-card";
 
 export function Revenue() {
   return (
@@ -99,7 +99,7 @@ Leave `trend` out for a compact card, and `delta` out when there is nothing to c
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         "Colour of the trend and the dot surface, a palette name or any CSS colour.",
@@ -125,7 +125,7 @@ Leave `trend` out for a compact card, and `delta` out when there is nothing to c
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
   ]}

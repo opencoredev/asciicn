@@ -314,7 +314,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
     },
     info: {
       contact: {
-        email: "leo@dithercn.dev",
+        email: "leo@asciicn.dev",
         name: SITE.AUTHOR.NAME,
         url: `${base}/contact`,
       },
@@ -330,7 +330,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.REGISTRY]: {
         get: operation({
           description:
-            "Every item in the dithercn shadcn/ui registry: the engine, the agent skill and each example component.",
+            "Every item in the asciicn shadcn/ui registry: the engine, the agent skill and each example component.",
           id: "getRegistry",
           mediaType: "application/json",
           okDescription: "The registry manifest",
@@ -349,7 +349,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           parameters: [
             {
               description:
-                "Item name from the registry manifest, such as dither-core or dithercn-skill.",
+                "Item name from the registry manifest, such as ascii-core or asciicn-skill.",
               in: "path",
               name: "name",
               required: true,
@@ -364,7 +364,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.AGENT_SKILLS_INDEX]: {
         get: operation({
           description:
-            "Agent Skills discovery index listing the dithercn skill archive and its digest.",
+            "Agent Skills discovery index listing the asciicn skill archive and its digest.",
           id: "getAgentSkillsIndex",
           mediaType: "application/json",
           okDescription: "The agent skills index",
@@ -376,7 +376,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.AGENT_SKILL]: {
         get: operation({
           description:
-            "The dithercn agent skill: how to build any dither on the engine and place it on a page.",
+            "The asciicn agent skill: how to build any dither on the engine and place it on a page.",
           id: "getAgentSkill",
           mediaType: "text/markdown",
           okDescription: "SKILL.md",
@@ -400,7 +400,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.LLMS]: {
         get: operation({
           description:
-            "Index of every docs page as a Markdown link, with when to use dithercn and the official CLI commands.",
+            "Index of every docs page as a Markdown link, with when to use asciicn and the official CLI commands.",
           id: "getLlmsIndex",
           mediaType: "text/plain",
           okDescription: "llms.txt",

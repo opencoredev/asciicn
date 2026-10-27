@@ -1,8 +1,8 @@
-import { Aurora } from "@/components/dithercn/aurora";
+import { Aurora } from "@/components/asciicn/aurora";
 
 export default function AuroraBanner() {
   return (
-    <div className="bg-background border-border relative isolate flex h-36 w-full max-w-lg [--dither-paper:var(--background)] items-end overflow-hidden rounded-2xl border p-5">
+    <div className="bg-background border-border relative isolate flex h-36 w-full max-w-lg [--ascii-paper:var(--background)] items-end overflow-hidden rounded-2xl border p-5">
       <Aurora
         height={0.62}
         sway={0.6}

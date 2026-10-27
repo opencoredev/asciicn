@@ -1,5 +1,5 @@
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { EmptyState } from "@/components/dithercn/empty-state";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { EmptyState } from "@/components/asciicn/empty-state";
 
 export default function EmptyStatePanel() {
   return (
@@ -16,9 +16,9 @@ export default function EmptyStatePanel() {
         title="No API keys"
         description="Create a key to call the API from your server. Keys are shown once, so store them somewhere safe."
         action={
-          <DitherButton size="sm" color="green">
+          <AsciiButton size="sm" color="green">
             Create key
-          </DitherButton>
+          </AsciiButton>
         }
       />
     </div>

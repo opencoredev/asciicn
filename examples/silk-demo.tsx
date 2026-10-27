@@ -1,6 +1,6 @@
 "use client";
 
-import { Silk } from "@/components/dithercn/silk";
+import { Silk } from "@/components/asciicn/silk";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/silk-controls";
@@ -13,7 +13,7 @@ export default function SilkDemo() {
 
   return (
     <Silk
-      palette={["--dither-paper", toward(tint, 30), toward(tint, 70), tint]}
+      palette={["--ascii-paper", toward(tint, 30), toward(tint, 70), tint]}
       folds={folds}
       sheen={sheen}
       animate={animate}

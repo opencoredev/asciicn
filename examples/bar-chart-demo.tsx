@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart } from "@/components/dithercn/bar-chart";
+import { BarChart } from "@/components/asciicn/bar-chart";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/bar-chart-controls";
 
@@ -28,7 +28,7 @@ export default function BarChartDemo() {
   const interactive = usePreviewValue(knobs.interactive);
 
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-1">
           <span className="text-muted-foreground text-sm">

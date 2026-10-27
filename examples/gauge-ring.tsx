@@ -1,8 +1,8 @@
-import { Gauge } from "@/components/dithercn/gauge";
+import { Gauge } from "@/components/asciicn/gauge";
 
 export default function GaugeRing() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-wrap items-center gap-6 rounded-2xl border p-5 [--dither-paper:var(--background)]">
+    <div className="bg-background border-border flex w-full max-w-md flex-wrap items-center gap-6 rounded-2xl border p-5 [--ascii-paper:var(--background)]">
       <Gauge
         variant="ring"
         value={63}

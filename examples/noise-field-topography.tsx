@@ -1,4 +1,4 @@
-import { NoiseField } from "@/components/dithercn/noise-field";
+import { NoiseField } from "@/components/asciicn/noise-field";
 
 const regions = [
   { name: "eu-west", share: "41%" },
@@ -8,7 +8,7 @@ const regions = [
 
 export default function NoiseFieldTopography() {
   return (
-    <div className="bg-background border-border relative isolate flex w-full max-w-md [--dither-paper:var(--background)] flex-col gap-4 overflow-hidden rounded-2xl border p-5 pt-36">
+    <div className="bg-background border-border relative isolate flex w-full max-w-md [--ascii-paper:var(--background)] flex-col gap-4 overflow-hidden rounded-2xl border p-5 pt-36">
       <NoiseField
         variant="contours"
         bands={5}

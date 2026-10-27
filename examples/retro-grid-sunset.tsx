@@ -1,4 +1,4 @@
-import { RetroGrid } from "@/components/dithercn/retro-grid";
+import { RetroGrid } from "@/components/asciicn/retro-grid";
 
 export default function RetroGridSunset() {
   return (

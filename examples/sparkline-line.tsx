@@ -1,4 +1,4 @@
-import { Sparkline } from "@/components/dithercn/sparkline";
+import { Sparkline } from "@/components/asciicn/sparkline";
 
 const SERVICES = [
   {
@@ -23,7 +23,7 @@ const SERVICES = [
 
 export default function SparklineLine() {
   return (
-    <ul className="bg-background border-border flex w-full max-w-sm flex-col rounded-2xl border p-2 [--dither-paper:var(--background)]">
+    <ul className="bg-background border-border flex w-full max-w-sm flex-col rounded-2xl border p-2 [--ascii-paper:var(--background)]">
       {SERVICES.map((service) => (
         <li
           key={service.name}
@@ -35,7 +35,7 @@ export default function SparklineLine() {
             label={`${service.name} p50 latency, last hour`}
             area={false}
             domain={[0, 180]}
-            color={service.spiked ? "--dither-ink" : "--muted-foreground"}
+            color={service.spiked ? "--ascii-ink" : "--muted-foreground"}
             height={20}
             className="flex-1"
           />

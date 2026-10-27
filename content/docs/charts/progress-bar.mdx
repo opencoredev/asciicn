@@ -23,7 +23,7 @@ import ProgressBarSteps from "@/examples/progress-bar-steps";
 ## Usage
 
 ```tsx
-import { ProgressBar } from "@/components/dithercn/progress-bar";
+import { ProgressBar } from "@/components/asciicn/progress-bar";
 
 export function Upload({ percent }: { percent: number }) {
   return <ProgressBar label="Uploading report.pdf" value={percent} />;
@@ -85,7 +85,7 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
       name: "parts",
       type: "ProgressPart[]",
       description:
-        "{ label: string; value: number; color?: DitherColor; fill?: FillVariant }, stacked left to right instead of value.",
+        "{ label: string; value: number; color?: AsciiColor; fill?: FillVariant }, stacked left to right instead of value.",
     },
     {
       name: "unit",
@@ -127,7 +127,7 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         "Colour of the fill and its track, a palette name or any CSS colour.",
@@ -153,7 +153,7 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
   ]}

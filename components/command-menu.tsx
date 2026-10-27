@@ -30,8 +30,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useIsMac } from "@/hooks/use-is-mac";
+import { asciiMaskStyle } from "@/lib/ascii";
 import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from "@/lib/catalog-preview-size";
-import { ditherMaskStyle } from "@/lib/dither";
 import { trackEvent } from "@/lib/events";
 import type { SearchEntry, SearchGroup } from "@/lib/search-index";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ const KEY_CLS =
   "border-border/80 text-foreground/70 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 pb-px font-mono text-[0.7rem]";
 
 // Docs pages have no print: their group's icon on a faint dither of the ink.
-const PLATE_GRAIN = ditherMaskStyle(0.125, { cell: 2 });
+const PLATE_GRAIN = asciiMaskStyle(0.125, { cell: 2 });
 
 /** Docs pages without a print get their group's icon instead. */
 const GROUP_ICONS: Readonly<Record<string, IconSvgElement>> = {
@@ -140,7 +140,7 @@ const Plate = ({
         <>
           <span
             aria-hidden="true"
-            className="bg-dither-ink absolute inset-0 opacity-30"
+            className="bg-ascii-ink absolute inset-0 opacity-30"
             style={PLATE_GRAIN}
           />
           <Icon

@@ -24,7 +24,7 @@ import MetaballsLamp from "@/examples/metaballs-lamp";
 ## Usage
 
 ```tsx
-import { Metaballs } from "@/components/dithercn/metaballs";
+import { Metaballs } from "@/components/asciicn/metaballs";
 
 export function Hero() {
   return (
@@ -82,8 +82,8 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: '["--dither-paper", "--dither-ink"]',
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: '["--ascii-paper", "--ascii-ink"]',
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -96,7 +96,7 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

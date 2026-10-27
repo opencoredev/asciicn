@@ -1,5 +1,5 @@
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { NotFound } from "@/components/dithercn/not-found";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { NotFound } from "@/components/asciicn/not-found";
 
 export default function NotFoundCompact() {
   return (
@@ -14,9 +14,9 @@ export default function NotFoundCompact() {
         title="Project not found"
         description="It may have been deleted, or you may not have access."
         actions={
-          <DitherButton size="sm" variant="outline" color="grey">
+          <AsciiButton size="sm" variant="outline" color="grey">
             See all projects
-          </DitherButton>
+          </AsciiButton>
         }
         className="py-10 [&_h2]:text-lg"
       />

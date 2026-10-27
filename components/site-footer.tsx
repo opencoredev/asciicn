@@ -4,8 +4,8 @@ import { GithubLink } from "@/components/github-link";
 import { LogoMark } from "@/components/logo";
 import { ROUTES } from "@/constants/routes";
 import { SITE } from "@/constants/site";
+import { fillStyle } from "@/lib/ascii";
 import { getCatalog } from "@/lib/catalog";
-import { fillStyle } from "@/lib/dither";
 import { otherOpenCoreSites } from "@/lib/opencore-sites";
 
 interface FooterLink {
@@ -37,7 +37,7 @@ const LINK_CLASS =
   "text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-sm text-sm transition-colors duration-150 outline-none focus-visible:ring-[3px]";
 
 // Plain followed links on purpose: they share authority between our sites.
-const OPENCORE_SITES = otherOpenCoreSites("https://dithercn.dev");
+const OPENCORE_SITES = otherOpenCoreSites("https://asciicn.dev");
 
 // The closing wordmark: solid along its baseline, thinning upwards.
 const WORDMARK_FILL = fillStyle("gradient", {
@@ -99,7 +99,7 @@ export const SiteFooter = () => {
           <LinkColumn title="Get started" links={START} />
           <LinkColumn title="Examples" links={examples} />
           <LinkColumn title="For agents" links={FOR_AGENTS} />
-          <LinkColumn title="dithercn" links={SITE_LINKS} />
+          <LinkColumn title="asciicn" links={SITE_LINKS} />
           <nav
             aria-labelledby="footer-opencore"
             className="col-span-2 flex flex-col gap-3 lg:col-span-5"
@@ -127,7 +127,7 @@ export const SiteFooter = () => {
           className="container pb-6 text-[clamp(4.5rem,21vw,19rem)] leading-[0.78] font-medium tracking-[-0.07em] select-none"
         >
           <span
-            className="bg-dither-ink block bg-clip-text font-mono text-transparent"
+            className="bg-ascii-ink block bg-clip-text font-mono text-transparent"
             style={WORDMARK_FILL}
           >
             {SITE.NAME}

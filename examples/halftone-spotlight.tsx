@@ -1,4 +1,4 @@
-import { Halftone } from "@/components/dithercn/halftone";
+import { Halftone } from "@/components/asciicn/halftone";
 
 export default function HalftoneSpotlight() {
   return (

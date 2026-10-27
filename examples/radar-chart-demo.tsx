@@ -1,6 +1,6 @@
 "use client";
 
-import { RadarChart } from "@/components/dithercn/radar-chart";
+import { RadarChart } from "@/components/asciicn/radar-chart";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/radar-chart-controls";
 

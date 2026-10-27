@@ -5,7 +5,7 @@ import { SITE } from "@/constants/site";
 // and the Markdown an agent gets with `Accept: text/markdown`, so the two never
 // drift. Paragraphs use Markdown links; the HTML page renders them as anchors.
 
-export const CONTACT_EMAIL = "leo@dithercn.dev";
+export const CONTACT_EMAIL = "leo@asciicn.dev";
 
 export const TRUST_PAGE_SLUGS = ["about", "contact", "privacy"] as const;
 export type TrustPageSlug = (typeof TRUST_PAGE_SLUGS)[number];
@@ -29,13 +29,13 @@ const ISSUES = `${LINK.GITHUB_REPO}/issues`;
 export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
   about: {
     description:
-      "Who makes dithercn, why it exists, and how the dither engine and agent skill are built and licensed.",
+      "Who makes asciicn, why it exists, and how the dither engine and agent skill are built and licensed.",
     lead: `${SITE.NAME} is an open-source dither engine for shadcn/ui projects, with an agent skill that teaches your coding agent to use it. Leo builds and maintains it, and it's published by OpenCore, the GitHub organization behind Social SDK, Email SDK and other open-source TypeScript tools.`,
     sections: [
       {
-        heading: "What dithercn is",
+        heading: "What asciicn is",
         paragraphs: [
-          "Three parts that work together. `dither-core` is the engine: it installs into `lib/dither` as plain source and turns a tone between 0 and 1 into dots, drawn with WebGL, SVG, CSS masks or a one-off pass for images. The agent skill is a SKILL.md with references that teaches Claude Code, Codex, Cursor and other agents how to build with that engine. The examples, from hero backgrounds to charts, loaders, text effects and dithered photos, show what the engine can make and install with one shadcn command.",
+          "Three parts that work together. `ascii-core` is the engine: it installs into `lib/ascii` as plain source and turns a tone between 0 and 1 into dots, drawn with WebGL, SVG, CSS masks or a one-off pass for images. The agent skill is a SKILL.md with references that teaches Claude Code, Codex, Cursor and other agents how to build with that engine. The examples, from hero backgrounds to charts, loaders, text effects and dithered photos, show what the engine can make and install with one shadcn command.",
           "Nothing runs on our servers once it's installed. Every file lands in your repo, so you can read it, change it and ship it like the rest of your code.",
         ],
       },
@@ -43,30 +43,30 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
         heading: "Why it exists",
         paragraphs: [
           "Dithering draws a smooth tone with a few colours by placing dots of ink at a matching density. It started as a workaround for limited screens and printers and now reads as a deliberate texture. Most dither effects on the web are one-off shaders that are hard to theme, ignore reduced motion and don't share anything with each other.",
-          "dithercn puts one engine under every effect, so a background, a chart fill and a loading state share the same cells, colours and motion rules. Because the skill teaches the engine rather than a fixed list of components, your agent can build a dither nobody has made yet instead of copying the closest example.",
+          "asciicn puts one engine under every effect, so a background, a chart fill and a loading state share the same cells, colours and motion rules. Because the skill teaches the engine rather than a fixed list of components, your agent can build a dither nobody has made yet instead of copying the closest example.",
         ],
       },
       {
         heading: "License and credits",
         paragraphs: [
-          `dithercn is free and MIT licensed. The source lives at [github.com/opencoredev/dithercn](${LINK.GITHUB_REPO}).`,
-          "[Dither Kit](https://www.tripwire.sh/dither-kit) by Boring Software set the bar for this project, and Dither Kit credits [EvilCharts](https://evilcharts.com) for the dithered chart style it grew from. The code and the look here are our own.",
+          `asciicn is free and MIT licensed. The source lives at [github.com/opencoredev/asciicn](${LINK.GITHUB_REPO}).`,
+          "[Dither Kit](https://www.tripwire.sh/ascii-kit) by Boring Software set the bar for this project, and Dither Kit credits [EvilCharts](https://evilcharts.com) for the dithered chart style it grew from. The code and the look here are our own.",
         ],
       },
     ],
     slug: "about",
-    title: "About dithercn",
+    title: "About asciicn",
     updated: "2026-10-25",
   },
   contact: {
     description:
-      "How to reach the dithercn maintainer about bugs, feature requests, security reports and anything else.",
-    lead: "dithercn is maintained by one person, Leo. Where to write depends on what you need, and public questions help the next person too, so start on GitHub when you can.",
+      "How to reach the asciicn maintainer about bugs, feature requests, security reports and anything else.",
+    lead: "asciicn is maintained by one person, Leo. Where to write depends on what you need, and public questions help the next person too, so start on GitHub when you can.",
     sections: [
       {
         heading: "Bugs and feature requests",
         paragraphs: [
-          `Open an issue at [github.com/opencoredev/dithercn/issues](${ISSUES}). For a bug, name the component or engine function, your browser and framework versions, and what you expected to see. A screenshot or a short recording helps most with visual problems, since a dither that looks wrong is easier to show than to describe.`,
+          `Open an issue at [github.com/opencoredev/asciicn/issues](${ISSUES}). For a bug, name the component or engine function, your browser and framework versions, and what you expected to see. A screenshot or a short recording helps most with visual problems, since a dither that looks wrong is easier to show than to describe.`,
           "For a new example or engine feature, describe the page you're building and the effect you want. Requests tied to a real use get built first.",
         ],
       },
@@ -95,14 +95,14 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
   },
   privacy: {
     description:
-      "What dithercn.dev collects, what it stores in your browser, and who hosts it. No accounts, no ads, no session recording.",
-    lead: "dithercn.dev is a documentation site. It has no accounts, no ads and no newsletter. It measures how the docs are used so we can tell which pages and components help, and nothing it collects is sold or used for advertising.",
+      "What asciicn.dev collects, what it stores in your browser, and who hosts it. No accounts, no ads, no session recording.",
+    lead: "asciicn.dev is a documentation site. It has no accounts, no ads and no newsletter. It measures how the docs are used so we can tell which pages and components help, and nothing it collects is sold or used for advertising.",
     sections: [
       {
         heading: "Analytics",
         paragraphs: [
           "The site uses [PostHog](https://posthog.com/privacy) and Vercel Web Analytics. PostHog records page views, time on page, clicks, page-load performance and a few named actions, such as copying an install command or the agent prompt, searching the docs, changing a preview's controls or switching the theme. It stores a random ID in a cookie and local storage so repeat visits count as one visitor, and it receives your IP address with each event, which it uses to estimate your country and city. Vercel Web Analytics counts page views without cookies.",
-          "Events go through dithercn.dev itself on their way to PostHog's US servers. The site doesn't record your screen or keystrokes, doesn't sell or share this data, and doesn't use it for advertising. Blocking cookies or analytics scripts in your browser stops all of it, and the docs work the same.",
+          "Events go through asciicn.dev itself on their way to PostHog's US servers. The site doesn't record your screen or keystrokes, doesn't sell or share this data, and doesn't use it for advertising. Blocking cookies or analytics scripts in your browser stops all of it, and the docs work the same.",
         ],
       },
       {

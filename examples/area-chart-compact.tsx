@@ -1,4 +1,4 @@
-import { AreaChart } from "@/components/dithercn/area-chart";
+import { AreaChart } from "@/components/asciicn/area-chart";
 
 const USERS = [
   6.1, 6.6, 6.4, 7.3, 7.9, 7.6, 8.8, 9.4, 9.1, 10.2, 10.9, 11.5, 11.3, 12.4,
@@ -11,7 +11,7 @@ const data = USERS.map((value, index) => ({
 
 export default function AreaChartCompact() {
   return (
-    <div className="bg-background border-border flex w-full max-w-xs flex-col overflow-hidden rounded-2xl border [--dither-paper:var(--background)]">
+    <div className="bg-background border-border flex w-full max-w-xs flex-col overflow-hidden rounded-2xl border [--ascii-paper:var(--background)]">
       <div className="flex flex-col gap-1 p-5 pb-3">
         <span className="text-muted-foreground text-sm">
           Weekly active users

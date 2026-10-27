@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { ScrollRevealImage } from "@/components/dithercn/scroll-reveal-image";
+import { ScrollRevealImage } from "@/components/asciicn/scroll-reveal-image";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/scroll-reveal-image-controls";
 

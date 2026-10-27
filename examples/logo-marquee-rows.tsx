@@ -1,5 +1,5 @@
-import { LogoMarquee } from "@/components/dithercn/logo-marquee";
-import { LOGOS } from "@/examples/dithered-logo-data";
+import { LogoMarquee } from "@/components/asciicn/logo-marquee";
+import { LOGOS } from "@/examples/ascii-logo-data";
 
 export default function LogoMarqueeRows() {
   return (

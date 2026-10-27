@@ -157,14 +157,14 @@ const createTheme = ({
   type,
 });
 
-export const dithercnLight = createTheme({
-  name: "dithercn-light",
+export const asciicnLight = createTheme({
+  name: "asciicn-light",
   palette: lightPalette,
   type: "light",
 });
 
-export const dithercnDark = createTheme({
-  name: "dithercn-dark",
+export const asciicnDark = createTheme({
+  name: "asciicn-dark",
   palette: darkPalette,
   type: "dark",
 });

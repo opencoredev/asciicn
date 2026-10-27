@@ -1,4 +1,4 @@
-import { Waves } from "@/components/dithercn/waves";
+import { Waves } from "@/components/asciicn/waves";
 
 export default function WavesDusk() {
   return (
@@ -10,7 +10,7 @@ export default function WavesDusk() {
       matrix="bayer8"
       cell={4}
       palette={[
-        "--dither-paper",
+        "--ascii-paper",
         "oklch(0.35 0.1 300)",
         "oklch(0.58 0.17 20)",
         "oklch(0.8 0.14 60)",

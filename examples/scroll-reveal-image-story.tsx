@@ -1,4 +1,4 @@
-import { ScrollRevealImage } from "@/components/dithercn/scroll-reveal-image";
+import { ScrollRevealImage } from "@/components/asciicn/scroll-reveal-image";
 
 export default function ScrollRevealImageStory() {
   return (

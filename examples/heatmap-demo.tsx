@@ -1,6 +1,6 @@
 "use client";
 
-import { Heatmap } from "@/components/dithercn/heatmap";
+import { Heatmap } from "@/components/asciicn/heatmap";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/heatmap-controls";
 
@@ -35,7 +35,7 @@ export default function HeatmapDemo() {
   const animate = usePreviewValue(knobs.animate);
 
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-1">
           <span className="text-muted-foreground font-mono text-[11px] tracking-[0.08em] uppercase">

@@ -1,4 +1,4 @@
-import { BarChart } from "@/components/dithercn/bar-chart";
+import { BarChart } from "@/components/asciicn/bar-chart";
 
 const data = [
   { day: "Mon", paid: 182, trial: 96 },
@@ -12,7 +12,7 @@ const data = [
 
 export default function BarChartStacked() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-5 flex flex-col gap-1">
         <span className="text-muted-foreground text-sm">Signups this week</span>
         <span className="text-3xl font-semibold tracking-tight">2,098</span>

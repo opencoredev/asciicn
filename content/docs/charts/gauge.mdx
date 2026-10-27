@@ -23,7 +23,7 @@ import GaugeRing from "@/examples/gauge-ring";
 ## Usage
 
 ```tsx
-import { Gauge } from "@/components/dithercn/gauge";
+import { Gauge } from "@/components/asciicn/gauge";
 
 export function CpuGauge({ load }: { load: number }) {
   return <Gauge value={load} label="CPU load" unit="%" />;
@@ -119,14 +119,14 @@ The arc is split into blocks over a faint track in the same colour. Blocks up to
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         "Colour of the filled blocks, a palette name or any CSS colour.",
     },
     {
       name: "trackColor",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: "color",
       description: "Colour of the empty track, drawn faint.",
     },
@@ -158,7 +158,7 @@ The arc is split into blocks over a faint track in the same colour. Blocks up to
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description:
         "Size of one dither cell in CSS pixels. The ring thickness snaps to whole cells.",
     },

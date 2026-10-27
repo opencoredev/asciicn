@@ -1,6 +1,6 @@
 "use client";
 
-import { Horizon } from "@/components/dithercn/horizon";
+import { Horizon } from "@/components/asciicn/horizon";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/horizon-controls";
 

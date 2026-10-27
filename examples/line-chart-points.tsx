@@ -1,4 +1,4 @@
-import { LineChart } from "@/components/dithercn/line-chart";
+import { LineChart } from "@/components/asciicn/line-chart";
 
 // The benchmark band is the middle half of companies in the same sector.
 const data = [
@@ -12,7 +12,7 @@ const data = [
 
 export default function LineChartPoints() {
   return (
-    <div className="bg-background border-border w-full max-w-sm rounded-2xl border p-5 [--dither-paper:var(--background)]">
+    <div className="bg-background border-border w-full max-w-sm rounded-2xl border p-5 [--ascii-paper:var(--background)]">
       <div className="mb-4 flex flex-col gap-1">
         <span className="text-muted-foreground text-sm">
           Net promoter score

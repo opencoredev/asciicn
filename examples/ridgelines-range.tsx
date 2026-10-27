@@ -1,4 +1,4 @@
-import { Ridgelines } from "@/components/dithercn/ridgelines";
+import { Ridgelines } from "@/components/asciicn/ridgelines";
 
 export default function RidgelinesRange() {
   return (
@@ -7,7 +7,7 @@ export default function RidgelinesRange() {
       spread={1}
       amplitude={0.7}
       shade={0.4}
-      palette={["--dither-paper", "--chart-5", "--chart-1"]}
+      palette={["--ascii-paper", "--chart-5", "--chart-1"]}
       className="absolute inset-0"
     />
   );

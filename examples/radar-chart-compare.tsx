@@ -1,4 +1,4 @@
-import { RadarChart } from "@/components/dithercn/radar-chart";
+import { RadarChart } from "@/components/asciicn/radar-chart";
 
 const AXES = [
   "Price",

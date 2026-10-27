@@ -1,19 +1,19 @@
 <p align="center">
-  <img alt="dithercn: dither primitives your agent builds with. A dither engine and an agent skill for shadcn/ui, shown with a dithered globe, bar chart, gauge, aurora, ridgelines, text and orb." src=".github/assets/readme-banner.png" width="100%" />
+  <img alt="asciicn: dither primitives your agent builds with. A dither engine and an agent skill for shadcn/ui, shown with a dithered globe, bar chart, gauge, aurora, ridgelines, text and orb." src=".github/assets/readme-banner.png" width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/opencoredev/dithercn/stargazers"><img alt="GitHub stars" src="https://shieldcn.dev/github/opencoredev/dithercn/stars.svg?variant=branded&mode=dark" /></a>
+  <a href="https://github.com/opencoredev/asciicn/stargazers"><img alt="GitHub stars" src="https://shieldcn.dev/github/opencoredev/asciicn/stars.svg?variant=branded&mode=dark" /></a>
   <a href="https://x.com/leodev"><img alt="Follow @leodev on X" src="https://shieldcn.dev/x/follow/leodev.svg?variant=branded&mode=dark" /></a>
 </p>
 
-dithercn gives your coding agent the primitives to add dithers to anything in your app: a dither engine and a skill that teaches it. Ask for a background, a chart, a loading state or a dithered photo, and your agent builds it in your shadcn theme.
+asciicn gives your coding agent the primitives to add dithers to anything in your app: a dither engine and a skill that teaches it. Ask for a background, a chart, a loading state or a dithered photo, and your agent builds it in your shadcn theme.
 
 It installs with the shadcn CLI as plain source you own, and works with Claude Code, Codex, Cursor and any agent that reads skills.
 
 [Read the installation guide](<content/docs/(root)/installation.mdx>) · [Write your own dither](content/docs/engine/write-your-own.mdx)
 
-- A dither engine (`lib/dither`): a WebGL shader for anything that moves, SVG and CSS fills for static shapes, image dithering, and PNG, SVG and CSS export
+- A dither engine (`lib/ascii`): a WebGL shader for anything that moves, SVG and CSS fills for static shapes, image dithering, and PNG, SVG and CSS export
 - An agent skill that teaches your agent to write fields, place a dither on a landing page or dashboard, and check it in light, dark and reduced motion
 - 52 example components across backgrounds, charts, interface, text and images, each a starting point to install and edit
 - Colours from your theme: the dither ink and paper map to your `--primary` and `--background`, and switch with light and dark mode
@@ -24,10 +24,10 @@ It installs with the shadcn CLI as plain source you own, and works with Claude C
 From a project that uses shadcn/ui, Tailwind CSS v4 and React 19:
 
 ```bash
-npx shadcn@latest add https://dithercn.dev/r/dithercn-skill.json
+npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
 ```
 
-This adds the engine in `lib/dither/`, the skill in `.agents/skills/dithercn/` and `.claude/skills/dithercn/`, and the `--dither-*` CSS variables. Any example installs the same way, for example `https://dithercn.dev/r/dither-gradient.json`.
+This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--dither-*` CSS variables. Any example installs the same way, for example `https://asciicn.dev/r/ascii-gradient.json`.
 
 ## Usage
 
@@ -43,7 +43,7 @@ The skill sends the agent to the engine, the closest example and the checks it r
 ```tsx
 "use client";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -53,13 +53,13 @@ float field(vec2 uv, vec2 res, float t) {
 `;
 
 export const Clouds = () => (
-  <DitherShader className="absolute inset-0" field={FIELD} stillTime={4} />
+  <AsciiShader className="absolute inset-0" field={FIELD} stillTime={4} />
 );
 ```
 
 ## For agents
 
-The skill is the main surface: `/.well-known/agent-skills/index.json` lists it and `/.well-known/agent-skills/dithercn/SKILL.md` serves it. The site also serves `/llms.txt`, `/llms-full.txt`, a Markdown version of every docs page (append `.md`), an API catalog at `/.well-known/api-catalog` and an OpenAPI description at `/openapi.json`.
+The skill is the main surface: `/.well-known/agent-skills/index.json` lists it and `/.well-known/agent-skills/asciicn/SKILL.md` serves it. The site also serves `/llms.txt`, `/llms-full.txt`, a Markdown version of every docs page (append `.md`), an API catalog at `/.well-known/api-catalog` and an OpenAPI description at `/openapi.json`.
 
 ## Develop
 
@@ -81,9 +81,9 @@ Set `SITE_URL` to the public origin when deploying. Without it, a Vercel product
 
 ```
 ├── content/docs/       # Docs (MDX). (root) is "Get started", engine/ the engine guides, examples/ the overview, the rest example groups
-├── skills/dithercn/    # The agent skill (SKILL.md and references), served and shipped as dithercn-skill
-├── components/dithercn/ # Shipped components, one file each
-├── lib/dither/         # dither-core, the shipped engine
+├── skills/asciicn/    # The agent skill (SKILL.md and references), served and shipped as asciicn-skill
+├── components/asciicn/ # Shipped components, one file each
+├── lib/ascii/         # ascii-core, the shipped engine
 ├── examples/           # Docs demos (site only)
 ├── registry/           # Registry items: base.json plus one fragment per group
 ├── scripts/            # build-registry.ts, generate-blue-noise.ts
@@ -95,7 +95,7 @@ Set `SITE_URL` to the public origin when deploying. Without it, a Vercel product
 
 ## Credits
 
-[Dither Kit](https://www.tripwire.sh/dither-kit) by Boring Software set the quality bar for dithercn, and several of our ideas come straight from it: the gradient, dotted, hatched and solid fills, bloom under fills, a named colour palette that works in light and dark, a chart crosshair whose tooltip glides as you scrub, legend hover and click-to-lock, live knobs in the docs, generative avatars, and buttons whose dither thickens on hover and press. We wrote our own code and look, but the ideas are theirs. Dither Kit in turn credits [EvilCharts](https://evilcharts.com) by legions-developer for the dithered chart style, so thanks to them too.
+[Dither Kit](https://www.tripwire.sh/ascii-kit) by Boring Software set the quality bar for asciicn, and several of our ideas come straight from it: the gradient, dotted, hatched and solid fills, bloom under fills, a named colour palette that works in light and dark, a chart crosshair whose tooltip glides as you scrub, legend hover and click-to-lock, live knobs in the docs, generative avatars, and buttons whose dither thickens on hover and press. We wrote our own code and look, but the ideas are theirs. Dither Kit in turn credits [EvilCharts](https://evilcharts.com) by legions-developer for the dithered chart style, so thanks to them too.
 
 Docs run on [Fumadocs](https://fumadocs.dev), and icons come from [Hugeicons](https://hugeicons.com).
 

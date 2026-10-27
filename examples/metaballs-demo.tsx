@@ -1,6 +1,6 @@
 "use client";
 
-import { Metaballs } from "@/components/dithercn/metaballs";
+import { Metaballs } from "@/components/asciicn/metaballs";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/metaballs-controls";
@@ -13,7 +13,7 @@ export default function MetaballsDemo() {
 
   return (
     <Metaballs
-      palette={["--dither-paper", toward(tint, 45), tint]}
+      palette={["--ascii-paper", toward(tint, 45), tint]}
       variant={variant}
       count={count}
       animate={animate}

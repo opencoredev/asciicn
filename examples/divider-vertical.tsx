@@ -1,4 +1,4 @@
-import { Divider } from "@/components/dithercn/divider";
+import { Divider } from "@/components/asciicn/divider";
 
 const STATS = [
   { label: "Requests", value: "1.28M" },

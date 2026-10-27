@@ -25,17 +25,17 @@ import NotFoundCompact from "@/examples/not-found-compact";
 ```tsx title="app/not-found.tsx"
 import Link from "next/link";
 
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { NotFound } from "@/components/dithercn/not-found";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { NotFound } from "@/components/asciicn/not-found";
 
 export default function NotFoundPage() {
   return (
     <main className="grid min-h-svh place-items-center">
       <NotFound
         actions={
-          <DitherButton asChild>
+          <AsciiButton asChild>
             <Link href="/">Back to home</Link>
-          </DitherButton>
+          </AsciiButton>
         }
       />
     </main>
@@ -106,7 +106,7 @@ A missing resource inside the app shell rather than a whole page: grey dotted di
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         'A palette name such as "red", a CSS variable name, or any CSS colour.',

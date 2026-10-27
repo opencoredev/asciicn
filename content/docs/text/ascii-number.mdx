@@ -1,0 +1,175 @@
+---
+title: "Dither number"
+description: "An animated number for KPI tiles and landing stats: tabular digits that roll or resolve through a dither, with Intl formatting, prefix and suffix, colour and size presets."
+---
+
+import AsciiNumberDemo from "@/examples/ascii-number-demo";
+import { controls as numberControls } from "@/examples/ascii-number-controls";
+import AsciiNumberKpis from "@/examples/ascii-number-kpis";
+import AsciiNumberLanding from "@/examples/ascii-number-landing";
+
+<ComponentPreview
+  src="examples/ascii-number-demo.tsx"
+  size="lg"
+  controls={numberControls}
+>
+  <AsciiNumberDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-number" />
+
+## Usage
+
+```tsx
+import { AsciiNumber } from "@/components/asciicn/ascii-number";
+
+export function Stat() {
+  return <AsciiNumber value={128406} size="xl" />;
+}
+```
+
+When the number scrolls into view, every digit moves from `from` (0 by default) to its place in `value`. Change `value` later and only the digits that differ move, left to right, `stagger` milliseconds apart. While a digit moves it takes the `accent` colour, then fades back to the number's colour as it lands.
+
+There are two effects:
+
+- `roll` spins each digit on a strip, up when the value grows and down when it shrinks. The top and bottom of each digit's window dither out, so digits fade in and out of the line instead of being cut off. A place that moves by ten or more spins a full extra turn, like a mechanical counter.
+- `resolve` turns the old digit into the new one cell by cell. The two use complementary dither masks, so each cell shows one digit or the other and they never blur together.
+
+Digits are tabular, so the width only changes when the number of digits does. Separators, currency symbols, the `prefix` and the `suffix` keep their natural width and never move.
+
+## Examples
+
+### KPI tiles
+
+A dashboard row whose values update every few seconds. `size="sm"`, a muted `suffix` through `affixClassName`, and `resolve` and `roll` side by side. The latency tile uses an orange accent.
+
+<ComponentPreview src="examples/ascii-number-kpis.tsx" size="lg">
+  <AsciiNumberKpis />
+</ComponentPreview>
+
+### Landing stat
+
+`size="display"` scales with the viewport. A longer `duration` and `stagger` make the first roll feel heavier; after that, the counter ticks up live and only the last few digits move.
+
+<ComponentPreview
+  src="examples/ascii-number-landing.tsx"
+  size="lg"
+  align="stretch"
+>
+  <AsciiNumberLanding />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "value",
+      type: "number",
+      required: true,
+      description:
+        "The number to show. Change it and the digits move to the new value.",
+    },
+    {
+      name: "from",
+      type: "number",
+      default: "0",
+      description: "Where the first run starts.",
+    },
+    {
+      name: "format",
+      type: "Intl.NumberFormatOptions",
+      description: "Currency, percent, compact notation, decimals and so on.",
+    },
+    {
+      name: "locales",
+      type: "Intl.LocalesArgument",
+      default: "The visitor's locale",
+      description:
+        "Passed to Intl.NumberFormat. Set it when the server and client must format the same way.",
+    },
+    {
+      name: "prefix",
+      type: "string",
+      description: 'Text before the number, such as "+".',
+    },
+    {
+      name: "suffix",
+      type: "string",
+      description: 'Text after the number, such as " ms".',
+    },
+    {
+      name: "affixClassName",
+      type: "string",
+      description:
+        "Classes for the prefix and suffix, for example a smaller, muted unit.",
+    },
+    {
+      name: "effect",
+      type: '"roll" | "resolve"',
+      default: '"roll"',
+      description:
+        "Digits spin on a strip, or turn into the new digit cell by cell.",
+    },
+    {
+      name: "trigger",
+      type: '"mount" | "in-view"',
+      default: '"in-view"',
+      description: "Start the first run on mount, or when scrolled into view.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg" | "xl" | "display"',
+      description:
+        "A type preset: 2xl, 4xl, 6xl, 8xl, or a fluid display size. Leave it unset to size the number with your own classes.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: "the text colour",
+      description: "Colour of the number: a palette name or any CSS colour.",
+    },
+    {
+      name: "accent",
+      type: 'AsciiColor | "none"',
+      default: '"ink"',
+      description:
+        "Colour a digit takes while it moves, fading back as it lands.",
+    },
+    {
+      name: "duration",
+      type: "number",
+      default: "900 (roll), 560 (resolve)",
+      description: "Milliseconds per change, for one digit.",
+    },
+    {
+      name: "stagger",
+      type: "number",
+      default: "40",
+      description: "Milliseconds between one digit starting and the next.",
+    },
+    {
+      name: "matrix",
+      type: '"bayer2" | "bayer4" | "bayer8"',
+      default: '"bayer4"',
+      description:
+        "The threshold pattern for the dithered edges and the resolve.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "font size / 30",
+      description: "Size of one dither cell in CSS pixels, at least 1.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The formatted value, with its prefix and suffix, is real text laid over the animation and made transparent, so it can be selected and copied and is what screen readers and search engines read. The moving digits are hidden from assistive technology. For a value that updates live, add `aria-live="polite"` yourself.
+- The number sets `line-height: 1.1` so the dithered fade has room above and below the digits. A tighter `leading-*` class works, but the fade may touch the tops of tall glyphs.
+- The server renders the final value. On the client the digits wait at `from` until the trigger fires.
+- With reduced motion turned on, the number changes instantly.
+- Only ASCII digits animate. Formats that use another numbering system show their digits without motion.

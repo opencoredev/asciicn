@@ -1,4 +1,4 @@
-import { Heatmap } from "@/components/dithercn/heatmap";
+import { Heatmap } from "@/components/asciicn/heatmap";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const HOURS = Array.from({ length: 24 }, (_, hour) =>
@@ -30,7 +30,7 @@ const data = DAYS.map((_, day) =>
 
 export default function HeatmapMatrix() {
   return (
-    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-6 flex flex-col gap-1">
         <span className="font-medium">When the team pushes to main</span>
         <span className="text-muted-foreground text-sm">

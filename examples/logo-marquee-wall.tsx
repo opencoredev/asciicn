@@ -1,5 +1,5 @@
-import { LogoMarquee } from "@/components/dithercn/logo-marquee";
-import { LOGOS } from "@/examples/dithered-logo-data";
+import { LogoMarquee } from "@/components/asciicn/logo-marquee";
+import { LOGOS } from "@/examples/ascii-logo-data";
 
 // Each logo links to its case study, so the wall works from the keyboard.
 const LINKED = LOGOS.map((logo) => ({ ...logo, href: "#customers" }));

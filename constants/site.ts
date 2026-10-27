@@ -46,7 +46,7 @@ export const SITE = {
     URL: "https://github.com/leoisadev1",
   },
   DESCRIPTION: {
-    LONG: "Add dithers to anything in your app. dithercn gives your coding agent the primitives: a dither engine and a skill that teaches it. Ask for any dither and your agent builds it on the engine, in your shadcn theme. The backgrounds, charts and interface pieces in the docs are examples.",
+    LONG: "Add dithers to anything in your app. asciicn gives your coding agent the primitives: a dither engine and a skill that teaches it. Ask for any dither and your agent builds it on the engine, in your shadcn theme. The backgrounds, charts and interface pieces in the docs are examples.",
     SHORT: "Add dithers to anything in your app",
   },
   KEYWORDS: [
@@ -64,7 +64,7 @@ export const SITE = {
     "landing page background",
     "npx shadcn add",
   ] as const,
-  NAME: "dithercn",
+  NAME: "asciicn",
   OG_IMAGE: `${baseUrl}/og`,
   // The silent loop iMessage, Discord and Telegram play for a shared link.
   OG_VIDEO: `${baseUrl}/og/og-video.mp4`,

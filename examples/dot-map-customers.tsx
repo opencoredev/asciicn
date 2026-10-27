@@ -1,4 +1,4 @@
-import { DotMap } from "@/components/dithercn/dot-map";
+import { DotMap } from "@/components/asciicn/dot-map";
 import { CUSTOMERS } from "@/examples/dot-map-data";
 
 const STATS = [

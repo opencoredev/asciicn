@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkline } from "@/components/dithercn/sparkline";
+import { Sparkline } from "@/components/asciicn/sparkline";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/sparkline-controls";
 
@@ -38,7 +38,7 @@ export default function SparklineDemo() {
       {STATS.map((stat) => (
         <div
           key={stat.label}
-          className="bg-background border-border flex flex-col gap-1 rounded-2xl border p-4 [--dither-paper:var(--background)]"
+          className="bg-background border-border flex flex-col gap-1 rounded-2xl border p-4 [--ascii-paper:var(--background)]"
         >
           <span className="text-muted-foreground truncate text-sm">
             {stat.label}

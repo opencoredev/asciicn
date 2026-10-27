@@ -1,5 +1,5 @@
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { NotFound } from "@/components/dithercn/not-found";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { NotFound } from "@/components/asciicn/not-found";
 
 export default function NotFoundError() {
   return (
@@ -11,9 +11,9 @@ export default function NotFoundError() {
       description="We could not load this page. Try again in a moment."
       detail="ref 7f3a-e21c · 14:02 UTC"
       actions={
-        <DitherButton color="red" fill="hatched" variant="outline">
+        <AsciiButton color="red" fill="hatched" variant="outline">
           Try again
-        </DitherButton>
+        </AsciiButton>
       }
       className="w-full"
     />

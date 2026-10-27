@@ -24,7 +24,7 @@ import BeamsHeadline from "@/examples/beams-headline";
 ## Usage
 
 ```tsx
-import { Beams } from "@/components/dithercn/beams";
+import { Beams } from "@/components/asciicn/beams";
 
 export function Hero() {
   return (
@@ -102,8 +102,8 @@ A narrow cone from just above the centre, through a four-colour palette, with a 
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: '["--dither-paper", "--dither-ink"]',
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: '["--ascii-paper", "--ascii-ink"]',
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -122,7 +122,7 @@ A narrow cone from just above the centre, through a four-colour palette, with a 
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

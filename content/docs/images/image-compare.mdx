@@ -23,7 +23,7 @@ import { controls as imageCompareControls } from "@/examples/image-compare-contr
 ## Usage
 
 ```tsx
-import { ImageCompare } from "@/components/dithercn/image-compare";
+import { ImageCompare } from "@/components/asciicn/image-compare";
 
 export function Showcase() {
   return (
@@ -38,7 +38,7 @@ export function Showcase() {
 
 Drag the divider, click anywhere on the image to send it there, or tab to the handle and use the arrow keys. By default the left side is dithered with the `duotone` preset and the right side is the original photo. When the image first comes into view, the divider nudges left and right once so readers see that it moves.
 
-Each side is either `{ kind: "original" }` or `{ kind: "dither", ...look }`, where the look takes the same props as [Dither image](/docs/images/dither-image): `preset`, `color`, `palette`, `method`, `cell` and the rest.
+Each side is either `{ kind: "original" }` or `{ kind: "dither", ...look }`, where the look takes the same props as [Dither image](/docs/images/ascii-image): `preset`, `color`, `palette`, `method`, `cell` and the rest.
 
 ## Examples
 
@@ -77,13 +77,13 @@ A landing page block that shows what the brand treatment does to a photo.
     },
     {
       name: "before",
-      type: '{ kind: "original" } | { kind: "dither", ...DitherLook }',
+      type: '{ kind: "original" } | { kind: "dither", ...AsciiLook }',
       default: '{ kind: "dither" }',
       description: "The left side.",
     },
     {
       name: "after",
-      type: '{ kind: "original" } | { kind: "dither", ...DitherLook }',
+      type: '{ kind: "original" } | { kind: "dither", ...AsciiLook }',
       default: '{ kind: "original" }',
       description: "The right side.",
     },

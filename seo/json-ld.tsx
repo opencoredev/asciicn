@@ -7,7 +7,7 @@ import { CONTACT_EMAIL } from "@/lib/trust-pages";
 const PERSON = {
   "@type": "Person",
   description:
-    "Leo builds and maintains dithercn, an open-source dither engine and agent skill for shadcn/ui, and other OpenCore developer tools.",
+    "Leo builds and maintains asciicn, an open-source dither engine and agent skill for shadcn/ui, and other OpenCore developer tools.",
   jobTitle: "Founder & Software Engineer",
   name: SITE.AUTHOR.NAME,
   sameAs: [SITE.AUTHOR.URL, LINK.GITHUB_REPO],

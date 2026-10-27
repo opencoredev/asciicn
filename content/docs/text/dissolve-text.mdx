@@ -24,7 +24,7 @@ import DissolveTextHatched from "@/examples/dissolve-text-hatched";
 ## Usage
 
 ```tsx
-import { DissolveText } from "@/components/dithercn/dissolve-text";
+import { DissolveText } from "@/components/asciicn/dissolve-text";
 
 export function Headline() {
   return (
@@ -111,13 +111,13 @@ Set `show={false}` and the text dissolves back out. Here a timer hides the word,
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: "the text colour",
       description: "Text colour: a palette name or any CSS colour.",
     },
     {
       name: "accent",
-      type: 'DitherColor | "none"',
+      type: 'AsciiColor | "none"',
       default: '"none"',
       description:
         "Colour each unit has while it arrives, fading to the text colour.",
@@ -167,7 +167,7 @@ Set `show={false}` and the text dissolves back out. Here a timer hides the word,
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
   ]}

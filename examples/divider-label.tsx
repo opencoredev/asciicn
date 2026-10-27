@@ -1,6 +1,6 @@
 import { GithubIcon, Mail01Icon } from "@hugeicons/core-free-icons";
 
-import { Divider } from "@/components/dithercn/divider";
+import { Divider } from "@/components/asciicn/divider";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 

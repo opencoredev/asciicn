@@ -1,120 +1,120 @@
 [
   {
-    "name": "dither-tokens",
+    "name": "ascii-tokens",
     "type": "registry:item",
     "title": "Dither tokens",
-    "description": "CSS variables every dithercn piece reads: ink, paper, cell size, bloom strength and the named colour palette (blue, purple, green, pink, orange, red, grey), tuned for light and dark.",
+    "description": "CSS variables every asciicn piece reads: ink, paper, cell size, bloom strength and the named colour palette (blue, purple, green, pink, orange, red, grey), tuned for light and dark.",
     "cssVars": {
       "theme": {
-        "color-dither-ink": "var(--dither-ink)",
-        "color-dither-paper": "var(--dither-paper)",
-        "color-dither-blue": "var(--dither-color-blue)",
-        "color-dither-purple": "var(--dither-color-purple)",
-        "color-dither-green": "var(--dither-color-green)",
-        "color-dither-pink": "var(--dither-color-pink)",
-        "color-dither-orange": "var(--dither-color-orange)",
-        "color-dither-red": "var(--dither-color-red)",
-        "color-dither-grey": "var(--dither-color-grey)"
+        "color-ascii-ink": "var(--ascii-ink)",
+        "color-ascii-paper": "var(--ascii-paper)",
+        "color-dither-blue": "var(--ascii-color-blue)",
+        "color-dither-purple": "var(--ascii-color-purple)",
+        "color-dither-green": "var(--ascii-color-green)",
+        "color-dither-pink": "var(--ascii-color-pink)",
+        "color-dither-orange": "var(--ascii-color-orange)",
+        "color-dither-red": "var(--ascii-color-red)",
+        "color-dither-grey": "var(--ascii-color-grey)"
       }
     },
     "css": {
       "@layer base": {
         ":root": {
-          "--dither-ink": "var(--primary)",
-          "--dither-paper": "var(--background)",
-          "--dither-cell": "3px",
-          "--dither-color-blue": "oklch(0.56 0.18 248)",
-          "--dither-color-purple": "oklch(0.53 0.22 302)",
-          "--dither-color-green": "oklch(0.58 0.15 152)",
-          "--dither-color-pink": "oklch(0.58 0.21 355)",
-          "--dither-color-orange": "oklch(0.64 0.17 52)",
-          "--dither-color-red": "oklch(0.55 0.21 27)",
-          "--dither-color-grey": "oklch(0.55 0 0)",
-          "--dither-bloom": "0.6"
+          "--ascii-ink": "var(--primary)",
+          "--ascii-paper": "var(--background)",
+          "--ascii-cell": "3px",
+          "--ascii-color-blue": "oklch(0.56 0.18 248)",
+          "--ascii-color-purple": "oklch(0.53 0.22 302)",
+          "--ascii-color-green": "oklch(0.58 0.15 152)",
+          "--ascii-color-pink": "oklch(0.58 0.21 355)",
+          "--ascii-color-orange": "oklch(0.64 0.17 52)",
+          "--ascii-color-red": "oklch(0.55 0.21 27)",
+          "--ascii-color-grey": "oklch(0.55 0 0)",
+          "--ascii-bloom": "0.6"
         },
         ".dark": {
-          "--dither-ink": "var(--primary)",
-          "--dither-paper": "var(--background)",
-          "--dither-cell": "3px",
-          "--dither-color-blue": "oklch(0.72 0.14 240)",
-          "--dither-color-purple": "oklch(0.7 0.18 304)",
-          "--dither-color-green": "oklch(0.78 0.17 152)",
-          "--dither-color-pink": "oklch(0.74 0.17 354)",
-          "--dither-color-orange": "oklch(0.79 0.15 62)",
-          "--dither-color-red": "oklch(0.68 0.2 25)",
-          "--dither-color-grey": "oklch(0.66 0 0)",
-          "--dither-bloom": "1"
+          "--ascii-ink": "var(--primary)",
+          "--ascii-paper": "var(--background)",
+          "--ascii-cell": "3px",
+          "--ascii-color-blue": "oklch(0.72 0.14 240)",
+          "--ascii-color-purple": "oklch(0.7 0.18 304)",
+          "--ascii-color-green": "oklch(0.78 0.17 152)",
+          "--ascii-color-pink": "oklch(0.74 0.17 354)",
+          "--ascii-color-orange": "oklch(0.79 0.15 62)",
+          "--ascii-color-red": "oklch(0.68 0.2 25)",
+          "--ascii-color-grey": "oklch(0.66 0 0)",
+          "--ascii-bloom": "1"
         }
       }
     }
   },
   {
-    "name": "dither-core",
+    "name": "ascii-core",
     "type": "registry:lib",
     "title": "Dither core",
-    "description": "The engine every dithercn component uses: threshold matrices with blue noise, a WebGL dither shader, SVG patterns and CSS masks, image dithering, theme colours and motion hooks.",
-    "docs": "dithercn's components are examples built on this engine. To have your coding agent build any dither of its own on it, add the agent skill if you haven't: npx shadcn@latest add {{REGISTRY_URL}}/dithercn-skill.json",
-    "registryDependencies": ["utils", "{{REGISTRY_URL}}/dither-tokens.json"],
+    "description": "The engine every asciicn component uses: threshold matrices with blue noise, a WebGL dither shader, SVG patterns and CSS masks, image dithering, theme colours and motion hooks.",
+    "docs": "asciicn's components are examples built on this engine. To have your coding agent build any dither of its own on it, add the agent skill if you haven't: npx shadcn@latest add {{REGISTRY_URL}}/asciicn-skill.json",
+    "registryDependencies": ["utils", "{{REGISTRY_URL}}/ascii-tokens.json"],
     "files": [
       {
-        "path": "lib/dither/index.ts",
+        "path": "lib/ascii/index.ts",
         "type": "registry:lib",
-        "target": "lib/dither/index.ts"
+        "target": "lib/ascii/index.ts"
       },
       {
-        "path": "lib/dither/matrices.ts",
+        "path": "lib/ascii/matrices.ts",
         "type": "registry:lib",
-        "target": "lib/dither/matrices.ts"
+        "target": "lib/ascii/matrices.ts"
       },
       {
-        "path": "lib/dither/blue-noise.ts",
+        "path": "lib/ascii/blue-noise.ts",
         "type": "registry:lib",
-        "target": "lib/dither/blue-noise.ts"
+        "target": "lib/ascii/blue-noise.ts"
       },
       {
-        "path": "lib/dither/tokens.ts",
+        "path": "lib/ascii/tokens.ts",
         "type": "registry:lib",
-        "target": "lib/dither/tokens.ts"
+        "target": "lib/ascii/tokens.ts"
       },
       {
-        "path": "lib/dither/color.ts",
+        "path": "lib/ascii/color.ts",
         "type": "registry:lib",
-        "target": "lib/dither/color.ts"
+        "target": "lib/ascii/color.ts"
       },
       {
-        "path": "lib/dither/motion.ts",
+        "path": "lib/ascii/motion.ts",
         "type": "registry:lib",
-        "target": "lib/dither/motion.ts"
+        "target": "lib/ascii/motion.ts"
       },
       {
-        "path": "lib/dither/glsl.ts",
+        "path": "lib/ascii/glsl.ts",
         "type": "registry:lib",
-        "target": "lib/dither/glsl.ts"
+        "target": "lib/ascii/glsl.ts"
       },
       {
-        "path": "lib/dither/shader.tsx",
+        "path": "lib/ascii/shader.tsx",
         "type": "registry:lib",
-        "target": "lib/dither/shader.tsx"
+        "target": "lib/ascii/shader.tsx"
       },
       {
-        "path": "lib/dither/pattern.tsx",
+        "path": "lib/ascii/pattern.tsx",
         "type": "registry:lib",
-        "target": "lib/dither/pattern.tsx"
+        "target": "lib/ascii/pattern.tsx"
       },
       {
-        "path": "lib/dither/style.ts",
+        "path": "lib/ascii/style.ts",
         "type": "registry:lib",
-        "target": "lib/dither/style.ts"
+        "target": "lib/ascii/style.ts"
       },
       {
-        "path": "lib/dither/fill.tsx",
+        "path": "lib/ascii/fill.tsx",
         "type": "registry:lib",
-        "target": "lib/dither/fill.tsx"
+        "target": "lib/ascii/fill.tsx"
       },
       {
-        "path": "lib/dither/diffuse.ts",
+        "path": "lib/ascii/diffuse.ts",
         "type": "registry:lib",
-        "target": "lib/dither/diffuse.ts"
+        "target": "lib/ascii/diffuse.ts"
       }
     ]
   }

@@ -9,7 +9,7 @@ import {
   resolveRegistryUrl,
 } from "@/lib/registry-items";
 
-const DITHER_CORE = "{{REGISTRY_URL}}/dither-core.json";
+const ASCII_CORE = "{{REGISTRY_URL}}/ascii-core.json";
 
 const Step = ({
   index,
@@ -73,9 +73,9 @@ export const InstallBlock = async ({ name }: { name: string }) => {
   }
 
   const registryDependencies = item.registryDependencies ?? [];
-  const needsCore = registryDependencies.includes(DITHER_CORE);
+  const needsCore = registryDependencies.includes(ASCII_CORE);
   const otherRegistry = registryDependencies
-    .filter((dependency) => dependency !== DITHER_CORE)
+    .filter((dependency) => dependency !== ASCII_CORE)
     .map(resolveRegistryUrl);
   const npm = item.dependencies ?? [];
   const files = item.files ?? [];
@@ -96,13 +96,13 @@ export const InstallBlock = async ({ name }: { name: string }) => {
               index={next()}
               title={
                 <>
-                  Install <code>dither-core</code>, the engine every component
-                  uses. It brings the <code>dither-tokens</code> CSS variables
+                  Install <code>ascii-core</code>, the engine every component
+                  uses. It brings the <code>ascii-tokens</code> CSS variables
                   with it.
                 </>
               }
             >
-              <InstallCommand urls={[registryItemUrl("dither-core")]} />
+              <InstallCommand urls={[registryItemUrl("ascii-core")]} />
             </Step>
           ) : null}
           {otherRegistry.length > 0 ? (

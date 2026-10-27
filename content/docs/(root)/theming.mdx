@@ -1,21 +1,21 @@
 ---
 title: Theming
-description: How dithercn reads your shadcn theme, and how to override colours and cell size.
+description: How asciicn reads your shadcn theme, and how to override colours and cell size.
 ---
 
 Every dither reads a few CSS variables, and the main two point at your existing shadcn tokens by default. Change them and every dither on the page follows, including the ones your agent writes.
 
 ## The variables
 
-| Variable                | Default               | What it controls                                                |
-| ----------------------- | --------------------- | --------------------------------------------------------------- |
-| `--dither-ink`          | `var(--primary)`      | The colour of the dots                                          |
-| `--dither-paper`        | `var(--background)`   | The colour behind the dots                                      |
-| `--dither-cell`         | `3px`                 | The size of one dither cell in CSS pixels                       |
-| `--dither-bloom`        | `1` dark, `0.6` light | How strong glows are                                            |
-| `--dither-color-<name>` | tuned per theme       | The named colours: blue, purple, green, pink, orange, red, grey |
+| Variable               | Default               | What it controls                                                |
+| ---------------------- | --------------------- | --------------------------------------------------------------- |
+| `--ascii-ink`          | `var(--primary)`      | The colour of the dots                                          |
+| `--ascii-paper`        | `var(--background)`   | The colour behind the dots                                      |
+| `--ascii-cell`         | `3px`                 | The size of one dither cell in CSS pixels                       |
+| `--ascii-bloom`        | `1` dark, `0.6` light | How strong glows are                                            |
+| `--ascii-color-<name>` | tuned per theme       | The named colours: blue, purple, green, pink, orange, red, grey |
 
-[`dither-tokens`](/docs/installation) writes these into both `:root` and `.dark`. Components and the engine accept the names `"ink"`, `"blue"`, `"green"` and so on wherever they take a colour, and Tailwind gets matching utilities such as `bg-dither-blue`. When the visitor switches to dark mode, `--primary` and `--background` change, and every dither changes with them.
+[`ascii-tokens`](/docs/installation) writes these into both `:root` and `.dark`. Components and the engine accept the names `"ink"`, `"blue"`, `"green"` and so on wherever they take a colour, and Tailwind gets matching utilities such as `bg-dither-blue`. When the visitor switches to dark mode, `--primary` and `--background` change, and every dither changes with them.
 
 ## Override for one section
 
@@ -23,8 +23,8 @@ Variables cascade, so you can retint a single part of the page by setting them o
 
 ```css
 .pricing-hero {
-  --dither-ink: var(--chart-2);
-  --dither-cell: 4px;
+  --ascii-ink: var(--chart-2);
+  --ascii-cell: 4px;
 }
 ```
 
@@ -32,7 +32,7 @@ Anything inside `.pricing-hero` uses the new ink and a coarser grain. The rest o
 
 ## Pick colours that still read
 
-A dither only reads when ink and paper differ enough. As a rule, keep the same contrast you would want for body text, about 4.5:1, between `--dither-ink` and `--dither-paper`. Low-contrast pairs look fine as a quiet background, but they lose detail in charts and images.
+A dither only reads when ink and paper differ enough. As a rule, keep the same contrast you would want for body text, about 4.5:1, between `--ascii-ink` and `--ascii-paper`. Low-contrast pairs look fine as a quiet background, but they lose detail in charts and images.
 
 ## Multi-step palettes
 

@@ -1,4 +1,4 @@
-import { Horizon } from "@/components/dithercn/horizon";
+import { Horizon } from "@/components/asciicn/horizon";
 
 export default function HorizonSunrise() {
   return (

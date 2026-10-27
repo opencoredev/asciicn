@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 // Slow drifting noise: two fbm layers moving against each other.
 const DRIFT = `
@@ -16,7 +16,7 @@ float field(vec2 uv, vec2 res, float t) {
 `;
 
 /** Mirrors the shader's data-state attribute so the demo can show it. */
-const useDitherState = () => {
+const useAsciiState = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [state, setState] = useState("fallback");
 
@@ -37,11 +37,11 @@ const useDitherState = () => {
 
 export default function ConceptMotion() {
   const [animate, setAnimate] = useState(true);
-  const { ref, state } = useDitherState();
+  const { ref, state } = useAsciiState();
 
   return (
     <div className="relative size-full">
-      <DitherShader
+      <AsciiShader
         ref={ref}
         field={DRIFT}
         animate={animate}

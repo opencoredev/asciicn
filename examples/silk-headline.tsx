@@ -1,4 +1,4 @@
-import { Silk } from "@/components/dithercn/silk";
+import { Silk } from "@/components/asciicn/silk";
 
 export default function SilkHeadline() {
   return (

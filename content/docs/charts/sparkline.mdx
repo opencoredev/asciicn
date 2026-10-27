@@ -22,7 +22,7 @@ import SparklineLine from "@/examples/sparkline-line";
 ## Usage
 
 ```tsx
-import { Sparkline } from "@/components/dithercn/sparkline";
+import { Sparkline } from "@/components/asciicn/sparkline";
 
 export function RevenueTrend() {
   return (
@@ -82,7 +82,7 @@ Each row's trend sits in its own cell at 24px high. `dot={false}` keeps a column
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description: 'A palette name such as "green", or any CSS colour.',
     },
@@ -140,7 +140,7 @@ Each row's trend sits in its own cell at 24px high. `dot={false}` keeps a column
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell minus 1",
+      default: "--ascii-cell minus 1",
       description:
         "Size of one dither cell in px, rounded to whole device pixels. Smaller than other charts so the texture reads at small sizes.",
     },

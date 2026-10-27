@@ -49,7 +49,7 @@ export const CatalogLivePreview = ({ demo }: { demo: string }) => {
     >
       {isNear && scale > 0 ? (
         <span
-          className="text-card-foreground absolute top-0 left-0 grid origin-top-left [--dither-paper:var(--card)] *:min-h-0 *:min-w-0 [&_[data-dither-fallback]]:hidden"
+          className="text-card-foreground absolute top-0 left-0 grid origin-top-left [--ascii-paper:var(--card)] *:min-h-0 *:min-w-0 [&_[data-ascii-fallback]]:hidden"
           style={{
             height: STAGE_HEIGHT,
             transform: `scale(${scale})`,

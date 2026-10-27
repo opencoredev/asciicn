@@ -2,10 +2,10 @@
   "title": "Images",
   "description": "Your images and logos, dithered.",
   "pages": [
-    "dither-image",
+    "ascii-image",
     "image-compare",
     "scroll-reveal-image",
-    "dithered-logo",
+    "ascii-logo",
     "logo-marquee"
   ]
 }

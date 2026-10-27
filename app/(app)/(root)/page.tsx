@@ -2,8 +2,8 @@ import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 
 import { AgentShowcase } from "@/components/agent-showcase";
+import { AsciiHero } from "@/components/ascii-hero";
 import { CommandBox } from "@/components/command-box";
-import { DitherHero } from "@/components/dither-hero";
 import { ExampleGallery } from "@/components/example-gallery";
 import { HeroActions } from "@/components/hero-actions";
 import { HomeOverview } from "@/components/home-overview";
@@ -41,15 +41,15 @@ export const revalidate = false;
 
 const INSTALLS = [
   [
-    ".agents/skills/dithercn/",
+    ".agents/skills/asciicn/",
     "The skill, for Codex, Cursor, Gemini and others.",
   ],
-  [".claude/skills/dithercn/", "The same skill, for Claude Code."],
+  [".claude/skills/asciicn/", "The same skill, for Claude Code."],
   [
-    "lib/dither/",
+    "lib/ascii/",
     "The engine, added by your agent the first time it builds a dither.",
   ],
-  ["globals.css", "--dither-ink, --dither-paper and friends, from your theme."],
+  ["globals.css", "--ascii-ink, --ascii-paper and friends, from your theme."],
 ] as const;
 
 export default function IndexPage() {
@@ -69,7 +69,7 @@ export default function IndexPage() {
         <section className="container-wrapper -mt-(--header-height) pt-2">
           {/* Always the dark plate, in both site themes. */}
           <div className="dark bg-background text-foreground relative isolate flex min-h-[max(600px,calc(100svh-0.5rem))] flex-col items-center justify-center overflow-hidden rounded-t-[24px] border border-b-0">
-            <DitherHero className="-z-10" />
+            <AsciiHero className="-z-10" />
             <div className="flex w-full max-w-4xl flex-col items-center gap-6 px-5 pt-36 pb-64 text-center md:pt-48 md:pb-64">
               <h1
                 style={stagger(0)}
@@ -176,7 +176,7 @@ export default function IndexPage() {
             <p className="text-muted-foreground max-w-xl text-sm text-pretty">
               Using shadcn?{" "}
               <code className="text-foreground font-mono text-[0.8rem] break-all">
-                npx shadcn@latest add {SITE.REGISTRY}/dithercn-skill.json
+                npx shadcn@latest add {SITE.REGISTRY}/asciicn-skill.json
               </code>{" "}
               installs the skill and the engine together.{" "}
               <Link

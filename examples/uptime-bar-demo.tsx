@@ -1,6 +1,6 @@
 "use client";
 
-import { UptimeBar } from "@/components/dithercn/uptime-bar";
+import { UptimeBar } from "@/components/asciicn/uptime-bar";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/uptime-bar-controls";
 import { uptimeDays } from "@/examples/uptime-bar-data";

@@ -17,7 +17,7 @@ import { getRegistryOrigin } from "../constants/site";
 import {
   renderSkillFile,
   skillFiles,
-} from "../lib/agent-discovery/dithercn-skill";
+} from "../lib/agent-discovery/asciicn-skill";
 
 const ROOT = process.cwd();
 const REGISTRY_DIR = path.join(ROOT, "registry");
@@ -27,8 +27,8 @@ const PLACEHOLDER = "{{REGISTRY_URL}}";
 const SITE_URL = getRegistryOrigin();
 const REGISTRY_URL = `${SITE_URL}/r`;
 
-// The agent skill, rendered for SITE_URL, is what the dithercn-skill item ships.
-const SKILL_OUT = path.join(ROOT, ".generated", "skills", "dithercn");
+// The agent skill, rendered for SITE_URL, is what the asciicn-skill item ships.
+const SKILL_OUT = path.join(ROOT, ".generated", "skills", "asciicn");
 for (const file of skillFiles()) {
   const target = path.join(SKILL_OUT, file);
   mkdirSync(path.dirname(target), { recursive: true });
@@ -157,21 +157,19 @@ for (const { file, item } of items) {
       if (FORBIDDEN_IMPORTS.some((prefix) => specifier.startsWith(prefix))) {
         errors.push(`${where}, a site-only module`);
       }
-      const component = /^@\/components\/dithercn\/([^/]+)/.exec(
-        specifier
-      )?.[1];
+      const component = /^@\/components\/asciicn\/([^/]+)/.exec(specifier)?.[1];
       if (component && !dependencies.has(`${PLACEHOLDER}/${component}.json`)) {
         errors.push(
           `${where} without "${PLACEHOLDER}/${component}.json" in registryDependencies`
         );
       }
       if (
-        specifier.startsWith("@/lib/dither") &&
-        item.name !== "dither-core" &&
-        !dependencies.has(`${PLACEHOLDER}/dither-core.json`)
+        specifier.startsWith("@/lib/ascii") &&
+        item.name !== "ascii-core" &&
+        !dependencies.has(`${PLACEHOLDER}/ascii-core.json`)
       ) {
         errors.push(
-          `${where} without "${PLACEHOLDER}/dither-core.json" in registryDependencies`
+          `${where} without "${PLACEHOLDER}/ascii-core.json" in registryDependencies`
         );
       }
     }
@@ -188,14 +186,14 @@ for (const { file, item } of items) {
   }
 }
 
-// The dithercn-skill item must ship every skill file to both skill folders.
-const skillItem = items.find(({ item }) => item.name === "dithercn-skill");
+// The asciicn-skill item must ship every skill file to both skill folders.
+const skillItem = items.find(({ item }) => item.name === "asciicn-skill");
 const shipped = new Set(skillItem?.item.files?.map((file) => file.target));
-for (const folder of [".agents/skills/dithercn", ".claude/skills/dithercn"]) {
+for (const folder of [".agents/skills/asciicn", ".claude/skills/asciicn"]) {
   for (const file of skillFiles()) {
     if (!shipped.has(`${folder}/${file}`)) {
       errors.push(
-        `registry/engine.json: "dithercn-skill" is missing ${folder}/${file}`
+        `registry/engine.json: "asciicn-skill" is missing ${folder}/${file}`
       );
     }
   }
@@ -205,7 +203,7 @@ const registry = {
   $schema: "https://ui.shadcn.com/schema/registry.json",
   homepage: SITE_URL,
   items: items.map(({ item }) => item),
-  name: "dithercn",
+  name: "asciicn",
 };
 
 const output = `${JSON.stringify(registry, null, 2).replaceAll(PLACEHOLDER, REGISTRY_URL)}\n`;

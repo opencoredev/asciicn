@@ -1,4 +1,4 @@
-import { Contours } from "@/components/dithercn/contours";
+import { Contours } from "@/components/asciicn/contours";
 
 export default function ContoursHeadline() {
   return (
@@ -9,9 +9,9 @@ export default function ContoursHeadline() {
         relief={0}
         speed={0.6}
         palette={[
-          "--dither-paper",
-          "color-mix(in oklch, var(--dither-ink) 20%, var(--dither-paper))",
-          "color-mix(in oklch, var(--dither-ink) 38%, var(--dither-paper))",
+          "--ascii-paper",
+          "color-mix(in oklch, var(--ascii-ink) 20%, var(--ascii-paper))",
+          "color-mix(in oklch, var(--ascii-ink) 38%, var(--ascii-paper))",
         ]}
         className="absolute inset-0 -z-10"
       />

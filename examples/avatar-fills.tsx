@@ -1,5 +1,5 @@
-import { Avatar } from "@/components/dithercn/avatar";
-import { FILL_VARIANTS } from "@/lib/dither";
+import { Avatar } from "@/components/asciicn/avatar";
+import { FILL_VARIANTS } from "@/lib/ascii";
 
 const NAMES = ["mira", "otto", "juno", "pax", "sol", "wren"] as const;
 

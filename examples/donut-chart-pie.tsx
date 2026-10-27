@@ -1,4 +1,4 @@
-import { DonutChart } from "@/components/dithercn/donut-chart";
+import { DonutChart } from "@/components/asciicn/donut-chart";
 
 const BROWSERS = [
   { label: "Chrome", value: 6120 },

@@ -3,13 +3,13 @@ title: Introduction
 description: A dither engine your coding agent uses to build any dither for your landing page or dashboard.
 ---
 
-dithercn is a dither engine with an agent skill. Ask your coding agent for a dither, say "a dithered topographic background behind the hero" or "a radial usage meter for the billing card", and it builds that component on the engine, in your shadcn theme, with motion, light and dark mode and reduced motion handled.
+asciicn is a dither engine with an agent skill. Ask your coding agent for a dither, say "a dithered topographic background behind the hero" or "a radial usage meter for the billing card", and it builds that component on the engine, in your shadcn theme, with motion, light and dark mode and reduced motion handled.
 
 The components in these docs are examples of what the engine can make. Install one when it fits, read its source when you want to see how it was done, and ask your agent for something new when it doesn't.
 
 ## What you get
 
-- **The engine.** `dither-core` installs into `lib/dither` as plain source. It turns a tone you compute into dither dots: a WebGL shader for anything that moves or varies per pixel, SVG patterns and CSS masks for static fills, image dithering, and export to PNG, SVG and CSS.
+- **The engine.** `ascii-core` installs into `lib/ascii` as plain source. It turns a tone you compute into dither dots: a WebGL shader for anything that moves or varies per pixel, SVG patterns and CSS masks for static fills, image dithering, and export to PNG, SVG and CSS.
 - **The agent skill.** A `SKILL.md` and references that teach Claude Code, Codex, Cursor and other agents the engine: how to pick a technique, write a field, place it on a page, colour it from your theme and check it in a browser. [Installation](/docs/installation) adds it to your project.
 - **The examples.** More than forty backgrounds, charts, interface pieces, text effects and image treatments, each installable with `npx shadcn add`. Browse them in the [catalog](/docs/examples).
 
@@ -29,7 +29,7 @@ Once the skill is installed, describe what you want and where it goes. Name the 
 
 You don't need to know which component or API fits. The skill sends the agent through four steps:
 
-1. **Set up the engine.** It checks for `lib/dither` and installs `dither-core` if it's missing.
+1. **Set up the engine.** It checks for `lib/ascii` and installs `ascii-core` if it's missing.
 2. **Pick a technique.** A WebGL field for anything that moves or varies per pixel, SVG patterns for chart and meter fills, CSS masks for blocks and bars, image dithering for photos, and export for files. It reads the closest example in the [catalog](/docs/examples) for technique, and installs one only when it is exactly what you asked for.
 3. **Build the component.** It writes a typed component with props you can tweak, places it behind or inside your content, and colours it from your theme.
 4. **Check it in a browser.** It looks at the result in light and dark mode, at desktop and phone widths and with reduced motion, and fixes what doesn't read.
@@ -38,7 +38,7 @@ You don't need to know which component or API fits. The skill sends the agent th
 
 - **Get started:** this page, [Installation](/docs/installation) and [Theming](/docs/theming).
 - **Examples:** the [catalog](/docs/examples) of every component, then one page per component, grouped into Backgrounds, Charts, Interface, Text and Images.
-- **Engine:** how `dither-core` works, for when you want to build a dither yourself. Start with the [dither engine](/docs/engine/dither-engine) and [Write your own dither](/docs/engine/write-your-own).
+- **Engine:** how `ascii-core` works, for when you want to build a dither yourself. Start with the [dither engine](/docs/engine/ascii-engine) and [Write your own dither](/docs/engine/write-your-own).
 
 ## Principles
 
@@ -50,4 +50,4 @@ You don't need to know which component or API fits. The skill sends the agent th
 
 ## Credits
 
-[Dither Kit](https://www.tripwire.sh/dither-kit) by Boring Software set the bar for this project. The fill variants, bloom, named colours, scrubbing chart tooltip, legend spotlight and lock, docs knobs, generative avatars and the button that thickens its dither on hover all started as ideas we saw there. The code and the look are our own. Dither Kit credits [EvilCharts](https://evilcharts.com) for the dithered chart style it grew from, so thanks to both.
+[Dither Kit](https://www.tripwire.sh/ascii-kit) by Boring Software set the bar for this project. The fill variants, bloom, named colours, scrubbing chart tooltip, legend spotlight and lock, docs knobs, generative avatars and the button that thickens its dither on hover all started as ideas we saw there. The code and the look are our own. Dither Kit credits [EvilCharts](https://evilcharts.com) for the dithered chart style it grew from, so thanks to both.

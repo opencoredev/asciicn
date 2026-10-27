@@ -1,7 +1,7 @@
 "use client";
 
-import { DitherShader } from "@/lib/dither";
-import type { DitherShaderProps } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
+import type { AsciiShaderProps } from "@/lib/ascii";
 
 // Step 3: noise bends the rings, time moves them outwards, and uniforms
 // turn the numbers into props.
@@ -18,7 +18,7 @@ float field(vec2 uv, vec2 res, float t) {
 }
 `;
 
-type RipplesProps = Omit<DitherShaderProps, "field" | "uniforms"> & {
+type RipplesProps = Omit<AsciiShaderProps, "field" | "uniforms"> & {
   /** Where the drop falls, from the top left, 0 to 1. */
   drop?: readonly [number, number];
   /** How tightly the rings are packed. */
@@ -33,7 +33,7 @@ const Ripples = ({
   strength = 0.85,
   ...props
 }: RipplesProps) => (
-  <DitherShader
+  <AsciiShader
     {...props}
     field={FIELD}
     stillTime={4}
@@ -49,7 +49,7 @@ export default function EngineFieldRipples() {
   return (
     <div className="relative isolate flex size-full items-end overflow-hidden">
       <Ripples
-        palette={["--dither-paper", "blue"]}
+        palette={["--ascii-paper", "blue"]}
         matrix="bayer8"
         className="absolute inset-0 -z-10"
       />

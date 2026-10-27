@@ -24,7 +24,7 @@ import WavesLines from "@/examples/waves-lines";
 ## Usage
 
 ```tsx
-import { Waves } from "@/components/dithercn/waves";
+import { Waves } from "@/components/asciicn/waves";
 
 export function Footer() {
   return (
@@ -86,8 +86,8 @@ A lower `horizon`, eight `layers` and a warm palette give a sea at sunset. A sma
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: "Paper, then tints of --dither-ink",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, then tints of --ascii-ink",
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -100,7 +100,7 @@ A lower `horizon`, eight `layers` and a warm palette give a sea at sunset. A sma
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -22,7 +22,7 @@ import { controls as logoMarqueeControls } from "@/examples/logo-marquee-control
 ## Usage
 
 ```tsx
-import { LogoMarquee } from "@/components/dithercn/logo-marquee";
+import { LogoMarquee } from "@/components/asciicn/logo-marquee";
 
 const logos = [
   { src: "/logos/acme.svg", alt: "Acme", ratio: 4 },
@@ -39,7 +39,7 @@ export function Customers() {
 }
 ```
 
-Every logo is a [Dithered logo](/docs/images/dithered-logo) with the same fill, cell and colour, so logos from different brands read as one set. The row repeats as many times as it needs to fill the width and loops without a seam.
+Every logo is a [Dithered logo](/docs/images/ascii-logo) with the same fill, cell and colour, so logos from different brands read as one set. The row repeats as many times as it needs to fill the width and loops without a seam.
 
 Hover or focus the row and it coasts to a stop instead of halting; let go and it picks up speed again. A small pause button appears at the right end on hover and keyboard focus. The ends fade out through a mask, so the fade works on any background: `soft` is a smooth ramp, `dither` steps through Bayer levels.
 
@@ -65,13 +65,13 @@ Two marquees moving in opposite directions with dithered edges, the second hatch
 
 ## Props
 
-Also takes the drawing props of [Dithered logo](/docs/images/dithered-logo): `color`, `tone`, `fill`, `outline`, `floor`, `matrix`, `cell`, `effect` and `period`.
+Also takes the drawing props of [Dithered logo](/docs/images/ascii-logo): `color`, `tone`, `fill`, `outline`, `floor`, `matrix`, `cell`, `effect` and `period`.
 
 <PropsTable
   rows={[
     {
       name: "logos",
-      type: "{ src: string; alt: string; ratio?: number; href?: string; color?: DitherColor }[]",
+      type: "{ src: string; alt: string; ratio?: number; href?: string; color?: AsciiColor }[]",
       description: "The logos, in order.",
       required: true,
     },

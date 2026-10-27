@@ -1,6 +1,6 @@
 "use client";
 
-import { Smoke } from "@/components/dithercn/smoke";
+import { Smoke } from "@/components/asciicn/smoke";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/smoke-controls";
@@ -13,7 +13,7 @@ export default function SmokeDemo() {
 
   return (
     <Smoke
-      palette={["--dither-paper", toward(tint, 45), tint]}
+      palette={["--ascii-paper", toward(tint, 45), tint]}
       scale={scale}
       wind={wind}
       animate={animate}

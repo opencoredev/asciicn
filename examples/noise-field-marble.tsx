@@ -1,4 +1,4 @@
-import { NoiseField } from "@/components/dithercn/noise-field";
+import { NoiseField } from "@/components/asciicn/noise-field";
 
 export default function NoiseFieldMarble() {
   return (

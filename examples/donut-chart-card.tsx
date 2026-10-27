@@ -1,4 +1,4 @@
-import { DonutChart } from "@/components/dithercn/donut-chart";
+import { DonutChart } from "@/components/asciicn/donut-chart";
 
 const STORAGE = [
   { color: "blue", label: "Images", value: 412 },
@@ -9,7 +9,7 @@ const STORAGE = [
 
 export default function DonutChartCard() {
   return (
-    <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-medium">Storage</span>
         <span className="text-muted-foreground font-mono text-xs">

@@ -1,4 +1,4 @@
-import { UptimeBar } from "@/components/dithercn/uptime-bar";
+import { UptimeBar } from "@/components/asciicn/uptime-bar";
 import { uptimeDays } from "@/examples/uptime-bar-data";
 
 const SERVICES = [
@@ -35,7 +35,7 @@ const SERVICES = [
 
 export default function UptimeBarStatusPage() {
   return (
-    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border [--dither-paper:var(--background)]">
+    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border [--ascii-paper:var(--background)]">
       <div className="flex items-center gap-3 border-b px-5 py-4">
         <span aria-hidden className="bg-dither-green size-2 rounded-full" />
         <span className="font-medium">All systems operational</span>

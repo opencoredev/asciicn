@@ -24,7 +24,7 @@ import RetroGridHeadline from "@/examples/retro-grid-headline";
 ## Usage
 
 ```tsx
-import { RetroGrid } from "@/components/dithercn/retro-grid";
+import { RetroGrid } from "@/components/asciicn/retro-grid";
 
 export function Hero() {
   return (
@@ -89,8 +89,8 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: "Paper, two tints of --dither-ink, then --dither-ink",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, two tints of --ascii-ink, then --ascii-ink",
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -103,7 +103,7 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -1,6 +1,6 @@
 "use client";
 
-import { DotMap } from "@/components/dithercn/dot-map";
+import { DotMap } from "@/components/asciicn/dot-map";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/dot-map-controls";
 import { OFFICES, ROUTES } from "@/examples/dot-map-data";

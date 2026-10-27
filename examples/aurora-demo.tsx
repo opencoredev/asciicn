@@ -1,6 +1,6 @@
 "use client";
 
-import { Aurora } from "@/components/dithercn/aurora";
+import { Aurora } from "@/components/asciicn/aurora";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/aurora-controls";
 

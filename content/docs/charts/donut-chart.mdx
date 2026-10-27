@@ -23,7 +23,7 @@ import DonutChartPie from "@/examples/donut-chart-pie";
 ## Usage
 
 ```tsx
-import { DonutChart } from "@/components/dithercn/donut-chart";
+import { DonutChart } from "@/components/asciicn/donut-chart";
 
 const data = [
   { label: "North America", value: 48210 },
@@ -68,7 +68,7 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
       name: "data",
       type: "DonutSlice[]",
       description:
-        "{ label: string; value: number; color?: DitherColor; fill?: FillVariant }, drawn clockwise from the top.",
+        "{ label: string; value: number; color?: AsciiColor; fill?: FillVariant }, drawn clockwise from the top.",
       required: true,
     },
     {
@@ -99,7 +99,7 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
     },
     {
       name: "colors",
-      type: "DitherColor[]",
+      type: "AsciiColor[]",
       description:
         "Colours by slice position, as palette names or CSS colours. A slice's own color wins.",
     },
@@ -163,7 +163,7 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
   ]}

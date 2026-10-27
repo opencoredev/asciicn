@@ -1,4 +1,4 @@
-import { Avatar, AvatarGroup } from "@/components/dithercn/avatar";
+import { Avatar, AvatarGroup } from "@/components/asciicn/avatar";
 
 const VIEWERS = [
   "Ada Lovelace",

@@ -23,7 +23,7 @@ import RadarChartCompare from "@/examples/radar-chart-compare";
 ## Usage
 
 ```tsx
-import { RadarChart } from "@/components/dithercn/radar-chart";
+import { RadarChart } from "@/components/asciicn/radar-chart";
 
 export function Evals() {
   return (
@@ -81,7 +81,7 @@ Three series on seven axes with `fill="hatched"`, five rings and `bloom="high"`.
       type: "[RadarSeries, ...RadarSeries[]]",
       required: true,
       description:
-        "{ label: string; values: number[]; color?: DitherColor; fill?: FillVariant }, one value per axis.",
+        "{ label: string; values: number[]; color?: AsciiColor; fill?: FillVariant }, one value per axis.",
     },
     {
       name: "max",
@@ -115,7 +115,7 @@ Three series on seven axes with `fill="hatched"`, five rings and `bloom="high"`.
     },
     {
       name: "colors",
-      type: "DitherColor[]",
+      type: "AsciiColor[]",
       description: "Colours by series position. A series' own color wins.",
     },
     {
@@ -159,7 +159,7 @@ Three series on seven axes with `fill="hatched"`, five rings and `bloom="high"`.
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
   ]}

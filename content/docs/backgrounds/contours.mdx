@@ -24,7 +24,7 @@ import ContoursHeadline from "@/examples/contours-headline";
 ## Usage
 
 ```tsx
-import { Contours } from "@/components/dithercn/contours";
+import { Contours } from "@/components/asciicn/contours";
 
 export function Section() {
   return (
@@ -97,8 +97,8 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: "Paper, a tint of --dither-ink, then --dither-ink",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, a tint of --ascii-ink, then --ascii-ink",
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -111,7 +111,7 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

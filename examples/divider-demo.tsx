@@ -1,6 +1,6 @@
 "use client";
 
-import { Divider } from "@/components/dithercn/divider";
+import { Divider } from "@/components/asciicn/divider";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/divider-controls";
 

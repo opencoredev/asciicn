@@ -1,0 +1,186 @@
+---
+title: "Dither text"
+description: "A display headline whose letters are filled with a dithered gradient, noise, dots or hatching, in any palette colour, from hero size down to section headings."
+---
+
+import AsciiTextDemo from "@/examples/ascii-text-demo";
+import { controls as asciiTextControls } from "@/examples/ascii-text-controls";
+import AsciiTextHatched from "@/examples/ascii-text-hatched";
+import AsciiTextNoise from "@/examples/ascii-text-noise";
+import AsciiTextSection from "@/examples/ascii-text-section";
+
+<ComponentPreview
+  src="examples/ascii-text-demo.tsx"
+  size="lg"
+  controls={asciiTextControls}
+>
+  <AsciiTextDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-text" />
+
+## Usage
+
+```tsx
+import { AsciiText } from "@/components/asciicn/ascii-text";
+
+export function Hero() {
+  return (
+    <AsciiText
+      as="h1"
+      color="blue"
+      className="text-8xl font-bold tracking-tight"
+    >
+      Your headline
+    </AsciiText>
+  );
+}
+```
+
+The text stays a real element: people can select and copy it, screen readers read it, and search engines index it. The dither is a small image drawn on the client and clipped to the letters with `background-clip: text`.
+
+`fill` picks what goes inside the letters:
+
+- `gradient` (the default) runs from solid ink on one side to a sparse dither on the other, with a slow drift that bends the bands. `direction` is the way it thins out: `"down"` is solid at the top.
+- `noise` fills the letters with drifting blobs of density. `scale` sets their size and `direction` the way they drift.
+- `dotted` and `hatched` use the same textures as the charts and buttons, drifting a cell at a time in `direction`. A faint `ghost` of the ink fills the gaps so the letters keep their shape.
+- `solid` is flat colour, useful with `bloom` alone.
+
+Set the size with your own classes. The cell size follows the font size, about 1/24 of it and never below 2px, so the same component reads well as a hero and as a section heading. Pass `cell` to fix it.
+
+## Examples
+
+### Hatched and dotted
+
+Two words in heavy type, one `hatched` in orange with a low bloom and one `dotted` in pink drifting left.
+
+<ComponentPreview src="examples/ascii-text-hatched.tsx" size="lg">
+  <AsciiTextHatched />
+</ComponentPreview>
+
+### Noise with a palette
+
+`palette` takes over from `color` for a multi-tone fill. Here blue noise and a palette from transparent through blue to purple give a soft grain.
+
+<ComponentPreview src="examples/ascii-text-noise.tsx" size="lg">
+  <AsciiTextNoise />
+</ComponentPreview>
+
+### Section heading in the foreground colour
+
+A smaller heading that thins out to the right, drawn in `--foreground` so it matches body text on light and dark themes. `to={0.55}` keeps the last word readable and `animate={false}` draws it once.
+
+<ComponentPreview src="examples/ascii-text-section.tsx">
+  <AsciiTextSection />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "children",
+      type: "ReactNode",
+      required: true,
+      description: "The text. It stays real, selectable text.",
+    },
+    {
+      name: "as",
+      type: '"h1" | "h2" | "h3" | "h4" | "p" | "span" | "div" | "strong"',
+      default: '"span"',
+      description: "The element to render.",
+    },
+    {
+      name: "fill",
+      type: '"gradient" | "noise" | "dotted" | "hatched" | "solid"',
+      default: '"gradient"',
+      description: "What fills the letters.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        'Ink colour: a palette name such as "green" or any CSS colour.',
+    },
+    {
+      name: "direction",
+      type: '"down" | "up" | "left" | "right" | number',
+      default: '"down"',
+      description:
+        "Gradient: the way it thins out from its solid side. Noise, dotted and hatched: the way it drifts. A number is an angle in degrees, as in CSS.",
+    },
+    {
+      name: "scale",
+      type: "number",
+      default: "3",
+      description: "Noise only. Higher values give smaller blobs.",
+    },
+    {
+      name: "from",
+      type: "number",
+      default: "1",
+      description:
+        "Gradient and noise: tone at the dense end, from 0 (no ink) to 1 (solid).",
+    },
+    {
+      name: "to",
+      type: "number",
+      default: "0.4",
+      description:
+        "Gradient and noise: tone at the sparse end. Keep it above about 0.3 so the letters stay readable.",
+    },
+    {
+      name: "ghost",
+      type: "number",
+      default: "0.2 for dotted and hatched, else 0",
+      description: "Opacity of the ink in the gaps between dots, 0 to 1.",
+    },
+    {
+      name: "bloom",
+      type: '"off" | "low" | "high"',
+      default: '"off"',
+      description: "A soft glow in the ink colour that follows the dots.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      description:
+        "Colours from the lightest tone to the darkest, for a multi-tone fill. Overrides color and ghost.",
+    },
+    {
+      name: "matrix",
+      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description:
+        "The threshold pattern for gradient and noise. See Dither engine.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "Font size / 24, at least 2",
+      description: "Size of one dither cell in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws the fill once and stops.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the fill drifts. 0 holds it still.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The text is the accessible content. The fill is a background image, so assistive technology ignores it.
+- Before the client draws the fill, the letters show in the ink colour through a plain dither mask, so there is no flash of unstyled text. In forced-colours mode the fill is removed and the text uses the system colour.
+- Selected text shows in the site's selection colours, solid, so it stays readable while highlighted.
+- With reduced motion turned on, or `animate={false}`, it draws one frame. It redraws at 12 fps only while on screen, at one pixel per dither cell, and pauses in hidden tabs. `solid` never animates.

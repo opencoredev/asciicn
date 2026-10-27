@@ -24,7 +24,7 @@ import RipplesRain from "@/examples/ripples-rain";
 ## Usage
 
 ```tsx
-import { Ripples } from "@/components/dithercn/ripples";
+import { Ripples } from "@/components/asciicn/ripples";
 
 export function Hero() {
   return (
@@ -89,8 +89,8 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: "Paper, a tint of --dither-ink, then --dither-ink",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, a tint of --ascii-ink, then --ascii-ink",
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -103,7 +103,7 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

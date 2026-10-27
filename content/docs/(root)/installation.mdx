@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Add the dithercn engine and agent skill to a shadcn project, or install a single example.
+description: Add the asciicn engine and agent skill to a shadcn project, or install a single example.
 ---
 
-dithercn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill; after that you ask your agent for dithers, or install examples one by one.
+asciicn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill; after that you ask your agent for dithers, or install examples one by one.
 
 ## Quick start with your agent
 
@@ -23,7 +23,7 @@ The [skills CLI](https://skills.sh) installs the skill into Claude Code, Codex, 
 
 <CommandBox tool="skills" className="mt-6" />
 
-It asks which agents to install for, then writes the skill and its references into each agent's skills folder, such as `.claude/skills/dithercn/` and `.agents/skills/dithercn/`. Add `-g` to install it for every project on your machine. The skill adds the engine to your project the first time your agent builds a dither.
+It asks which agents to install for, then writes the skill and its references into each agent's skills folder, such as `.claude/skills/asciicn/` and `.agents/skills/asciicn/`. Add `-g` to install it for every project on your machine. The skill adds the engine to your project the first time your agent builds a dither.
 
 ## Or add the engine and the skill with shadcn
 
@@ -32,13 +32,13 @@ It asks which agents to install for, then writes the skill and its references in
 ### Run the add command
 
 ```bash
-npx shadcn@latest add https://dithercn.dev/r/dithercn-skill.json
+npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
 ```
 
 This writes:
 
-- `lib/dither/`, the engine (`dither-core`) and its export functions (`dither-export`).
-- `.agents/skills/dithercn/` and `.claude/skills/dithercn/`, the agent skill. Claude Code reads `.claude/skills`; Codex, Cursor and other agents that follow the [Agent Skills](https://agentskills.io) layout read `.agents/skills`.
+- `lib/ascii/`, the engine (`ascii-core`) and its export functions (`ascii-export`).
+- `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, the agent skill. Claude Code reads `.claude/skills`; Codex, Cursor and other agents that follow the [Agent Skills](https://agentskills.io) layout read `.agents/skills`.
 - The `--dither-*` CSS variables, in the CSS file named in your `components.json`.
 
 Commit the skill folders with the rest of your code, so everyone on the project, and every agent, gets the same skill.
@@ -49,21 +49,21 @@ The CLI adds the variables for light and dark mode, and colour utilities to the 
 
 ```css
 @theme inline {
-  --color-dither-ink: var(--dither-ink);
-  --color-dither-paper: var(--dither-paper);
+  --color-ascii-ink: var(--ascii-ink);
+  --color-ascii-paper: var(--ascii-paper);
   /* and one per named colour: --color-dither-blue, --color-dither-green, … */
 }
 
 @layer base {
   :root {
-    --dither-ink: var(--primary);
-    --dither-paper: var(--background);
-    --dither-cell: 3px;
+    --ascii-ink: var(--primary);
+    --ascii-paper: var(--background);
+    --ascii-cell: 3px;
   }
   .dark {
-    --dither-ink: var(--primary);
-    --dither-paper: var(--background);
-    --dither-cell: 3px;
+    --ascii-ink: var(--primary);
+    --ascii-paper: var(--background);
+    --ascii-cell: 3px;
   }
 }
 ```
@@ -79,7 +79,7 @@ Then ask your agent for a dither. The [introduction](/docs#ask-your-agent-for-a-
 | File                          | What it covers                                                                                                                                           |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SKILL.md`                    | The four steps the agent follows, and the rules for every dither                                                                                         |
-| `references/engine-api.md`    | Every engine export: `DitherShader`, `FillPattern`, `fillStyle`, colours, motion hooks, `ditherImage` and export                                         |
+| `references/engine-api.md`    | Every engine export: `AsciiShader`, `FillPattern`, `fillStyle`, colours, motion hooks, `ditherImage` and export                                          |
 | `references/fields.md`        | How to write a GLSL field, with building blocks for gradients, noise, contour lines, rings, arcs and shading                                             |
 | `references/recipes.md`       | Complete components to adapt: a shader background, a hero that clears its headline, an SVG chart fill, a progress bar, a dithered photo, a CSS-only band |
 | `references/landing-pages.md` | Designing the page around the dither: start from the product, one memorable hero, true copy, the tells to avoid                                          |
@@ -95,8 +95,8 @@ The skill matches the engine it installs with and points your agent at the files
 `shadcn add` writes the skill into the current project only. To make it available in every project on your machine, run the skills CLI with `-g`. Without the CLI, download the files into your user skills folder:
 
 ```bash
-SKILL=https://dithercn.dev/.well-known/agent-skills/dithercn
-for dir in ~/.claude/skills/dithercn ~/.agents/skills/dithercn; do
+SKILL=https://asciicn.dev/.well-known/agent-skills/asciicn
+for dir in ~/.claude/skills/asciicn ~/.agents/skills/asciicn; do
   mkdir -p "$dir/references"
   curl -fsSL "$SKILL/SKILL.md" -o "$dir/SKILL.md"
   for ref in engine-api examples fields landing-pages placement quality recipes theme; do
@@ -112,42 +112,42 @@ The skill tells the agent to install the engine into a project the first time it
 Without the skill, install the engine on its own:
 
 ```bash
-npx shadcn@latest add https://dithercn.dev/r/dither-core.json
+npx shadcn@latest add https://asciicn.dev/r/ascii-core.json
 ```
 
 Or install any example. Each one brings the engine with it on its first install:
 
 ```bash
-npx shadcn@latest add https://dithercn.dev/r/dither-gradient.json
+npx shadcn@latest add https://asciicn.dev/r/ascii-gradient.json
 ```
 
 ## Update the engine
 
-The engine is plain source in your project, so it doesn't update on its own. Newer docs can use features your copy lacks: if TypeScript says a prop such as `colorField` doesn't exist on `DitherShader`, delete `lib/dither` and add the engine again:
+The engine is plain source in your project, so it doesn't update on its own. Newer docs can use features your copy lacks: if TypeScript says a prop such as `colorField` doesn't exist on `AsciiShader`, delete `lib/ascii` and add the engine again:
 
 ```bash
-rm -rf lib/dither
-npx shadcn@latest add https://dithercn.dev/r/dither-core.json https://dithercn.dev/r/dither-export.json
+rm -rf lib/ascii
+npx shadcn@latest add https://asciicn.dev/r/ascii-core.json https://asciicn.dev/r/ascii-export.json
 ```
 
-If the CLI asks whether to overwrite `lib/utils.ts`, answer no. Avoid `--overwrite`, which replaces that file too. If you edited any file in `lib/dither`, copy your changes out first.
+If the CLI asks whether to overwrite `lib/utils.ts`, answer no. Avoid `--overwrite`, which replaces that file too. If you edited any file in `lib/ascii`, copy your changes out first.
 
 ## Use a namespace
 
-To install by name instead of by URL, add dithercn to the `registries` field of your `components.json`:
+To install by name instead of by URL, add asciicn to the `registries` field of your `components.json`:
 
 ```json title="components.json"
 {
   "registries": {
-    "@dithercn": "https://dithercn.dev/r/{name}.json"
+    "@asciicn": "https://asciicn.dev/r/{name}.json"
   }
 }
 ```
 
-Then install with the `@dithercn` prefix:
+Then install with the `@asciicn` prefix:
 
 ```bash
-npx shadcn@latest add @dithercn/dithercn-skill
+npx shadcn@latest add @asciicn/asciicn-skill
 ```
 
 See the shadcn docs on [namespaced registries](https://ui.shadcn.com/docs/registry/namespace) for more options, including authentication.
@@ -158,7 +158,7 @@ The skill is the main way in. The site also publishes plain-text surfaces for ag
 
 - [`/llms.txt`](/llms.txt) lists every docs page with a one-line description and a Markdown link, and [`/llms-full.txt`](/llms-full.txt) is the whole documentation as one file.
 - Add `.md` to any docs URL for its Markdown, for example [`/docs/installation.md`](/docs/installation.md), or send an `Accept: text/markdown` header. Every page also has a **Copy page** menu.
-- The registry index is at [`/r/registry.json`](/r/registry.json), and each item at `/r/<name>.json`. The [shadcn MCP server](https://ui.shadcn.com/docs/mcp) can browse and install from it once you have [added the `@dithercn` namespace](#use-a-namespace).
+- The registry index is at [`/r/registry.json`](/r/registry.json), and each item at `/r/<name>.json`. The [shadcn MCP server](https://ui.shadcn.com/docs/mcp) can browse and install from it once you have [added the `@asciicn` namespace](#use-a-namespace).
 - [`/.well-known/api-catalog`](/.well-known/api-catalog) links every machine-readable surface (RFC 9727), [`/openapi.json`](/openapi.json) describes the read-only endpoints, and [`/api/status`](/api/status) returns `{"status":"ok"}`. The home page sends these as `Link` headers too.
 
 ## Next steps

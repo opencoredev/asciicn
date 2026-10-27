@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The dithercn mark: a 4x4 dot grid whose columns hold 1, 2, 3 and 4 lit
+ * The asciicn mark: a 4x4 dot grid whose columns hold 1, 2, 3 and 4 lit
  * dots, a dithered ramp at the smallest size that still reads.
  */
 const LIT_CELLS = [
@@ -62,6 +62,6 @@ export const Wordmark = ({ className }: { className?: string }) => (
     )}
   >
     <LogoMark className="text-primary size-[18px]" />
-    dithercn
+    asciicn
   </span>
 );

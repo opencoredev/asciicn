@@ -23,7 +23,7 @@ import AreaChartCompact from "@/examples/area-chart-compact";
 ## Usage
 
 ```tsx
-import { AreaChart } from "@/components/dithercn/area-chart";
+import { AreaChart } from "@/components/asciicn/area-chart";
 
 const data = [
   { month: "Jan", revenue: 18400 },
@@ -110,11 +110,11 @@ With two or more series the chart adds a legend, and every series after the firs
       type: '"off" | "low" | "high"',
       default: '"off"',
       description:
-        "A soft glow in each series' colour behind its fill. Its strength follows --dither-bloom, lower in light mode.",
+        "A soft glow in each series' colour behind its fill. Its strength follows --ascii-bloom, lower in light mode.",
     },
     {
       name: "colors",
-      type: "readonly DitherColor[]",
+      type: "readonly AsciiColor[]",
       default: "ink, orange, green, pink, …",
       description:
         'Colours by series position: palette names such as "green" or any CSS colour. A series\' own color wins.',
@@ -155,7 +155,7 @@ With two or more series the chart adds a legend, and every series after the firs
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description:
         "Size of one dither cell in px, rounded to whole device pixels.",
     },
@@ -194,5 +194,5 @@ Series colours follow the palette: ink, then orange, green, pink, purple, blue, 
 
 - The chart is a focusable group labelled with a short summary, and the full data sits in a visually hidden table, so screen readers get every value. The arrow keys, Page Up, Page Down, Home and End move the readout without easing, a polite live region reads out the values at each stop, and Escape clears the readout and any locked series. Legend entries are toggle buttons.
 - On entrance the line draws in and the fill steps up through the dither levels. With reduced motion the finished chart appears at once.
-- Cells are snapped to whole device pixels, so the dither stays sharp on any screen. Markers use a ring in `--dither-paper`; set it to your card's background if the card is not the page colour.
+- Cells are snapped to whole device pixels, so the dither stays sharp on any screen. Markers use a ring in `--ascii-paper`; set it to your card's background if the card is not the page colour.
 - It is plain SVG with no chart library. The entrance re-renders the chart about 16 times. Scrubbing updates at most once a frame and only moves the crosshair, markers and readout, by transform, so a year of daily points in three series stays smooth.

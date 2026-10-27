@@ -24,7 +24,7 @@ import SilkChampagne from "@/examples/silk-champagne";
 ## Usage
 
 ```tsx
-import { Silk } from "@/components/dithercn/silk";
+import { Silk } from "@/components/asciicn/silk";
 
 export function Hero() {
   return (
@@ -89,8 +89,8 @@ Eight folds on a diagonal through four warm golds, from near-black to a pale cre
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: "Paper, two tints of --dither-ink, then --dither-ink",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, two tints of --ascii-ink, then --ascii-ink",
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -103,7 +103,7 @@ Eight folds on a diagonal through four warm golds, from near-black to a pale cre
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -1,15 +1,15 @@
 [
   {
-    "name": "dither-gradient",
+    "name": "ascii-gradient",
     "type": "registry:component",
     "title": "Dither gradient",
     "description": "A linear, radial or conic gradient drawn as a dither, with a slow noise drift.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-gradient.tsx",
+        "path": "components/asciicn/ascii-gradient.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-gradient.tsx"
+        "target": "components/asciicn/ascii-gradient.tsx"
       }
     ]
   }

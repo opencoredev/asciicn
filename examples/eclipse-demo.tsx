@@ -1,6 +1,6 @@
 "use client";
 
-import { Eclipse } from "@/components/dithercn/eclipse";
+import { Eclipse } from "@/components/asciicn/eclipse";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/eclipse-controls";
 

@@ -1,7 +1,7 @@
 import { Search01Icon } from "@hugeicons/core-free-icons";
 
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { EmptyState } from "@/components/dithercn/empty-state";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { EmptyState } from "@/components/asciicn/empty-state";
 import { Icon } from "@/components/icon";
 
 export default function EmptyStateSearch() {
@@ -17,9 +17,9 @@ export default function EmptyStateSearch() {
         title="No results for “ditehr”"
         description="Check the spelling, or search for a shorter phrase."
         action={
-          <DitherButton size="sm" variant="outline" color="grey">
+          <AsciiButton size="sm" variant="outline" color="grey">
             Clear search
-          </DitherButton>
+          </AsciiButton>
         }
         className="py-8"
       />

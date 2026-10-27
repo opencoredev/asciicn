@@ -1,4 +1,4 @@
-import { Ripples } from "@/components/dithercn/ripples";
+import { Ripples } from "@/components/asciicn/ripples";
 
 export default function RipplesDrop() {
   return (

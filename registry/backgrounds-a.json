@@ -1,15 +1,15 @@
 [
   {
-    "name": "dither-glow",
+    "name": "ascii-glow",
     "type": "registry:component",
     "title": "Dither glow",
     "description": "A soft dithered spotlight from an edge, a corner or any point, for heroes and cards.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-glow.tsx",
+        "path": "components/asciicn/ascii-glow.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-glow.tsx"
+        "target": "components/asciicn/ascii-glow.tsx"
       }
     ]
   },
@@ -18,12 +18,12 @@
     "type": "registry:component",
     "title": "Mesh gradient",
     "description": "Three to five colour blobs that drift and blend, drawn as a dither.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/mesh-gradient.tsx",
+        "path": "components/asciicn/mesh-gradient.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/mesh-gradient.tsx"
+        "target": "components/asciicn/mesh-gradient.tsx"
       }
     ]
   },
@@ -32,12 +32,12 @@
     "type": "registry:component",
     "title": "Noise field",
     "description": "A slow, folding noise texture in four styles (smoke, ridges, contours, marble), with a sized mask that clears space for text.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/noise-field.tsx",
+        "path": "components/asciicn/noise-field.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/noise-field.tsx"
+        "target": "components/asciicn/noise-field.tsx"
       }
     ]
   },
@@ -46,12 +46,12 @@
     "type": "registry:component",
     "title": "Aurora",
     "description": "Curtains of light that fold, sway and shimmer, drawn as a dither, with props for colours, curtains, rays, tilt, drift and masks.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/aurora.tsx",
+        "path": "components/asciicn/aurora.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/aurora.tsx"
+        "target": "components/asciicn/aurora.tsx"
       }
     ]
   },
@@ -60,26 +60,26 @@
     "type": "registry:component",
     "title": "Waves",
     "description": "Layered swells under a glowing horizon, or thin lines like a sound wave.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/waves.tsx",
+        "path": "components/asciicn/waves.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/waves.tsx"
+        "target": "components/asciicn/waves.tsx"
       }
     ]
   },
   {
-    "name": "dither-fade",
+    "name": "ascii-fade",
     "type": "registry:component",
     "title": "Dither fade",
     "description": "A dithered edge that fades a section's content into a solid colour.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-fade.tsx",
+        "path": "components/asciicn/ascii-fade.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-fade.tsx"
+        "target": "components/asciicn/ascii-fade.tsx"
       }
     ]
   }

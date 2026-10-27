@@ -1,4 +1,4 @@
-import { Smoke } from "@/components/dithercn/smoke";
+import { Smoke } from "@/components/asciicn/smoke";
 
 export default function SmokeHeadline() {
   return (

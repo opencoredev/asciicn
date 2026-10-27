@@ -1,4 +1,4 @@
-import { DitherPattern, DitherShader } from "@/lib/dither";
+import { AsciiPattern, AsciiShader } from "@/lib/ascii";
 
 const RAMP = `float field(vec2 uv, vec2 res, float t) { return uv.x; }`;
 
@@ -14,19 +14,19 @@ export default function ConceptPalettes() {
     <div className="grid w-full gap-6 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-end">
       <div className="flex flex-col gap-4">
         <figure className="flex flex-col gap-1.5">
-          <DitherShader
+          <AsciiShader
             field={RAMP}
             animate={false}
             className="h-12 rounded-lg"
           />
           <figcaption className="text-muted-foreground text-xs">
             Two colours:{" "}
-            <span className="text-foreground font-mono">--dither-paper</span> to{" "}
-            <span className="text-foreground font-mono">--dither-ink</span>
+            <span className="text-foreground font-mono">--ascii-paper</span> to{" "}
+            <span className="text-foreground font-mono">--ascii-ink</span>
           </figcaption>
         </figure>
         <figure className="flex flex-col gap-1.5">
-          <DitherShader
+          <AsciiShader
             field={RAMP}
             animate={false}
             palette={["--background", "--chart-3", "--chart-2", "--chart-1"]}
@@ -49,7 +49,7 @@ export default function ConceptPalettes() {
         >
           <defs>
             {BARS.map(({ level }) => (
-              <DitherPattern
+              <AsciiPattern
                 key={level}
                 id={`palette-bar-${level}`}
                 level={level}
@@ -69,7 +69,7 @@ export default function ConceptPalettes() {
           ))}
         </svg>
         <figcaption className="text-muted-foreground text-xs">
-          <span className="text-foreground font-mono">DitherPattern</span> fills
+          <span className="text-foreground font-mono">AsciiPattern</span> fills
         </figcaption>
       </figure>
     </div>

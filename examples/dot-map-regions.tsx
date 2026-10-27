@@ -1,5 +1,5 @@
-import { DotMap } from "@/components/dithercn/dot-map";
-import type { DotMapBounds } from "@/components/dithercn/dot-map";
+import { DotMap } from "@/components/asciicn/dot-map";
+import type { DotMapBounds } from "@/components/asciicn/dot-map";
 import { EDGE_REGIONS } from "@/examples/dot-map-data";
 
 const EUROPE: DotMapBounds = { east: 32, north: 66, south: 34, west: -14 };

@@ -1,8 +1,8 @@
 /**
  * Generates the 64x64 blue-noise threshold map embedded in
- * lib/dither/blue-noise.ts, using Ulichney's void-and-cluster method.
+ * lib/ascii/blue-noise.ts, using Ulichney's void-and-cluster method.
  *
- * Run with `node scripts/generate-blue-noise.ts > lib/dither/blue-noise.ts`.
+ * Run with `node scripts/generate-blue-noise.ts > lib/ascii/blue-noise.ts`.
  * The output is deterministic: the initial pattern comes from a seeded PRNG.
  */
 

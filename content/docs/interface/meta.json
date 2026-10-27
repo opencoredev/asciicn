@@ -2,9 +2,9 @@
   "title": "Interface",
   "description": "Everyday interface pieces with a dithered finish.",
   "pages": [
-    "dither-button",
+    "ascii-button",
     "avatar",
-    "dither-card",
+    "ascii-card",
     "divider",
     "skeleton",
     "loader",

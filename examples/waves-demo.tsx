@@ -1,6 +1,6 @@
 "use client";
 
-import { Waves } from "@/components/dithercn/waves";
+import { Waves } from "@/components/asciicn/waves";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/waves-controls";
@@ -15,7 +15,7 @@ export default function WavesDemo() {
     <Waves
       variant={variant}
       palette={[
-        "--dither-paper",
+        "--ascii-paper",
         toward(tint, 35),
         tint,
         toward(tint, 45, "--foreground"),

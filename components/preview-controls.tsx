@@ -8,7 +8,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { cssColor } from "@/lib/dither";
+import { cssColor } from "@/lib/ascii";
 import { readControl } from "@/lib/preview-controls";
 import type {
   ColorControl,
@@ -246,7 +246,7 @@ const Knob = ({
       className="group/knob knob-glide relative flex h-4 w-full cursor-pointer touch-none items-center select-none data-disabled:cursor-default data-disabled:opacity-50"
     >
       <SliderPrimitive.Track className="bg-foreground/12 relative h-1 grow overflow-hidden rounded-full">
-        <SliderPrimitive.Range className="bg-dither-ink absolute h-full rounded-full transition-[left,right] duration-150 ease-(--ease-out) motion-reduce:transition-none" />
+        <SliderPrimitive.Range className="bg-ascii-ink absolute h-full rounded-full transition-[left,right] duration-150 ease-(--ease-out) motion-reduce:transition-none" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         aria-labelledby={labelId}
@@ -273,7 +273,7 @@ const Switch = ({
     onClick={() => onChange(!checked)}
     className={cn(
       "focus-visible:ring-ring/50 relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors duration-150 ease-out focus-visible:ring-[3px]",
-      checked ? "bg-dither-ink" : "bg-foreground/15"
+      checked ? "bg-ascii-ink" : "bg-foreground/15"
     )}
   >
     <span

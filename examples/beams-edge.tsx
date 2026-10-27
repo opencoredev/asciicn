@@ -1,4 +1,4 @@
-import { Beams } from "@/components/dithercn/beams";
+import { Beams } from "@/components/asciicn/beams";
 
 export default function BeamsEdge() {
   return (

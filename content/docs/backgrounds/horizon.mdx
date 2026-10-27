@@ -24,7 +24,7 @@ import HorizonHeadline from "@/examples/horizon-headline";
 ## Usage
 
 ```tsx
-import { Horizon } from "@/components/dithercn/horizon";
+import { Horizon } from "@/components/asciicn/horizon";
 
 export function Hero() {
   return (
@@ -36,7 +36,7 @@ export function Hero() {
 }
 ```
 
-This is the scene behind the dithercn landing page. The planet is a circle whose top touches `horizon`; `curve` sets how small and round it looks. Above the rim, domain-warped noise forms aurora curtains that slide slowly along the horizon. The sky and planet use `skyColor`, and the glow, rim and stars use `glowColor`.
+This is the scene behind the asciicn landing page. The planet is a circle whose top touches `horizon`; `curve` sets how small and round it looks. Above the rim, domain-warped noise forms aurora curtains that slide slowly along the horizon. The sky and planet use `skyColor`, and the glow, rim and stars use `glowColor`.
 
 ## Examples
 
@@ -99,15 +99,15 @@ A low, strongly curved horizon leaves most of the frame as sky, with more stars.
     },
     {
       name: "glowColor",
-      type: "DitherColor",
-      default: '"--dither-ink"',
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
       description:
         'Colour of the glow, rim and stars: a palette name such as "orange", a CSS variable name, or any CSS colour.',
     },
     {
       name: "skyColor",
-      type: "DitherColor",
-      default: '"--dither-paper"',
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
       description: "Colour of the sky and the planet.",
     },
     {
@@ -119,7 +119,7 @@ A low, strongly curved horizon leaves most of the frame as sky, with more stars.
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

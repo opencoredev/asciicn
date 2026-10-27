@@ -1,4 +1,4 @@
-import { DITHER_COLOR_NAMES } from "@/lib/dither";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the aurora main demo, shared by the page and the demo.
@@ -7,14 +7,14 @@ export const tint = color({
   default: "ink",
   id: "color",
   label: "Edge colour",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const tip = color({
   default: "ink",
   id: "tip",
   label: "Tip colour",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const curtains = slider({

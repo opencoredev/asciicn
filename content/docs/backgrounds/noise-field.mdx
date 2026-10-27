@@ -26,7 +26,7 @@ import NoiseFieldMarble from "@/examples/noise-field-marble";
 ## Usage
 
 ```tsx
-import { NoiseField } from "@/components/dithercn/noise-field";
+import { NoiseField } from "@/components/asciicn/noise-field";
 
 export function Section() {
   return (
@@ -95,21 +95,21 @@ A high `scale`, a low `intensity` and 2px cells turn it into a texture you notic
   rows={[
     {
       name: "color",
-      type: "DitherColor",
-      default: '"--dither-ink"',
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
       description: "The ink of the texture.",
     },
     {
       name: "highlight",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: "\u2013",
       description:
         "A third colour for the brightest peaks. Leave it out for two tones.",
     },
     {
       name: "background",
-      type: "DitherColor",
-      default: '"--dither-paper"',
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
       description: "The paper behind.",
     },
     {
@@ -199,7 +199,7 @@ A high `scale`, a low `intensity` and 2px cells turn it into a texture you notic
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
       default: "Built from the colour props",
       description:
         "Takes over the colours: paper first, brightest last. Palette names, CSS variable names or any CSS colour.",
@@ -220,7 +220,7 @@ A high `scale`, a low `intensity` and 2px cells turn it into a texture you notic
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -1,13 +1,13 @@
 ---
 title: "Write your own dither"
-description: "Build a dithered background from scratch on DitherShader: a tone, a shape, then motion and props."
+description: "Build a dithered background from scratch on AsciiShader: a tone, a shape, then motion and props."
 ---
 
 import EngineFieldTone from "@/examples/engine-field-tone";
 import EngineFieldRings from "@/examples/engine-field-rings";
 import EngineFieldRipples from "@/examples/engine-field-ripples";
 
-This guide builds a dithered ripple background in three steps. You write one GLSL function, the field, and `DitherShader` does everything else: the dots, the colours, resizing, motion and reduced motion. The same steps make any background you can describe with a little math. Your agent follows them too, through the [dithercn skill](/docs/installation).
+This guide builds a dithered ripple background in three steps. You write one GLSL function, the field, and `AsciiShader` does everything else: the dots, the colours, resizing, motion and reduced motion. The same steps make any background you can describe with a little math. Your agent follows them too, through the [asciicn skill](/docs/installation).
 
 You need the engine installed (see [Installation](/docs/installation)) and a section with a size to put the dither in.
 
@@ -26,7 +26,7 @@ The field runs once for every cell and returns a tone from 0 to 1: 0 is paper, 1
 ```tsx
 "use client";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -36,9 +36,9 @@ float field(vec2 uv, vec2 res, float t) {
 
 export function Ripples() {
   return (
-    <DitherShader
+    <AsciiShader
       field={FIELD}
-      palette={["--dither-paper", "blue"]}
+      palette={["--ascii-paper", "blue"]}
       className="absolute inset-0"
     />
   );
@@ -88,8 +88,8 @@ Three changes finish it. Noise bends the rings so they look like water, `t` move
 ```tsx
 "use client";
 
-import { DitherShader } from "@/lib/dither";
-import type { DitherShaderProps } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
+import type { AsciiShaderProps } from "@/lib/ascii";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -104,7 +104,7 @@ float field(vec2 uv, vec2 res, float t) {
 }
 `;
 
-export type RipplesProps = Omit<DitherShaderProps, "field" | "uniforms"> & {
+export type RipplesProps = Omit<AsciiShaderProps, "field" | "uniforms"> & {
   /** Where the drop falls, from the top left, 0 to 1. */
   drop?: readonly [number, number];
   /** How tightly the rings are packed. */
@@ -119,7 +119,7 @@ export const Ripples = ({
   strength = 0.85,
   ...props
 }: RipplesProps) => (
-  <DitherShader
+  <AsciiShader
     {...props}
     field={FIELD}
     stillTime={4}
@@ -143,7 +143,7 @@ export const Ripples = ({
 - `fbm` is one of three helpers every field gets, with `snoise` and `hash21`. It returns soft, cloudy noise from 0 to 1.
 - Each key in `uniforms` is declared for you: a number becomes a `float`, a pair a `vec2`. Changing a prop updates the uniform without recompiling. Prefix the names (`ripple…`) so they never clash with another field.
 - `stillTime={4}` is the moment shown when the visitor prefers reduced motion. Pick one that looks finished.
-- The rest of `DitherShaderProps` passes through, so `palette`, `matrix`, `cell` and `speed` work on `Ripples` as they do on every example.
+- The rest of `AsciiShaderProps` passes through, so `palette`, `matrix`, `cell` and `speed` work on `Ripples` as they do on every example.
 
 ## Put it on the page
 
@@ -151,7 +151,7 @@ export const Ripples = ({
 <section className="relative isolate overflow-hidden rounded-3xl">
   <Ripples
     className="absolute inset-0 -z-10"
-    palette={["--dither-paper", "blue"]}
+    palette={["--ascii-paper", "blue"]}
     matrix="bayer8"
   />
   <div className="px-8 py-32">…</div>
@@ -162,6 +162,6 @@ The shader fills its positioned parent and ignores the pointer, so your content 
 
 ## Where to go next
 
-- [Dither engine](/docs/engine/dither-engine) covers matrices and levels, and the static fills for charts and blocks.
+- [Dither engine](/docs/engine/ascii-engine) covers matrices and levels, and the static fills for charts and blocks.
 - [Palettes](/docs/engine/palettes) covers colour, including a `colorField` that colours the dots on its own, for rainbows and a hue per shape. [Pixel scale](/docs/engine/pixel-scale) and [Motion](/docs/engine/motion) cover the other shared props.
 - The examples in the [catalog](/docs/examples) are all built this way. Open any background's source for a field to start from.

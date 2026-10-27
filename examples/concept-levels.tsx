@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 const RAMP = `float field(vec2 uv, vec2 res, float t) { return uv.x; }`;
 
@@ -12,7 +12,7 @@ export default function ConceptLevels() {
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <DitherShader
+      <AsciiShader
         field={RAMP}
         levels={levels}
         animate={false}

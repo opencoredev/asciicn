@@ -13,14 +13,14 @@ import { ROUTES } from "@/constants/routes";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useSiteOrigin } from "@/hooks/use-site-origin";
 import { quickStartPrompt } from "@/lib/agent-prompts";
-import { ditherMaskStyle } from "@/lib/dither";
+import { asciiMaskStyle } from "@/lib/ascii";
 import { trackEvent } from "@/lib/events";
 
-const COPIED_WASH = ditherMaskStyle(0.25, { cell: 2 });
+const COPIED_WASH = asciiMaskStyle(0.25, { cell: 2 });
 
 /**
  * The landing hero's actions: read the docs, or copy a prompt that sets
- * dithercn up through your coding agent.
+ * asciicn up through your coding agent.
  */
 export const HeroActions = () => {
   const { copyToClipboard, isCopied } = useCopyToClipboard();
@@ -68,7 +68,7 @@ export const HeroActions = () => {
           {/* Stays while it says Copied: the site's ink, as a fine dither. */}
           <span
             aria-hidden="true"
-            className="bg-dither-ink absolute inset-0 -z-10 opacity-0 transition-opacity duration-150 ease-out group-data-[copied=true]/copy:opacity-30"
+            className="bg-ascii-ink absolute inset-0 -z-10 opacity-0 transition-opacity duration-150 ease-out group-data-[copied=true]/copy:opacity-30"
             style={COPIED_WASH}
           />
           {/*
@@ -96,7 +96,7 @@ export const HeroActions = () => {
               <Icon
                 icon={Tick02Icon}
                 strokeWidth={2.5}
-                className="text-dither-ink scale-25 opacity-0 blur-[2px] transition-[opacity,filter,scale] duration-250 ease-in-out group-data-[copied=true]/copy:scale-100 group-data-[copied=true]/copy:opacity-100 group-data-[copied=true]/copy:blur-none motion-reduce:scale-100! motion-reduce:blur-none! motion-reduce:transition-opacity"
+                className="text-ascii-ink scale-25 opacity-0 blur-[2px] transition-[opacity,filter,scale] duration-250 ease-in-out group-data-[copied=true]/copy:scale-100 group-data-[copied=true]/copy:opacity-100 group-data-[copied=true]/copy:blur-none motion-reduce:scale-100! motion-reduce:blur-none! motion-reduce:transition-opacity"
               />
               <span className="translate-y-1 opacity-0 blur-[2px] transition-[opacity,filter,translate] duration-150 ease-in-out group-data-[copied=true]/copy:translate-y-0 group-data-[copied=true]/copy:opacity-100 group-data-[copied=true]/copy:blur-none motion-reduce:translate-y-0! motion-reduce:blur-none! motion-reduce:transition-opacity">
                 Prompt copied

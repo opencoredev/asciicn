@@ -24,7 +24,7 @@ import ScrambleTextStatus from "@/examples/scramble-text-status";
 ## Usage
 
 ```tsx
-import { ScrambleText } from "@/components/dithercn/scramble-text";
+import { ScrambleText } from "@/components/asciicn/scramble-text";
 
 export function Title() {
   return <ScrambleText as="h2">Every frame accounted for</ScrambleText>;
@@ -105,7 +105,7 @@ With `trigger="hover"`, the text replays whenever the closest link or button is 
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         "Colour of blocks, glyphs and the caret: a palette name or any CSS colour. Settled letters fade from it to the text colour.",

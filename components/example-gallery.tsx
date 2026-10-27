@@ -18,17 +18,16 @@ const AvatarDemo = dynamic(() => import("@/examples/avatar-demo"), {
 const BarChartDemo = dynamic(() => import("@/examples/bar-chart-demo"), {
   ssr: false,
 });
-const DitherButtonDemo = dynamic(
-  () => import("@/examples/dither-button-demo"),
-  { ssr: false }
-);
-const DitherGlobeDemo = dynamic(() => import("@/examples/dither-globe-demo"), {
+const AsciiButtonDemo = dynamic(() => import("@/examples/ascii-button-demo"), {
   ssr: false,
 });
-const DitherImageDemo = dynamic(() => import("@/examples/dither-image-demo"), {
+const AsciiGlobeDemo = dynamic(() => import("@/examples/ascii-globe-demo"), {
   ssr: false,
 });
-const DitherTextDemo = dynamic(() => import("@/examples/dither-text-demo"), {
+const AsciiImageDemo = dynamic(() => import("@/examples/ascii-image-demo"), {
+  ssr: false,
+});
+const AsciiTextDemo = dynamic(() => import("@/examples/ascii-text-demo"), {
   ssr: false,
 });
 const DonutChartDemo = dynamic(() => import("@/examples/donut-chart-demo"), {
@@ -100,18 +99,18 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/charts/bar-chart",
   },
   {
-    Demo: DitherTextDemo,
+    Demo: AsciiTextDemo,
     align: "center",
     span: "sm:col-span-2 lg:col-span-3",
     stage: "h-[420px]",
-    url: "/docs/text/dither-text",
+    url: "/docs/text/ascii-text",
   },
   {
-    Demo: DitherGlobeDemo,
+    Demo: AsciiGlobeDemo,
     align: "stretch",
     span: "lg:col-span-2",
     stage: "h-[420px]",
-    url: "/docs/backgrounds/dither-globe",
+    url: "/docs/backgrounds/ascii-globe",
   },
   {
     Demo: DonutChartDemo,
@@ -130,11 +129,11 @@ const EXAMPLES: readonly Example[] = [
     wide: true,
   },
   {
-    Demo: DitherImageDemo,
+    Demo: AsciiImageDemo,
     align: "center",
     span: "sm:col-span-2 lg:col-span-3",
     stage: "h-[440px]",
-    url: "/docs/images/dither-image",
+    url: "/docs/images/ascii-image",
   },
   {
     Demo: WavesDemo,
@@ -160,11 +159,11 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/charts/progress-bar",
   },
   {
-    Demo: DitherButtonDemo,
+    Demo: AsciiButtonDemo,
     align: "center",
     span: "lg:col-span-2",
     stage: "h-72",
-    url: "/docs/interface/dither-button",
+    url: "/docs/interface/ascii-button",
     wide: true,
   },
 ];
@@ -208,7 +207,7 @@ const Tile = ({
       <div
         ref={ref}
         className={cn(
-          "bg-card text-card-foreground relative isolate w-full min-w-0 overflow-hidden [--dither-paper:var(--card)] supports-[overflow:clip]:overflow-clip",
+          "bg-card text-card-foreground relative isolate w-full min-w-0 overflow-hidden [--ascii-paper:var(--card)] supports-[overflow:clip]:overflow-clip",
           ALIGN_CLASS[example.align],
           example.stage
         )}

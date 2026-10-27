@@ -2,8 +2,8 @@
 
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
-import { DitherButton } from "@/components/dithercn/dither-button";
-import { NotFound } from "@/components/dithercn/not-found";
+import { AsciiButton } from "@/components/asciicn/ascii-button";
+import { NotFound } from "@/components/asciicn/not-found";
 import { Icon } from "@/components/icon";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/not-found-controls";
@@ -28,13 +28,13 @@ export default function NotFoundDemo() {
       detail="GET /blog/2019/launch-week"
       actions={
         <>
-          <DitherButton color={color}>
+          <AsciiButton color={color}>
             <Icon icon={ArrowLeft01Icon} className="-ml-[5px]" />
             Back to home
-          </DitherButton>
-          <DitherButton variant="outline" color="grey">
+          </AsciiButton>
+          <AsciiButton variant="outline" color="grey">
             Search the docs
-          </DitherButton>
+          </AsciiButton>
         </>
       }
       className="w-full"

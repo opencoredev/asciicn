@@ -1,6 +1,6 @@
 "use client";
 
-import { Starfield } from "@/components/dithercn/starfield";
+import { Starfield } from "@/components/asciicn/starfield";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/starfield-controls";
@@ -13,7 +13,7 @@ export default function StarfieldDemo() {
 
   return (
     <Starfield
-      palette={["--dither-paper", toward(tint, 50), tint]}
+      palette={["--ascii-paper", toward(tint, 50), tint]}
       density={density}
       twinkle={twinkle}
       animate={animate}

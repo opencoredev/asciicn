@@ -25,7 +25,7 @@ import DotMapRoutes from "@/examples/dot-map-routes";
 ## Usage
 
 ```tsx
-import { DotMap } from "@/components/dithercn/dot-map";
+import { DotMap } from "@/components/asciicn/dot-map";
 
 const OFFICES = [
   { at: [51.51, -0.13], label: "London" },
@@ -79,26 +79,26 @@ Arcs only, with faint sea dots and `animate={false}`.
   rows={[
     {
       name: "markers",
-      type: "{ at: [lat, lon]; label?: string; color?: DitherColor }[]",
+      type: "{ at: [lat, lon]; label?: string; color?: AsciiColor }[]",
       default: "[]",
       description:
         "Locations to mark. Labels show beside the marker and are read by screen readers.",
     },
     {
       name: "arcs",
-      type: "{ from: [lat, lon]; to: [lat, lon]; color?: DitherColor }[]",
+      type: "{ from: [lat, lon]; to: [lat, lon]; color?: AsciiColor }[]",
       default: "[]",
       description: "Dotted curves between places.",
     },
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"grey"',
       description: "Colour of the land dots.",
     },
     {
       name: "accent",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         "Colour of markers, halos and arcs that don't set their own.",

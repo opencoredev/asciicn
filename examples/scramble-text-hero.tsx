@@ -1,4 +1,4 @@
-import { ScrambleText } from "@/components/dithercn/scramble-text";
+import { ScrambleText } from "@/components/asciicn/scramble-text";
 
 export default function ScrambleTextHero() {
   return (

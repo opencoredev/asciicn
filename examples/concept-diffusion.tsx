@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { ditherImage, useDitherColors } from "@/lib/dither";
-import type { DitherMethod, Rgba } from "@/lib/dither";
+import { ditherImage, useAsciiColors } from "@/lib/ascii";
+import type { DitherMethod, Rgba } from "@/lib/ascii";
 
 const SIZE = 96;
 const METHODS: DitherMethod[] = [
@@ -79,7 +79,7 @@ const DitheredCanvas = ({
 
 export default function ConceptDiffusion() {
   const root = useRef<HTMLDivElement>(null);
-  const colors = useDitherColors(root);
+  const colors = useAsciiColors(root);
 
   return (
     <div ref={root} className="grid w-full grid-cols-2 gap-4 sm:grid-cols-4">

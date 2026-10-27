@@ -1,4 +1,4 @@
-// PostHog project "dithercn" (us.posthog.com, project 688412). The project
+// PostHog project "asciicn" (us.posthog.com, project 688412). The project
 // token is public by design: it only writes events. The env vars win, so a
 // fork or preview can point somewhere else.
 export const POSTHOG_KEY =

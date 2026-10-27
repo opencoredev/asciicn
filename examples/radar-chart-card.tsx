@@ -1,14 +1,14 @@
-import { RadarChart } from "@/components/dithercn/radar-chart";
+import { RadarChart } from "@/components/asciicn/radar-chart";
 
 const AXES = ["Speed", "Access", "Practices", "SEO", "Uptime"] as const;
 
 export default function RadarChartCard() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-col gap-2 rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border flex w-full max-w-md flex-col gap-2 rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-medium">Site health</span>
         <span className="text-muted-foreground font-mono text-xs">
-          dithercn.dev
+          asciicn.dev
         </span>
       </div>
       <span className="text-muted-foreground text-sm">

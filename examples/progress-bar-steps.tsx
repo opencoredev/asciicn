@@ -1,4 +1,4 @@
-import { ProgressBar } from "@/components/dithercn/progress-bar";
+import { ProgressBar } from "@/components/asciicn/progress-bar";
 
 const TASKS = [
   { done: true, label: "Create a project" },
@@ -12,7 +12,7 @@ const done = TASKS.filter((task) => task.done).length;
 
 export default function ProgressBarSteps() {
   return (
-    <div className="bg-background border-border flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-5 [--dither-paper:var(--background)]">
+    <div className="bg-background border-border flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-5 [--ascii-paper:var(--background)]">
       <ProgressBar
         label="Getting started"
         value={done}

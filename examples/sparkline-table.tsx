@@ -1,4 +1,4 @@
-import { Sparkline } from "@/components/dithercn/sparkline";
+import { Sparkline } from "@/components/asciicn/sparkline";
 
 const PAGES = [
   {
@@ -31,7 +31,7 @@ const PAGES = [
 
 export default function SparklineTable() {
   return (
-    <div className="bg-background border-border w-full max-w-xl overflow-hidden rounded-2xl border [--dither-paper:var(--background)]">
+    <div className="bg-background border-border w-full max-w-xl overflow-hidden rounded-2xl border [--ascii-paper:var(--background)]">
       <table className="w-full text-sm">
         <caption className="text-muted-foreground px-4 pt-4 pb-2 text-left text-sm">
           Top pages, last 14 days

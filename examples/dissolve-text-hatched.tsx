@@ -1,4 +1,4 @@
-import { DissolveText } from "@/components/dithercn/dissolve-text";
+import { DissolveText } from "@/components/asciicn/dissolve-text";
 
 export default function DissolveTextHatched() {
   return (

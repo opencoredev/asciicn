@@ -26,7 +26,7 @@ import AuroraBanner from "@/examples/aurora-banner";
 ## Usage
 
 ```tsx
-import { Aurora } from "@/components/dithercn/aurora";
+import { Aurora } from "@/components/asciicn/aurora";
 
 export function Hero() {
   return (
@@ -86,21 +86,21 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
   rows={[
     {
       name: "color",
-      type: "DitherColor",
-      default: '"--dither-ink"',
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
       description: "The bright lower edge of each curtain.",
     },
     {
       name: "tipColor",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: "color",
       description:
         "The faint tops of the rays. Set a second colour for a two-tone sky.",
     },
     {
       name: "background",
-      type: "DitherColor",
-      default: '"--dither-paper"',
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
       description: "The sky behind.",
     },
     {
@@ -198,7 +198,7 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
       default: "Built from the colour props",
       description:
         "Takes over the colours: paper first, brightest last. Palette names, CSS variable names or any CSS colour.",
@@ -219,7 +219,7 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

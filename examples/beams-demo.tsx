@@ -1,6 +1,6 @@
 "use client";
 
-import { Beams } from "@/components/dithercn/beams";
+import { Beams } from "@/components/asciicn/beams";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/beams-controls";
 
@@ -12,7 +12,7 @@ export default function BeamsDemo() {
 
   return (
     <Beams
-      palette={["--dither-paper", tint]}
+      palette={["--ascii-paper", tint]}
       rays={rays}
       spread={spread}
       animate={animate}

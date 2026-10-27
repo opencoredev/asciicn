@@ -1,0 +1,137 @@
+---
+title: "Dither card"
+description: "A card with a dithered glow in a corner or along an edge and a dithered rim on its border, which can grow through the levels on hover."
+---
+
+import { controls as asciiCardControls } from "@/examples/ascii-card-controls";
+import AsciiCardDemo from "@/examples/ascii-card-demo";
+import AsciiCardGlows from "@/examples/ascii-card-glows";
+import AsciiCardPalette from "@/examples/ascii-card-palette";
+
+<ComponentPreview
+  src="examples/ascii-card-demo.tsx"
+  size="lg"
+  controls={asciiCardControls}
+>
+  <AsciiCardDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-card" />
+
+## Usage
+
+```tsx
+import { AsciiCard } from "@/components/asciicn/ascii-card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export function Revenue() {
+  return (
+    <AsciiCard glow="top-right" interactive>
+      <CardHeader>
+        <CardTitle>Monthly revenue</CardTitle>
+      </CardHeader>
+      <CardContent>$48,210</CardContent>
+    </AsciiCard>
+  );
+}
+```
+
+`AsciiCard` has the same spacing, border and colours as shadcn's `Card`, so `CardHeader`, `CardContent` and `CardFooter` fit inside it. It does not depend on them: plain markup works too.
+
+The glow is a stack of rings, each filled with a denser dither than the one below it. The rim is a wider stack masked to a band one cell wide inside the border: it is dense where the glow sits and thins out round the card, so the edge catches the light. Set `radius` if you round the card differently, so the rim follows the corners. With `interactive`, a second, larger stack switches on ring by ring when the card is hovered or something inside it has focus, so the glow grows outward through the levels.
+
+## Examples
+
+### Corners and edges
+
+`glow` takes any corner, or `top` and `bottom` for a wide glow along an edge. Hover each card to see it grow.
+
+<ComponentPreview src="examples/ascii-card-glows.tsx" size="lg">
+  <AsciiCardGlows />
+</ComponentPreview>
+
+### Colour and texture
+
+`color` takes a palette name or any CSS colour, and `fill` changes the texture. On the left, green with blue noise and 2 pixel cells for a fine, even grain. On the right, orange with a hatched fill: every ring shares the hatching, and where the rings overlap near the edge the lines build up.
+
+<ComponentPreview src="examples/ascii-card-palette.tsx" size="lg">
+  <AsciiCardPalette />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "glow",
+      type: '"top-left" | "top-right" | "bottom-left" | "bottom-right" | "top" | "bottom"',
+      default: '"top-left"',
+      description: "Where the glow sits.",
+    },
+    {
+      name: "reach",
+      type: "number",
+      default: "240",
+      description: "How far the glow spreads from its origin, in pixels.",
+    },
+    {
+      name: "strength",
+      type: "number",
+      default: "0.5",
+      description: "Densest dither level, at the origin, from 0 to 1.",
+    },
+    {
+      name: "rim",
+      type: "boolean",
+      default: "true",
+      description: "Light the border with dither, densest near the glow.",
+    },
+    {
+      name: "radius",
+      type: "number",
+      default: "14",
+      description: "Corner radius in pixels. The rim follows it.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "false",
+      description: "Grow the glow on hover and when the card has focus inside.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        'Glow colour: a palette name such as "green", a CSS variable name, or any CSS colour.',
+    },
+    {
+      name: "fill",
+      type: '"gradient" | "dotted" | "hatched" | "solid"',
+      default: '"gradient"',
+      description:
+        "Texture of the glow. Gradient steps through dither levels; the others stack one texture and fade it by overlap.",
+    },
+    {
+      name: "matrix",
+      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description: "The threshold pattern.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "3",
+      description: "Size of one dither cell in CSS pixels.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The glow is decorative and hidden from assistive technology. The card itself is a plain `div`; make the content inside it, not the card, the link or button.
+- The hover glow only runs on devices that can hover. Keyboard users get the same effect when focus moves inside the card.
+- With reduced motion turned on, the hover glow switches on in one step instead of ring by ring.
+- The glow is static SVG, so it renders on the server and costs nothing while idle.

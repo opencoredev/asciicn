@@ -24,7 +24,7 @@ import RidgelinesRange from "@/examples/ridgelines-range";
 ## Usage
 
 ```tsx
-import { Ridgelines } from "@/components/dithercn/ridgelines";
+import { Ridgelines } from "@/components/asciicn/ridgelines";
 
 export function Section() {
   return (
@@ -87,8 +87,8 @@ Fewer `lines`, a narrower `spread` and small cells fit a pulsar plot in a card.
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: '["--dither-paper", "--dither-ink"]',
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: '["--ascii-paper", "--ascii-ink"]',
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -101,7 +101,7 @@ Fewer `lines`, a narrower `spread` and small cells fit a pulsar plot in a card.
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -1,9 +1,9 @@
 ---
 title: Catalog
-description: Every example component built on the dithercn engine, grouped by what it's for.
+description: Every example component built on the asciicn engine, grouped by what it's for.
 ---
 
-Each component installs as plain source into `components/dithercn/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-a-dither) or [write your own](/docs/engine/write-your-own).
+Each component installs as plain source into `components/asciicn/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-a-dither) or [write your own](/docs/engine/write-your-own).
 
 <CatalogIndex className="mt-8" />
 
@@ -12,33 +12,33 @@ Each component installs as plain source into `components/dithercn/`. Drop one in
 Install any example by its registry URL. It brings the engine with it the first time:
 
 ```bash
-npx shadcn@latest add https://dithercn.dev/r/dither-gradient.json
+npx shadcn@latest add https://asciicn.dev/r/ascii-gradient.json
 ```
 
 Backgrounds fill the box you give them. Put one behind your content with `absolute inset-0`:
 
 ```tsx
-import { DitherGradient } from "@/components/dithercn/dither-gradient";
+import { AsciiGradient } from "@/components/asciicn/ascii-gradient";
 
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <DitherGradient angle={160} className="absolute inset-0 -z-10" />
+      <AsciiGradient angle={160} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-Backgrounds built on `DitherShader` share these props:
+Backgrounds built on `AsciiShader` share these props:
 
-| Prop      | What it controls                                                            | Default                          |
-| --------- | --------------------------------------------------------------------------- | -------------------------------- |
-| `matrix`  | The threshold pattern: `"bayer2"`, `"bayer4"`, `"bayer8"` or `"blue-noise"` | Varies by component              |
-| `levels`  | How many tones to snap to before dithering                                  | Every tone the matrix can draw   |
-| `cell`    | Cell size in CSS pixels                                                     | `--dither-cell`                  |
-| `palette` | Colours from paper to ink, two or more                                      | `--dither-paper`, `--dither-ink` |
-| `animate` | Whether it moves                                                            | `true`                           |
-| `speed`   | How fast it moves                                                           | `1`                              |
+| Prop      | What it controls                                                            | Default                        |
+| --------- | --------------------------------------------------------------------------- | ------------------------------ |
+| `matrix`  | The threshold pattern: `"bayer2"`, `"bayer4"`, `"bayer8"` or `"blue-noise"` | Varies by component            |
+| `levels`  | How many tones to snap to before dithering                                  | Every tone the matrix can draw |
+| `cell`    | Cell size in CSS pixels                                                     | `--ascii-cell`                 |
+| `palette` | Colours from paper to ink, two or more                                      | `--ascii-paper`, `--ascii-ink` |
+| `animate` | Whether it moves                                                            | `true`                         |
+| `speed`   | How fast it moves                                                           | `1`                            |
 
 Charts and interface pieces take a `color` from the [named palette](/docs/theming) and a `fill` of `"gradient"`, `"dotted"`, `"hatched"` or `"solid"`. Each page lists every prop.

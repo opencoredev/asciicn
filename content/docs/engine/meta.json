@@ -1,8 +1,8 @@
 {
   "title": "Engine",
-  "description": "How dither-core works and how to build your own dither on it.",
+  "description": "How ascii-core works and how to build your own dither on it.",
   "pages": [
-    "dither-engine",
+    "ascii-engine",
     "write-your-own",
     "palettes",
     "pixel-scale",

@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageCompare } from "@/components/dithercn/image-compare";
+import { ImageCompare } from "@/components/asciicn/image-compare";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/image-compare-controls";
 

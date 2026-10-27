@@ -22,7 +22,7 @@ import UptimeBarColors from "@/examples/uptime-bar-colors";
 ## Usage
 
 ```tsx
-import { UptimeBar } from "@/components/dithercn/uptime-bar";
+import { UptimeBar } from "@/components/asciicn/uptime-bar";
 
 const days = [
   { date: "2026-10-11", uptime: 1 },
@@ -78,7 +78,7 @@ Several rows in one card. The Realtime service is newer than the window, so its 
     },
     {
       name: "colors",
-      type: "Partial<Record<UptimeStatus, DitherColor>>",
+      type: "Partial<Record<UptimeStatus, AsciiColor>>",
       default: "green, orange, red, grey",
       description:
         'Colours for "up", "degraded", "down" and "none", as palette names or CSS colours.',

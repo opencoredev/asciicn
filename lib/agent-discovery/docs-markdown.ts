@@ -113,7 +113,7 @@ const expandProse = ({
     .replaceAll(
       CATALOG_INDEX,
       () =>
-        `Every example, with its install command and docs link, is listed in [llms.txt](${ROUTES.LLMS}) and in the skill's [references/examples.md](/.well-known/agent-skills/dithercn/references/examples.md).`
+        `Every example, with its install command and docs link, is listed in [llms.txt](${ROUTES.LLMS}) and in the skill's [references/examples.md](/.well-known/agent-skills/asciicn/references/examples.md).`
     )
     .replaceAll(STEPS, "");
 
@@ -146,7 +146,7 @@ export const exampleNotice = (name: string | null) => {
   const source = name
     ? ` Its full source is in [${registryItemUrl(name)}](${registryItemUrl(name)}), under \`files[].content\`.`
     : "";
-  return `> **This is an example, not the only option.** It is one component built on the dithercn engine. Install it when it is what you were asked for. For any other look, don't stretch its props to fit: write your own field on \`DitherShader\` ([Write your own dither](${ROUTES.DOCS_WRITE_YOUR_OWN}.md)), and read this example's source for technique.${source}`;
+  return `> **This is an example, not the only option.** It is one component built on the asciicn engine. Install it when it is what you were asked for. For any other look, don't stretch its props to fit: write your own field on \`AsciiShader\` ([Write your own dither](${ROUTES.DOCS_WRITE_YOUR_OWN}.md)), and read this example's source for technique.${source}`;
 };
 
 /** The registry item an example page installs, from its first `<InstallBlock>` outside code. */

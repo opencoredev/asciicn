@@ -1,15 +1,15 @@
 [
   {
-    "name": "dither-text",
+    "name": "ascii-text",
     "type": "registry:component",
     "title": "Dither text",
     "description": "Display text whose letters are filled with a dithered gradient, noise, dots or hatching in any palette colour, kept as real, selectable text.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-text.tsx",
+        "path": "components/asciicn/ascii-text.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-text.tsx"
+        "target": "components/asciicn/ascii-text.tsx"
       }
     ]
   },
@@ -18,12 +18,12 @@
     "type": "registry:component",
     "title": "Dissolve text",
     "description": "Text that dissolves in through Bayer thresholds by character, word or line, in any order, settling solid or into a dithered texture.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dissolve-text.tsx",
+        "path": "components/asciicn/dissolve-text.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dissolve-text.tsx"
+        "target": "components/asciicn/dissolve-text.tsx"
       }
     ]
   },
@@ -32,26 +32,26 @@
     "type": "registry:component",
     "title": "Scramble text",
     "description": "Text that resolves character by character through dithered blocks and glyphs, with no layout shift, on mount, in view, hover or text change.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/scramble-text.tsx",
+        "path": "components/asciicn/scramble-text.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/scramble-text.tsx"
+        "target": "components/asciicn/scramble-text.tsx"
       }
     ]
   },
   {
-    "name": "dither-number",
+    "name": "ascii-number",
     "type": "registry:component",
     "title": "Dither number",
     "description": "An animated number with tabular digits that roll or resolve through a dither, Intl formatting, prefix and suffix, colour and size presets.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-number.tsx",
+        "path": "components/asciicn/ascii-number.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-number.tsx"
+        "target": "components/asciicn/ascii-number.tsx"
       }
     ]
   }

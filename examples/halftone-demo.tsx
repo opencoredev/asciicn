@@ -1,10 +1,10 @@
 "use client";
 
-import { Halftone } from "@/components/dithercn/halftone";
+import { Halftone } from "@/components/asciicn/halftone";
 import type {
   HalftoneInk,
   HalftoneSource,
-} from "@/components/dithercn/halftone";
+} from "@/components/asciicn/halftone";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/halftone-controls";
 

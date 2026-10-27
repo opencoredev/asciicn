@@ -1,4 +1,4 @@
-import { Tunnel } from "@/components/dithercn/tunnel";
+import { Tunnel } from "@/components/asciicn/tunnel";
 
 export default function TunnelHeadline() {
   return (

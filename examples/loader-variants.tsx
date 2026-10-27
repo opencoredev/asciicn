@@ -1,5 +1,5 @@
-import { Loader } from "@/components/dithercn/loader";
-import type { LoaderSize, LoaderVariant } from "@/components/dithercn/loader";
+import { Loader } from "@/components/asciicn/loader";
+import type { LoaderSize, LoaderVariant } from "@/components/asciicn/loader";
 
 const VARIANTS: readonly LoaderVariant[] = ["ring", "dots", "pulse", "bar"];
 const SIZES: readonly LoaderSize[] = ["sm", "md", "lg"];

@@ -24,7 +24,7 @@ import StarfieldStill from "@/examples/starfield-still";
 ## Usage
 
 ```tsx
-import { Starfield } from "@/components/dithercn/starfield";
+import { Starfield } from "@/components/asciicn/starfield";
 
 export function Hero() {
   return (
@@ -100,8 +100,8 @@ A slower drift to the lower left and a stronger haze. The form has a translucent
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: '["--dither-paper", "--chart-2", "--dither-ink"]',
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: '["--ascii-paper", "--chart-2", "--ascii-ink"]',
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -121,7 +121,7 @@ A slower drift to the lower left and a stronger haze. The form has a translucent
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

@@ -24,7 +24,7 @@ import TunnelSquare from "@/examples/tunnel-square";
 ## Usage
 
 ```tsx
-import { Tunnel } from "@/components/dithercn/tunnel";
+import { Tunnel } from "@/components/asciicn/tunnel";
 
 export function Hero() {
   return (
@@ -102,8 +102,8 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
     },
     {
       name: "palette",
-      type: "[DitherColor, DitherColor, ...DitherColor[]]",
-      default: '["--dither-paper", "--dither-ink"]',
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: '["--ascii-paper", "--ascii-ink"]',
       description:
         'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
     },
@@ -116,7 +116,7 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

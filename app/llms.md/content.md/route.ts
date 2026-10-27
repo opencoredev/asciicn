@@ -20,7 +20,7 @@ ${agentStartHere(base)}
 
 ## Quick links
 
-- [dithercn agent skill](${base}${ROUTES.AGENT_SKILL}): build any dither on the engine
+- [asciicn agent skill](${base}${ROUTES.AGENT_SKILL}): build any dither on the engine
 - [Introduction](${base}${ROUTES.DOCS}.md)
 - [Installation](${base}${ROUTES.DOCS_INSTALLATION}.md)
 - [Write your own dither](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md)

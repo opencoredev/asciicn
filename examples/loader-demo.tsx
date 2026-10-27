@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader } from "@/components/dithercn/loader";
+import { Loader } from "@/components/asciicn/loader";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/loader-controls";
 

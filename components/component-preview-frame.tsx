@@ -233,7 +233,7 @@ export const ComponentPreviewFrame = ({
           forceMount
           className="data-[state=inactive]:hidden"
         >
-          <div className="bg-card text-card-foreground w-full overflow-clip rounded-[20px] [--dither-paper:var(--card)]">
+          <div className="bg-card text-card-foreground w-full overflow-clip rounded-[20px] [--ascii-paper:var(--card)]">
             <div
               ref={ref}
               onScroll={pinScroll}
@@ -288,7 +288,7 @@ export const ComponentPreviewFrame = ({
               </DialogPrimitive.Close>
             </div>
           </div>
-          <div className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-clip rounded-[20px] [--dither-paper:var(--card)] lg:flex-row">
+          <div className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-clip rounded-[20px] [--ascii-paper:var(--card)] lg:flex-row">
             <div
               onScroll={pinScroll}
               className={cn(STAGE_CLASS, "min-h-0 flex-1", ALIGN_CLASS[align])}

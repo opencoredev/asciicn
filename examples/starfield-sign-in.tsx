@@ -1,4 +1,4 @@
-import { Starfield } from "@/components/dithercn/starfield";
+import { Starfield } from "@/components/asciicn/starfield";
 
 export default function StarfieldSignIn() {
   return (

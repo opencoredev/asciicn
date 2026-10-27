@@ -1,4 +1,4 @@
-import { DotMap } from "@/components/dithercn/dot-map";
+import { DotMap } from "@/components/asciicn/dot-map";
 import { OFFICES, ROUTES } from "@/examples/dot-map-data";
 
 const MARKERS = OFFICES.map(({ at }) => ({ at }));

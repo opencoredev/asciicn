@@ -1,4 +1,4 @@
-import { Metaballs } from "@/components/dithercn/metaballs";
+import { Metaballs } from "@/components/asciicn/metaballs";
 
 export default function MetaballsRings() {
   return (

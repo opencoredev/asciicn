@@ -1,4 +1,4 @@
-import { Eclipse } from "@/components/dithercn/eclipse";
+import { Eclipse } from "@/components/asciicn/eclipse";
 
 export default function EclipseAmber() {
   return (

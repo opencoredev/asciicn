@@ -1,5 +1,5 @@
-import { DitherShader } from "@/lib/dither";
-import type { DitherShaderProps } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
+import type { AsciiShaderProps } from "@/lib/ascii";
 
 // Shared by both functions: the nearest line to this cell, as
 // (distance in line widths, line index).
@@ -41,7 +41,7 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 `;
 
 type SpectrumLinesProps = Omit<
-  DitherShaderProps,
+  AsciiShaderProps,
   "field" | "colorField" | "uniforms"
 > & {
   /** How many lines, from 1 to 9. */
@@ -56,7 +56,7 @@ const SpectrumLines = ({
   palette = ["--background", "--foreground"],
   ...props
 }: SpectrumLinesProps) => (
-  <DitherShader
+  <AsciiShader
     {...props}
     field={FIELD}
     colorField={COLOR_FIELD}

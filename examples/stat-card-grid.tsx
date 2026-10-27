@@ -1,4 +1,4 @@
-import { StatCard } from "@/components/dithercn/stat-card";
+import { StatCard } from "@/components/asciicn/stat-card";
 
 export default function StatCardGrid() {
   return (

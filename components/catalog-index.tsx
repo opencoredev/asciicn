@@ -45,8 +45,8 @@ const liveDemo = async (piece: CatalogPiece) => {
   // The print stays under the live layer, so only a shader, which paints
   // every cell, may cover it. SVG and canvas demos such as the dot map and
   // the globe would draw on top of their own screenshot.
-  const source = await readOptionalFromRoot(`components/dithercn/${slug}.tsx`);
-  return source?.includes("<DitherShader") ? docsDemo.demo : null;
+  const source = await readOptionalFromRoot(`components/asciicn/${slug}.tsx`);
+  return source?.includes("<AsciiShader") ? docsDemo.demo : null;
 };
 
 const THEME_CLASS = {

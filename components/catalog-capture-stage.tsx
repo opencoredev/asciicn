@@ -34,7 +34,7 @@ export const CatalogCaptureStage = ({
     <div
       data-catalog-capture
       className={cn(
-        "bg-card text-card-foreground relative isolate h-dvh w-dvw overflow-clip [--dither-paper:var(--card)]",
+        "bg-card text-card-foreground relative isolate h-dvh w-dvw overflow-clip [--ascii-paper:var(--card)]",
         ALIGN_CLASS[align]
       )}
     >

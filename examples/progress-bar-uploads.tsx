@@ -1,4 +1,4 @@
-import { ProgressBar } from "@/components/dithercn/progress-bar";
+import { ProgressBar } from "@/components/asciicn/progress-bar";
 
 export default function ProgressBarUploads() {
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Tunnel } from "@/components/dithercn/tunnel";
+import { Tunnel } from "@/components/asciicn/tunnel";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/tunnel-controls";
 
@@ -12,7 +12,7 @@ export default function TunnelDemo() {
 
   return (
     <Tunnel
-      palette={["--dither-paper", tint]}
+      palette={["--ascii-paper", tint]}
       shape={shape}
       rings={rings}
       animate={animate}

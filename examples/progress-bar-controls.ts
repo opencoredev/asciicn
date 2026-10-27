@@ -1,4 +1,4 @@
-import { BLOOMS, DITHER_COLOR_NAMES, FILL_VARIANTS } from "@/lib/dither";
+import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the progress bar's main demo, shared by the page and the demo.
@@ -14,7 +14,7 @@ export const tint = color({
   default: "blue",
   id: "color",
   label: "Colour",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const bloom = segmented({

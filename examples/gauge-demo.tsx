@@ -1,6 +1,6 @@
 "use client";
 
-import { Gauge } from "@/components/dithercn/gauge";
+import { Gauge } from "@/components/asciicn/gauge";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/gauge-controls";
 

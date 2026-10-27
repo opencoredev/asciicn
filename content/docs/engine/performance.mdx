@@ -1,17 +1,17 @@
 ---
 title: "Performance"
-description: "What a dither costs to draw, and how dither-core keeps a page of them cheap."
+description: "What a dither costs to draw, and how ascii-core keeps a page of them cheap."
 ---
 
 Dithers look heavy and draw light. Each technique has a predictable cost, and the expensive parts happen once.
 
 ## What each technique costs
 
-| Technique                          | Cost                                                                                                                    |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `DitherShader`                     | One draw call per frame, at one pixel per cell, capped at 30 fps. No allocations per frame.                             |
-| `DitherPattern`, `ditherMaskStyle` | One small SVG, built once per level and matrix and cached. No JavaScript after the first paint.                         |
-| `ditherImage`                      | One pass over the image, with no DOM. Error diffusion visits every pixel in order, so run large images in a Web Worker. |
+| Technique                        | Cost                                                                                                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `AsciiShader`                    | One draw call per frame, at one pixel per cell, capped at 30 fps. No allocations per frame.                             |
+| `AsciiPattern`, `asciiMaskStyle` | One small SVG, built once per level and matrix and cached. No JavaScript after the first paint.                         |
+| `ditherImage`                    | One pass over the image, with no DOM. Error diffusion visits every pixel in order, so run large images in a Web Worker. |
 
 A full-width hero at 3px cells shades about 110,000 pixels a frame. A 1080p video frame is two million.
 
@@ -21,17 +21,17 @@ A shader stops drawing when it scrolls out of view or the tab is hidden, and hol
 
 ## The WebGL context budget
 
-Browsers cap how many WebGL contexts a page can hold. Chrome drops the oldest past 16, and phones can run out of GPU memory sooner. `dither-core` shares a budget between every `DitherShader` on the page:
+Browsers cap how many WebGL contexts a page can hold. Chrome drops the oldest past 16, and phones can run out of GPU memory sooner. `ascii-core` shares a budget between every `AsciiShader` on the page:
 
 - A shader holds a context only while it is within 200px of the viewport. Further away, it releases the context and shows its `fallback`.
 - At most 8 contexts are live at once (`MAX_LIVE_CONTEXTS`). When a ninth shader comes on screen, it takes the context of one just outside the viewport. It never takes one from a shader that is still on screen, so scrolling doesn't make visible dithers flicker; it waits for the next free context instead.
 - When a shader scrolls back, it gets a fresh context and fades its canvas in over the fallback.
 
-So a long docs page with a dozen backgrounds keeps at most 8 contexts, and normally only the two or three on screen. Give each shader a `fallback` that resembles it, such as the CSS gradient `DitherGradient` uses, and a released one is hard to spot.
+So a long docs page with a dozen backgrounds keeps at most 8 contexts, and normally only the two or three on screen. Give each shader a `fallback` that resembles it, such as the CSS gradient `AsciiGradient` uses, and a released one is hard to spot.
 
 ## Galleries and thumbnails
 
-A grid of 30 live backgrounds would spend its budget on the first 8. For catalog pages and galleries, show a static image or a `ditherMaskStyle` composition instead, and mount the live shader on the detail page. The docs on this site do the same: each preview mounts its demo only when it nears the viewport.
+A grid of 30 live backgrounds would spend its budget on the first 8. For catalog pages and galleries, show a static image or a `asciiMaskStyle` composition instead, and mount the live shader on the detail page. The docs on this site do the same: each preview mounts its demo only when it nears the viewport.
 
 ## Images
 

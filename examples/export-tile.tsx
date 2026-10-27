@@ -1,14 +1,14 @@
-import { toCSS } from "@/lib/dither/export";
+import { toCSS } from "@/lib/ascii/export";
 
 // Four bands of falling coverage make a stepped dither fade in pure CSS.
-// Mask mode paints with --dither-ink, so the bands follow the theme; the
+// Mask mode paints with --ascii-ink, so the bands follow the theme; the
 // rules are built on the server and the page runs no script for them.
 const BANDS = [0.75, 0.5, 0.25, 0.125] as const;
 
 const rules = BANDS.map((level, index) =>
   toCSS({
     cell: 4,
-    ink: "--dither-ink",
+    ink: "--ascii-ink",
     level,
     mode: "mask",
     selector: `.export-band-${index}`,

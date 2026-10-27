@@ -1,8 +1,8 @@
 "use client";
 
-import { LogoMarquee } from "@/components/dithercn/logo-marquee";
+import { LogoMarquee } from "@/components/asciicn/logo-marquee";
 import { usePreviewValue } from "@/components/preview-controls";
-import { LOGOS } from "@/examples/dithered-logo-data";
+import { LOGOS } from "@/examples/ascii-logo-data";
 import * as knobs from "@/examples/logo-marquee-controls";
 
 export default function LogoMarqueeDemo() {
@@ -15,7 +15,7 @@ export default function LogoMarqueeDemo() {
   return (
     <div className="flex w-full flex-col items-center gap-8">
       <p className="text-muted-foreground text-sm">
-        Teams that ship with dithercn
+        Teams that ship with asciicn
       </p>
       <LogoMarquee
         logos={LOGOS}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { DissolveText } from "@/components/dithercn/dissolve-text";
+import { DissolveText } from "@/components/asciicn/dissolve-text";
 
 const WORDS = ["dashboards", "landing pages", "launch posts", "status pages"];
 const HOLD = 2600;

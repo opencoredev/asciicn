@@ -1,5 +1,5 @@
-import type { LogoEffect } from "@/components/dithercn/dithered-logo";
-import { DITHER_COLOR_NAMES } from "@/lib/dither";
+import type { LogoEffect } from "@/components/asciicn/ascii-logo";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider } from "@/lib/preview-controls";
 
 // Spelled out here: the component module is a client module, and this
@@ -47,7 +47,7 @@ export const ink = color({
   default: "ink",
   id: "color",
   label: "Ink",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 /** Display order of the tray. */

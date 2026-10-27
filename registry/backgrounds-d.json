@@ -4,12 +4,12 @@
     "type": "registry:component",
     "title": "Tunnel",
     "description": "A slow flight down a tunnel of round or square rings, with spokes along the walls and fog at the vanishing point.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/tunnel.tsx",
+        "path": "components/asciicn/tunnel.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/tunnel.tsx"
+        "target": "components/asciicn/tunnel.tsx"
       }
     ]
   },
@@ -18,12 +18,12 @@
     "type": "registry:component",
     "title": "Smoke",
     "description": "Soft smoke billowing upward and thinning out, lit from above, with props for scale, height, wind and density.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/smoke.tsx",
+        "path": "components/asciicn/smoke.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/smoke.tsx"
+        "target": "components/asciicn/smoke.tsx"
       }
     ]
   },
@@ -32,12 +32,12 @@
     "type": "registry:component",
     "title": "Metaballs",
     "description": "Soft blobs that drift, merge and split like a lava lamp, as shaded shapes or rings of contour lines.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/metaballs.tsx",
+        "path": "components/asciicn/metaballs.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/metaballs.tsx"
+        "target": "components/asciicn/metaballs.tsx"
       }
     ]
   },
@@ -46,12 +46,12 @@
     "type": "registry:component",
     "title": "Ridgelines",
     "description": "Stacked ridge lines like a pulsar plot, each hiding the ones behind it, with peaks that shift slowly.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/ridgelines.tsx",
+        "path": "components/asciicn/ridgelines.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/ridgelines.tsx"
+        "target": "components/asciicn/ridgelines.tsx"
       }
     ]
   }

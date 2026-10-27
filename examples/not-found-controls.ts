@@ -1,4 +1,4 @@
-import { BLOOMS, DITHER_COLOR_NAMES, FILL_VARIANTS } from "@/lib/dither";
+import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
 import { color, segmented, select, slider } from "@/lib/preview-controls";
 
 // Knobs for the 404's main demo, shared by the page and the demo.
@@ -21,7 +21,7 @@ export const tint = color({
   default: "ink",
   id: "color",
   label: "Colour",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const bloom = segmented({

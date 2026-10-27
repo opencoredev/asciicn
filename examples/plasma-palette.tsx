@@ -1,4 +1,4 @@
-import { Plasma } from "@/components/dithercn/plasma";
+import { Plasma } from "@/components/asciicn/plasma";
 
 export default function PlasmaPalette() {
   return (

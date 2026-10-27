@@ -26,7 +26,7 @@ const BASE_URL = (process.env.CATALOG_URL ?? "http://localhost:3000").replace(
   /\/$/,
   ""
 );
-const SESSION = process.env.CATALOG_SESSION ?? "dithercn-catalog-capture";
+const SESSION = process.env.CATALOG_SESSION ?? "asciicn-catalog-capture";
 const THEMES = ["dark", "light"] as const;
 
 /*
@@ -47,7 +47,7 @@ const SETTLE_OVERRIDES_MS: Readonly<Record<string, number>> = {
 // One flat colour means a blank stage or a fallback; a two-tone dither is fine.
 const MIN_COLOURS = 2;
 
-const FALLBACK_COUNT = `document.querySelectorAll('[data-catalog-capture] [class~="group/dither"][data-state="fallback"]').length`;
+const FALLBACK_COUNT = `document.querySelectorAll('[data-catalog-capture] [class~="group/ascii"][data-state="fallback"]').length`;
 
 interface Target {
   group: string;

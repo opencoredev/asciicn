@@ -1,11 +1,11 @@
-import { cssColor } from "@/lib/dither";
-import type { DitherColor } from "@/lib/dither";
+import { cssColor } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 
 // Site-only helpers for the background demos' colour knob.
 
 /** `color` mixed into the paper at `share` percent, for in-between tones. */
 export const toward = (
-  color: DitherColor,
+  color: AsciiColor,
   share: number,
-  base = "--dither-paper"
+  base = "--ascii-paper"
 ) => `color-mix(in oklch, ${cssColor(color)} ${share}%, ${cssColor(base)})`;

@@ -1,4 +1,4 @@
-import type { UptimeDay } from "@/components/dithercn/uptime-bar";
+import type { UptimeDay } from "@/components/asciicn/uptime-bar";
 
 /** Incidents by days before the last day, with that day's uptime. */
 type Incidents = Readonly<Record<number, { uptime: number; note: string }>>;

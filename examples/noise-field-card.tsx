@@ -1,8 +1,8 @@
-import { NoiseField } from "@/components/dithercn/noise-field";
+import { NoiseField } from "@/components/asciicn/noise-field";
 
 export default function NoiseFieldCard() {
   return (
-    <div className="bg-background border-border relative isolate flex w-full max-w-sm [--dither-paper:var(--background)] flex-col gap-6 overflow-hidden rounded-2xl border p-5">
+    <div className="bg-background border-border relative isolate flex w-full max-w-sm [--ascii-paper:var(--background)] flex-col gap-6 overflow-hidden rounded-2xl border p-5">
       <NoiseField
         scale={5}
         intensity={0.45}

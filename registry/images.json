@@ -1,15 +1,15 @@
 [
   {
-    "name": "dither-image",
+    "name": "ascii-image",
     "type": "registry:component",
     "title": "Dither image",
     "description": "Any image dithered to a preset (ink, duotone, newsprint, gameboy, riso) or your own palette, resolving from coarse to fine.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-image.tsx",
+        "path": "components/asciicn/ascii-image.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-image.tsx"
+        "target": "components/asciicn/ascii-image.tsx"
       }
     ]
   },
@@ -19,14 +19,14 @@
     "title": "Image compare",
     "description": "A draggable, keyboard-accessible before and after slider between a dithered image and the original or another dither.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
-      "{{REGISTRY_URL}}/dither-image.json"
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/image-compare.tsx",
+        "path": "components/asciicn/image-compare.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/image-compare.tsx"
+        "target": "components/asciicn/image-compare.tsx"
       }
     ]
   },
@@ -36,31 +36,31 @@
     "title": "Scroll reveal image",
     "description": "An image that sharpens from coarse dithered blocks to the full photo as it scrolls into view.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
-      "{{REGISTRY_URL}}/dither-image.json"
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/scroll-reveal-image.tsx",
+        "path": "components/asciicn/scroll-reveal-image.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/scroll-reveal-image.tsx"
+        "target": "components/asciicn/scroll-reveal-image.tsx"
       }
     ]
   },
   {
-    "name": "dithered-logo",
+    "name": "ascii-logo",
     "type": "registry:component",
     "title": "Dithered logo",
     "description": "An SVG or PNG logo redrawn on a pixel grid with exact edges, a dithered fill and an optional shimmer or scan line.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
-      "{{REGISTRY_URL}}/dither-image.json"
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/dithered-logo.tsx",
+        "path": "components/asciicn/ascii-logo.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dithered-logo.tsx"
+        "target": "components/asciicn/ascii-logo.tsx"
       }
     ]
   },
@@ -70,14 +70,14 @@
     "title": "Logo marquee",
     "description": "A looping row or still wall of logos in one dithered treatment, with soft or dithered edge fades.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
-      "{{REGISTRY_URL}}/dithered-logo.json"
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-logo.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/logo-marquee.tsx",
+        "path": "components/asciicn/logo-marquee.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/logo-marquee.tsx"
+        "target": "components/asciicn/logo-marquee.tsx"
       }
     ]
   }

@@ -9,7 +9,7 @@ const NAMED_PIECES = 4;
 
 const PARTS = [
   {
-    body: "dither-core installs into lib/dither as plain source you own. It turns a tone between 0 and 1 into dots with Bayer and blue-noise threshold matrices, then draws them three ways: a WebGL shader for anything that moves, SVG patterns and CSS masks for static fills, and a one-off pass for photos and logos. Colours come from your shadcn theme, animation pauses offscreen and respects reduced motion, and any dither exports to PNG, SVG or CSS.",
+    body: "ascii-core installs into lib/ascii as plain source you own. It turns a tone between 0 and 1 into dots with Bayer and blue-noise threshold matrices, then draws them three ways: a WebGL shader for anything that moves, SVG patterns and CSS masks for static fills, and a one-off pass for photos and logos. Colours come from your shadcn theme, animation pauses offscreen and respects reduced motion, and any dither exports to PNG, SVG or CSS.",
     title: "The engine",
   },
   {
@@ -27,7 +27,7 @@ const pieceSummary = (category: CatalogCategory) => {
 };
 
 /**
- * What dithercn is made of, in plain crawlable text: the engine, the skill
+ * What asciicn is made of, in plain crawlable text: the engine, the skill
  * and every example group. Agents and search engines read the page without
  * running its shaders, so this is the part of the home page they can quote.
  */
@@ -47,7 +47,7 @@ export const HomeOverview = ({
           What's inside.
         </h2>
         <p className={leadClassName}>
-          dithercn is an open-source dither engine for shadcn/ui projects, with
+          asciicn is an open-source dither engine for shadcn/ui projects, with
           an agent skill that teaches your coding agent to use it. Everything
           installs as code in your repo.
         </p>

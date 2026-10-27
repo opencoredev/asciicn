@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@/components/dithercn/skeleton";
+import { Skeleton } from "@/components/asciicn/skeleton";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/skeleton-controls";
 

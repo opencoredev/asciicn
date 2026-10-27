@@ -1,4 +1,4 @@
-import { DITHER_COLOR_NAMES } from "@/lib/dither";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the dot map's main demo, shared by the page and the demo.
@@ -7,14 +7,14 @@ export const accent = color({
   default: "ink",
   id: "accent",
   label: "Accent",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const land = color({
   default: "grey",
   id: "color",
   label: "Land",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const shape = segmented({

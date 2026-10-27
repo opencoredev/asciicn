@@ -1,4 +1,4 @@
-import { Aurora } from "@/components/dithercn/aurora";
+import { Aurora } from "@/components/asciicn/aurora";
 
 export default function AuroraBorealis() {
   return (

@@ -2,8 +2,8 @@
   "title": "Backgrounds",
   "description": "Full-bleed dithered surfaces for heroes, sections and cards.",
   "pages": [
-    "dither-gradient",
-    "dither-glow",
+    "ascii-gradient",
+    "ascii-glow",
     "mesh-gradient",
     "aurora",
     "noise-field",
@@ -22,9 +22,9 @@
     "horizon",
     "starfield",
     "halftone",
-    "dither-globe",
+    "ascii-globe",
     "dot-map",
-    "dither-orb",
-    "dither-fade"
+    "ascii-orb",
+    "ascii-fade"
   ]
 }

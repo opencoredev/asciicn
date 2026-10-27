@@ -1,7 +1,7 @@
 "use client";
 
-import { Avatar } from "@/components/dithercn/avatar";
-import type { AvatarStatus } from "@/components/dithercn/avatar";
+import { Avatar } from "@/components/asciicn/avatar";
+import type { AvatarStatus } from "@/components/asciicn/avatar";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/avatar-controls";
 

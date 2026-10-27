@@ -3,7 +3,7 @@ import {
   SKILL_DESCRIPTION,
   SKILL_NAME,
   skillArchiveDigest,
-} from "@/lib/agent-discovery/dithercn-skill";
+} from "@/lib/agent-discovery/asciicn-skill";
 import { requestOrigin } from "@/lib/agent-discovery/request-origin";
 
 export const GET = (request: Request) => {

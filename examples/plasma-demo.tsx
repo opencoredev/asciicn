@@ -1,6 +1,6 @@
 "use client";
 
-import { Plasma } from "@/components/dithercn/plasma";
+import { Plasma } from "@/components/asciicn/plasma";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/plasma-controls";
@@ -13,7 +13,7 @@ export default function PlasmaDemo() {
 
   return (
     <Plasma
-      palette={["--dither-paper", toward(tint, 45), tint]}
+      palette={["--ascii-paper", toward(tint, 45), tint]}
       scale={scale}
       warp={warp}
       animate={animate}

@@ -1,4 +1,4 @@
-import { Heatmap } from "@/components/dithercn/heatmap";
+import { Heatmap } from "@/components/asciicn/heatmap";
 
 const END = Date.UTC(2026, 9, 12);
 const DAY = 86_400_000;

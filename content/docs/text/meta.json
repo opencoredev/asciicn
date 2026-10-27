@@ -1,5 +1,5 @@
 {
   "title": "Text",
   "description": "Display text drawn, revealed or counted with a dither.",
-  "pages": ["dither-text", "dissolve-text", "scramble-text", "dither-number"]
+  "pages": ["ascii-text", "dissolve-text", "scramble-text", "ascii-number"]
 }

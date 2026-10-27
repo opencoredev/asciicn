@@ -1,5 +1,5 @@
-import { DitherShader } from "@/lib/dither";
-import type { DitherMatrix } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
+import type { DitherMatrix } from "@/lib/ascii";
 
 // A left-to-right ramp: tone equals the horizontal position.
 const RAMP = `float field(vec2 uv, vec2 res, float t) { return uv.x; }`;
@@ -16,7 +16,7 @@ export default function ConceptMatrices() {
     <div className="flex w-full flex-col gap-4">
       {MATRICES.map(({ matrix, note }) => (
         <figure key={matrix} className="flex flex-col gap-1.5">
-          <DitherShader
+          <AsciiShader
             field={RAMP}
             matrix={matrix}
             animate={false}

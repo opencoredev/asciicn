@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 // A soft glow from the lower left corner.
 const GLOW = `
@@ -19,7 +19,7 @@ export default function ConceptCell() {
 
   return (
     <div className="relative size-full">
-      <DitherShader
+      <AsciiShader
         field={GLOW}
         cell={cell}
         animate={false}

@@ -1,4 +1,4 @@
-import { AreaChart } from "@/components/dithercn/area-chart";
+import { AreaChart } from "@/components/asciicn/area-chart";
 
 const HOURS = [
   [212, 58],
@@ -35,7 +35,7 @@ const data = HOURS.map(([cached, origin], hour) => ({
 
 export default function AreaChartLayered() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="mb-5 flex flex-col gap-1">
         <span className="text-muted-foreground text-sm">
           Requests per second, last 24 hours

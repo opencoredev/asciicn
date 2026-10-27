@@ -1,4 +1,4 @@
-import { BLOOMS, DITHER_COLOR_NAMES, FILL_VARIANTS } from "@/lib/dither";
+import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the donut chart's main demo, shared by the page and the demo.
@@ -28,7 +28,7 @@ export const firstColor = color({
   default: "blue",
   id: "color",
   label: "First slice",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const gap = slider({

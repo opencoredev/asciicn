@@ -1,6 +1,6 @@
 "use client";
 
-import { Ridgelines } from "@/components/dithercn/ridgelines";
+import { Ridgelines } from "@/components/asciicn/ridgelines";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ridgelines-controls";
 
@@ -12,7 +12,7 @@ export default function RidgelinesDemo() {
 
   return (
     <Ridgelines
-      palette={["--dither-paper", tint]}
+      palette={["--ascii-paper", tint]}
       lines={lines}
       amplitude={amplitude}
       animate={animate}

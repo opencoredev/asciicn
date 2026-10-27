@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/dithercn/skeleton";
+import { Skeleton } from "@/components/asciicn/skeleton";
 
 const ROWS = [0, 1, 2, 3, 4];
 

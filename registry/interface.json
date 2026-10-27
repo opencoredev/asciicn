@@ -4,12 +4,12 @@
     "type": "registry:component",
     "title": "Skeleton",
     "description": "Loading placeholders for blocks, text lines and avatars, drawn in dither, with a dense band that sweeps across or a pulse that steps through the Bayer levels.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/skeleton.tsx",
+        "path": "components/asciicn/skeleton.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/skeleton.tsx"
+        "target": "components/asciicn/skeleton.tsx"
       }
     ]
   },
@@ -18,12 +18,12 @@
     "type": "registry:component",
     "title": "Avatar",
     "description": "A generative avatar drawn from a string as a mirrored dither face on a lit, dithered disc, with an overlapping avatar group.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/avatar.tsx",
+        "path": "components/asciicn/avatar.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/avatar.tsx"
+        "target": "components/asciicn/avatar.tsx"
       }
     ]
   },
@@ -32,12 +32,12 @@
     "type": "registry:component",
     "title": "Loader",
     "description": "A small dithered loading indicator: a ring with a comet tail, three dissolving dots, a pulse or a bar.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/loader.tsx",
+        "path": "components/asciicn/loader.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/loader.tsx"
+        "target": "components/asciicn/loader.tsx"
       }
     ]
   },
@@ -46,26 +46,26 @@
     "type": "registry:component",
     "title": "Divider",
     "description": "A horizontal or vertical dithered rule with fading ends and an optional label.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/divider.tsx",
+        "path": "components/asciicn/divider.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/divider.tsx"
+        "target": "components/asciicn/divider.tsx"
       }
     ]
   },
   {
-    "name": "dither-card",
+    "name": "ascii-card",
     "type": "registry:component",
     "title": "Dither card",
     "description": "A card with a dithered glow in a corner or along an edge and a dithered rim on its border, which can grow on hover.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-card.tsx",
+        "path": "components/asciicn/ascii-card.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-card.tsx"
+        "target": "components/asciicn/ascii-card.tsx"
       }
     ]
   },
@@ -74,12 +74,12 @@
     "type": "registry:component",
     "title": "Empty state",
     "description": "A lit, dithered illustration (box, magnifier, folder or planet) with a title, a description and an action, for views with nothing in them yet.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/empty-state.tsx",
+        "path": "components/asciicn/empty-state.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/empty-state.tsx"
+        "target": "components/asciicn/empty-state.tsx"
       }
     ]
   },
@@ -88,26 +88,26 @@
     "type": "registry:component",
     "title": "Not found",
     "description": "A complete 404 block with a big dithered code, a message and actions.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/not-found.tsx",
+        "path": "components/asciicn/not-found.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/not-found.tsx"
+        "target": "components/asciicn/not-found.tsx"
       }
     ]
   },
   {
-    "name": "dither-button",
+    "name": "ascii-button",
     "type": "registry:component",
     "title": "Dither button",
     "description": "A button with a lit, dithered surface that brightens on hover and presses in on click, in four fills, two variants and any palette colour.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/dither-button.tsx",
+        "path": "components/asciicn/ascii-button.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/dither-button.tsx"
+        "target": "components/asciicn/ascii-button.tsx"
       }
     ],
     "dependencies": ["radix-ui"]

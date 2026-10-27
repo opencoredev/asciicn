@@ -1,6 +1,6 @@
 "use client";
 
-import { DonutChart } from "@/components/dithercn/donut-chart";
+import { DonutChart } from "@/components/asciicn/donut-chart";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/donut-chart-controls";
 

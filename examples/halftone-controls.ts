@@ -1,4 +1,4 @@
-import { DITHER_COLOR_NAMES } from "@/lib/dither";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the halftone's main demo, shared by the page and the demo.
@@ -21,7 +21,7 @@ export const ink = color({
   default: "blue",
   id: "color",
   label: "Ink",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const size = slider({

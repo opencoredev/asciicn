@@ -28,9 +28,9 @@ const docsIndex = (origin: string) => {
 
 ${agentStartHere(base)}
 
-## When to use dithercn
+## When to use asciicn
 
-Use dithercn when a user asks for:
+Use asciicn when a user asks for:
 
 - A dithered, Bayer, halftone, ordered-dither or pixel texture anywhere in a React or shadcn/ui app
 - A dithered hero or section background, such as an aurora, gradient, globe, starfield or waves
@@ -38,20 +38,20 @@ Use dithercn when a user asks for:
 - Interface pieces with a dithered finish, such as cards, buttons, loaders, skeletons and avatars
 - Display text or images drawn, revealed or converted with a dither, and PNG, SVG or CSS exports of any dither
 
-Install the skill first, then build on the engine in \`lib/dither\`. Start from the closest example only when one fits; otherwise write a new field.
+Install the skill first, then build on the engine in \`lib/ascii\`. Start from the closest example only when one fits; otherwise write a new field.
 
 ## Official CLI
 
-dithercn has no CLI of its own. It installs with two official CLIs:
+asciicn has no CLI of its own. It installs with two official CLIs:
 
-- shadcn CLI, for the engine, the skill and any example: \`npx shadcn@latest add ${SITE.REGISTRY}/dithercn-skill.json\` (or any \`${SITE.REGISTRY}/<name>.json\` from the [registry index](${base}${ROUTES.REGISTRY}))
+- shadcn CLI, for the engine, the skill and any example: \`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\` (or any \`${SITE.REGISTRY}/<name>.json\` from the [registry index](${base}${ROUTES.REGISTRY}))
 - skills CLI, for the agent skill alone in Claude Code, Codex, Cursor, Gemini CLI and others: \`npx skills add ${base}\`
 
 ${documentationIndex(base)}
 
 ## About
 
-- [About dithercn](${base}/about.md): who makes it and why
+- [About asciicn](${base}/about.md): who makes it and why
 - [Contact](${base}/contact.md): bugs, email and security reports
 - [Privacy](${base}/privacy.md): what the site collects
 
@@ -61,7 +61,7 @@ ${documentationIndex(base)}
 - [Homepage markdown](${base}${ROUTES.LLMS_MD}/content.md)
 - [OpenAPI description](${base}${ROUTES.OPENAPI})
 - [API catalog](${base}${ROUTES.API_CATALOG})
-- [dithercn agent skill](${base}${ROUTES.AGENT_SKILL}): build any dither on the engine
+- [asciicn agent skill](${base}${ROUTES.AGENT_SKILL}): build any dither on the engine
 - [shadcn MCP server documentation](${LINK.SHADCN_MCP_DOCS})
 `;
 };

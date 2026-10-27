@@ -1,6 +1,6 @@
 "use client";
 
-import { DitherShader } from "@/lib/dither";
+import { AsciiShader } from "@/lib/ascii";
 
 // Step 2: square units, then rings around a point that fade with distance.
 const FIELD = `
@@ -17,10 +17,10 @@ float field(vec2 uv, vec2 res, float t) {
 
 export default function EngineFieldRings() {
   return (
-    <DitherShader
+    <AsciiShader
       field={FIELD}
       animate={false}
-      palette={["--dither-paper", "blue"]}
+      palette={["--ascii-paper", "blue"]}
       className="absolute inset-0"
     />
   );

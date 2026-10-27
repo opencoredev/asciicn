@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { withoutSharedHelpers } from "../lib/dither/glsl";
+import { withoutSharedHelpers } from "../lib/ascii/glsl";
 
 // `field` and `colorField` compile into one shader. These cases pin down
 // which definitions the engine may drop from `colorField` as duplicates.

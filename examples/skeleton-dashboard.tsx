@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/dithercn/skeleton";
+import { Skeleton } from "@/components/asciicn/skeleton";
 
 const TILES = ["Revenue", "Active users", "Churn"] as const;
 

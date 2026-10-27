@@ -4,12 +4,12 @@
     "type": "registry:component",
     "title": "Contours",
     "description": "A topographic map: contour lines over slowly drifting hills, with heavier index lines and a light hillshade.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/contours.tsx",
+        "path": "components/asciicn/contours.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/contours.tsx"
+        "target": "components/asciicn/contours.tsx"
       }
     ]
   },
@@ -18,12 +18,12 @@
     "type": "registry:component",
     "title": "Ripples",
     "description": "Concentric rings spreading from one to four points and crossing like drops on still water.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/ripples.tsx",
+        "path": "components/asciicn/ripples.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/ripples.tsx"
+        "target": "components/asciicn/ripples.tsx"
       }
     ]
   },
@@ -32,12 +32,12 @@
     "type": "registry:component",
     "title": "Retro grid",
     "description": "A perspective grid floor scrolling towards a horizon under a striped, glowing sun.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/retro-grid.tsx",
+        "path": "components/asciicn/retro-grid.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/retro-grid.tsx"
+        "target": "components/asciicn/retro-grid.tsx"
       }
     ]
   },
@@ -46,12 +46,12 @@
     "type": "registry:component",
     "title": "Silk",
     "description": "Folds of silk catching the light, with a bright highlight along each crest.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/silk.tsx",
+        "path": "components/asciicn/silk.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/silk.tsx"
+        "target": "components/asciicn/silk.tsx"
       }
     ]
   }

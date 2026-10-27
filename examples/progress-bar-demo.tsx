@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { ProgressBar } from "@/components/dithercn/progress-bar";
+import { ProgressBar } from "@/components/asciicn/progress-bar";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/progress-bar-controls";
 
@@ -32,7 +32,7 @@ export default function ProgressBarDemo() {
   const step = STEPS[Math.min(STEPS.length - 1, Math.floor(progress / 25))];
 
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-col gap-5 rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border flex w-full max-w-md flex-col gap-5 rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-medium">Deploying web</span>
         <span className="text-muted-foreground font-mono text-xs">4f2a1c9</span>

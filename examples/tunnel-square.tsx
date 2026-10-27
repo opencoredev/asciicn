@@ -1,4 +1,4 @@
-import { Tunnel } from "@/components/dithercn/tunnel";
+import { Tunnel } from "@/components/asciicn/tunnel";
 
 export default function TunnelSquare() {
   return (
@@ -9,7 +9,7 @@ export default function TunnelSquare() {
       center={[0.5, 0.42]}
       sway={0.4}
       matrix="bayer8"
-      palette={["--dither-paper", "--chart-5", "--chart-1"]}
+      palette={["--ascii-paper", "--chart-5", "--chart-1"]}
       className="absolute inset-0"
     />
   );

@@ -4,12 +4,12 @@
     "type": "registry:component",
     "title": "Cartesian chart",
     "description": "The shared frame behind the area, line and bar charts: scales, axes, the hover readout, the legend and an accessible data table.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/cartesian-chart.tsx",
+        "path": "components/asciicn/cartesian-chart.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/cartesian-chart.tsx"
+        "target": "components/asciicn/cartesian-chart.tsx"
       }
     ]
   },
@@ -19,14 +19,14 @@
     "title": "Area chart",
     "description": "One or more series drawn as a crisp line over a dithered fill that is densest under the line.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
+      "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/area-chart.tsx",
+        "path": "components/asciicn/area-chart.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/area-chart.tsx"
+        "target": "components/asciicn/area-chart.tsx"
       }
     ]
   },
@@ -36,14 +36,14 @@
     "title": "Bar chart",
     "description": "Vertical bars, grouped or stacked, each filled with a dither and capped with a solid edge.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
+      "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/bar-chart.tsx",
+        "path": "components/asciicn/bar-chart.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/bar-chart.tsx"
+        "target": "components/asciicn/bar-chart.tsx"
       }
     ]
   },
@@ -53,14 +53,14 @@
     "title": "Line chart",
     "description": "Lines for one or more series, with optional dithered range bands and point markers.",
     "registryDependencies": [
-      "{{REGISTRY_URL}}/dither-core.json",
+      "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
     ],
     "files": [
       {
-        "path": "components/dithercn/line-chart.tsx",
+        "path": "components/asciicn/line-chart.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/line-chart.tsx"
+        "target": "components/asciicn/line-chart.tsx"
       }
     ]
   },
@@ -69,12 +69,12 @@
     "type": "registry:component",
     "title": "Sparkline",
     "description": "A tiny inline trend for tables and stat cards: a line, a dithered area and a dot on the latest value.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/sparkline.tsx",
+        "path": "components/asciicn/sparkline.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/sparkline.tsx"
+        "target": "components/asciicn/sparkline.tsx"
       }
     ]
   },
@@ -83,12 +83,12 @@
     "type": "registry:component",
     "title": "Heatmap",
     "description": "A calendar or matrix heatmap built from dither cells: each square steps from a few dots to solid, with a readout and a level scale.",
-    "registryDependencies": ["{{REGISTRY_URL}}/dither-core.json"],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/dithercn/heatmap.tsx",
+        "path": "components/asciicn/heatmap.tsx",
         "type": "registry:component",
-        "target": "components/dithercn/heatmap.tsx"
+        "target": "components/asciicn/heatmap.tsx"
       }
     ]
   }

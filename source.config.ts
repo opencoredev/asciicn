@@ -8,7 +8,7 @@ import { rehypePrettyCode } from "rehype-pretty-code";
 
 import { DOCS_DIR } from "@/lib/docs";
 import { transformers } from "@/lib/highlight-code";
-import { dithercnDark, dithercnLight } from "@/lib/shiki-themes";
+import { asciicnDark, asciicnLight } from "@/lib/shiki-themes";
 
 export default defineConfig({
   mdxOptions: {
@@ -18,8 +18,8 @@ export default defineConfig({
         rehypePrettyCode,
         {
           theme: {
-            dark: dithercnDark,
-            light: dithercnLight,
+            dark: asciicnDark,
+            light: asciicnLight,
           },
           transformers,
         },

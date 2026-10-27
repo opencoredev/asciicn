@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { ScrambleText } from "@/components/dithercn/scramble-text";
+import { ScrambleText } from "@/components/asciicn/scramble-text";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/scramble-text-controls";
 
@@ -45,7 +45,7 @@ export default function ScrambleTextDemo() {
           trigger="mount"
           delay={420}
           caret={caret}
-          className="text-dither-ink"
+          className="text-ascii-ink"
         >
           {USES[use] ?? ""}
         </ScrambleText>

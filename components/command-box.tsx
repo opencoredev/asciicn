@@ -94,7 +94,7 @@ export const CommandBox = ({
         value={command}
         event="install_command_copied"
         eventProperties={{
-          component_name: tool === "skills" ? "dithercn-skill" : tool,
+          component_name: tool === "skills" ? "asciicn-skill" : tool,
           package_manager: packageManager,
           section: "command_box",
         }}

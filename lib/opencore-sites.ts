@@ -47,8 +47,8 @@ export const OPENCORE_SITES = [
   },
   {
     description: "Dither effects for your app",
-    name: "dithercn",
-    url: "https://dithercn.dev",
+    name: "asciicn",
+    url: "https://asciicn.dev",
   },
   {
     description: "Background removal on your device",

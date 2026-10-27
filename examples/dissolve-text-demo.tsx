@@ -1,6 +1,6 @@
 "use client";
 
-import { DissolveText } from "@/components/dithercn/dissolve-text";
+import { DissolveText } from "@/components/asciicn/dissolve-text";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/dissolve-text-controls";
 

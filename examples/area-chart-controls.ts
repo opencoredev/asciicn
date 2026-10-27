@@ -1,4 +1,4 @@
-import { BLOOMS, DITHER_COLOR_NAMES, FILL_VARIANTS } from "@/lib/dither";
+import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the area chart's main demo, shared by the page and the demo.
@@ -28,7 +28,7 @@ export const firstColor = color({
   default: "ink",
   id: "color",
   label: "First series",
-  options: DITHER_COLOR_NAMES,
+  options: ASCII_COLOR_NAMES,
 });
 
 export const cell = slider({

@@ -1,6 +1,6 @@
 "use client";
 
-import { AreaChart } from "@/components/dithercn/area-chart";
+import { AreaChart } from "@/components/asciicn/area-chart";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/area-chart-controls";
 

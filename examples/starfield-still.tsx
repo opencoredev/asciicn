@@ -1,4 +1,4 @@
-import { Starfield } from "@/components/dithercn/starfield";
+import { Starfield } from "@/components/asciicn/starfield";
 
 export default function StarfieldStill() {
   return (
@@ -7,7 +7,7 @@ export default function StarfieldStill() {
       twinkle={1}
       nebula={0}
       density={0.6}
-      palette={["--dither-paper", "--muted-foreground", "--foreground"]}
+      palette={["--ascii-paper", "--muted-foreground", "--foreground"]}
       className="absolute inset-0"
     />
   );

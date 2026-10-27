@@ -24,7 +24,7 @@ import EclipseAmber from "@/examples/eclipse-amber";
 ## Usage
 
 ```tsx
-import { Eclipse } from "@/components/dithercn/eclipse";
+import { Eclipse } from "@/components/asciicn/eclipse";
 
 export function Hero() {
   return (
@@ -94,15 +94,15 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
     },
     {
       name: "rimColor",
-      type: "DitherColor",
-      default: '"--dither-ink"',
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
       description:
         'Colour of the rim and halo: a palette name such as "orange", a CSS variable name, or any CSS colour.',
     },
     {
       name: "skyColor",
-      type: "DitherColor",
-      default: '"--dither-paper"',
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
       description: "Colour of the sky and the disc.",
     },
     {
@@ -114,7 +114,7 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
     {
       name: "cell",
       type: "number",
-      default: "--dither-cell",
+      default: "--ascii-cell",
       description: "Size of one dither cell in CSS pixels.",
     },
     {

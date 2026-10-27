@@ -1,4 +1,4 @@
-import { Ripples } from "@/components/dithercn/ripples";
+import { Ripples } from "@/components/asciicn/ripples";
 
 export default function RipplesRain() {
   return (
@@ -12,7 +12,7 @@ export default function RipplesRain() {
       rings={14}
       decay={2}
       matrix="bayer8"
-      palette={["--dither-paper", "--chart-3", "--chart-2", "--chart-1"]}
+      palette={["--ascii-paper", "--chart-3", "--chart-2", "--chart-1"]}
       className="absolute inset-0"
     />
   );

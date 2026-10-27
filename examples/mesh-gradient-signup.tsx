@@ -1,4 +1,4 @@
-import { MeshGradient } from "@/components/dithercn/mesh-gradient";
+import { MeshGradient } from "@/components/asciicn/mesh-gradient";
 
 export default function MeshGradientSignup() {
   return (

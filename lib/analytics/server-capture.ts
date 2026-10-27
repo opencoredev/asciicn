@@ -47,7 +47,7 @@ const CATEGORY_BY_ITEM = new Map<string, Category>([
   ...named(images, "media"),
   ...named(base, "engine"),
   ...named(engine, "engine"),
-  ["dithercn-skill", "skill"],
+  ["asciicn-skill", "skill"],
   ["registry", "index"],
 ]);
 
@@ -166,7 +166,7 @@ export const capture = async (
           ...event.properties,
           $current_url: url.href,
           $geoip_disable: true,
-          $lib: "dithercn-proxy",
+          $lib: "asciicn-proxy",
           $process_person_profile: false,
           client_tool: clientTool(userAgent),
           path: url.pathname,

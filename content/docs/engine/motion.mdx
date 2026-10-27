@@ -5,7 +5,7 @@ description: "How animated dithers run, pause and hold still, including under re
 
 import ConceptMotion from "@/examples/concept-motion";
 
-Animated dithers in dithercn are slow on purpose. A background should drift, not perform. Every animated component follows the same rules, and they come from `dither-core`, so you get them for free when you build your own.
+Animated dithers in asciicn are slow on purpose. A background should drift, not perform. Every animated component follows the same rules, and they come from `ascii-core`, so you get them for free when you build your own.
 
 <ComponentPreview src="examples/concept-motion.tsx" size="lg" align="stretch">
   <ConceptMotion />
@@ -13,7 +13,7 @@ Animated dithers in dithercn are slow on purpose. A background should drift, not
 
 ## When a dither moves
 
-A `DitherShader` animates only while someone can see it. Its `data-state` attribute says what it is doing:
+A `AsciiShader` animates only while someone can see it. Its `data-state` attribute says what it is doing:
 
 | `data-state` | Meaning                                                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,7 +29,7 @@ Time only advances while running, and a long frame (a tab switch, a debugger) co
 When the visitor turns on reduced motion in their system settings, every dither draws one still frame and stops. `stillTime` picks which moment of the animation that frame shows, so you can choose a good one:
 
 ```tsx
-<DitherShader field={FIELD} stillTime={14} />
+<AsciiShader field={FIELD} stillTime={14} />
 ```
 
 The switch is live: turning the setting on or off while the page is open takes effect at once. Interface pieces follow the same rule. Their transitions become instant, and anything that loops holds still.
@@ -40,7 +40,7 @@ The switch is live: turning the setting on or off while the page is open takes e
 
 ## Your own loops
 
-`useFrameLoop` is the loop `DitherShader` uses. Give it a callback and an element, and it calls you once per frame while that element is on screen:
+`useFrameLoop` is the loop `AsciiShader` uses. Give it a callback and an element, and it calls you once per frame while that element is on screen:
 
 ```tsx
 const ref = useRef<HTMLDivElement>(null);

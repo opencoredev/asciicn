@@ -1,6 +1,6 @@
 "use client";
 
-import { NoiseField } from "@/components/dithercn/noise-field";
+import { NoiseField } from "@/components/asciicn/noise-field";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/noise-field-controls";
 

@@ -1,7 +1,7 @@
 import {
   ScrambleText,
   SCRAMBLE_MONO,
-} from "@/components/dithercn/scramble-text";
+} from "@/components/asciicn/scramble-text";
 
 const LINKS = ["Docs", "Components", "Changelog", "Pricing"];
 

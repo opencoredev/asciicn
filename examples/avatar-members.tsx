@@ -1,5 +1,5 @@
-import { Avatar } from "@/components/dithercn/avatar";
-import type { AvatarStatus } from "@/components/dithercn/avatar";
+import { Avatar } from "@/components/asciicn/avatar";
+import type { AvatarStatus } from "@/components/asciicn/avatar";
 
 const MEMBERS: readonly {
   name: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { StatCard } from "@/components/dithercn/stat-card";
+import { StatCard } from "@/components/asciicn/stat-card";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/stat-card-controls";
 

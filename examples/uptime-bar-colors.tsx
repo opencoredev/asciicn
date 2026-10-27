@@ -1,4 +1,4 @@
-import { UptimeBar } from "@/components/dithercn/uptime-bar";
+import { UptimeBar } from "@/components/asciicn/uptime-bar";
 import { uptimeDays } from "@/examples/uptime-bar-data";
 
 const DAYS = uptimeDays({

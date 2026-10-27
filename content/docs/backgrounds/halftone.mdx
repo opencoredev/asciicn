@@ -25,7 +25,7 @@ import HalftonePrint from "@/examples/halftone-print";
 ## Usage
 
 ```tsx
-import { Halftone } from "@/components/dithercn/halftone";
+import { Halftone } from "@/components/asciicn/halftone";
 
 export function Hero() {
   return (
@@ -77,22 +77,22 @@ A coarse 16px screen in three inks behind an editorial block.
   rows={[
     {
       name: "color",
-      type: "DitherColor",
+      type: "AsciiColor",
       default: '"ink"',
       description:
         'Colour of the dots: a palette name such as "blue", a CSS variable name, or any CSS colour.',
     },
     {
       name: "channels",
-      type: "[DitherColor, DitherColor, DitherColor?]",
+      type: "[AsciiColor, AsciiColor, AsciiColor?]",
       default: "–",
       description:
         "Two or three inks on separate screens, 30° apart. Overlaps mix. Use instead of color.",
     },
     {
       name: "background",
-      type: "DitherColor",
-      default: '"--dither-paper"',
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
       description:
         'Colour behind the dots. "transparent" lays the screen over the content underneath.',
     },

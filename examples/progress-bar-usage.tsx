@@ -1,4 +1,4 @@
-import { ProgressBar } from "@/components/dithercn/progress-bar";
+import { ProgressBar } from "@/components/asciicn/progress-bar";
 
 const STORAGE = [
   { color: "blue", label: "Images", value: 4.1 },
@@ -8,7 +8,7 @@ const STORAGE = [
 
 export default function ProgressBarUsage() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-col gap-6 rounded-2xl border p-5 [--dither-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border flex w-full max-w-md flex-col gap-6 rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
       <div className="flex flex-col gap-1">
         <span className="font-medium">Usage this cycle</span>
         <span className="text-muted-foreground text-sm">

@@ -1,4 +1,4 @@
-import { ImageCompare } from "@/components/dithercn/image-compare";
+import { ImageCompare } from "@/components/asciicn/image-compare";
 
 export default function ImageComparePresets() {
   return (

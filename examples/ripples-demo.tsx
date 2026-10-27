@@ -1,7 +1,7 @@
 "use client";
 
-import { Ripples } from "@/components/dithercn/ripples";
-import type { RipplesSource } from "@/components/dithercn/ripples";
+import { Ripples } from "@/components/asciicn/ripples";
+import type { RipplesSource } from "@/components/asciicn/ripples";
 import { usePreviewValue } from "@/components/preview-controls";
 import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/ripples-controls";
@@ -21,7 +21,7 @@ export default function RipplesDemo() {
 
   return (
     <Ripples
-      palette={["--dither-paper", toward(tint, 45), tint]}
+      palette={["--ascii-paper", toward(tint, 45), tint]}
       sources={POINTS.slice(0, sources)}
       rings={rings}
       animate={animate}
