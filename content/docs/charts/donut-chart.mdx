@@ -1,6 +1,6 @@
 ---
 title: "Donut chart"
-description: "A donut or pie chart drawn in dither cells, with a colour and texture per slice and a centre that follows the pointer."
+description: "A donut or pie chart drawn in Braille dots or quadrant blocks, one colour per slice, with clean gaps, a centre readout and a tooltip."
 ---
 
 import DonutChartDemo from "@/examples/donut-chart-demo";
@@ -36,17 +36,17 @@ export function Regions() {
 }
 ```
 
-Slices run clockwise from 12 o'clock in the order you pass them. Each one draws in the next palette colour (ink, orange, green, pink, purple, blue, red, grey) unless you set `colors` for the chart or `color` on the slice.
+Slices run clockwise from 12 o'clock in the order you pass them. Each takes the next series colour (ink, orange, green, pink, purple, blue, red, grey) unless you set `colors` on the chart or `color` on the slice.
 
-Every slice is a block of whole dither cells with a solid rim along the outside. `fill="gradient"` thins out from that rim toward the centre; `dotted`, `hatched` and `solid` fill evenly. The gaps between slices are a constant width in cells, so they stay crisp in both modes.
+The ring is text. It is rasterised onto the 2 by 4 dot grid of Braille glyphs, so every slice is an exact angular sector and each cell is one character you can select and copy. `glyphs="quadrants"` uses 2 by 2 blocks instead for a heavier, solid look. `gap` cuts a channel of that many dots along each slice boundary.
 
-Hover a slice or its legend row to spotlight it: the others fade, the slice steps out by two cells, and the centre switches from the total to that slice's value and share. Click to keep it lit and press Escape to let go. Focus the chart with Tab and the arrow keys step through the slices.
+Hover a slice or its legend row to light it: the others fade, the slice steps out by half a cell, the centre shows its value and share, and a tooltip follows the pointer. Click to keep it lit and press Escape to let go. Tab to the chart and the arrow keys step through the slices.
 
 ## Examples
 
 ### Storage card
 
-A smaller ring with `fill="hatched"`. The free space is its own slice with `color: "grey"` and `fill: "dotted"`, so it reads as empty without a second chart.
+A smaller ring in quadrant blocks with 10px cells. The free space is its own grey slice, so it reads as empty without a second chart.
 
 <ComponentPreview src="examples/donut-chart-card.tsx">
   <DonutChartCard />
@@ -54,7 +54,7 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
 
 ### Pie in a landing section
 
-`mode="pie"` drops the hole. The spotlit slice gets a readout card that glides between slices. `bloom="high"` adds a soft glow in each slice's colour.
+`mode="pie"` fills to the centre. Hover a wedge for its tooltip.
 
 <ComponentPreview src="examples/donut-chart-pie.tsx" size="lg">
   <DonutChartPie />
@@ -68,38 +68,32 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
       name: "data",
       type: "DonutSlice[]",
       description:
-        "{ label: string; value: number; color?: AsciiColor; fill?: FillVariant }, drawn clockwise from the top.",
+        "{ label: string; value: number; color?: AsciiColor }. Negative values count as 0.",
       required: true,
     },
     {
       name: "label",
       type: "string",
       description:
-        "What the total counts. Shown in the centre and used in the chart's summary.",
+        "What the total counts. Shown in the centre and used in the accessible summary.",
       required: true,
     },
     {
       name: "mode",
       type: '"donut" | "pie"',
       default: '"donut"',
-      description:
-        "A ring with the total in the middle, or full wedges with a readout over the active slice.",
+      description: "A ring with the total in the middle, or full wedges.",
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description: "Texture of every slice. A slice's own fill wins.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow in each slice's colour behind it.",
+      name: "glyphs",
+      type: '"braille" | "quadrants"',
+      default: '"braille"',
+      description: "Fine 2x4 dots per cell, or chunky 2x2 blocks.",
     },
     {
       name: "colors",
       type: "AsciiColor[]",
+      default: "series colours",
       description:
         "Colours by slice position, as palette names or CSS colours. A slice's own color wins.",
     },
@@ -107,19 +101,20 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
       name: "size",
       type: "number",
       default: "220",
-      description: "Diameter in CSS pixels.",
+      description: "Diameter in CSS pixels, rounded to whole cells.",
     },
     {
       name: "thickness",
       type: "number",
-      default: "0.36",
-      description: "Donut only: ring thickness as a share of the radius.",
+      default: "0.38",
+      description:
+        "Donut only: ring thickness as a share of the radius, 0.1 to 0.9.",
     },
     {
       name: "gap",
       type: "number",
-      default: "1",
-      description: "Gap between slices, in dither cells.",
+      default: "2",
+      description: "Gap between slices, in dots. 0 joins them.",
     },
     {
       name: "unit",
@@ -129,9 +124,10 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
     },
     {
       name: "format",
-      type: "Intl.NumberFormatOptions | ((value: number) => string)",
-      default: "{ maximumFractionDigits: 0 }",
-      description: "How values and the total are written.",
+      type: "Intl.NumberFormatOptions | (value: number) => string",
+      default: "whole numbers",
+      description:
+        "How values are written in the centre, legend, tooltip and table.",
     },
     {
       name: "legend",
@@ -145,32 +141,27 @@ A smaller ring with `fill="hatched"`. The free space is its own slice with `colo
       type: "boolean",
       default: "true",
       description:
-        "Hover, keyboard focus and the legend spotlight. false draws a static image.",
+        "Hover, keyboard focus, the tooltip and the legend spotlight. false for a decorative chart.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
       description:
-        "Sweep the slices in clockwise the first time the chart is seen.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold pattern of the gradient fill.",
+        "Sweep the slices in clockwise the first time the chart scrolls into view.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- The chart is a focusable group with a summary label. Arrow keys, Home and End move between slices, Enter keeps one lit, and a live region reads the active slice. A hidden table lists every value and share.
-- The sweep plays once when the chart scrolls into view. With reduced motion turned on, slices appear at once and the spotlight has no transition.
-- The drawing is one SVG path per slice, built from whole cells snapped to device pixels. Hovering only changes opacity and a transform.
+- The chart is a labelled group with a hidden table of every slice's value and share, so screen readers get the numbers, not the glyphs. Arrow-key changes are announced in a live region.
+- Colour is never the only cue: the legend, the tooltip and the centre all name the lit slice.
+- The sweep runs once, when the chart first scrolls into view. Under `prefers-reduced-motion` the full chart draws at once.
+- The glyphs are DOM text in `--ascii-font`, one `<span>` per run of a colour, so the chart renders on the server, stays sharp at any zoom and follows theme changes through CSS variables. A container about 300 cells across redraws in well under a millisecond.

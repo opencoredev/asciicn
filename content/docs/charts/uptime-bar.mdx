@@ -1,6 +1,6 @@
 ---
 title: "Uptime bar"
-description: "A status-page row of daily bars, told apart by colour and texture, with details for each day."
+description: "A status-page row of half-block glyph columns, one per day, with a height and colour per status and details for each day."
 ---
 
 import UptimeBarDemo from "@/examples/uptime-bar-demo";
@@ -37,15 +37,15 @@ export function ApiStatus() {
 
 Pass one entry per day, oldest first. Each day's status comes from its `uptime`: 99.9% or more is up, 99% or more is degraded, and anything lower is an outage. Set `status` on a day to override that, or `uptime: null` for a day with no data.
 
-Statuses differ in texture as well as colour. Up days use `fill` (a gradient that is dense at the base by default) in green, degraded days are hatched orange, outages are solid red and days without data are faint grey dots. `bloom` puts a soft glow behind degraded and down days only, so incidents stand out from a distance.
+Each day is one text column of left half blocks (`▌`, `▖`), so neighbouring days keep a gap without any CSS. The status sets the height as well as the colour: up days fill every row, degraded days three quarters, outages a quarter, and days without data are a single `·`. `rows` sets how many text rows the bars span.
 
-The row shows the last 30 days on narrow screens, 60 from 28rem wide and 90 from 42rem, based on the width of its container. The percentage on the right is the average over every day with data.
+The row shows the last 30 days on narrow screens, 60 from 28rem wide and 90 from 42rem, based on the width of its container. Without `cell`, the glyphs grow until those days fill the row, up to `maxCell`. The bars always span whole text rows. The percentage on the right is the average over every day with data.
 
 ## Examples
 
 ### Status page
 
-Several rows in one card. The Realtime service is newer than the window, so its early days have no data and show as faint dots.
+Several rows in one card. The Realtime service is newer than the window, so its early days have no data and show as dots.
 
 <ComponentPreview src="examples/uptime-bar-status-page.tsx" size="lg">
   <UptimeBarStatusPage />
@@ -53,7 +53,7 @@ Several rows in one card. The Realtime service is newer than the window, so its 
 
 ### Your own colours
 
-`colors` overrides the colour of any status with a palette name or any CSS colour. This one draws up days as blue dots and degraded days in purple, with 3px cells and a high bloom on incidents.
+`colors` overrides any status with a palette name or CSS colour. This one draws up days in blue and degraded days in purple, three rows tall at a fixed 14px cell.
 
 <ComponentPreview src="examples/uptime-bar-colors.tsx">
   <UptimeBarColors />
@@ -84,17 +84,23 @@ Several rows in one card. The Realtime service is newer than the window, so its 
         'Colours for "up", "degraded", "down" and "none", as palette names or CSS colours.',
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the up days. Degraded days are hatched, outages solid and days without data dotted.",
+      name: "rows",
+      type: "number",
+      default: "2",
+      description: "Text rows the bars span.",
     },
     {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow behind degraded and down days.",
+      name: "cell",
+      type: "number",
+      default: "fit to width",
+      description:
+        "Glyph cell height in CSS pixels. Unset, the cells grow so the shown days fill the row.",
+    },
+    {
+      name: "maxCell",
+      type: "number",
+      default: "16",
+      description: "Largest cell height when cell is unset, in CSS pixels.",
     },
     {
       name: "locale",
@@ -102,24 +108,12 @@ Several rows in one card. The Realtime service is newer than the window, so its 
       default: '"en-US"',
       description: "Locale for the dates in tooltips.",
     },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold pattern of the gradient fill.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "2",
-      description:
-        "Size of one dither cell in CSS pixels. Small, so narrow bars still show a pattern.",
-    },
   ]}
 />
 
 ## Notes
 
-- Status shows in texture as well as colour: up days use the fill, degraded days are hatched, outages solid and days without data dotted. The statuses stay apart for colour-blind readers and in greyscale.
-- Each bar is a button with a full description, such as "Oct 9, 2026, Degraded, 99.62% uptime". Only one bar is in the tab order; the arrow keys, Home and End move between days, and Escape closes the tooltip. Tapping a bar shows its tooltip on touch screens.
+- Status shows in height as well as colour, so the statuses stay apart for colour-blind readers and in greyscale.
+- Each day is a button with a full description, such as "Oct 9, 2026, Degraded, 99.62% uptime". Only one day is in the tab order; the arrow keys, Home and End move between days, and Escape closes the tooltip. Tapping a day shows its tooltip on touch screens.
+- Sizing to the row is pure CSS (container query units), so the bar renders on the server at its final size with no layout shift.
 - Dates are formatted in UTC, so the server and the browser agree.

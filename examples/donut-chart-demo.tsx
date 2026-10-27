@@ -14,8 +14,8 @@ const REGIONS = [
 
 export default function DonutChartDemo() {
   const mode = usePreviewValue(knobs.mode);
-  const fill = usePreviewValue(knobs.fill);
-  const bloom = usePreviewValue(knobs.bloom);
+  const glyphs = usePreviewValue(knobs.glyphs);
+  const cell = usePreviewValue(knobs.cell);
   const first = usePreviewValue(knobs.firstColor);
   const gap = usePreviewValue(knobs.gap);
   const animate = usePreviewValue(knobs.animate);
@@ -25,12 +25,12 @@ export default function DonutChartDemo() {
       data={REGIONS}
       label="Requests today"
       mode={mode}
-      fill={fill}
-      bloom={bloom}
+      glyphs={glyphs}
+      cell={cell}
       colors={[first, "orange", "green", "pink", "grey"]}
       gap={gap}
       animate={animate}
-      size={232}
+      size={240}
     />
   );
 }

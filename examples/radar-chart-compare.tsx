@@ -31,8 +31,6 @@ export default function RadarChartCompare() {
         colors={["grey", "orange", "purple"]}
         max={10}
         rings={5}
-        fill="hatched"
-        bloom="high"
         size={420}
       />
     </section>

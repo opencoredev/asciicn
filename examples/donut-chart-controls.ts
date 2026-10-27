@@ -1,4 +1,4 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the donut chart's main demo, shared by the page and the demo.
@@ -10,18 +10,11 @@ export const mode = segmented({
   options: ["donut", "pie"],
 });
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
-});
-
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
+export const glyphs = segmented({
+  default: "braille",
+  id: "glyphs",
+  label: "Glyphs",
+  options: ["braille", "quadrants"],
 });
 
 export const firstColor = color({
@@ -32,13 +25,23 @@ export const firstColor = color({
 });
 
 export const gap = slider({
-  default: 1,
+  default: 2,
   id: "gap",
-  label: "Gap (cells)",
-  max: 3,
+  label: "Gap",
+  max: 4,
   min: 0,
   step: 1,
-  unit: "",
+  unit: " dots",
+});
+
+export const cell = slider({
+  default: 12,
+  id: "cell",
+  label: "Cell",
+  max: 18,
+  min: 8,
+  step: 1,
+  unit: "px",
 });
 
 export const animate = toggle({
@@ -48,4 +51,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [mode, fill, bloom, firstColor, gap, animate];
+export const controls = [mode, glyphs, firstColor, gap, cell, animate];

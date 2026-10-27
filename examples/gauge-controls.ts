@@ -1,5 +1,5 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the gauge's main demo, shared by the page and the demo.
 
@@ -17,14 +17,14 @@ export const variant = segmented({
   default: "half",
   id: "variant",
   label: "Variant",
-  options: ["half", "dial", "ring"],
+  options: ["half", "dial", "ring", "linear"],
 });
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const indicator = segmented({
+  default: "arc",
+  id: "indicator",
+  label: "Indicator",
+  options: ["arc", "needle"],
 });
 
 export const tint = color({
@@ -34,12 +34,11 @@ export const tint = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
+export const thresholds = toggle({
+  default: true,
+  id: "thresholds",
+  label: "Thresholds",
 });
 
 /** Display order of the tray. */
-export const controls = [value, variant, fill, tint, bloom];
+export const controls = [value, variant, indicator, tint, thresholds];

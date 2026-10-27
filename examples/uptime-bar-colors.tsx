@@ -15,10 +15,9 @@ export default function UptimeBarColors() {
       <UptimeBar
         label="Payments"
         days={DAYS}
-        cell={3}
-        fill="dotted"
+        rows={3}
+        cell={14}
         colors={{ degraded: "purple", up: "blue" }}
-        bloom="high"
       />
     </div>
   );

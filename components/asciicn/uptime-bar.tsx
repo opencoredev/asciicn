@@ -3,8 +3,8 @@
 import { useId, useRef, useState } from "react";
 import type { ComponentProps, CSSProperties, KeyboardEvent } from "react";
 
-import { bloomStyle, cssColor, fillStyle, MOTION } from "@/lib/ascii";
-import type { Bloom, AsciiColor, DitherMatrix, FillVariant } from "@/lib/ascii";
+import { DEFAULT_FONT, LINE_HEIGHT, MOTION, cssColor } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
 /** `none` means no data for the day, such as before the service existed. */
@@ -29,19 +29,20 @@ export type UptimeBarProps = Omit<ComponentProps<"div">, "children"> & {
   /** Colours per status, as palette names or CSS colours. Default: green up, orange degraded, red down, grey for no data. */
   colors?: Partial<Record<UptimeStatus, AsciiColor>>;
   /**
-   * Texture of the up days. Default `gradient`: dense at the base, thinning
-   * upward. Degraded days are always hatched, down days solid and days
-   * without data dotted, so status never relies on colour alone.
+   * Text rows the bars span. Each status has its own height, so it never
+   * relies on colour alone: up days are full, degraded three quarters,
+   * outages a quarter and days without data a dot. Default 2.
    */
-  fill?: FillVariant;
-  /** Soft glow behind degraded and down days, so incidents stand out: `off`, `low` or `high`. Default `off`. */
-  bloom?: Bloom;
+  rows?: number;
+  /**
+   * Glyph cell height in CSS pixels. Default: the cells grow so the shown
+   * days fill the row, up to `maxCell`.
+   */
+  cell?: number;
+  /** Largest cell height when `cell` is unset, in CSS pixels. Default 16. */
+  maxCell?: number;
   /** Locale for dates in the tooltip. Default `"en-US"`. */
   locale?: string;
-  /** Gradient only: threshold matrix. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /** Cell size in CSS pixels. Default 2, so narrow bars still show a pattern. */
-  cell?: number;
 };
 
 const DEFAULT_COLORS = {
@@ -51,42 +52,40 @@ const DEFAULT_COLORS = {
   up: "green",
 } as const satisfies Record<UptimeStatus, AsciiColor>;
 
-/** Texture as well as colour tells the statuses apart. */
-const STATUS_FILLS = {
-  degraded: "hatched",
-  down: "solid",
-  none: "dotted",
-} as const satisfies Record<Exclude<UptimeStatus, "up">, FillVariant>;
+/** Height of each status in quarter cells: half blocks keep a gap between days. */
+const STATUS_QUARTERS = {
+  degraded: 3,
+  down: 1,
+  none: 0,
+  up: 4,
+} as const satisfies Record<UptimeStatus, number>;
 
-/** Paint for one day's bar (or the tooltip's swatch). */
-const statusStyle = ({
-  status,
-  color,
-  fill,
-  cell,
-  matrix,
-  bloom,
-}: {
-  status: UptimeStatus;
-  color: AsciiColor;
-  fill: FillVariant;
-  cell: number;
-  matrix: DitherMatrix;
-  bloom: Bloom;
-}): CSSProperties => ({
-  ...fillStyle(status === "up" ? fill : STATUS_FILLS[status], {
-    cell,
-    color,
-    edge: "bottom",
-    from: 1,
-    length: 10,
-    matrix,
-    to: 8 / 16,
-  }),
-  ...(status === "degraded" || status === "down"
-    ? bloomStyle(color, bloom)
-    : {}),
-});
+/**
+ * The glyphs of one day's column, top row first. The bar fills from the
+ * bottom in half-cell steps, using the left half of each cell so
+ * neighbouring days stay apart.
+ */
+const columnGlyphs = (status: UptimeStatus, rows: number): string[] => {
+  if (status === "none") {
+    return [...Array.from({ length: rows - 1 }, () => " "), "·"];
+  }
+  // Halves of the whole column to fill, from the bottom.
+  const halves = Math.max(
+    1,
+    Math.round((STATUS_QUARTERS[status] / 4) * rows * 2)
+  );
+  return Array.from({ length: rows }, (_, row) => {
+    const fromBottom = rows - 1 - row;
+    const filled = halves - fromBottom * 2;
+    if (filled >= 2) {
+      return "▌";
+    }
+    return filled === 1 ? "▖" : " ";
+  });
+};
+
+/** The swatch for a status in the tooltip: a column of the bar's glyphs. */
+const swatchGlyph = (status: UptimeStatus) => (status === "none" ? "·" : "▌");
 
 const STATUS_TEXT = {
   degraded: "Degraded",
@@ -129,13 +128,13 @@ const DayTooltip = ({
   tip,
   day,
   dates,
-  paint,
+  colors,
 }: {
   id: string;
   tip: Tip | null;
   day: UptimeDay | undefined;
   dates: Intl.DateTimeFormat;
-  paint: (status: UptimeStatus) => CSSProperties;
+  colors: Record<UptimeStatus, AsciiColor>;
 }) => {
   const status = day === undefined ? "none" : statusOf(day);
   return (
@@ -143,7 +142,7 @@ const DayTooltip = ({
       id={id}
       role="tooltip"
       data-glide={String(tip?.glide ?? false)}
-      className="bg-popover/95 text-popover-foreground border-border pointer-events-none absolute bottom-full left-0 z-10 mb-2 rounded-lg border px-3 py-2.5 text-xs shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm transition-[transform,opacity] duration-200 ease-(--ease-out) motion-reduce:transition-none data-[glide=false]:transition-[opacity]"
+      className="bg-popover/95 text-popover-foreground border-border pointer-events-none absolute bottom-full left-0 z-10 mb-2 rounded-md border px-3 py-2.5 font-mono text-xs shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm transition-[transform,opacity] duration-200 ease-(--ease-out) motion-reduce:transition-none data-[glide=false]:transition-[opacity]"
       style={{
         opacity: tip?.visible === true ? 1 : 0,
         transform: `translateX(${Math.round((tip?.left ?? 0) - TOOLTIP_WIDTH / 2)}px)`,
@@ -153,24 +152,25 @@ const DayTooltip = ({
     >
       {day === undefined ? null : (
         <>
-          <div className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
+          <div className="text-muted-foreground text-[10px] tracking-wide uppercase">
             {dates.format(new Date(`${day.date}T00:00:00Z`))}
           </div>
           <div className="mt-1.5 flex items-center gap-2">
             <span
               aria-hidden="true"
-              className="size-2.5 shrink-0"
-              style={paint(status)}
-            />
+              style={{ color: cssColor(colors[status]) }}
+            >
+              {swatchGlyph(status)}
+            </span>
             <span className="text-foreground">{STATUS_TEXT[status]}</span>
             {day.uptime === null ? null : (
-              <span className="text-muted-foreground ml-auto font-mono tabular-nums">
+              <span className="text-muted-foreground ml-auto tabular-nums">
                 {formatPercent(day.uptime)}
               </span>
             )}
           </div>
           {day.note ? (
-            <p className="text-muted-foreground mt-1.5 leading-snug text-pretty">
+            <p className="text-muted-foreground mt-1.5 font-sans leading-snug text-pretty">
               {day.note}
             </p>
           ) : null}
@@ -183,26 +183,49 @@ const DayTooltip = ({
 /** Days shown at each width: 30 by default, 60 from 28rem, 90 from 42rem. */
 const visibility = (fromEnd: number) => {
   if (fromEnd < 30) {
-    return "";
+    return "inline-block";
   }
-  return fromEnd < 60 ? "hidden @md:block" : "hidden @2xl:block";
+  return fromEnd < 60 ? "hidden @md:inline-block" : "hidden @2xl:inline-block";
 };
 
 /**
- * A status-page row: one dithered bar per day, coloured and dithered by
- * status, with the overall uptime. Hover, tap or arrow through the bars
- * for each day's details.
+ * Glyph sizing. With a fixed `cell` the bars are that tall. Otherwise the
+ * font grows until the days shown (`--uptime-days`, set per breakpoint)
+ * fill the row: one `ch` per day, so the font size is the row width over
+ * the day count and the font's advance. 0.6 em is an upper bound for
+ * monospace advances, so the row never overflows.
+ */
+const glyphStyle = (
+  cell: number | undefined,
+  maxCell: number
+): CSSProperties => {
+  const fontSize =
+    cell === undefined
+      ? `min(${maxCell / LINE_HEIGHT}px, calc(100cqw / var(--uptime-days) / 0.6))`
+      : `${cell / LINE_HEIGHT}px`;
+  return {
+    fontFamily: `var(--ascii-font, ${DEFAULT_FONT})`,
+    fontSize,
+    fontVariantLigatures: "none",
+    lineHeight: LINE_HEIGHT,
+  };
+};
+
+/**
+ * A status-page row drawn in glyphs: one column of half blocks per day,
+ * coloured by status and with a height per status, plus the overall
+ * uptime. Hover, tap or arrow through the days for each day's details.
  */
 export const UptimeBar = ({
   label,
   days,
   colors,
-  fill = "gradient",
-  bloom = "off",
+  rows = 2,
+  cell,
+  maxCell = 16,
   locale = "en-US",
-  matrix = "bayer4",
-  cell = 2,
   className,
+  style,
   ...props
 }: UptimeBarProps) => {
   const tooltipId = useId();
@@ -210,6 +233,7 @@ export const UptimeBar = ({
   const [tip, setTip] = useState<Tip | null>(null);
   const active = tip?.visible === true ? tip.index : null;
   const [focusIndex, setFocusIndex] = useState(days.length - 1);
+  const lines = Math.max(1, Math.round(rows));
 
   const palette = { ...DEFAULT_COLORS, ...colors };
   const dates = new Intl.DateTimeFormat(locale, {
@@ -243,7 +267,7 @@ export const UptimeBar = ({
     return parts.join(", ");
   };
 
-  /** Point the tooltip at a bar, kept inside the row. */
+  /** Point the tooltip at a day, kept inside the row. */
   const show = (index: number) => {
     const button = buttons.current[index];
     const row = button?.closest("ol");
@@ -292,6 +316,11 @@ export const UptimeBar = ({
   };
 
   const spans = [30, 60, 90].map((span) => Math.min(span, days.length));
+  const daysVars = {
+    "--uptime-days-lg": spans[2],
+    "--uptime-days-md": spans[1],
+    "--uptime-days-sm": Math.max(1, spans[0] ?? 1),
+  } satisfies Record<`--${string}`, number | undefined>;
 
   return (
     <div
@@ -299,13 +328,14 @@ export const UptimeBar = ({
         "@container relative flex w-full flex-col gap-3",
         className
       )}
+      style={{ ...daysVars, ...style }}
       {...props}
     >
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="text-foreground shrink-0 font-medium">{label}</span>
           <span
-            className="min-w-0 truncate text-xs"
+            className="min-w-0 truncate font-mono text-xs"
             style={{ color: cssColor(palette[current]) }}
           >
             {STATUS_TEXT[current]}
@@ -320,17 +350,15 @@ export const UptimeBar = ({
       <div className="relative">
         <ol
           aria-label={`${label}, daily uptime`}
-          className="relative flex h-8 gap-[3px]"
+          className="relative flex justify-between whitespace-pre [--uptime-days:var(--uptime-days-sm)] @md:[--uptime-days:var(--uptime-days-md)] @2xl:[--uptime-days:var(--uptime-days-lg)]"
+          style={glyphStyle(cell, maxCell)}
           onPointerLeave={hide}
         >
           {days.map((day, index) => {
             const status = statusOf(day);
             const fromEnd = days.length - 1 - index;
             return (
-              <li
-                key={day.date}
-                className={cn("h-full min-w-0 flex-1", visibility(fromEnd))}
-              >
+              <li key={day.date} className={visibility(fromEnd)}>
                 <button
                   ref={(node) => {
                     buttons.current[index] = node;
@@ -348,22 +376,28 @@ export const UptimeBar = ({
                   onClick={() => show(index)}
                   onKeyDown={(event) => moveFocus(event, index)}
                   className={cn(
-                    "focus-visible:outline-ring block size-full cursor-default transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none",
-                    active !== null && active !== index && "opacity-55"
+                    "focus-visible:outline-ring block w-[1ch] cursor-default text-left transition-opacity focus-visible:outline-1 focus-visible:outline-offset-1 motion-reduce:transition-none",
+                    active !== null && active !== index && "opacity-50"
                   )}
                   style={{
-                    backgroundColor: cssColor(palette[status]),
+                    color: cssColor(palette[status]),
                     transitionDuration: `${MOTION.fast}ms`,
-                    ...statusStyle({
-                      bloom,
-                      cell,
-                      color: palette[status],
-                      fill,
-                      matrix,
-                      status,
-                    }),
                   }}
-                />
+                >
+                  {columnGlyphs(status, lines).map((glyph, row) => (
+                    // oxlint-disable-next-line react/no-array-index-key -- a column's rows are positional.
+                    <span
+                      key={row}
+                      aria-hidden="true"
+                      className="block"
+                      // Block glyphs stop a hair short of the line box; overlap
+                      // the rows so a bar has no seam at any zoom.
+                      style={row > 0 ? { marginTop: "-0.05em" } : undefined}
+                    >
+                      {glyph}
+                    </span>
+                  ))}
+                </button>
               </li>
             );
           })}
@@ -373,16 +407,7 @@ export const UptimeBar = ({
           tip={tip}
           day={tip === null ? undefined : days[tip.index]}
           dates={dates}
-          paint={(status) =>
-            statusStyle({
-              bloom: "off",
-              cell,
-              color: palette[status],
-              fill,
-              matrix,
-              status,
-            })
-          }
+          colors={palette}
         />
       </div>
       <div
@@ -394,7 +419,12 @@ export const UptimeBar = ({
           {spans[1]} days ago
         </span>
         <span className="hidden @2xl:inline">{spans[2]} days ago</span>
-        <span className="bg-border h-px flex-1" />
+        <span
+          aria-hidden
+          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap opacity-60"
+        >
+          {"·".repeat(160)}
+        </span>
         <span>Today</span>
       </div>
     </div>

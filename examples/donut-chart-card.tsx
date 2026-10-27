@@ -4,7 +4,7 @@ const STORAGE = [
   { color: "blue", label: "Images", value: 412 },
   { color: "purple", label: "Video", value: 268 },
   { color: "green", label: "Backups", value: 155 },
-  { color: "grey", fill: "dotted", label: "Free", value: 165 },
+  { color: "grey", label: "Free", value: 165 },
 ] as const;
 
 export default function DonutChartCard() {
@@ -22,7 +22,8 @@ export default function DonutChartCard() {
         unit=" GB"
         size={164}
         thickness={0.3}
-        fill="hatched"
+        glyphs="quadrants"
+        cell={10}
         className="mt-5 justify-start gap-x-6"
       />
     </div>

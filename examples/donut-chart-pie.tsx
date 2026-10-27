@@ -24,7 +24,6 @@ export default function DonutChartPie() {
         label="Sessions this month"
         mode="pie"
         colors={["blue", "orange", "pink", "purple", "grey"]}
-        bloom="high"
         size={248}
         gap={2}
       />

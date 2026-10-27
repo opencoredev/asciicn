@@ -4,6 +4,15 @@ import { EDGE_REGIONS } from "@/examples/dot-map-data";
 
 const EUROPE: DotMapBounds = { east: 32, north: 66, south: 34, west: -14 };
 
+// Land inside this box is drawn in the region's colour.
+const PRIMARY = [
+  {
+    bounds: { east: 17, north: 55, south: 45.8, west: 5.9 },
+    color: "purple",
+    label: "Primary data region, central Europe",
+  },
+] as const;
+
 const LATENCY = [
   { ms: 8, region: "fra1" },
   { ms: 11, region: "lhr1" },
@@ -21,9 +30,10 @@ export default function DotMapRegions() {
       <DotMap
         markers={EDGE_REGIONS}
         bounds={EUROPE}
-        columns={92}
+        regions={PRIMARY}
+        cell={9}
         accent="blue"
-        halo={4}
+        halo={1.5}
         title="Edge regions in Europe"
       />
       <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono text-xs">

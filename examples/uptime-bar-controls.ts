@@ -1,14 +1,7 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, slider } from "@/lib/preview-controls";
 
 // Knobs for the uptime bar's main demo, shared by the page and the demo.
-
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Up days",
-  options: FILL_VARIANTS,
-});
 
 export const up = color({
   default: "green",
@@ -17,22 +10,25 @@ export const up = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Incident bloom",
-  options: BLOOMS,
-});
-
-export const cell = slider({
+export const rows = slider({
   default: 2,
-  id: "cell",
-  label: "Cell",
+  id: "rows",
+  label: "Rows",
   max: 4,
   min: 1,
+  step: 1,
+  unit: "",
+});
+
+export const maxCell = slider({
+  default: 16,
+  id: "max-cell",
+  label: "Max cell",
+  max: 24,
+  min: 10,
   step: 1,
   unit: "px",
 });
 
 /** Display order of the tray. */
-export const controls = [fill, up, bloom, cell];
+export const controls = [up, rows, maxCell];

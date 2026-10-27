@@ -1,12 +1,13 @@
 ---
 title: "Gauge"
-description: "A radial gauge of dithered blocks for a single reading, such as load, usage or a score, with a solid block at the value."
+description: "A gauge for one reading, drawn as a Braille arc with ticks, threshold zones and a needle option, or as a single row of eighth blocks."
 ---
 
 import GaugeDemo from "@/examples/gauge-demo";
 import { controls as gaugeControls } from "@/examples/gauge-controls";
 import GaugeDial from "@/examples/gauge-dial";
 import GaugeRing from "@/examples/gauge-ring";
+import GaugeLinear from "@/examples/gauge-linear";
 
 <ComponentPreview
   src="examples/gauge-demo.tsx"
@@ -26,17 +27,33 @@ import GaugeRing from "@/examples/gauge-ring";
 import { Gauge } from "@/components/asciicn/gauge";
 
 export function CpuGauge({ load }: { load: number }) {
-  return <Gauge value={load} label="CPU load" unit="%" />;
+  return (
+    <Gauge
+      value={load}
+      label="CPU load"
+      unit="%"
+      thresholds={[
+        { value: 70, color: "orange", label: "High" },
+        { value: 90, color: "red", label: "Critical" },
+      ]}
+    />
+  );
 }
 ```
 
-The arc is split into blocks over a faint track in the same colour. Blocks up to the value fill in, and the block at the value is solid and steps out by one cell, so the arc points at the reading like a needle. With `fill="gradient"` each block behind it is a step lighter; `dotted`, `hatched` and `solid` fill evenly.
+The arc is drawn in Braille dots. The track is every other dot in `trackColor`, so it reads as a texture, and the value fills it solid up to the reading. Tick marks are one-dot lines outside the arc, spaced evenly from `min` to `max`. With `indicator="needle"` the arc stays thin and a two-dot line points at the reading instead.
+
+`thresholds` recolour the gauge once the reading passes them, and each one's band shows on the track ahead of time. A threshold's `label` is read out next to the value, so a zone never depends on colour alone.
+
+`variant="linear"` draws one row of eighth blocks (`▏▎▍▌▋▊▉█`) over a shaded track, with tick marks and threshold markers underneath. It fills its container up to `size`, in whole cells.
+
+When `value` changes, the gauge glides to the new reading. On mount it sweeps up from `min`.
 
 ## Examples
 
-### Dials on a host card
+### Needle dials on a host card
 
-`variant="dial"` sweeps 270°, like a speedometer. A gauge over 90% switches to `color="red"` with `fill="hatched"` and a low bloom, so it reads as a warning without relying on colour alone.
+`variant="dial"` sweeps 270°, like a speedometer. These three use `indicator="needle"` and share two thresholds, so Disk reads "Full" in red.
 
 <ComponentPreview src="examples/gauge-dial.tsx">
   <GaugeDial />
@@ -44,10 +61,18 @@ The arc is split into blocks over a faint track in the same colour. Blocks up to
 
 ### Ring beside a summary
 
-`variant="ring"` is a full circle starting at the top, with the reading in the middle, here in `green` with `fill="dotted"`. It hides the min and max labels, which would sit on top of each other.
+`variant="ring"` is a full circle starting at the top, with the reading in the middle and twelve ticks like a clock face. It hides the min and max labels, which would sit on top of each other.
 
 <ComponentPreview src="examples/gauge-ring.tsx">
   <GaugeRing />
+</ComponentPreview>
+
+### Usage quotas
+
+Linear gauges for plan limits. Each threshold is a share of its own `max`.
+
+<ComponentPreview src="examples/gauge-linear.tsx">
+  <GaugeLinear />
 </ComponentPreview>
 
 ## Props
@@ -67,106 +92,94 @@ The arc is split into blocks over a faint track in the same colour. Blocks up to
         "What is measured. Shown under the value and used as the accessible name.",
       required: true,
     },
-    {
-      name: "min",
-      type: "number",
-      default: "0",
-      description: "The start of the scale.",
-    },
+    { name: "min", type: "number", default: "0", description: "The low end." },
     {
       name: "max",
       type: "number",
       default: "100",
-      description: "The end of the scale.",
+      description: "The high end.",
     },
     {
       name: "variant",
-      type: '"half" | "dial" | "ring"',
+      type: '"half" | "dial" | "ring" | "linear"',
       default: '"half"',
-      description: "A 180° arc, a 270° dial, or a full ring.",
+      description:
+        "A 180° arc, a 270° dial, a full ring, or one row of blocks.",
+    },
+    {
+      name: "indicator",
+      type: '"arc" | "needle"',
+      default: '"arc"',
+      description:
+        "Arc variants: fill the arc up to the value, or point a needle at it.",
     },
     {
       name: "size",
       type: "number",
       default: "220",
       description:
-        "Width in CSS pixels. Text and ring thickness scale with it.",
+        "Width in CSS pixels, rounded to whole cells. linear fills its container up to this.",
     },
     {
-      name: "segments",
+      name: "ticks",
       type: "number",
-      default: "28, 36 or 48",
-      description:
-        "How many blocks the arc is split into. The default depends on the variant.",
+      default: "5",
+      description: "Tick marks, ends included. 0 hides them.",
     },
     {
       name: "unit",
       type: "string",
       default: '""',
-      description: 'Shown after the value, such as "%".',
+      description: 'Shown after the value, such as "%" or " ms".',
     },
     {
       name: "format",
       type: "Intl.NumberFormatOptions",
       default: "{ maximumFractionDigits: 1 }",
-      description: "How the value, min and max are formatted.",
+      description: "How the value and range are written.",
     },
     {
       name: "showRange",
       type: "boolean",
-      default: "true, false for ring",
-      description: "Show min and max under the ends of the arc.",
+      default: "true, except ring",
+      description: "Show min and max at the ends.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
+      description: "Colour of the value below the first threshold.",
+    },
+    {
+      name: "thresholds",
+      type: "GaugeThreshold[]",
+      default: "[]",
       description:
-        "Colour of the filled blocks, a palette name or any CSS colour.",
+        "{ value: number; color: AsciiColor; label?: string }. From value up, the gauge is drawn in color.",
     },
     {
       name: "trackColor",
       type: "AsciiColor",
-      default: "color",
-      description: "Colour of the empty track, drawn faint.",
-    },
-    {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the filled blocks. The block at the value is always solid.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow in the fill's colour behind the filled blocks.",
+      default: '"grey"',
+      description: "Colour of the track and ticks, drawn faint.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Fill the blocks in one by one on mount.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold pattern of the gradient fill.",
+      description: "Sweep up on mount and glide when the value changes.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description:
-        "Size of one dither cell in CSS pixels. The ring thickness snaps to whole cells.",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- The gauge has `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax` and an `aria-valuetext` that includes the unit. The drawing is hidden from assistive technology.
-- Blocks fade in one after another when the gauge appears or the value rises. With reduced motion turned on they appear at once.
-- It is plain SVG with one pattern per density, so it costs nothing after it renders. Bloom is a blurred copy of the filled blocks.
+- The gauge has `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax` and an `aria-valuetext` that includes the unit and the threshold label, such as "93%, Full".
+- Under `prefers-reduced-motion` the gauge draws at the value with no sweep or glide.
+- Every glyph is DOM text in `--ascii-font`, so the gauge renders on the server, stays sharp at any zoom and follows the theme through CSS variables.

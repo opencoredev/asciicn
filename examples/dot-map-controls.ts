@@ -3,6 +3,13 @@ import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the dot map's main demo, shared by the page and the demo.
 
+export const glyphs = segmented({
+  default: "braille",
+  id: "glyphs",
+  label: "Glyphs",
+  options: ["braille", "halftone"],
+});
+
 export const accent = color({
   default: "ink",
   id: "accent",
@@ -17,27 +24,21 @@ export const land = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const shape = segmented({
-  default: "square",
-  id: "shape",
-  label: "Dots",
-  options: ["square", "round"],
-});
-
-export const columns = slider({
-  default: 160,
-  id: "columns",
-  label: "Columns",
-  max: 240,
-  min: 80,
-  step: 10,
+export const cell = slider({
+  default: 10,
+  id: "cell",
+  label: "Cell",
+  max: 16,
+  min: 6,
+  step: 1,
+  unit: "px",
 });
 
 export const halo = slider({
-  default: 14,
+  default: 8,
   id: "halo",
   label: "Halo",
-  max: 30,
+  max: 20,
   min: 0,
   step: 2,
   unit: "°",
@@ -52,4 +53,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [accent, land, shape, columns, halo, arcs, animate];
+export const controls = [glyphs, accent, land, cell, halo, arcs, animate];

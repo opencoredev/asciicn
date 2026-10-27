@@ -35,9 +35,11 @@ const SERVICES = [
 
 export default function UptimeBarStatusPage() {
   return (
-    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border [--ascii-paper:var(--background)]">
+    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border">
       <div className="flex items-center gap-3 border-b px-5 py-4">
-        <span aria-hidden className="bg-dither-green size-2 rounded-full" />
+        <span aria-hidden className="text-ascii-green font-mono">
+          ●
+        </span>
         <span className="font-medium">All systems operational</span>
         <span className="text-muted-foreground ml-auto shrink-0 text-xs">
           Updated 2 min ago

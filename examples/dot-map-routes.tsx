@@ -13,7 +13,7 @@ export default function DotMapRoutes() {
         color="purple"
         ocean={0.12}
         halo={0}
-        columns={200}
+        cell={8}
         animate={false}
         title="Shipping routes"
         className="max-w-2xl"

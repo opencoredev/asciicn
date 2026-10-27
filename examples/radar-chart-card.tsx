@@ -4,7 +4,7 @@ const AXES = ["Speed", "Access", "Practices", "SEO", "Uptime"] as const;
 
 export default function RadarChartCard() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-col gap-2 rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border flex w-full max-w-md flex-col gap-2 rounded-2xl border p-5 sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-medium">Site health</span>
         <span className="text-muted-foreground font-mono text-xs">
@@ -21,7 +21,7 @@ export default function RadarChartCard() {
         ]}
         max={100}
         grid="circle"
-        fill="dotted"
+        cell={10}
         size={300}
         format={{ maximumFractionDigits: 0 }}
         className="mt-2"

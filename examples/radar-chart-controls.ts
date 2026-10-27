@@ -1,21 +1,7 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the radar chart's main demo, shared by the page and the demo.
-
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
-});
-
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
 
 export const grid = segmented({
   default: "polygon",
@@ -40,6 +26,12 @@ export const rings = slider({
   step: 1,
 });
 
+export const fill = toggle({
+  default: true,
+  id: "fill",
+  label: "Fill",
+});
+
 export const interactive = toggle({
   default: true,
   id: "interactive",
@@ -47,4 +39,4 @@ export const interactive = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [fill, bloom, grid, firstColor, rings, interactive];
+export const controls = [grid, firstColor, rings, fill, interactive];

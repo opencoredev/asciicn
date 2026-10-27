@@ -18,20 +18,18 @@ const DAYS = uptimeDays({
 });
 
 export default function UptimeBarDemo() {
-  const fill = usePreviewValue(knobs.fill);
   const up = usePreviewValue(knobs.up);
-  const bloom = usePreviewValue(knobs.bloom);
-  const cell = usePreviewValue(knobs.cell);
+  const rows = usePreviewValue(knobs.rows);
+  const maxCell = usePreviewValue(knobs.maxCell);
 
   return (
     <div className="w-full max-w-2xl pt-16">
       <UptimeBar
         label="API"
         days={DAYS}
-        fill={fill}
         colors={{ up }}
-        bloom={bloom}
-        cell={cell}
+        rows={rows}
+        maxCell={maxCell}
       />
     </div>
   );

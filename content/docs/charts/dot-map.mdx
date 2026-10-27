@@ -1,6 +1,6 @@
 ---
 title: "Dot map"
-description: "A flat world map in dithered dots with pulsing markers and dotted arcs, for customers-worldwide sections."
+description: "A flat world map in Braille or halftone dots, with markers that pulse rings, dotted arcs with light running along them, and highlighted regions."
 ---
 
 import DotMapDemo from "@/examples/dot-map-demo";
@@ -43,15 +43,17 @@ export function Offices() {
 }
 ```
 
-The map is an SVG that scales to its container's width and keeps its aspect ratio. Land comes from a 3.8 KB mask of Natural Earth's public-domain land polygons that installs with it as `world-land`, so nothing is fetched at runtime.
+The map is text. Land is rasterised onto the 2 by 4 dot grid of Braille glyphs, one dot per sample of a 3.8 KB land mask from Natural Earth's public-domain polygons that installs with it as `world-land`, so nothing is fetched at runtime. `glyphs="halftone"` draws one dot glyph per cell instead (`·`, `•` or `●`, by how much land the cell covers), which reads well at small sizes.
 
-Each marker pulses and casts a dithered halo on the land around it: dense at the marker, thinning through the Bayer levels. Arcs are dotted curves with a stretch of light running along them.
+The map fills its container's width in whole cells and keeps the projection's proportions; `cell` sets the glyph size and so the detail. Markers are small blocks of dots with a ring of dots that travels outward and thins as it goes. Arcs are dotted curves drawn on the same dot grid, with a short solid run of light moving along each. `halo` tints the land around each marker, and `regions` draw the land inside a box in a colour of your choice.
+
+Hover a marker, or Tab to it, for a tooltip with its `label` and `detail`.
 
 ## Examples
 
 ### Customers worldwide
 
-Many small markers, round dots and a tight halo, between a headline and a row of stats.
+Many markers on the halftone map with labels off and a small halo, between a headline and a row of stats.
 
 <ComponentPreview src="examples/dot-map-customers.tsx" size="lg">
   <DotMapCustomers />
@@ -59,7 +61,7 @@ Many small markers, round dots and a tight halo, between a headline and a row of
 
 ### Region map in a card
 
-`bounds` crops the map to a region. Here, Europe, with labelled edge regions in a dashboard card.
+`bounds` crops the map to Europe. A region highlights the primary data region in purple, and each edge region has a latency `detail` in its tooltip.
 
 <ComponentPreview src="examples/dot-map-regions.tsx">
   <DotMapRegions />
@@ -67,7 +69,7 @@ Many small markers, round dots and a tight halo, between a headline and a row of
 
 ### Routes, held still
 
-Arcs only, with faint sea dots and `animate={false}`.
+Arcs only, with a faint scatter of sea dots, 8px cells and `animate={false}`.
 
 <ComponentPreview src="examples/dot-map-routes.tsx" size="lg">
   <DotMapRoutes />
@@ -79,10 +81,10 @@ Arcs only, with faint sea dots and `animate={false}`.
   rows={[
     {
       name: "markers",
-      type: "{ at: [lat, lon]; label?: string; color?: AsciiColor }[]",
+      type: "{ at: [lat, lon]; label?: string; detail?: string; color?: AsciiColor }[]",
       default: "[]",
       description:
-        "Locations to mark. Labels show beside the marker and are read by screen readers.",
+        "Locations to mark. Labels show beside the marker; label and detail show in the tooltip.",
     },
     {
       name: "arcs",
@@ -91,10 +93,24 @@ Arcs only, with faint sea dots and `animate={false}`.
       description: "Dotted curves between places.",
     },
     {
+      name: "regions",
+      type: "{ bounds: DotMapBounds; color: AsciiColor; label?: string }[]",
+      default: "[]",
+      description:
+        "Land inside each box is drawn in its colour. Labels are read by screen readers.",
+    },
+    {
+      name: "glyphs",
+      type: '"braille" | "halftone"',
+      default: '"braille"',
+      description:
+        "Land as fine Braille dots, or one halftone dot glyph per cell.",
+    },
+    {
       name: "color",
       type: "AsciiColor",
       default: '"grey"',
-      description: "Colour of the land dots.",
+      description: "Colour of the land.",
     },
     {
       name: "accent",
@@ -104,29 +120,23 @@ Arcs only, with faint sea dots and `animate={false}`.
         "Colour of markers, halos and arcs that don't set their own.",
     },
     {
-      name: "columns",
-      type: "number",
-      default: "160",
-      description: "Dots across the full width.",
-    },
-    {
-      name: "shape",
-      type: '"square" | "round"',
-      default: '"square"',
-      description: "Dot shape.",
-    },
-    {
       name: "halo",
       type: "number",
-      default: "14",
+      default: "8",
       description:
-        "Radius in degrees of each marker's dithered glow on the land. 0 turns it off.",
+        "Radius in degrees of land tinted around each marker. 0 turns it off.",
     },
     {
       name: "ocean",
       type: "number",
       default: "0",
-      description: "Share of sea cells with a faint dot, 0 to 1.",
+      description: "Share of sea dots drawn faintly, 0 to 1.",
+    },
+    {
+      name: "labels",
+      type: "boolean",
+      default: "true",
+      description: "Show marker labels beside the markers.",
     },
     {
       name: "bounds",
@@ -138,20 +148,29 @@ Arcs only, with faint sea dots and `animate={false}`.
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Pulse the markers and run light along the arcs.",
+      description:
+        "Pulse rings out of the markers and run light along the arcs.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description:
+        "Glyph cell height in CSS pixels. Smaller cells draw more detail.",
     },
     {
       name: "title",
       type: "string",
       default: '"World map"',
-      description: "Accessible name. Marker labels are appended to it.",
+      description:
+        "Accessible name. Marker and region labels are appended to it.",
     },
   ]}
 />
 
 ## Notes
 
-- The map is one image to assistive technology, named by `title` plus the marker labels.
-- Pulses and running arcs are CSS animations. With reduced motion they are hidden and the map is still.
-- Pass `markers` and `arcs` as constants or memoised arrays: the dot paths are rebuilt when they change. Land cells are cached per grid size.
+- The map is a labelled group named by `title` plus the marker and region labels. Every marker is a focusable button named by its label and detail.
+- Motion runs at 20 frames a second, pauses when the map is offscreen or the tab is hidden, and stops under `prefers-reduced-motion`, leaving the rings at rest.
+- The land layer is built once per size and only redrawn when the map's inputs change; only the markers and arcs redraw while animating. Pass `markers`, `arcs` and `regions` as constants or memoised arrays so the land isn't rebuilt each render.
 - Land data: [Natural Earth](https://www.naturalearthdata.com/) 1:50m land, public domain, rasterised to 0.75° cells.

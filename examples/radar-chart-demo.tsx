@@ -15,7 +15,6 @@ const AXES = [
 
 export default function RadarChartDemo() {
   const fill = usePreviewValue(knobs.fill);
-  const bloom = usePreviewValue(knobs.bloom);
   const grid = usePreviewValue(knobs.grid);
   const first = usePreviewValue(knobs.firstColor);
   const rings = usePreviewValue(knobs.rings);
@@ -34,7 +33,6 @@ export default function RadarChartDemo() {
         ]}
         max={100}
         fill={fill}
-        bloom={bloom}
         grid={grid}
         rings={rings}
         interactive={interactive}

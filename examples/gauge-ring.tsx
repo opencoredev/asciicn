@@ -2,15 +2,15 @@ import { Gauge } from "@/components/asciicn/gauge";
 
 export default function GaugeRing() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-wrap items-center gap-6 rounded-2xl border p-5 [--ascii-paper:var(--background)]">
+    <div className="bg-background border-border flex w-full max-w-md flex-wrap items-center gap-6 rounded-2xl border p-5">
       <Gauge
         variant="ring"
         value={63}
         label="budget left"
         unit="%"
-        size={148}
+        size={156}
+        ticks={12}
         color="green"
-        fill="dotted"
       />
       <div className="flex min-w-40 flex-1 flex-col gap-1.5">
         <span className="font-medium">Checkout API error budget</span>

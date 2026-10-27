@@ -21,9 +21,9 @@ export default function DotMapCustomers() {
       <DotMap
         markers={CUSTOMERS}
         accent="green"
-        shape="round"
-        columns={140}
-        halo={10}
+        glyphs="halftone"
+        halo={6}
+        labels={false}
         title="Customer cities"
         className="max-w-2xl"
       />

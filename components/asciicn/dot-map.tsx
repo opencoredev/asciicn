@@ -1,11 +1,22 @@
 "use client";
 
-import { useId, useMemo } from "react";
-import type { ComponentProps, CSSProperties } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { ComponentProps, PointerEvent } from "react";
 
+import {
+  GlyphRows,
+  PLOT_SUBCELLS,
+  createRaster,
+  plotDot,
+  plotLine,
+  putGlyph,
+  rasterCells,
+  useCellBox,
+} from "@/components/asciicn/glyph-plot";
+import type { DotRaster, GlyphCells } from "@/components/asciicn/glyph-plot";
 import { landCoverage } from "@/components/asciicn/world-land";
 import type { LatLon } from "@/components/asciicn/world-land";
-import { cssColor, thresholdAt } from "@/lib/ascii";
+import { cssColor, MOTION, useFrameLoop } from "@/lib/ascii";
 import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
@@ -15,13 +26,15 @@ export type { LatLon } from "@/components/asciicn/world-land";
 export interface DotMapMarker {
   /** Where it is: `[lat, lon]` in degrees. */
   at: LatLon;
-  /** Short text shown beside the marker and read by screen readers. */
+  /** Short text shown beside the marker, in the tooltip and to screen readers. */
   label?: string;
-  /** Colour of the marker and its halo. Default: the map's `accent`. */
+  /** A line of detail for the tooltip, such as `"12 ms"`. */
+  detail?: string;
+  /** Colour of the marker, its rings and its halo. Default: the map's `accent`. */
   color?: AsciiColor;
 }
 
-/** A dotted arc between two places, drawn as a lifted curve. */
+/** A dotted arc between two places, lifted into a curve. */
 export interface DotMapArc {
   from: LatLon;
   to: LatLon;
@@ -37,27 +50,39 @@ export interface DotMapBounds {
   east: number;
 }
 
-export type DotMapProps = Omit<ComponentProps<"div">, "children"> & {
+/** Land inside `bounds` drawn in `color`, such as a sales region. */
+export interface DotMapRegion {
+  bounds: DotMapBounds;
+  color: AsciiColor;
+  /** Read by screen readers with the map's name. */
+  label?: string;
+}
+
+export type DotMapProps = Omit<ComponentProps<"div">, "children" | "title"> & {
   /** Locations to mark. */
   markers?: readonly DotMapMarker[];
   /** Connections between locations. */
   arcs?: readonly DotMapArc[];
-  /** Colour of the land dots. Default `"grey"`. */
+  /** Areas of land to highlight. */
+  regions?: readonly DotMapRegion[];
+  /** `braille`: land as a fine field of 2x4 dots. `halftone`: one dot glyph per cell, sized by how much land it covers. Default `braille`. */
+  glyphs?: "braille" | "halftone";
+  /** Colour of the land. Default `"grey"`. */
   color?: AsciiColor;
   /** Colour of markers, halos and arcs unless they set their own. Default `"ink"`. */
   accent?: AsciiColor;
-  /** Dots across the full width. Default 160. */
-  columns?: number;
-  /** Dot shape. Default `"square"`. */
-  shape?: "square" | "round";
-  /** Radius in degrees of the dithered glow each marker casts on the land around it. 0 turns it off. Default 14. */
+  /** Radius in degrees of land tinted around each marker. 0 turns it off. Default 8. */
   halo?: number;
-  /** Share of sea cells with a faint dot, 0 to 1. Default 0. */
+  /** Share of sea dots drawn faintly, 0 to 1. Default 0. */
   ocean?: number;
+  /** Show marker labels beside the markers. Default true. */
+  labels?: boolean;
   /** The region to draw. Default the inhabited world: 78°N to 56°S, all longitudes. */
   bounds?: DotMapBounds;
-  /** Pulse the markers and run light along the arcs. Static under reduced motion. Default true. */
+  /** Pulse rings out of the markers and run light along the arcs. Still under reduced motion. Default true. */
   animate?: boolean;
+  /** Glyph cell height in CSS pixels. Default `--ascii-cell`, or 12. */
+  cell?: number;
   /** Accessible name. Marker labels are appended. Default `"World map"`. */
   title?: string;
 };
@@ -65,375 +90,536 @@ export type DotMapProps = Omit<ComponentProps<"div">, "children"> & {
 const WORLD: DotMapBounds = { east: 180, north: 78, south: -56, west: -180 };
 const NO_MARKERS: readonly DotMapMarker[] = [];
 const NO_ARCS: readonly DotMapArc[] = [];
+const NO_REGIONS: readonly DotMapRegion[] = [];
 
+// Owners on the land layer.
+const LAND = 1;
+const SEA = 2;
+const REGION = 3;
+/** Halo of marker `i` is `HALO + i`. */
+const HALO = 40;
+const MAX_REGIONS = HALO - REGION;
+const MAX_MARKERS = 255 - HALO;
+
+// Owners on the overlay layer: marker `i` is `1 + i`, arc `j` is `ARC + j`.
+const ARC = 128;
+
+/** Seconds for a ring to travel out and fade. */
+const PULSE_SECONDS = 2.4;
+/** Seconds for light to run the length of an arc. */
+const RUN_SECONDS = 2.8;
+const HALFTONE = [" ", "·", "•", "●"] as const;
+
+/** Map geometry: whole cells, and degrees per dot. */
 interface Grid {
   columns: number;
   rows: number;
-  /** Degrees per cell. */
-  step: number;
   bounds: DotMapBounds;
+  /** Degrees of longitude and latitude per dot. */
+  lonStep: number;
+  latStep: number;
 }
 
-const makeGrid = (columns: number, bounds: DotMapBounds): Grid => {
-  const step = (bounds.east - bounds.west) / columns;
+const makeGrid = ({
+  width,
+  cell,
+  aspect,
+  bounds,
+}: {
+  width: number;
+  cell: number;
+  aspect: number;
+  bounds: DotMapBounds;
+}): Grid => {
+  const [gx, gy] = PLOT_SUBCELLS.braille;
+  const cellWidth = cell * aspect;
+  const columns = Math.max(16, Math.floor(width / cellWidth));
+  const lonStep = (bounds.east - bounds.west) / (columns * gx);
+  // Dots are almost square; keep the map's proportions on screen.
+  const latStep = lonStep * (cell / gy / (cellWidth / gx));
+  const rows = Math.max(
+    2,
+    Math.round((bounds.north - bounds.south) / latStep / gy)
+  );
   return {
     bounds,
     columns,
-    rows: Math.max(1, Math.round((bounds.north - bounds.south) / step)),
-    step,
+    latStep: (bounds.north - bounds.south) / (rows * gy),
+    lonStep,
+    rows,
   };
 };
 
-const project = (grid: Grid, [lat, lon]: LatLon): readonly [number, number] => [
-  (lon - grid.bounds.west) / grid.step,
-  (grid.bounds.north - lat) / grid.step,
+/** A place in dot units. */
+const project = (grid: Grid, [lat, lon]: LatLon): [number, number] => [
+  (lon - grid.bounds.west) / grid.lonStep - 0.5,
+  (grid.bounds.north - lat) / grid.latStep - 0.5,
 ];
 
-/** One SVG path of horizontal runs, from a per-cell predicate. */
-const runsPath = (grid: Grid, inked: (x: number, y: number) => boolean) => {
-  let path = "";
-  for (let y = 0; y < grid.rows; y += 1) {
-    let start = -1;
-    for (let x = 0; x <= grid.columns; x += 1) {
-      const on = x < grid.columns && inked(x, y);
-      if (on && start < 0) {
-        start = x;
-      } else if (!on && start >= 0) {
-        path += `M${start} ${y}h${x - start}v1h${start - x}z`;
-        start = -1;
-      }
-    }
-  }
-  return path;
+/** A cheap, stable hash of a dot to [0, 1), for the sea scatter. */
+const hash = (x: number, y: number) => {
+  const value = Math.sin(x * 127.1 + y * 311.7) * 43_758.545;
+  return value - Math.floor(value);
 };
 
-const landCache = new Map<string, Uint8Array>();
+const within = (bounds: DotMapBounds, lat: number, lon: number) =>
+  lat <= bounds.north &&
+  lat >= bounds.south &&
+  lon >= bounds.west &&
+  lon <= bounds.east;
 
-/** Land cells of a grid, 1 for land. Cached per grid. */
-const landCells = (grid: Grid) => {
-  const { bounds, columns, rows, step } = grid;
-  const key = `${columns}:${bounds.north}:${bounds.south}:${bounds.west}:${bounds.east}`;
-  const cached = landCache.get(key);
-  if (cached) {
-    return cached;
-  }
-  const cells = new Uint8Array(columns * rows);
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < columns; x += 1) {
-      const lat = bounds.north - (y + 0.5) * step;
-      const lon = bounds.west + (x + 0.5) * step;
-      cells[y * columns + x] = landCoverage(lat, lon) >= 0.5 ? 1 : 0;
-    }
-  }
-  landCache.set(key, cells);
-  return cells;
+/** Great-circle-ish distance in degrees, good enough for halos. */
+const degreesApart = ([lat1, lon1]: LatLon, lat2: number, lon2: number) => {
+  const dLon =
+    (((lon2 - lon1 + 540) % 360) - 180) * Math.cos((lat1 * Math.PI) / 180);
+  return Math.hypot(lat2 - lat1, dLon);
 };
 
-interface Layers {
-  land: string;
-  ocean: string;
-  halos: readonly { color: AsciiColor; path: string }[];
-}
-
-interface LayerInput {
-  grid: Grid;
-  markers: readonly DotMapMarker[];
-  accent: AsciiColor;
-  halo: number;
-  ocean: number;
-}
-
-/** Index of the marker whose halo covers a cell most strongly, or -1. */
-const haloOwner = (
-  centres: readonly (readonly [number, number])[],
-  radius: number,
-  x: number,
-  y: number
-) => {
-  let owner = -1;
-  let best = 0;
-  for (const [index, [cx, cy]] of centres.entries()) {
-    const tone = 1 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / radius;
-    if (tone > best) {
-      best = tone;
-      owner = index;
-    }
-  }
-  // Dense at the marker, thinning out through the Bayer levels.
-  return owner >= 0 && Math.sqrt(best) > thresholdAt("bayer4", x, y)
-    ? owner
-    : -1;
-};
-
-const buildLayers = ({
+/** The land layer: who owns each dot. Recomputed only when the map changes. */
+const drawLand = ({
   grid,
+  regions,
   markers,
-  accent,
   halo,
   ocean,
-}: LayerInput): Layers => {
-  const cells = landCells(grid);
-  const centres = markers.map((marker) => project(grid, marker.at));
-  const radius = halo / grid.step;
-  const owners = new Int16Array(cells.length).fill(-1);
-  if (radius > 0) {
-    for (let y = 0; y < grid.rows; y += 1) {
-      for (let x = 0; x < grid.columns; x += 1) {
-        if (cells[y * grid.columns + x] === 1) {
-          owners[y * grid.columns + x] = haloOwner(centres, radius, x, y);
+}: {
+  grid: Grid;
+  regions: readonly DotMapRegion[];
+  markers: readonly DotMapMarker[];
+  halo: number;
+  ocean: number;
+}): DotRaster => {
+  const raster = createRaster({
+    columns: grid.columns,
+    glyphs: "braille",
+    rows: grid.rows,
+  });
+  const shownRegions = regions.slice(0, MAX_REGIONS);
+  const shownMarkers = markers.slice(0, MAX_MARKERS);
+  for (let y = 0; y < raster.height; y += 1) {
+    const lat = grid.bounds.north - (y + 0.5) * grid.latStep;
+    for (let x = 0; x < raster.width; x += 1) {
+      const lon = grid.bounds.west + (x + 0.5) * grid.lonStep;
+      const index = y * raster.width + x;
+      if (landCoverage(lat, lon) < 0.5) {
+        if (ocean > 0 && hash(x, y) < ocean) {
+          raster.owners[index] = SEA;
         }
+        continue;
+      }
+      let owner = LAND;
+      for (const [region, entry] of shownRegions.entries()) {
+        if (within(entry.bounds, lat, lon)) {
+          owner = REGION + region;
+        }
+      }
+      if (halo > 0) {
+        for (const [marker, entry] of shownMarkers.entries()) {
+          if (degreesApart(entry.at, lat, lon) < halo) {
+            owner = HALO + marker;
+          }
+        }
+      }
+      raster.owners[index] = owner;
+    }
+  }
+  return raster;
+};
+
+/** Land as halftone glyphs: one dot per cell, sized by its share of land. */
+const halftoneCells = (raster: DotRaster): GlyphCells => {
+  const braille = rasterCells(raster);
+  const [gx, gy] = PLOT_SUBCELLS.braille;
+  for (let row = 0; row < raster.rows; row += 1) {
+    for (let column = 0; column < raster.columns; column += 1) {
+      let filled = 0;
+      for (let dy = 0; dy < gy; dy += 1) {
+        for (let dx = 0; dx < gx; dx += 1) {
+          const owner =
+            raster.owners[(row * gy + dy) * raster.width + column * gx + dx] ??
+            0;
+          if (owner !== 0 && owner !== SEA) {
+            filled += 1;
+          }
+        }
+      }
+      const index = row * raster.columns + column;
+      const owner = braille.owners[index] ?? 0;
+      const level = Math.round((filled / (gx * gy)) * (HALFTONE.length - 1));
+      const glyph = owner === SEA ? "·" : (HALFTONE[level] ?? " ");
+      putGlyph(braille, column, row, glyph, glyph === " " ? 0 : owner);
+    }
+  }
+  return braille;
+};
+
+/**
+ * The fractional part, always in [0, 1). The frame clock can start a hair
+ * below zero, and `%` keeps the sign.
+ */
+const cycle = (value: number) => {
+  const fraction = value % 1;
+  return fraction < 0 ? fraction + 1 : fraction;
+};
+
+/** A point on the arc's curve at `t`, in dot units: lifted toward the pole side. */
+const arcPoint = (
+  from: [number, number],
+  to: [number, number],
+  t: number
+): [number, number] => {
+  const lift = Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.28;
+  const cx = (from[0] + to[0]) / 2;
+  const cy = (from[1] + to[1]) / 2 - lift;
+  const u = 1 - t;
+  return [
+    u * u * from[0] + 2 * u * t * cx + t * t * to[0],
+    u * u * from[1] + 2 * u * t * cy + t * t * to[1],
+  ];
+};
+
+/** Markers, their pulse rings and the arcs, drawn over the land each frame. */
+const drawOverlay = ({
+  grid,
+  markers,
+  arcs,
+  time,
+  moving,
+}: {
+  grid: Grid;
+  markers: readonly DotMapMarker[];
+  arcs: readonly DotMapArc[];
+  time: number;
+  moving: boolean;
+}) => {
+  const raster = createRaster({
+    columns: grid.columns,
+    glyphs: "braille",
+    rows: grid.rows,
+  });
+  for (const [index, arc] of arcs.slice(0, 255 - ARC).entries()) {
+    const from = project(grid, arc.from);
+    const to = project(grid, arc.to);
+    const length = Math.hypot(to[0] - from[0], to[1] - from[1]) * 1.15;
+    const steps = Math.max(8, Math.ceil(length));
+    // Every third dot along the curve, so the arc reads as a dotted line.
+    for (let step = 0; step <= steps; step += 3) {
+      const [x, y] = arcPoint(from, to, step / steps);
+      plotDot(raster, x, y, ARC + index);
+    }
+    if (moving) {
+      const head = cycle(time / RUN_SECONDS + index * 0.37) * 1.2;
+      let previous = arcPoint(from, to, Math.max(0, head - 0.12));
+      for (let part = 1; part <= 4; part += 1) {
+        const t = Math.min(1, Math.max(0, head - 0.12 + (part * 0.12) / 4));
+        const next = arcPoint(from, to, t);
+        plotLine(raster, previous, next, ARC + index);
+        previous = next;
       }
     }
   }
-  const at = (x: number, y: number) => y * grid.columns + x;
-  const colors = [...new Set(markers.map((marker) => marker.color ?? accent))];
-  return {
-    halos: colors.map((color) => ({
-      color,
-      path: runsPath(grid, (x, y) => {
-        const owner = owners[at(x, y)] ?? -1;
-        return owner >= 0 && (markers[owner]?.color ?? accent) === color;
-      }),
-    })),
-    land: runsPath(
-      grid,
-      (x, y) => cells[at(x, y)] === 1 && owners[at(x, y)] === -1
-    ),
-    ocean:
-      ocean > 0
-        ? runsPath(
-            grid,
-            (x, y) =>
-              cells[at(x, y)] === 0 && ocean > thresholdAt("blue-noise", x, y)
-          )
-        : "",
-  };
-};
-
-/** A lifted quadratic curve between two points, bowing towards the top. */
-const arcPath = (grid: Grid, arc: DotMapArc) => {
-  const [x1, y1] = project(grid, arc.from);
-  const [x2, y2] = project(grid, arc.to);
-  const lift = Math.hypot(x2 - x1, y2 - y1) * 0.32;
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2 - lift;
-  return `M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}`;
-};
-
-const STYLE = `
-@keyframes dcn-dot-map-pulse {
-  from { transform: scale(0.6); opacity: 0.9; }
-  to { transform: scale(3.4); opacity: 0; }
-}
-@keyframes dcn-dot-map-run {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
-.dcn-dot-map-pulse {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: dcn-dot-map-pulse 2.8s cubic-bezier(0.23, 1, 0.32, 1) infinite both;
-}
-.dcn-dot-map-run {
-  animation: dcn-dot-map-run 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .dcn-dot-map-pulse, .dcn-dot-map-run { animation: none; opacity: 0; }
-}
-`;
-
-const DotPattern = ({
-  id,
-  color,
-  shape,
-}: {
-  id: string;
-  color: AsciiColor;
-  shape: "square" | "round";
-}) => (
-  <pattern id={id} width={1} height={1} patternUnits="userSpaceOnUse">
-    {shape === "round" ? (
-      <circle cx={0.5} cy={0.5} r={0.32} fill={cssColor(color)} />
-    ) : (
-      <rect x={0.2} y={0.2} width={0.6} height={0.6} fill={cssColor(color)} />
-    )}
-  </pattern>
-);
-
-const Arcs = ({
-  grid,
-  arcs,
-  accent,
-  animate,
-}: {
-  grid: Grid;
-  arcs: readonly DotMapArc[];
-  accent: AsciiColor;
-  animate: boolean;
-}) =>
-  arcs.map((arc, index) => {
-    const d = arcPath(grid, arc);
-    const stroke = cssColor(arc.color ?? accent);
-    return (
-      <g key={index} fill="none" stroke={stroke} strokeLinecap="butt">
-        <path
-          d={d}
-          strokeWidth={0.45}
-          strokeDasharray="0.6 0.9"
-          opacity={0.7}
-        />
-        {animate ? (
-          <path
-            d={d}
-            pathLength={100}
-            strokeWidth={0.6}
-            strokeDasharray="14 86"
-            className="dcn-dot-map-run"
-            style={{ animationDelay: `${index * -0.7}s` }}
-          />
-        ) : null}
-      </g>
-    );
-  });
-
-const Markers = ({
-  grid,
-  markers,
-  accent,
-  animate,
-}: {
-  grid: Grid;
-  markers: readonly DotMapMarker[];
-  accent: AsciiColor;
-  animate: boolean;
-}) =>
-  markers.map((marker, index) => {
+  for (const [index, marker] of markers.slice(0, ARC - 1).entries()) {
     const [x, y] = project(grid, marker.at);
-    const fill = cssColor(marker.color ?? accent);
-    return (
-      <g key={index} fill={fill}>
-        {animate ? (
-          <rect
-            x={x - 0.8}
-            y={y - 0.8}
-            width={1.6}
-            height={1.6}
-            fill="none"
-            stroke={fill}
-            strokeWidth={0.25}
-            className="dcn-dot-map-pulse"
-            style={{ animationDelay: `${(index * 0.53) % 2.8}s` }}
-          />
-        ) : null}
-        <rect x={x - 0.8} y={y - 0.8} width={1.6} height={1.6} />
-      </g>
-    );
-  });
-
-const Labels = ({
-  grid,
-  markers,
-}: {
-  grid: Grid;
-  markers: readonly DotMapMarker[];
-}) =>
-  markers.map((marker, index) => {
-    if (!marker.label) {
-      return null;
+    const owner = 1 + index;
+    // The marker: a solid block of dots two wide and three tall.
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = 0; dx <= 1; dx += 1) {
+        plotDot(raster, x + dx - 0.5, y + dy, owner);
+      }
     }
-    const [x, y] = project(grid, marker.at);
-    const style: CSSProperties = {
-      left: `${(x / grid.columns) * 100}%`,
-      top: `${(y / grid.rows) * 100}%`,
-    };
-    return (
-      <span
-        key={index}
-        className="bg-background/80 text-foreground absolute translate-x-2.5 -translate-y-1/2 rounded-sm px-1.5 py-0.5 font-mono text-[10px] leading-none whitespace-nowrap backdrop-blur-sm sm:text-[11px]"
-        style={style}
-      >
-        {marker.label}
-      </span>
-    );
-  });
+    // A ring that travels out and thins as it goes, so it fades without opacity.
+    const phase = moving ? cycle(time / PULSE_SECONDS + index * 0.21) : 0.55;
+    const radius = 2.5 + phase * 7;
+    const steps = Math.ceil(Math.PI * 2 * radius);
+    const every = 1 + Math.min(2, Math.floor(phase * 3));
+    for (let step = 0; step < steps; step += every) {
+      const angle = (step / steps) * Math.PI * 2;
+      plotDot(
+        raster,
+        x + Math.cos(angle) * radius,
+        y + Math.sin(angle) * radius,
+        owner
+      );
+    }
+  }
+  return rasterCells(raster);
+};
+
+/** The accessible name: the title, then marker and region labels. */
+const mapName = (
+  title: string,
+  markers: readonly DotMapMarker[],
+  regions: readonly DotMapRegion[]
+) => {
+  const named = markers.flatMap((marker) => marker.label ?? []);
+  const regionNames = regions.flatMap((region) => region.label ?? []);
+  return [
+    title,
+    named.length > 0 ? `markers: ${named.join(", ")}` : "",
+    regionNames.length > 0 ? `highlighted: ${regionNames.join(", ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+};
+
+type Pixels = (at: LatLon) => { x: number; y: number };
 
 /**
- * A flat world map drawn in dithered dots, with pulsing location markers
- * that cast a dithered glow on the land around them, and dotted arcs
- * between places. For "customers worldwide" and "global network" sections.
- * The land mask ships with the component; nothing is fetched. Scales to
- * its container's width and keeps its aspect ratio.
+ * Focusable buttons over the markers, their labels snapped to the cell
+ * grid, and the tooltip of the active one.
+ */
+const MarkerLayer = ({
+  markers,
+  toPixels,
+  cellWidth,
+  cell,
+  mapWidth,
+  labels,
+  active,
+  onActive,
+  tint,
+}: {
+  markers: readonly DotMapMarker[];
+  toPixels: Pixels;
+  cellWidth: number;
+  cell: number;
+  mapWidth: number;
+  labels: boolean;
+  active: number | null;
+  onActive: (index: number | null) => void;
+  tint: (index: number) => string;
+}) => {
+  const current = active === null ? undefined : markers[active];
+  const tip = current ? toPixels(current.at) : null;
+  return (
+    <>
+      {markers.map((marker, index) => {
+        const { x, y } = toPixels(marker.at);
+        const label = marker.label ?? `${marker.at[0]}, ${marker.at[1]}`;
+        return (
+          <button
+            // oxlint-disable-next-line react/no-array-index-key -- markers may share a place and have no id.
+            key={index}
+            type="button"
+            aria-label={marker.detail ? `${label}, ${marker.detail}` : label}
+            onFocus={() => onActive(index)}
+            onBlur={() => onActive(null)}
+            className="focus-visible:outline-ring absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full outline-offset-2 focus-visible:outline-2"
+            style={{ left: x, top: y }}
+          />
+        );
+      })}
+      {markers.map((marker, index) => {
+        if (!(labels && marker.label)) {
+          return null;
+        }
+        const { x, y } = toPixels(marker.at);
+        return (
+          <span
+            // oxlint-disable-next-line react/no-array-index-key -- see the marker buttons.
+            key={index}
+            aria-hidden="true"
+            className="text-foreground pointer-events-none absolute font-mono text-[0.625rem] whitespace-nowrap"
+            style={{
+              // Snapped to the cell grid, one cell right of the marker.
+              left: (Math.round(x / cellWidth) + 1) * cellWidth,
+              lineHeight: `${cell}px`,
+              opacity: active !== null && active !== index ? 0.4 : 1,
+              top: Math.floor(y / cell) * cell,
+            }}
+          >
+            {marker.label}
+          </span>
+        );
+      })}
+      {tip && current && (current.label || current.detail) ? (
+        <div
+          aria-hidden="true"
+          className="bg-popover/95 text-popover-foreground border-border pointer-events-none absolute z-10 flex -translate-x-1/2 flex-col gap-0.5 rounded-md border px-2.5 py-1.5 font-mono text-xs whitespace-nowrap shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm"
+          style={{
+            left: Math.min(Math.max(tip.x, 64), mapWidth - 64),
+            top: tip.y + cell * 1.25,
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <span style={{ color: tint(active ?? 0) }}>⣿</span>
+            <span className="text-foreground">{current.label}</span>
+          </span>
+          {current.detail ? (
+            <span className="text-muted-foreground">{current.detail}</span>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+};
+
+/**
+ * A flat world map in Braille dots (or halftone dot glyphs), with markers
+ * that pulse rings outward, dotted arcs with light running along them,
+ * tinted halos and highlighted regions. Hover or focus a marker for its
+ * tooltip. Land comes from the `world-land` mask, so nothing is fetched.
  */
 export const DotMap = ({
   markers = NO_MARKERS,
   arcs = NO_ARCS,
+  regions = NO_REGIONS,
+  glyphs = "braille",
   color = "grey",
   accent = "ink",
-  columns = 160,
-  shape = "square",
-  halo = 14,
+  halo = 8,
   ocean = 0,
+  labels = true,
   bounds = WORLD,
   animate = true,
+  cell,
   title = "World map",
   className,
   ...props
 }: DotMapProps) => {
-  const id = useId();
-  const grid = useMemo(
-    () => makeGrid(Math.max(24, Math.round(columns)), bounds),
-    [columns, bounds]
+  const ref = useRef<HTMLDivElement>(null);
+  const box = useCellBox(ref, cell);
+  const [time, setTime] = useState(0);
+  const [active, setActive] = useState<number | null>(null);
+  const loop = useFrameLoop((now) => setTime(now), {
+    enabled: animate && (markers.length > 0 || arcs.length > 0),
+    fps: 20,
+    target: ref,
+  });
+  const width = box.width > 0 ? box.width : 720;
+  const grid = makeGrid({ aspect: box.aspect, bounds, cell: box.cell, width });
+  const { north, south, east, west } = bounds;
+  const land = useMemo(
+    () =>
+      drawLand({
+        grid: makeGrid({
+          aspect: box.aspect,
+          bounds: { east, north, south, west },
+          cell: box.cell,
+          width,
+        }),
+        halo,
+        markers,
+        ocean,
+        regions,
+      }),
+    [
+      box.aspect,
+      box.cell,
+      width,
+      north,
+      south,
+      east,
+      west,
+      halo,
+      markers,
+      ocean,
+      regions,
+    ]
   );
-  const layers = useMemo(
-    () => buildLayers({ accent, grid, halo, markers, ocean }),
-    [accent, grid, halo, markers, ocean]
-  );
-  const labels = markers.flatMap((marker) => marker.label ?? []);
-  const name = labels.length > 0 ? `${title}: ${labels.join(", ")}` : title;
+  // The land is the heavy layer: it re-renders only when the map changes,
+  // not on every animation frame.
+  const landLayer = useMemo(() => {
+    const cells =
+      glyphs === "halftone" ? halftoneCells(land) : rasterCells(land);
+    const tint = (index: number) => cssColor(markers[index]?.color ?? accent);
+    const paint = (owner: number) => {
+      if (owner === LAND) {
+        return { color: cssColor(color), opacity: 0.75 };
+      }
+      if (owner === SEA) {
+        return { color: cssColor(color), opacity: 0.3 };
+      }
+      if (owner >= HALO) {
+        return { color: tint(owner - HALO), opacity: 0.85 };
+      }
+      return { color: cssColor(regions[owner - REGION]?.color ?? accent) };
+    };
+    return <GlyphRows cells={cells} cell={box.cell} paint={paint} />;
+  }, [land, glyphs, markers, accent, color, regions, box.cell]);
+  const overlay = drawOverlay({
+    arcs,
+    grid,
+    markers,
+    moving: loop === "running",
+    time,
+  });
+
+  const cellWidth = box.cell * box.aspect;
+  const toPixels = (at: LatLon) => {
+    const [x, y] = project(grid, at);
+    const [gx, gy] = PLOT_SUBCELLS.braille;
+    return {
+      x: ((x + 0.5) / gx) * cellWidth,
+      y: ((y + 0.5) / gy) * box.cell,
+    };
+  };
+  const markerColor = (index: number) =>
+    cssColor(markers[index]?.color ?? accent);
+
+  const paintOverlay = (owner: number) => {
+    if (owner >= ARC) {
+      return { color: cssColor(arcs[owner - ARC]?.color ?? accent) };
+    }
+    const index = owner - 1;
+    return {
+      color: markerColor(index),
+      opacity: active !== null && active !== index ? 0.35 : 1,
+      transition: `opacity ${MOTION.fast}ms`,
+    };
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    let best: number | null = null;
+    let nearest = box.cell * 1.5;
+    for (const [index, marker] of markers.entries()) {
+      const { x, y } = toPixels(marker.at);
+      const distance = Math.hypot(px - x, py - y);
+      if (distance < nearest) {
+        nearest = distance;
+        best = index;
+      }
+    }
+    setActive(best);
+  };
+
+  const mapWidth = grid.columns * cellWidth;
 
   return (
     <div
-      role="img"
-      aria-label={name}
+      ref={ref}
+      role="group"
+      aria-label={mapName(title, markers, regions)}
       className={cn("relative w-full", className)}
       {...props}
     >
-      <style href="dcn-dot-map" precedence="default">
-        {STYLE}
-      </style>
-      <svg
-        viewBox={`0 0 ${grid.columns} ${grid.rows}`}
-        className="block h-auto w-full overflow-visible"
-        aria-hidden
+      <div
+        className="relative mx-auto"
+        style={{ height: grid.rows * box.cell, width: mapWidth }}
+        onPointerMove={markers.length > 0 ? onPointerMove : undefined}
+        onPointerLeave={() => setActive(null)}
       >
-        <defs>
-          <DotPattern id={`${id}-land`} color={color} shape={shape} />
-          {layers.halos.map((layer, index) => (
-            <DotPattern
-              key={index}
-              id={`${id}-halo-${index}`}
-              color={layer.color}
-              shape={shape}
-            />
-          ))}
-        </defs>
-        {layers.ocean ? (
-          <path d={layers.ocean} fill={`url(#${id}-land)`} opacity={0.25} />
-        ) : null}
-        <path d={layers.land} fill={`url(#${id}-land)`} opacity={0.6} />
-        {layers.halos.map((layer, index) => (
-          <path key={index} d={layer.path} fill={`url(#${id}-halo-${index})`} />
-        ))}
-        <Arcs grid={grid} arcs={arcs} accent={accent} animate={animate} />
-        <Markers
-          grid={grid}
-          markers={markers}
-          accent={accent}
-          animate={animate}
+        {landLayer}
+        <GlyphRows
+          cells={overlay}
+          cell={box.cell}
+          paint={paintOverlay}
+          className="pointer-events-none absolute inset-0"
         />
-      </svg>
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <Labels grid={grid} markers={markers} />
+        <MarkerLayer
+          markers={markers}
+          toPixels={toPixels}
+          cellWidth={cellWidth}
+          cell={box.cell}
+          mapWidth={mapWidth}
+          labels={labels}
+          active={active}
+          onActive={setActive}
+          tint={markerColor}
+        />
       </div>
     </div>
   );

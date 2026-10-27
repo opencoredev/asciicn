@@ -65,11 +65,11 @@ export const CUSTOMERS: readonly DotMapMarker[] = [
 
 /** European edge regions for the region map. */
 export const EDGE_REGIONS: readonly DotMapMarker[] = [
-  { at: [53.35, -6.26], label: "dub1" },
-  { at: LONDON, label: "lhr1" },
-  { at: [48.86, 2.35], label: "cdg1" },
-  { at: [50.11, 8.68], label: "fra1" },
-  { at: [59.33, 18.07], label: "arn1" },
-  { at: [40.42, -3.7], label: "mad1" },
-  { at: [45.46, 9.19], label: "mxp1" },
+  { at: [53.35, -6.26], detail: "19 ms", label: "dub1" },
+  { at: LONDON, detail: "11 ms", label: "lhr1" },
+  { at: [48.86, 2.35], detail: "14 ms", label: "cdg1" },
+  { at: [50.11, 8.68], detail: "8 ms", label: "fra1" },
+  { at: [59.33, 18.07], detail: "21 ms", label: "arn1" },
+  { at: [40.42, -3.7], detail: "23 ms", label: "mad1" },
+  { at: [45.46, 9.19], detail: "16 ms", label: "mxp1" },
 ];

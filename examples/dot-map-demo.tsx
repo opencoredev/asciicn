@@ -8,8 +8,8 @@ import { OFFICES, ROUTES } from "@/examples/dot-map-data";
 export default function DotMapDemo() {
   const accent = usePreviewValue(knobs.accent);
   const color = usePreviewValue(knobs.land);
-  const shape = usePreviewValue(knobs.shape);
-  const columns = usePreviewValue(knobs.columns);
+  const glyphs = usePreviewValue(knobs.glyphs);
+  const cell = usePreviewValue(knobs.cell);
   const halo = usePreviewValue(knobs.halo);
   const arcs = usePreviewValue(knobs.arcs);
   const animate = usePreviewValue(knobs.animate);
@@ -21,8 +21,8 @@ export default function DotMapDemo() {
         arcs={arcs ? ROUTES : undefined}
         accent={accent}
         color={color}
-        shape={shape}
-        columns={columns}
+        glyphs={glyphs}
+        cell={cell}
         halo={halo}
         animate={animate}
         title="Our offices"
