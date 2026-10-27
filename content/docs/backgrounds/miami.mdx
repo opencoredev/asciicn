@@ -1,6 +1,6 @@
 ---
 title: "Miami"
-description: "Ocean Drive at dusk: art deco hotels with flickering neon fins, swaying palms, cars on the drive and a slow surf under a low sun."
+description: "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay."
 ---
 
 import MiamiDemo from "@/examples/miami-demo";
@@ -36,11 +36,13 @@ export function Hero() {
 }
 ```
 
-The view is from the surf, looking west at the shore. A low sun sets behind a row of art deco hotels. Each hotel has rounded corners, a stepped crown, a neon tube along its roofline and a neon fin with a sign that lights one segment at a time. A few signs stutter. Palms sway in front, cars drive past with their headlights on, and waves roll in toward the beach under the sun's glitter.
+The view is from the water, looking across the bay at Ocean Drive after sunset. A row of art deco hotels stands along the promenade: pastel facades, stepped parapets, eyebrow ledges over the windows, portholes and blade signs, with neon in magenta, cyan and gold along every roofline. Behind them rise the glass towers of Brickell, a few with lit crowns. Two or three palms stand in front as dark silhouettes, and a crescent moon hangs over the skyline.
 
-The hotels keep their size when the box changes shape, so a narrow phone screen shows fewer of them rather than squashed ones. With `interactive` on, the default, the layers slide apart as the pointer moves: the water and palms move most, the sky least.
+Nothing built moves, and the pointer has no effect. What changes is slow: windows switch on and off a few at a time, each fading over a couple of seconds and holding its state for a minute or so. The red beacons on the tallest towers pulse once every 1.8 seconds, the stars brighten and dim, the reflections in the bay break and rejoin, and one small boat crosses the water every two to three minutes.
 
-It draws in `standard` glyphs by default. In `truecolor` mode, also the default, every layer keeps its own colours: pastel facades, pink and teal neon, a violet sky. On a light paper the pastels are deepened so they still read. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `outrun` or `vapor`.
+The hotels keep their size when the box changes shape, so a narrow phone screen shows fewer of them rather than squashed ones. Edges and window grids are snapped to the sample grid, so they come out as clean rows and columns of glyphs.
+
+It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, and `standard` and `dense` draw the same scene in letters and symbols. In `truecolor` mode, also the default, every part keeps its own colour; on a light paper the colours are deepened so they still read. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `outrun` or `vapor`.
 
 `intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
 
@@ -56,7 +58,7 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
 
 ### Vapor duotone
 
-`colorMode="duotone"` with `ramp="vapor"` paints the scene in one ramp from violet to cyan. Braille glyphs, a dark violet `paper`, more traffic and a CRT finish from `fx` complete it.
+`colorMode="duotone"` with `ramp="vapor"` paints the scene in one ramp from violet to cyan, over a dark violet `paper` with a CRT finish from `fx`.
 
 <ComponentPreview src="examples/miami-vapor.tsx" size="lg" align="stretch">
   <MiamiVapor />
@@ -78,20 +80,7 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
       type: "number",
       default: "1",
       description:
-        "Brightness of the neon fins, signs and rooflines, from 0 (off) to 1.",
-    },
-    {
-      name: "traffic",
-      type: "number",
-      default: "0.6",
-      description: "How many cars drive along the road, from 0 (none) to 1.",
-    },
-    {
-      name: "sway",
-      type: "number",
-      default: "1",
-      description:
-        "How far the palms and the waterline move in the breeze, from 0 (still) to 2.",
+        "Brightness of the neon on the hotels and the lit tower crowns, from 0 (off) to 1.",
     },
     {
       name: "paper",
@@ -103,7 +92,7 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
     {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -185,23 +174,9 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Pointer parallax between the layers. false holds the view still and turns interaction off.",
-    },
-    {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description:
-        "What the pointer does to the glyphs, on top of the parallax.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -226,14 +201,14 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
     {
       name: "stillTime",
       type: "number",
-      default: "7",
+      default: "12",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
     {
       name: "fallback",
       type: "ReactNode",
-      default: "a dusk gradient",
+      default: "a night gradient",
       description: "Shown without WebGL and until the first frame.",
     },
     {
@@ -257,4 +232,4 @@ It draws in `standard` glyphs by default. In `truecolor` mode, also the default,
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows a CSS gradient in the scene's colours.
-- The whole scene is drawn on the GPU in one pass. The palm crowns cost the most per sample, and `braille` samples eight times per cell. See [Performance](/docs/engine/performance).
+- The whole scene is drawn on the GPU in one pass. In `braille` and `quadrants` each cell takes the colour of its brightest dot, so a neon line one dot thick keeps its colour. The colour pass reads every dot of the cell to do that, so these two charsets cost more per frame than the others. See [Performance](/docs/engine/performance).

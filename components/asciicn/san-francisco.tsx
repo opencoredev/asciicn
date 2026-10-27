@@ -2,506 +2,559 @@
 
 import type { ReactNode } from "react";
 
-import { useAsciiColors } from "@/lib/ascii";
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  Interaction,
-  PhosphorName,
-} from "@/lib/ascii";
+import { resolveCharset, useAsciiColors } from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, PhosphorName } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// The Golden Gate on a foggy morning, seen from the bay. Everything is laid
-// out in box-height units (y runs 0 at the bottom to 1 at the top, x is
-// centred and scaled by the true aspect), and the span between the towers
-// follows the box's width, so a phone still shows both towers. Layers from
-// back to front: sky and sun, the city on its hills, the Marin headlands,
-// the bridge, the fog bank, the water with boats, and gulls. Each layer
-// returns its own colour and tone, so open sky stays empty, the fog draws
-// light glyphs and the orange steel is densest. `sfScene` is cached per
-// sample because field and colorField both ask.
+// The Golden Gate Bridge at night, seen from the ocean side looking in:
+// the Marin Headlands on the left, the city on the right. Units are box
+// heights: y runs from 0 at the bottom to 1 at the top and x is centred.
+// The towers move apart as the box gets wider and keep their height, so a
+// phone still shows the whole span. Every edge is a hard test against the
+// sample grid, curves are drawn one sample thick with no gaps, and the
+// suspenders fall on whole sample columns, so the bridge is drawn in clean
+// glyphs. Nothing built moves: only lamps, beacons, stars, a few cars, the
+// fog and the water change.
+//
+// Tones are designed for glyphs: lights high, steel and outlines above half
+// (a Braille dot), fills low. Braille and quadrants only light a dot above
+// half tone, so `sfFill` turns a fill into a regular share of dots there.
 const SCENE = `
-const float SF_WATER = 0.27;
-const float SF_PIER = 0.245;
-const float SF_DECK = 0.36;
-const float SF_TOP = 0.68;
+const float SF_WATER = 0.2;
+const float SF_DECK = 0.33;
+const float SF_TOP = 0.72;
 
-const vec3 sfOrange = vec3(0.93, 0.36, 0.2);
-const vec3 sfFogLit = vec3(0.86, 0.9, 0.95);
-const vec3 sfFogShade = vec3(0.6, 0.67, 0.76);
+const vec3 sfOrange = vec3(0.98, 0.34, 0.16);
+const vec3 sfSteel = vec3(0.72, 0.22, 0.12);
+const vec3 sfAmber = vec3(1.0, 0.7, 0.32);
+const vec3 sfWarm = vec3(1.0, 0.82, 0.55);
+const vec3 sfCool = vec3(0.78, 0.88, 1.0);
 
-// Half the main span: the towers stand at plus and minus this.
-float sfSpan(float aspect) {
-  return clamp(0.36 * aspect, 0.15, 0.62);
+// One sample in scene units, the sample's index, and 1 when the charset
+// draws sub-cell dots. Set by sfScene for each sample it evaluates.
+vec2 sfPx = vec2(0.01);
+vec2 sfS = vec2(0.0);
+float sfDots = 0.0;
+
+// The bridge layout for this box: its centre, the half span between the
+// towers, and the side spans out to the anchorages.
+float sfMid = 0.0;
+float sfHalf = 0.4;
+float sfSide = 0.11;
+float sfHalfWidth = 0.5;
+float sfFogTime = 0.0;
+
+// A 4x4 ordered threshold on the sample grid, in (0, 1).
+float sfBayer(vec2 s) {
+  vec2 a = mod(s, 2.0);
+  vec2 b = mod(floor(s * 0.5), 2.0);
+  float hi = mod(2.0 * a.x + 3.0 * a.y, 4.0);
+  float lo = mod(2.0 * b.x + 3.0 * b.y, 4.0);
+  return (hi * 4.0 + lo + 0.5) / 16.0;
 }
 
-vec4 sfSky(vec2 p, float t, float pixel, vec2 sun) {
-  float h = clamp((p.y - SF_WATER) / (1.0 - SF_WATER), 0.0, 1.0);
-  vec3 col = mix(vec3(1.0, 0.86, 0.72), vec3(0.78, 0.84, 0.9), smoothstep(0.0, 0.35, h));
-  col = mix(col, vec3(0.6, 0.72, 0.86), smoothstep(0.35, 1.0, h));
-  float tone = 0.0;
-
-  // A pale morning sun behind thin haze, with a wide soft glow.
-  float r = length(p - sun);
-  float disc = 1.0 - smoothstep(0.036 - pixel, 0.036 + pixel, r);
-  float halo = exp(-max(r - 0.036, 0.0) * 22.0) * (1.0 - disc);
-  col = mix(col, vec3(1.0, 0.9, 0.66), max(disc, halo * 0.8));
-  tone = max(disc * 0.5, halo * 0.22);
-
-  // High streaks of thin cloud, drifting east.
-  float band = smoothstep(0.5, 0.65, h) * (1.0 - smoothstep(0.85, 1.0, h));
-  float streak = fbm(vec2(p.x * 1.1 - t * 0.008, p.y * 9.0));
-  float wisp = smoothstep(0.68, 0.78, streak) * band;
-  col = mix(col, vec3(0.94, 0.95, 0.98), wisp);
-  tone = max(tone, wisp * 0.24);
-  return vec4(col, tone);
+float sfFill(float level) {
+  if (sfDots < 0.5) {
+    return level;
+  }
+  return sfBayer(sfS) < level * 0.75 ? 0.6 : 0.0;
 }
 
-// The Transamerica Pyramid: a tapering spire with its two wings near the top.
-float sfPyramid(vec2 d, float pixel, float colW) {
-  float height = 0.33;
-  float halfW = 0.04;
-  float s = d.y / height;
-  if (s < 0.0 || s > 1.12) {
-    return 0.0;
-  }
-  float w = max(halfW * (1.0 - s), colW * 0.5);
-  if (abs(d.x) < w) {
-    return 1.0;
-  }
-  // The wings that hold the lift shafts and stairs, on both sides.
-  float wingX = halfW * (1.0 - 0.7) + colW * 0.6;
-  if (s > 0.62 && s < 0.82 && abs(abs(d.x) - wingX) < colW * 0.6) {
-    return 0.8;
-  }
-  return 0.0;
+// True on the single sample row or column that holds a coordinate.
+bool sfRow(float y, float at) {
+  return abs(y - at) < sfPx.y * 0.5;
 }
 
-// The city on its hills behind the south end: houses stacked on the slopes,
-// downtown towers with the pyramid among them, and Coit Tower on its hill.
-vec4 sfCity(vec2 p, float t, float pixel, float colW, float px) {
-  float x = p.x - px;
-  vec4 k = (vec4(x) - vec4(-0.17, 0.2, -0.02, 0.5)) / vec4(0.09, 0.13, 0.06, 0.22);
-  vec4 bumps = exp(-k * k);
-  float hill = SF_WATER + 0.008 + dot(bumps, vec4(0.19, 0.21, 0.12, 0.17))
-    + 0.006 * snoise(vec2(p.x * 12.0, 3.0));
-  hill = mix(SF_WATER, hill, smoothstep(-0.34, -0.26, x));
-  float base = SF_WATER + 0.012;
-
-  // Downtown: a cluster of plain towers around the pyramid.
-  float towerTop = 0.0;
-  for (int i = 0; i < 6; i++) {
-    float fi = float(i);
-    float bx = -0.07 + fi * 0.03 + 0.008 * hash21(vec2(fi, 2.0));
-    float bh = 0.1 + 0.09 * hash21(vec2(fi, 9.0));
-    float bw = 0.009 + 0.006 * hash21(vec2(fi, 4.0));
-    if (abs(x - bx) < max(bw, colW * 0.5)) {
-      towerTop = max(towerTop, base + bh);
-    }
-  }
-  float pyr = sfPyramid(vec2(x, p.y - base), pixel, colW);
-  // Coit Tower: a slim fluted column on Telegraph Hill.
-  vec2 coit = vec2(-0.17, SF_WATER + 0.196);
-  float coitHit = step(abs(x - coit.x), max(0.005, colW * 0.5)) * step(coit.y, p.y) * step(p.y, coit.y + 0.04);
-
-  vec3 cream = vec3(0.95, 0.92, 0.86);
-  // The morning sun comes from the east, behind and right, so the right
-  // faces catch the light.
-  if (pyr > 0.0) {
-    float lit = step(0.0, x);
-    return vec4(mix(cream * 0.8, cream, lit), mix(0.62, 0.78, lit) * pyr);
-  }
-  if (coitHit > 0.5) {
-    return vec4(cream, 0.5);
-  }
-  if (p.y < towerTop) {
-    vec2 g = floor(vec2(p.x / max(colW, 0.004), p.y * 90.0));
-    float win = step(0.6, hash21(g + 7.0));
-    vec3 col = mix(vec3(0.68, 0.72, 0.78), vec3(1.0, 0.86, 0.62), win * 0.6);
-    return vec4(col, 0.36 + 0.1 * win);
-  }
-  if (p.y < hill) {
-    // Rows of small houses, white and pastel, with gaps of green.
-    vec2 g = floor(vec2(p.x * 70.0, p.y * 110.0));
-    float house = hash21(g);
-    float green = smoothstep(0.45, 0.6, fbm(p * vec2(14.0, 30.0)));
-    vec3 col = house < 0.33 ? vec3(0.96, 0.94, 0.9)
-      : house < 0.66 ? vec3(0.92, 0.82, 0.74)
-      : vec3(0.78, 0.84, 0.88);
-    col = mix(col, vec3(0.5, 0.62, 0.48), green * 0.8);
-    return vec4(col, mix(0.3, 0.2, green) + 0.08 * step(0.8, house));
-  }
-  return vec4(0.0);
+bool sfCol(float x, float at) {
+  return abs(x - at) < sfPx.x * 0.5;
 }
 
-// The Marin headlands: steep green-brown hills that the north end of the
-// bridge runs into, with the fog pouring over their ridge.
-float sfRidge(float x, float span) {
-  float rise = smoothstep(-span * 0.95, -span * 1.35 - 0.12, x);
-  return SF_PIER + (0.52 - SF_PIER) * rise
-    + 0.025 * rise * snoise(vec2(x * 5.0, 1.0)) + 0.01 * snoise(vec2(x * 17.0, 4.0));
+// A count of samples for a length in scene units, never below a minimum.
+float sfSamples(float size, float px, float least) {
+  return max(least, floor(size / px + 0.5));
 }
 
-vec4 sfHeadlands(vec2 p, float span) {
-  float ridge = sfRidge(p.x, span);
-  if (p.y > ridge || p.y < SF_PIER - 0.012 || p.x > -span * 0.6) {
-    return vec4(0.0);
-  }
-  float depth = ridge - p.y;
-  float scrub = fbm(p * vec2(9.0, 18.0));
-  vec3 col = mix(vec3(0.62, 0.6, 0.42), vec3(0.32, 0.45, 0.32), smoothstep(0.35, 0.65, scrub));
-  // The sunlit crest is brighter than the shaded slope below it.
-  col *= mix(1.0, 0.75, smoothstep(0.0, 0.12, depth));
-  float tone = 0.34 + 0.18 * smoothstep(0.4, 0.7, scrub) + 0.12 * (1.0 - smoothstep(0.0, 0.015, depth));
-  return vec4(col, tone);
+// True when a curve y = at, with slope dy/dx, passes through this sample:
+// one sample thick, and as many rows per column as the slope needs so a
+// steep stretch has no gaps.
+bool sfCurve(vec2 p, float at, float slope) {
+  float rise = abs(slope) * sfPx.x / sfPx.y;
+  return abs(p.y - at) / sfPx.y < 0.5 + rise * 0.5;
 }
 
-// One tower, face on: two tapering legs, stepped back at each portal, joined
-// by portal struts whose openings have stepped art deco corners. A red
-// aviation light blinks on top.
-vec4 sfTower(vec2 p, float cx, float t, float pixel, float colW) {
+// A light that switches on or off now and then. Each one keeps its state
+// for a minute or so and fades over about two seconds when it changes.
+float sfLit(vec2 id, float share, float t) {
+  float period = 40.0 + 50.0 * hash21(id + 3.7);
+  float e = t / period + hash21(id + 9.1) * 7.0;
+  float now = step(hash21(id + floor(e) * 1.37), share);
+  float before = step(hash21(id + (floor(e) - 1.0) * 1.37), share);
+  return mix(before, now, smoothstep(0.0, 2.0 / period, fract(e)));
+}
+
+// An aviation light: one slow pulse every 1.8 seconds.
+float sfPulse(float t, float phase) {
+  float f = fract(t / 1.8 + phase);
+  return smoothstep(0.0, 0.15, f) * (1.0 - smoothstep(0.3, 0.75, f));
+}
+
+vec4 sfNone() {
+  return vec4(0.0, 0.0, 0.0, -1.0);
+}
+
+// ---- The towers ------------------------------------------------------------
+
+// The outer half width of a tower at height y: the legs step in at each
+// portal strut above the deck.
+float sfTowerHalf(float y) {
+  float h = (y - SF_DECK) / (SF_TOP - SF_DECK);
+  return h < 0.36 ? 0.04 : h < 0.62 ? 0.036 : h < 0.82 ? 0.032 : 0.029;
+}
+
+// One tower, centred on x = cx: two legs joined by four portal struts above
+// the deck, the top one at the crown, and X bracing between the legs below
+// the deck. Each portal opening has two stepped corners at its head, and
+// each leg a darker flute down its face.
+vec4 sfTower(vec2 p, float cx, float t, float phase) {
   float x = p.x - cx;
-  float ax = abs(x);
   float y = p.y;
-  if (y < SF_PIER || y > SF_TOP + 0.02 || ax > 0.06) {
-    return vec4(0.0);
+  if (y < SF_WATER || y > SF_TOP + 0.03) {
+    return sfNone();
   }
-  float h = SF_TOP - SF_DECK;
-  // Portal struts, as fractions of the height above the deck.
-  float s1 = SF_DECK + h * 0.3;
-  float s2 = SF_DECK + h * 0.56;
-  float s3 = SF_DECK + h * 0.8;
-  float strutH = max(0.01, pixel * 0.9);
-  // The legs step in at every strut, like setbacks on a deco tower.
-  float tier = y < s1 ? 0.0 : y < s2 ? 1.0 : y < s3 ? 2.0 : 3.0;
-  float outer = max(0.05 - tier * 0.004, colW * 3.0);
-  float leg = max(0.018, colW * 1.6);
-  float inner = outer - leg;
+  // The beacon on the crown, and the cable saddle under it.
+  if (sfCol(x, 0.0) && sfRow(y, SF_TOP + sfPx.y * 2.0)) {
+    return vec4(1.0, 0.16, 0.14, 0.92 * sfPulse(t, phase));
+  }
   if (y > SF_TOP) {
-    // The cap and the light.
-    float blink = step(0.55, fract(t * 0.5 + cx));
-    if (ax < max(colW * 0.6, 0.004) && y < SF_TOP + 0.014) {
-      return vec4(mix(vec3(0.5, 0.1, 0.08), vec3(1.0, 0.15, 0.1), blink), 0.55 + 0.45 * blink);
+    return sfNone();
+  }
+  // The concrete pier the tower stands on.
+  if (y < SF_WATER + 0.022) {
+    return abs(x) < 0.047 ? vec4(vec3(0.42, 0.42, 0.48), 0.62) : sfNone();
+  }
+
+  float half1 = sfTowerHalf(y);
+  if (abs(x) >= half1) {
+    return sfNone();
+  }
+  float leg = half1 * 0.48;
+  float inner = half1 - leg;
+  float ax = abs(x);
+  bool onLeg = ax >= inner;
+
+  // Struts: heights as a share of the tower above the deck.
+  float h = (y - SF_DECK) / (SF_TOP - SF_DECK);
+  float strutH = max(0.012, sfPx.y * 2.0) / (SF_TOP - SF_DECK);
+  float strut = -1.0;
+  if (h > 0.36 - strutH && h < 0.36) strut = 0.36;
+  if (h > 0.62 - strutH && h < 0.62) strut = 0.62;
+  if (h > 0.82 - strutH && h < 0.82) strut = 0.82;
+  if (h > 1.0 - strutH * 1.4) strut = 1.0;
+  // Below the deck, a strut at the road and a pair of X braces.
+  if (h < 0.0 && h > -strutH) strut = 0.0;
+
+  // The stepped head of each portal: just under a strut the opening
+  // narrows twice, a step of one leg flute each.
+  float head = 1e3;
+  if (h > 0.0) {
+    float next = h < 0.36 ? 0.36 : h < 0.62 ? 0.62 : h < 0.82 ? 0.82 : 1.0;
+    head = (next - strutH - h) * (SF_TOP - SF_DECK);
+  }
+  float step1 = max(sfPx.y * 2.0, 0.008);
+  float notch = head < step1 ? (head < step1 * 0.5 ? 2.0 : 1.0) : 0.0;
+  bool corner = !onLeg && ax >= inner - notch * max(sfPx.x, 0.004);
+
+  vec3 lit = sfOrange;
+  if (strut >= 0.0 || onLeg || corner) {
+    // Floodlit from below: the faces are brightest near the deck.
+    float glow = mix(1.0, 0.78, clamp(h, 0.0, 1.0));
+    if (onLeg && strut < 0.0) {
+      // The flute down the middle of each leg, and the outer edge.
+      float mid = inner + leg * 0.5;
+      if (abs(ax - mid) < sfPx.x * 0.5 && leg > sfPx.x * 2.5) {
+        return vec4(sfSteel * 0.75, 0.62);
+      }
     }
-    return vec4(0.0);
+    return vec4(lit * glow, 0.82);
   }
-  if (ax > outer) {
-    return vec4(0.0);
-  }
-  // The sunlit right face is brighter; a recess runs down each leg.
-  float lit = mix(0.78, 1.0, step(0.0, x));
-  if (ax > inner) {
-    float flute = abs(ax - (inner + leg * 0.5)) < leg * 0.18 ? 0.86 : 1.0;
-    return vec4(sfOrange * lit * flute, 0.88 * flute + 0.08 * lit);
-  }
-  // Between the legs: struts and their stepped corners.
-  for (int i = 0; i < 4; i++) {
-    float sy = i == 0 ? s1 : i == 1 ? s2 : i == 2 ? s3 : SF_TOP - strutH * 0.5;
-    float under = sy - strutH * 0.5 - y;
-    if (abs(y - sy) < strutH * 0.5) {
-      return vec4(sfOrange * lit * 0.92, 0.82);
-    }
-    // One stepped corner under each strut, the deco touch on the portals.
-    if (under > 0.0 && under < max(0.008, pixel * 0.8) && ax > inner - max(0.007, colW)) {
-      return vec4(sfOrange * lit * 0.85, 0.74);
+
+  // Under the deck: X bracing between the legs.
+  if (h < 0.0) {
+    float span = SF_DECK - SF_WATER - 0.022;
+    float v = (y - SF_WATER - 0.022) / span;
+    float u = x / inner;
+    float k = v;
+    float diag = abs(abs(u) - abs(k * 2.0 - 1.0));
+    if (diag * inner / sfPx.x < 0.6) {
+      return vec4(sfSteel, 0.7);
     }
   }
-  // Below the deck: an X brace between the legs, then the pier.
-  if (y < SF_DECK - 0.03 && y > SF_PIER + 0.02) {
-    float v = (y - SF_PIER - 0.02) / (SF_DECK - 0.05 - SF_PIER);
-    float diag = abs(ax - inner * abs(1.0 - 2.0 * v));
-    if (diag < max(0.004, colW * 0.6)) {
-      return vec4(sfOrange * 0.7, 0.6);
-    }
-  }
-  if (y < SF_PIER + 0.02) {
-    return vec4(vec3(0.62, 0.6, 0.58), 0.6);
-  }
-  return vec4(0.0);
+  return sfNone();
 }
 
-// The main cables, the suspenders hung from them, the deck with its truss,
-// the traffic on it and the anchorages at both ends.
-vec4 sfSpanSteel(vec2 p, float t, float pixel, float colW, float span) {
-  float side = span * 0.5;
-  float end = span + side;
-  float ax = abs(p.x);
-  if (ax > end + 0.03) {
-    return vec4(0.0);
+// ---- Cable, suspenders and deck ---------------------------------------------
+
+// The main cable's height at x and its slope: a parabola from tower crown
+// to tower crown that comes down almost to the road at mid-span, then a
+// shallower sag down each side span to the anchorages.
+vec2 sfCable(float x) {
+  float top = SF_TOP - 0.004;
+  float low = SF_DECK + 0.014;
+  float u = (x - sfMid) / sfHalf;
+  if (abs(u) <= 1.0) {
+    return vec2(low + (top - low) * u * u, 2.0 * (top - low) * u / sfHalf);
   }
-  float top = SF_TOP - 0.01;
-  float low = SF_DECK + 0.022;
+  // Side span: from the crown down to the anchorage at deck height, sagging
+  // below the straight line a little.
+  float s = (abs(u) - 1.0) * sfHalf / sfSide;
   float anchor = SF_DECK + 0.006;
-  float cable;
-  float slope;
-  if (ax < span) {
-    float u = p.x / span;
-    cable = low + (top - low) * u * u;
-    slope = 2.0 * (top - low) * u / span;
-  } else {
-    float u = 1.0 - (ax - span) / side;
-    cable = anchor + (top - anchor) * u * u;
-    slope = 2.0 * (top - anchor) * u / side;
-  }
-  float thick = max(0.004, pixel * 0.5) * sqrt(1.0 + slope * slope);
-  if (abs(p.y - cable) < thick && ax < end) {
-    return vec4(sfOrange, 0.95);
+  float line = mix(top, anchor, s);
+  float sag = 0.035 * s * (1.0 - s);
+  float dir = sign(u);
+  float slope = ((anchor - top) / sfSide - 0.035 * (1.0 - 2.0 * s) / sfSide) * dir;
+  return vec2(line - sag, slope);
+}
+
+vec4 sfSpan(vec2 p, float t) {
+  float u = (p.x - sfMid) / sfHalf;
+  float reach = 1.0 + sfSide / sfHalf;
+  float truss = max(0.016, sfPx.y * 3.0);
+
+  // The main cable, drawn in front of everything but the towers. It rides
+  // over the crowns, so nothing of it shows through the portals.
+  float nearTower = min(abs(p.x - sfMid + sfHalf), abs(p.x - sfMid - sfHalf));
+  if (abs(u) <= reach && nearTower > 0.041) {
+    vec2 c = sfCable(p.x);
+    if (p.y > SF_DECK && sfCurve(p, c.x, c.y)) {
+      return vec4(sfOrange, 0.9);
+    }
+    // Suspenders: one every few sample columns, counted from mid-span so
+    // the two halves match.
+    // In the ramp charsets a light tone draws them as a column of colons.
+    float gap = sfSamples(0.014, sfPx.x, sfDots > 0.5 ? 3.0 : 4.0);
+    float col = floor((p.x - sfMid) / sfPx.x + 0.5);
+    if (mod(col, gap) < 0.5 && p.y > SF_DECK && p.y < c.x - sfPx.y * 0.5) {
+      // High enough that the dots survive a dimmed intensity.
+      return vec4(sfOrange * 0.8, sfDots > 0.5 ? 0.7 : 0.24);
+    }
   }
 
-  // The deck: a roadway on a deep stiffening truss.
-  float deckH = max(0.022, pixel * 1.6);
-  float dy = SF_DECK - p.y;
-  if (dy > 0.0 && dy < deckH && ax < end) {
-    // Cars in both directions: headlights one way, tail lights the other.
-    if (dy < deckH * 0.4) {
-      for (int k = 0; k < 2; k++) {
-        float dir = k == 0 ? 1.0 : -1.0;
-        float lane = (p.x * dir + t * 0.06) / 0.11;
-        float slot = floor(lane);
-        float on = step(hash21(vec2(slot, float(k) + 3.0)), sfTraffic);
-        if (on > 0.5 && fract(lane) < 0.1) {
-          vec3 light = k == 0 ? vec3(1.0, 0.95, 0.8) : vec3(1.0, 0.2, 0.15);
-          return vec4(light, 0.95);
-        }
+  // The deck: the road on top, lamps along it, cars, and the stiffening
+  // truss underneath as two chords with posts between them.
+  float roadRow = SF_DECK + sfPx.y * 0.5;
+  if (sfRow(p.y, roadRow + sfPx.y)) {
+    // Cars, one light each: white headlights one way, red tail lights the
+    // other, crossing slowly.
+    for (int k = 0; k < 6; k++) {
+      float fk = float(k);
+      if (fk >= sfTraffic * 6.0) {
+        break;
       }
-      return vec4(sfOrange * 0.9, 0.86);
-    }
-    float v = dy / deckH;
-    float u = fract(p.x / 0.024);
-    float web = min(abs(u - v), abs(u - (1.0 - v)));
-    if (v > 0.85 || web < 0.18) {
-      return vec4(sfOrange * 0.72, 0.7);
-    }
-    return vec4(sfOrange * 0.45, 0.3);
-  }
-
-  // Suspenders: one glyph column each, so they stay crisp at any width.
-  if (p.y > SF_DECK && p.y < cable && ax < end && abs(ax - span) > 0.06) {
-    float pitch = max(0.04, colW * 5.0);
-    float k = floor(p.x / pitch + 0.5);
-    if (abs(p.x - k * pitch) < colW * 0.5) {
-      return vec4(sfOrange * 0.8, 0.26);
-    }
-  }
-
-  // The anchorage blocks where the cables come down.
-  if (ax > end - 0.012 && ax < end + 0.03 && p.y < SF_DECK + 0.012 && p.y > SF_PIER) {
-    return vec4(vec3(0.72, 0.68, 0.64), 0.62);
-  }
-  return vec4(0.0);
-}
-
-// The fog bank pouring through the strait from the ocean side, on the left,
-// in slow rolling billows. Returns the density, 0 to 1.
-float sfFogBank(vec2 p, float t, float span) {
-  vec2 q = p * vec2(2.0, 3.6);
-  vec2 warp = vec2(
-    fbm(q * 0.6 + vec2(-t * 0.04, t * 0.02)),
-    fbm(q * 0.6 + vec2(5.2, -t * 0.03))
-  );
-  float n = fbm(q + warp * 1.6 - vec2(t * 0.08, 0.0));
-  // Thickest at the ocean end, where it also spills over the headlands.
-  float west = smoothstep(span * 0.5, -span * 1.6, p.x);
-  // Rounded billow tops along the ceiling, rolling east.
-  float billow = fbm(vec2(p.x * 2.6 - t * 0.06, t * 0.02));
-  float ceiling = SF_DECK - 0.05 + sfFog * (0.06 + 0.2 * west) + 0.1 * (billow - 0.5);
-  float body = smoothstep(ceiling + 0.012, ceiling - 0.05, p.y);
-  // It sits on the water by the bridge and thins toward the viewer.
-  float lift = smoothstep(SF_PIER - 0.07, SF_PIER - 0.01, p.y);
-  float density = body * lift * mix(0.15, 1.0, smoothstep(0.46, 0.76, n));
-
-  // Loose streamers torn off the bank, drifting through the towers.
-  float streamer = smoothstep(0.62, 0.76, fbm(vec2(p.x * 1.8 - t * 0.1, p.y * 16.0 + warp.x)));
-  streamer *= smoothstep(ceiling - 0.01, ceiling + 0.02, p.y) * (1.0 - smoothstep(ceiling + 0.08, ceiling + 0.16, p.y));
-  density = max(density, streamer * 0.5);
-  return clamp(density * (0.3 + sfFog), 0.0, 1.0);
-}
-
-// A lower, flatter layer behind the bridge that hides the city's waterfront.
-float sfFogFar(vec2 p, float t) {
-  float n = fbm(vec2(p.x * 3.0 - t * 0.05, p.y * 12.0));
-  float top = SF_WATER + 0.035 + 0.025 * sfFog + 0.02 * (n - 0.5);
-  float body = smoothstep(top + 0.005, top - 0.03, p.y) * smoothstep(SF_WATER - 0.012, SF_WATER, p.y);
-  return clamp(body * smoothstep(0.3, 0.6, n) * sfFog, 0.0, 1.0);
-}
-
-vec4 sfFogColor(float density, vec2 p, float n) {
-  // Billow tops catch the low sun; their undersides are cool and grey.
-  vec3 col = mix(sfFogShade, sfFogLit, smoothstep(0.2, 0.8, n));
-  col = mix(col, vec3(1.0, 0.92, 0.84), smoothstep(SF_DECK - 0.02, SF_DECK + 0.1, p.y) * 0.5);
-  return vec4(col, 0.1 + 0.5 * pow(density, 1.5));
-}
-
-// Sailboats crossing the bay: a dark hull, a mainsail and a jib, a wake.
-vec4 sfBoats(vec2 p, float t, float pixel, float colW, float halfW) {
-  vec4 hit = vec4(0.0);
-  for (int i = 0; i < 4; i++) {
-    float fi = float(i);
-    if (hash21(vec2(fi, 31.0)) > sfSails + 0.05) {
-      continue;
-    }
-    float y0 = mix(0.04, 0.16, hash21(vec2(fi, 11.0)));
-    // Nearer boats are larger and move faster across the view.
-    float scale = mix(1.8, 1.0, (y0 - 0.04) / 0.12);
-    float dir = hash21(vec2(fi, 17.0)) > 0.5 ? 1.0 : -1.0;
-    float travel = 2.0 * halfW + 0.15;
-    float x0 = (fract(t * 0.006 * scale + hash21(vec2(fi, 5.0))) - 0.5) * travel * dir;
-    vec2 d = (p - vec2(x0, y0)) / scale;
-    d.x *= dir;
-    // Rocking with the swell.
-    d.y += 0.002 * sin(t * 1.3 + fi * 2.0);
-    if (d.y > -0.005 && d.y < 0.004 && abs(d.x) < 0.026 - (0.004 - d.y) * 1.5) {
-      hit = vec4(0.16, 0.22, 0.32, 0.66);
-    }
-    float mast = 0.002;
-    float sailH = 0.07;
-    float sy = d.y - 0.004;
-    if (sy > 0.0 && sy < sailH) {
-      float f = sy / sailH;
-      // Main behind the mast, jib ahead of it, with a sliver of gap.
-      if (d.x < -mast && d.x > -mast - 0.028 * (1.0 - f)) {
-        hit = vec4(0.98, 0.98, 0.96, 0.78);
-      } else if (d.x > mast && d.x < mast + 0.018 * (1.0 - f) && f < 0.85) {
-        hit = vec4(0.92, 0.94, 0.98, 0.7);
+      float dir = mod(fk, 2.0) < 0.5 ? 1.0 : -1.0;
+      float span = 2.0 * (sfHalf + sfSide) + 0.5;
+      float speed = 0.016 + 0.006 * hash21(vec2(fk, 2.0));
+      float x = (mod(t * speed + hash21(vec2(fk, 7.0)) * span, span) - span * 0.5) * dir + sfMid;
+      if (sfCol(p.x, x)) {
+        return dir > 0.0 ? vec4(1.0, 0.96, 0.85, 0.95) : vec4(1.0, 0.2, 0.16, 0.9);
       }
     }
-    // The wake trails behind as broken foam.
-    if (abs(d.y + 0.003) < 0.003 && d.x < -0.02 && d.x > -0.09) {
-      float foam = step(0.5, hash21(floor(vec2(p.x / max(colW, 0.004), t * 2.0))));
-      if (foam > 0.5 && hit.a < 0.2) {
-        hit = vec4(0.9, 0.94, 0.98, 0.22 * (1.0 + d.x / 0.09));
-      }
+    // Sodium lamps along the rail.
+    float lamp = floor((p.x - sfMid) / 0.034 + 0.5);
+    if (sfCol(p.x, sfMid + lamp * 0.034)) {
+      return vec4(sfAmber, 0.88);
     }
   }
-  return hit;
+  if (p.y < SF_DECK && p.y > SF_DECK - truss) {
+    bool chord = sfRow(p.y, roadRow - sfPx.y) || sfRow(p.y, SF_DECK - truss + sfPx.y * 0.5);
+    float post = mod(floor((p.x - sfMid) / sfPx.x + 0.5), sfSamples(0.01, sfPx.x, 3.0));
+    if (chord || sfRow(p.y, roadRow)) {
+      return vec4(sfOrange * 0.85, 0.78);
+    }
+    if (post < 0.5) {
+      return vec4(sfSteel, 0.66);
+    }
+    // Between the posts the truss is open; it still hides what is behind.
+    return vec4(sfSteel * 0.5, sfFill(0.18));
+  }
+  if (sfRow(p.y, roadRow)) {
+    return vec4(sfOrange * 0.85, 0.78);
+  }
+
+  // Approach viaducts beyond the anchorages: piers down to the ground.
+  if (abs(u) > reach && p.y < SF_DECK - truss && p.y > SF_WATER) {
+    float pier = floor((p.x - sfMid) / 0.07 + 0.5);
+    float px1 = sfMid + pier * 0.07;
+    if (abs(p.x - px1) < max(sfPx.x * 0.5, 0.004)) {
+      return vec4(sfSteel * 0.8, 0.62);
+    }
+  }
+  // The anchorage blocks the cables end in.
+  float ax = abs(p.x - sfMid) - sfHalf - sfSide;
+  if (abs(ax) < 0.018 && p.y > SF_DECK - truss - 0.03 && p.y < SF_DECK + 0.012) {
+    return vec4(vec3(0.45, 0.42, 0.45), 0.6);
+  }
+  return sfNone();
 }
 
-// The bay: grey-green swell with ripple lines, the sun's glitter and the
-// towers' orange reflections, broken by the waves.
-vec4 sfWater(vec2 p, float t, float pixel, float colW, float span, vec2 sun) {
-  float dd = SF_WATER - p.y;
-  float phase = p.y * 70.0 / (0.3 + p.y * 2.0) + t * 0.25;
-  float wob = 0.3 * snoise(vec2(p.x * 4.0, floor(phase) * 1.3)) + 0.15 * snoise(vec2(p.x * 11.0, t * 0.15));
-  float ripple = 1.0 - abs(fract(phase + wob) - 0.5) * 2.0;
-  vec3 sea = mix(vec3(0.5, 0.62, 0.68), vec3(0.28, 0.42, 0.5), smoothstep(0.0, 0.2, dd));
-  float broken = step(0.45, snoise(vec2(p.x * 7.0, floor(phase) * 2.3 + 0.5)) * 0.5 + 0.5);
-  float tone = 0.2 * smoothstep(0.78, 1.0, ripple) * broken;
-  vec3 col = sea;
+// ---- The land ------------------------------------------------------------------
 
-  // Each tower's reflection, mirrored at the pier and torn by the swell.
-  float ry = 2.0 * SF_PIER - p.y;
-  vec2 rp = vec2(p.x + 0.006 * sin(p.y * 160.0 + t * 1.5), ry);
-  if (p.y < SF_PIER && p.y > SF_PIER - 0.16) {
-    vec4 r = sfTower(rp, -span, t, pixel, colW);
-    vec4 r2 = sfTower(rp, span, t, pixel, colW);
-    float ref = max(r.a, r2.a) * step(0.35, ripple) * (1.0 - (SF_PIER - p.y) / 0.16);
-    col = mix(col, sfOrange * 0.85, ref);
-    tone = max(tone, ref * 0.5);
+// The Marin Headlands: a ridge rising from the strait by the north tower
+// to the left edge, with a softer shoulder in front.
+float sfMarin(float x) {
+  float u = (sfMid - sfHalf - 0.03) - x;
+  if (u < 0.0) {
+    return SF_WATER - 1.0;
   }
-
-  // Glitter under the sun, wider toward the viewer.
-  float pathW = 0.03 + dd * 0.5;
-  float inPath = 1.0 - smoothstep(pathW * 0.5, pathW, abs(p.x - sun.x));
-  vec2 cell = floor(vec2(p.x / max(colW, 0.004), phase * 4.0));
-  float spark = step(0.62, hash21(cell + floor(t * 2.0) * 0.37)) * inPath;
-  col = mix(col, vec3(1.0, 0.9, 0.7), spark);
-  tone = max(tone, spark * 0.6);
-  return vec4(col, tone);
+  float rise = 0.3 * (1.0 - exp(-u * 9.0));
+  float folds = 0.022 * sin(u * 11.0 + 0.6) + 0.012 * sin(u * 27.0 + 1.3);
+  return SF_WATER + max(0.0, rise + folds * smoothstep(0.0, 0.2, u));
 }
 
-// Gulls wheeling across the sky, flapping now and then and gliding between.
-vec4 sfGulls(vec2 p, float t, float pixel, float colW, float halfW) {
-  for (int i = 0; i < 5; i++) {
-    float fi = float(i);
-    float speed = 0.012 + 0.01 * hash21(vec2(fi, 3.0));
-    float dir = fi < 2.5 ? 1.0 : -1.0;
-    float travel = 2.0 * halfW + 0.3;
-    float gx = (fract(t * speed + hash21(vec2(fi, 8.0))) - 0.5) * travel * dir;
-    float gy = 0.5 + 0.32 * hash21(vec2(fi, 13.0)) + 0.025 * sin(t * 0.4 + fi * 2.1);
-    vec2 d = p - vec2(gx, gy);
-    float size = 0.016;
-    if (abs(d.x) > size || abs(d.y) > 0.02) {
-      continue;
+// The city shore on the right: the Presidio bluff, low and dark.
+float sfPresidio(float x) {
+  float u = x - (sfMid + sfHalf + 0.02);
+  if (u < 0.0) {
+    return SF_WATER - 1.0;
+  }
+  return SF_WATER + 0.018 + 0.012 * smoothstep(0.0, 0.25, u) + 0.004 * sin(u * 40.0);
+}
+
+vec4 sfHills(vec2 p) {
+  float m = sfMarin(p.x);
+  float m1 = sfMarin(p.x + sfPx.x);
+  if (p.y < m) {
+    if (sfCurve(p, m, (m1 - m) / sfPx.x) && p.y > m - sfPx.y * 1.5) {
+      return vec4(vec3(0.5, 0.6, 0.64), 0.62);
     }
-    float flap = sin(t * 5.0 + fi * 1.7) * step(0.0, sin(t * 0.7 + fi));
-    // Wings bend at the wrist: up from the body, then out and down.
-    float u = abs(d.x) / size;
-    float wing = 0.008 * (1.0 + flap) * (u < 0.5 ? u * 2.0 : 2.0 - u * 2.0) + 0.004 * flap * u;
-    if (abs(d.y - wing) < max(0.003, pixel * 0.5)) {
-      return vec4(0.98, 0.98, 1.0, 0.55);
+    return vec4(vec3(0.2, 0.27, 0.32), sfFill(0.16));
+  }
+  float c = sfPresidio(p.x);
+  if (p.y < c) {
+    if (p.y > c - sfPx.y) {
+      return vec4(vec3(0.3, 0.36, 0.42), 0.56);
+    }
+    return vec4(vec3(0.12, 0.14, 0.18), sfFill(0.1));
+  }
+  return sfNone();
+}
+
+// ---- Downtown --------------------------------------------------------------------
+
+// Distant towers seen past the south end: plain blocks, then the
+// Transamerica Pyramid with its spire and the Salesforce Tower with its
+// rounded crown. x is relative to the cluster's centre.
+vec4 sfDowntown(vec2 p, float t, float cx) {
+  float x = p.x - cx;
+  // The city stands on its hills, so its base sits above the waterline.
+  float base = SF_WATER + 0.05;
+  float y = p.y - base;
+  if (y < 0.0 || abs(x) > 0.22) {
+    return sfNone();
+  }
+
+  // Transamerica Pyramid: a slender taper from a wide base to a point,
+  // with a spire. Never thinner than a sample, so the point and the spire
+  // join up.
+  float tx = x + 0.045;
+  float pyrH = 0.25;
+  float pyrHalf = max(0.022 * (1.0 - y / pyrH), sfPx.x * 0.5);
+  if (y < pyrH && abs(tx) < pyrHalf) {
+    if (abs(tx) + sfPx.x >= pyrHalf) {
+      return vec4(vec3(0.94, 0.92, 0.86), 0.68);
+    }
+    float row = floor(y / sfPx.y);
+    float lit = mod(row, 2.0) < 1.0 ? sfLit(vec2(floor(tx / sfPx.x), row) + 51.0, 0.55, t) : 0.0;
+    return vec4(sfWarm * mix(0.3, 0.85, lit), mix(0.0, 0.72, lit));
+  }
+  if (sfCol(tx, 0.0) && y >= pyrH && y < pyrH + 0.04) {
+    return vec4(vec3(0.9, 0.88, 0.82), 0.62);
+  }
+
+  // Salesforce Tower: the tallest, tapering slightly to a rounded crown
+  // whose lights glow.
+  float sx = x - 0.07;
+  float sfH = 0.28;
+  float half1 = mix(0.02, 0.016, clamp(y / sfH, 0.0, 1.0));
+  float crown = sfH - 0.04;
+  float topY = y > crown ? crown + 0.04 * sqrt(max(0.0, 1.0 - (sx / half1) * (sx / half1))) : sfH;
+  if (abs(sx) < half1 && y < topY) {
+    bool edge = abs(sx) + sfPx.x >= half1 || y + sfPx.y >= topY;
+    if (y > crown) {
+      // The lit crown: an open lattice of white light.
+      float lattice = mod(floor((sx + half1) / sfPx.x), 2.0) < 1.0 ? 0.74 : 0.0;
+      return vec4(vec3(0.9, 0.95, 1.0), edge ? 0.76 : lattice);
+    }
+    if (edge) {
+      return vec4(vec3(0.5, 0.56, 0.66), 0.58);
+    }
+    float row = floor(y / sfPx.y);
+    float colW = sfSamples(0.007, sfPx.x, 2.0);
+    float col = floor((sx + half1) / sfPx.x);
+    if (mod(row, 3.0) < 1.0 && mod(col, colW) > 0.5 && mod(col, colW) < 1.5) {
+      float lit = sfLit(vec2(col + 300.0, row), 0.45, t);
+      return vec4(sfCool * mix(0.2, 0.75, lit), mix(0.0, 0.7, lit));
+    }
+    return vec4(0.0);
+  }
+
+  // The rest of the skyline: blocks of a few heights.
+  float lot = floor(x / 0.03);
+  float r = hash21(vec2(lot, 13.0));
+  float bx = x - (lot + 0.5) * 0.03;
+  float bh = 0.04 + 0.12 * r * smoothstep(0.22, 0.05, abs(x - 0.01));
+  float bw = 0.01 + 0.004 * hash21(vec2(lot, 5.0));
+  if (abs(bx) < bw && y < bh) {
+    bool edge = abs(bx) + sfPx.x >= bw || y + sfPx.y >= bh;
+    if (edge) {
+      return vec4(vec3(0.42, 0.46, 0.58), 0.56);
+    }
+    float row = floor(y / sfPx.y);
+    if (mod(row, 2.0) < 1.0 && mod(floor(bx / sfPx.x), 2.0) < 1.0) {
+      float lit = sfLit(vec2(lot * 31.0 + floor(bx / sfPx.x), row), 0.4, t);
+      vec3 c = hash21(vec2(lot, row)) < 0.6 ? sfWarm : sfCool;
+      return vec4(c * mix(0.2, 0.75, lit), mix(0.0, 0.7, lit));
+    }
+    return vec4(0.0);
+  }
+  return sfNone();
+}
+
+// ---- Sky and fog ---------------------------------------------------------
+
+vec4 sfSky(vec2 p, float t) {
+  if (p.y > 0.5) {
+    vec2 g = floor(p / 0.045);
+    float r = hash21(g + 61.0);
+    vec2 at = (g + 0.2 + 0.6 * vec2(hash21(g + 4.0), hash21(g + 8.0))) * 0.045;
+    if (r < 0.3 && sfCol(p.x, at.x) && sfRow(p.y, at.y)) {
+      float tw = 0.5 + 0.5 * sin(t * (0.35 + r) + r * 40.0);
+      // A dot in Braille and quadrants, a point or a colon in the ramps.
+      float tone = sfDots > 0.5 ? 0.58 + 0.2 * tw : 0.16 + 0.1 * tw;
+      return vec4(vec3(0.85, 0.88, 1.0) * (0.55 + 0.45 * tw), tone);
     }
   }
-  return vec4(0.0);
+  return sfNone();
+}
+
+// A low fog bank lying in the strait behind the bridge, banked up against
+// the Marin side. Its top is a smooth line that drifts a few box widths an
+// hour; inside, ordered dots thin out toward the top, with no hard edge.
+float sfFogTop(float x) {
+  float side = smoothstep(sfMid + sfHalf * 0.4, sfMid - sfHalf * 1.3, x);
+  float drift = x + sfFogTime * 0.002;
+  float swell = 0.85 + 0.1 * sin(drift * 6.0) + 0.05 * sin(drift * 15.0 + 1.7);
+  return SF_WATER + 0.17 * sfFogAmount * side * swell;
+}
+
+vec4 sfFog(vec2 p) {
+  if (sfFogAmount <= 0.0 || p.y < SF_WATER) {
+    return sfNone();
+  }
+  float top = sfFogTop(p.x);
+  if (p.y >= top || top < SF_WATER + sfPx.y * 2.0) {
+    return sfNone();
+  }
+  float h = (top - p.y) / max(top - SF_WATER, 1e-3);
+  float level = 0.12 + 0.3 * smoothstep(0.0, 0.6, h);
+  vec3 col = vec3(0.6, 0.66, 0.78);
+  if (sfDots > 0.5) {
+    return vec4(col, sfFill(level));
+  }
+  // Ramp charsets: every other row, so the bank reads as layers.
+  float row = floor((top - p.y) / sfPx.y);
+  return vec4(col, mod(row, 2.0) < 1.0 ? level * 0.8 : 0.0);
+}
+
+// Everything above the water, front to back.
+vec4 sfLand(vec2 p, float t) {
+  vec4 c = sfTower(p, sfMid - sfHalf, t, 0.0);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  c = sfTower(p, sfMid + sfHalf, t, 0.45);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  c = sfSpan(p, t);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  c = sfFog(p);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  c = sfHills(p);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  float hw = sfHalfWidth;
+  float city = min(sfMid + sfHalf + 0.2, hw - 0.12);
+  c = sfDowntown(p, t, city);
+  if (c.a >= 0.0) {
+    return c;
+  }
+  return sfSky(p, t);
+}
+
+// Calm water: only lights reflect, as dimmer copies stretched downward and
+// broken into short dashes that come and go slowly, sparser with depth.
+vec4 sfWater(vec2 p, float t) {
+  float depth = SF_WATER - p.y;
+  float row = floor(depth / sfPx.y);
+  float dash = floor(p.x / 0.008 + hash21(vec2(row, 1.0)) * 4.0);
+  float flip = floor(t * 0.45 + hash21(vec2(row, dash)) * 9.0);
+  float keep = hash21(vec2(row * 1.3 + dash, flip));
+  if (keep > mix(0.72, 0.18, clamp(depth / 0.2, 0.0, 1.0))) {
+    return vec4(0.0);
+  }
+  vec4 src = sfLand(vec2(p.x, SF_WATER + depth * 0.62), t);
+  // The floodlit towers, lamps, cars and some city windows reflect.
+  float col = floor(p.x / sfPx.x);
+  if (src.a < 0.8 && (src.a < 0.68 || hash21(vec2(col, 4.0)) > 0.35)) {
+    return vec4(0.0);
+  }
+  // Dimmer means toward the paper, which is white on a light theme.
+  vec3 dim = sfOnLight > 0.5 ? mix(src.rgb, vec3(1.0), 0.5) : src.rgb * 0.5;
+  return vec4(dim, sfDots > 0.5 ? 0.64 : 0.36);
 }
 
 vec2 sfCacheUv = vec2(-1.0);
 float sfCacheT = -1.0;
 vec4 sfCacheValue = vec4(0.0);
 
-vec4 sfOver(vec4 under, vec4 over) {
-  return over.a > 0.0 ? over : under;
-}
-
 vec4 sfScene(vec2 uv, vec2 res, float t) {
   if (uv == sfCacheUv && t == sfCacheT) {
     return sfCacheValue;
   }
   float aspect = res.x / res.y;
-  float halfW = aspect * 0.5;
-  vec2 base = vec2((uv.x - 0.5) * aspect, uv.y);
-  vec2 ptr = (u_pointer.xy - 0.5) * u_pointer.z * sfParallax;
-  float pixel = 1.0 / res.y;
-  // Width of one sample column, so thin verticals land on whole glyphs.
-  float colW = aspect / max(ascii_samples.x, 1.0);
-  float span = sfSpan(aspect);
-  // Nearer layers slide further with the pointer.
-  vec2 farP = base + ptr * vec2(0.01, 0.003);
-  vec2 cityP = base + ptr * vec2(0.018, 0.004);
-  vec2 hillP = base + ptr * vec2(0.03, 0.006);
-  vec2 bridgeP = base + ptr * vec2(0.045, 0.008);
-  vec2 nearP = base + ptr * vec2(0.07, 0.012);
-  // The sun is up over the city, high enough to clear the towers.
-  vec2 sun = vec2(span * 0.62, 0.84);
-  // Downtown sits behind the main span, right of centre, under the cable.
-  float px = span * 0.55;
+  sfPx = vec2(aspect / ascii_samples.x, 1.0 / res.y);
+  sfS = floor(uv * ascii_samples);
+  sfDots = step(1.5, sfGrid.x * sfGrid.y);
+  sfHalfWidth = aspect * 0.5;
+  sfFogTime = t;
+  // The span widens with the box, between a phone and a wide hero; the
+  // bridge sits a little left so the city has room on the right. Both are
+  // snapped to whole sample columns so the towers come out symmetric.
+  sfHalf = clamp(sfHalfWidth * 0.5, 0.2, 0.52);
+  sfSide = sfHalf * 0.27;
+  sfMid = -sfHalfWidth * 0.08;
+  sfMid = (floor(sfMid / sfPx.x) + 0.5) * sfPx.x;
+  sfHalf = floor(sfHalf / sfPx.x) * sfPx.x;
+  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y);
 
-  vec4 c = vec4(0.0);
-  if (nearP.y < SF_WATER) {
-    c = sfWater(nearP, t, pixel, colW, span, sun);
-  } else {
-    c = sfSky(farP, t, pixel, sun);
-    c = sfOver(c, sfCity(cityP, t, pixel, colW, px));
-  }
-  float far = sfFogFar(cityP, t);
-  if (far > 0.0) {
-    vec4 f = sfFogColor(far, cityP, far);
-    c = mix(c, f, far);
-  }
-  c = sfOver(c, sfHeadlands(hillP, span));
-  c = sfOver(c, sfSpanSteel(bridgeP, t, pixel, colW, span));
-  c = sfOver(c, sfTower(bridgeP, -span, t, pixel, colW));
-  c = sfOver(c, sfTower(bridgeP, span, t, pixel, colW));
-  if (nearP.y < SF_WATER) {
-    c = sfOver(c, sfBoats(nearP, t, pixel, colW, halfW));
-  }
-  float bank = sfFogBank(bridgeP, t, span);
-  if (bank > 0.0) {
-    vec4 f = sfFogColor(bank, bridgeP, fbm(bridgeP * vec2(3.0, 8.0) - vec2(t * 0.05, 0.0)));
-    c = mix(c, f, smoothstep(0.0, 0.85, bank));
-  }
-  c = sfOver(c, sfGulls(farP, t, pixel, colW, halfW));
-
+  vec4 c = p.y < SF_WATER ? sfWater(p, t) : sfLand(p, t);
   vec3 col = c.rgb;
+  float tone = max(c.a, 0.0);
+  // Intensity thins the tone by its square root, so Braille dots survive
+  // longer than the colour does, and fades the colour toward the paper.
+  tone *= sqrt(sfIntensity);
   if (sfOnLight > 0.5) {
-    // Pale fog and cream houses vanish on a light paper; darken the light
-    // colours most so the orange keeps its hue.
-    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-    col *= mix(1.0, 0.5, l);
+    // Orange and the lights wash out on a light paper; deepen them.
+    col = mix(vec3(1.0), col * col * 0.8, sfIntensity);
+  } else {
+    col *= sfIntensity;
   }
-  float tone = c.a * sfIntensity;
-  // Below the faintest glyph the tone is exactly empty, so the open sky
-  // draws clean paper instead of a scatter of dots.
-  tone = tone < 0.05 ? 0.0 : tone;
+  tone = tone < 0.04 ? 0.0 : tone;
   sfCacheUv = uv;
   sfCacheT = t;
   sfCacheValue = vec4(col, tone);
@@ -515,9 +568,25 @@ float field(vec2 uv, vec2 res, float t) {
 }
 `;
 
+// Braille and quadrant cells show one colour for all their dots, which the
+// engine averages over every sample. Giving each sample the colour of the
+// strongest sample in its cell keeps a one-dot cable or suspender orange
+// instead of fading into the dark around it.
 const COLOR_FIELD = `${SCENE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
-  return sfScene(uv, res, t).rgb;
+  vec2 origin = floor(floor(uv * ascii_samples) / sfGrid) * sfGrid;
+  vec4 best = vec4(0.0, 0.0, 0.0, -1.0);
+  for (int y = 0; y < 4; y++) {
+    for (int x = 0; x < 2; x++) {
+      if (float(x) < sfGrid.x && float(y) < sfGrid.y) {
+        vec4 c = sfScene((origin + vec2(float(x), float(y)) + 0.5) / ascii_samples, res, t);
+        if (c.a > best.a) {
+          best = c;
+        }
+      }
+    }
+  }
+  return best.rgb;
 }
 `;
 
@@ -526,7 +595,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #9fb6cf 0%, #d5dde6 45%, #e9e2d8 62%, #c9d2da 66%, #6f8b98 72%, #4a6674 100%)",
+        "linear-gradient(to bottom, #050814 0%, #0b1428 55%, #142036 78%, #05070f 80%, #03050b 100%)",
     }}
   />
 );
@@ -534,7 +603,7 @@ const FALLBACK = (
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-/** True when the paper is light, so the shader darkens its pale colours. */
+/** True when the paper is light, so the shader deepens its colours. */
 const usePaperIsLight = (
   paper: AsciiColor,
   phosphor: PhosphorName | undefined
@@ -550,67 +619,64 @@ const usePaperIsLight = (
 export interface SanFranciscoProps extends AsciiSceneProps {
   /** How much the scene shows, from 0 (empty paper) to 1. Lower it under body text. Default 1. */
   intensity?: number;
-  /** How thick the fog bank is, from 0 (a clear strait) to 1 (the deck buried). Default 0.6. */
+  /** How high the fog bank behind the bridge rises, from 0 (none) to 1. Default 0.5. */
   fog?: number;
-  /** How many sailboats are out on the bay, from 0 (none) to 1. Default 0.6. */
-  sails?: number;
-  /** How many cars cross the bridge, from 0 (none) to 1. Default 0.5. */
+  /** How many cars cross the bridge, from 0 (none) to 1 (six). Default 0.5. */
   traffic?: number;
   /** The surface behind the glyphs. Default `"--ascii-paper"`, or the phosphor's glass. */
   paper?: AsciiColor;
-  /** What the pointer does to the glyphs, on top of the parallax. Default `"none"`. */
-  interaction?: Interaction;
-  /** Shown without WebGL and until the first frame. Default: a morning fog gradient. */
+  /** Shown without WebGL and until the first frame. Default: a night gradient. */
   fallback?: ReactNode;
 }
 
 /**
- * San Francisco. The Golden Gate Bridge on a foggy morning: orange towers
- * with stepped portals, the main cables and suspenders, a fog bank rolling
- * through the strait and under the deck, the Marin headlands, the city and
- * the Transamerica Pyramid behind, sailboats on the bay and gulls overhead.
+ * San Francisco. The Golden Gate Bridge at night: two orange towers with
+ * stepped portals, the main cable dipping to the deck between them, the
+ * suspenders, a few cars crossing, the Marin Headlands on the left and the
+ * downtown skyline far right, with a low fog bank behind the span.
  * Decorative and full-bleed: size it with `className`, usually
  * `absolute inset-0`.
  */
 export const SanFrancisco = ({
   intensity = 1,
-  fog = 0.6,
-  sails = 0.6,
+  fog = 0.5,
   traffic = 0.5,
   paper = "--ascii-paper",
-  charset = "standard",
+  charset = "quadrants",
+  chars,
   colorMode,
   phosphor,
-  cell = 12,
+  cell = 9,
   fps = 30,
-  stillTime = 9,
-  interactive = true,
-  interaction = "none",
+  stillTime = 12,
+  // Part of the shared scene props; nothing here follows the pointer.
+  interactive: _interactive,
   fallback = FALLBACK,
   ...props
 }: SanFranciscoProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
   const onLight = usePaperIsLight(paper, phosphor);
+  const [gx, gy] = resolveCharset(charset, chars).grid;
   return (
     <AsciiShader
       field={FIELD}
       colorField={COLOR_FIELD}
       uniforms={{
-        sfFog: clamp(fog, 0, 1),
+        sfFogAmount: clamp(fog, 0, 1),
+        sfGrid: [gx, gy],
         sfIntensity: clamp(intensity, 0, 1),
         sfOnLight: onLight ? 1 : 0,
-        sfParallax: interactive ? 1 : 0,
-        sfSails: clamp(sails, 0, 1),
         sfTraffic: clamp(traffic, 0, 1),
       }}
       charset={charset}
+      chars={chars}
       colorMode={mode}
       phosphor={phosphor}
       paper={phosphor === undefined ? paper : undefined}
       cell={cell}
       fps={fps}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
+      interaction="none"
       fallback={fallback}
       {...props}
     />

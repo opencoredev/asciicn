@@ -4,12 +4,12 @@ import {
   PHOSPHOR_NAMES,
   RAMP_NAMES,
 } from "@/lib/ascii";
-import { segmented, select, slider, toggle } from "@/lib/preview-controls";
+import { select, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the Miami main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "standard",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -54,36 +54,12 @@ export const neon = slider({
   step: 0.05,
 });
 
-export const traffic = slider({
-  default: 0.6,
-  id: "traffic",
-  label: "Traffic",
-  max: 1,
-  min: 0,
-  step: 0.05,
-});
-
-export const sway = slider({
-  default: 1,
-  id: "sway",
-  label: "Sway",
-  max: 2,
-  min: 0,
-  step: 0.1,
-});
-
-export const interactive = toggle({
-  default: true,
-  id: "interactive",
-  label: "Parallax",
-});
-
 export const cell = slider({
-  default: 12,
+  default: 9,
   id: "cell",
   label: "Cell",
-  max: 20,
-  min: 8,
+  max: 16,
+  min: 6,
   step: 1,
   unit: "px",
 });
@@ -94,13 +70,6 @@ export const animate = toggle({
   label: "Animate",
 });
 
-export const interaction = segmented({
-  default: "none",
-  id: "interaction",
-  label: "Pointer",
-  options: ["none", "repel", "ripple", "trail"],
-});
-
 /** Display order of the tray. */
 export const controls = [
   charset,
@@ -109,10 +78,6 @@ export const controls = [
   ramp,
   intensity,
   neon,
-  traffic,
-  sway,
-  interactive,
-  interaction,
   cell,
   animate,
 ];

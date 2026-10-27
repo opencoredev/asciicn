@@ -2,420 +2,497 @@
 
 import type { ReactNode } from "react";
 
-import { useAsciiColors } from "@/lib/ascii";
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  Interaction,
-  PhosphorName,
-} from "@/lib/ascii";
+import { resolveCharset, useAsciiColors } from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, PhosphorName } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// Ocean Drive seen from the surf, looking west at dusk. Everything is laid
-// out in box-height units (y runs 0 at the bottom to 1 at the top, x is
-// centred and scaled by the true aspect), so a portrait box shows fewer
-// hotels instead of squashed ones. Layers from back to front: sky and sun,
-// the hotel row, palms, the drive, the beach, the water. Each layer returns
-// its own colour and tone, so the tone is designed for glyphs rather than
-// derived from brightness: open sky stays empty and the neon is densest.
-// `miScene` is cached per sample because field and colorField both ask.
+// Ocean Drive at nightfall, seen from the water. Units are box heights: y
+// runs from 0 at the bottom to 1 at the top and x is centred, so a portrait
+// box shows fewer hotels instead of squashed ones. Every edge is a hard test
+// against the sample grid, and window grids count whole samples, so the
+// architecture lands on clean rows and columns of glyphs. Nothing built
+// moves: only windows, beacons, stars, the water and one boat change.
+//
+// Tones are designed for glyphs: lights and neon sit high, outlines just
+// above half (a Braille dot), and fills low. Braille and quadrants only
+// light a dot above half tone, so `miFill` turns a fill into a regular share
+// of dots there instead.
 const SCENE = `
-const float MI_BASE = 0.32;
-const float MI_LOT = 0.3;
-const float MI_SUN_X = 0.12;
-const float MI_SUN_Y = 0.53;
-const float MI_SUN_R = 0.085;
-// Roughly where the roofs end; the dusk glow is measured up from here.
-const float MI_ROOF = 0.45;
+const float MI_WATER = 0.25;
+const float MI_BASE = 0.268;
+const float MI_LOT = 0.29;
 
-const vec3 miPink = vec3(1.0, 0.24, 0.62);
-const vec3 miTeal = vec3(0.1, 0.95, 0.88);
+const vec3 miMagenta = vec3(1.0, 0.25, 0.72);
+const vec3 miCyan = vec3(0.22, 0.9, 1.0);
+const vec3 miGold = vec3(1.0, 0.74, 0.3);
+const vec3 miWarm = vec3(1.0, 0.8, 0.52);
+const vec3 miCool = vec3(0.78, 0.9, 1.0);
 
-float miShore(float x, float t) {
-  return 0.15 + 0.006 * sin(x * 6.0 + 1.3) + 0.004 * snoise(vec2(x * 3.0, 0.7))
-    + 0.007 * sin(t * 0.45 + x * 1.7) * miSway;
+// One sample in scene units, the sample's index, and 1 when the charset
+// draws sub-cell dots. Set by miScene for each sample it evaluates.
+vec2 miPx = vec2(0.01);
+vec2 miS = vec2(0.0);
+float miDots = 0.0;
+
+// A 4x4 ordered threshold on the sample grid, in (0, 1).
+float miBayer(vec2 s) {
+  vec2 a = mod(s, 2.0);
+  vec2 b = mod(floor(s * 0.5), 2.0);
+  float hi = mod(2.0 * a.x + 3.0 * a.y, 4.0);
+  float lo = mod(2.0 * b.x + 3.0 * b.y, 4.0);
+  return (hi * 4.0 + lo + 0.5) / 16.0;
 }
 
-// Distance from p to the segment ab, and how far along it p falls.
+float miFill(float level) {
+  if (miDots < 0.5) {
+    return level;
+  }
+  return miBayer(miS) < level * 0.75 ? 0.6 : 0.0;
+}
+
+// True on the single sample row or column that holds a coordinate.
+bool miRow(float y, float at) {
+  return abs(y - at) < miPx.y * 0.5;
+}
+
+bool miCol(float x, float at) {
+  return abs(x - at) < miPx.x * 0.5;
+}
+
+// A count of samples for a length in scene units, never below a minimum.
+float miSamples(float size, float px, float least) {
+  return max(least, floor(size / px + 0.5));
+}
+
+// A light that switches on or off now and then. Each one keeps its state
+// for a minute or so and fades over about two seconds when it changes.
+float miLit(vec2 id, float share, float t) {
+  float period = 40.0 + 50.0 * hash21(id + 3.7);
+  float e = t / period + hash21(id + 9.1) * 7.0;
+  float now = step(hash21(id + floor(e) * 1.37), share);
+  float before = step(hash21(id + (floor(e) - 1.0) * 1.37), share);
+  return mix(before, now, smoothstep(0.0, 2.0 / period, fract(e)));
+}
+
 vec2 miSegment(vec2 p, vec2 a, vec2 b) {
   vec2 ab = b - a;
   float h = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
   return vec2(length(p - a - ab * h), h);
 }
 
-vec4 miSky(vec2 p, float t, float pixel) {
-  float h = clamp((p.y - MI_ROOF) / (1.0 - MI_ROOF), 0.0, 1.0);
-  vec3 col = mix(vec3(1.0, 0.6, 0.3), vec3(1.0, 0.36, 0.58), smoothstep(0.0, 0.25, h));
-  col = mix(col, vec3(0.62, 0.3, 0.9), smoothstep(0.2, 0.55, h));
-  col = mix(col, vec3(0.3, 0.18, 0.62), smoothstep(0.5, 0.95, h));
-  // The glow above the roofs gets glyphs, thinning into haze lines as it
-  // climbs; the top of the sky is open.
-  float haze = 0.75 + 0.5 * fbm(vec2(p.x * 2.0 + t * 0.01, p.y * 26.0));
-  float tone = 0.11 * (1.0 - smoothstep(0.0, 0.45, h)) * haze;
+// ---- Sky ---------------------------------------------------------------
 
-  // Long thin clouds, lit pink from below by the sun.
-  float band = smoothstep(0.2, 0.32, h) * (1.0 - smoothstep(0.55, 0.75, h));
-  float streak = fbm(vec2(p.x * 1.4 + t * 0.012, p.y * 11.0));
-  float cloud = smoothstep(0.56, 0.7, streak) * band;
-  float under = smoothstep(0.6, 0.75, fbm(vec2(p.x * 1.4 + t * 0.012, (p.y - pixel * 1.5) * 11.0)));
-  vec3 cloudCol = mix(vec3(0.7, 0.35, 0.8), vec3(1.0, 0.62, 0.55), under);
-  col = mix(col, cloudCol, cloud);
-  tone = max(tone, cloud * (0.2 + 0.12 * under));
-
-  // A few early stars at the top, twinkling.
-  vec2 g = p * vec2(34.0, 34.0);
-  vec2 id = floor(g);
-  float star = hash21(id + 17.0);
-  if (star > 0.965 && h > 0.62) {
-    float d = length(fract(g) - 0.5);
-    float twinkle = 0.55 + 0.45 * sin(t * (1.5 + star * 3.0) + star * 40.0);
-    float s = smoothstep(0.32, 0.0, d) * twinkle * smoothstep(0.62, 0.85, h);
-    col = mix(col, vec3(1.0, 0.92, 1.0), s);
-    tone = max(tone, s * 0.75);
+vec4 miSky(vec2 p, float t, float hw) {
+  // A thin crescent moon, high on the right.
+  vec2 m = p - vec2(hw * 0.58, 0.86);
+  if (length(m) < 0.032 && length(m - vec2(0.013, 0.008)) > 0.029) {
+    return vec4(1.0, 0.93, 0.78, 0.85);
   }
 
-  // The low sun: a warm disc with a halo, sliced by thin cloud lines.
-  vec2 s = p - vec2(MI_SUN_X, MI_SUN_Y);
-  float r = length(s);
-  float disc = 1.0 - smoothstep(MI_SUN_R - pixel, MI_SUN_R + pixel, r);
-  float slice = step(0.82, fract((s.y + MI_SUN_R) * 34.0 + t * 0.05)) * step(s.y, -0.012);
-  disc *= 1.0 - slice;
-  vec3 sunCol = mix(vec3(1.0, 0.38, 0.45), vec3(1.0, 0.85, 0.5), smoothstep(-MI_SUN_R, MI_SUN_R, s.y));
-  float halo = exp(-max(r - MI_SUN_R, 0.0) * 18.0) * (1.0 - disc);
-  col = mix(col, sunCol, disc);
-  col = mix(col, vec3(1.0, 0.5, 0.55), halo * 0.6);
-  tone = max(tone, max(disc * 0.95, halo * 0.26));
-  return vec4(col, tone);
+  // Sparse stars, one sample each, that brighten and dim slowly.
+  if (p.y > 0.62) {
+    vec2 g = floor(p / 0.045);
+    float r = hash21(g + 31.0);
+    vec2 at = (g + 0.2 + 0.6 * vec2(hash21(g + 4.0), hash21(g + 8.0))) * 0.045;
+    if (r < 0.3 && miCol(p.x, at.x) && miRow(p.y, at.y)) {
+      float tw = 0.5 + 0.5 * sin(t * (0.35 + r) + r * 40.0);
+      // A dot in Braille and quadrants, a point or a colon in the ramps.
+      float tone = miDots > 0.5 ? 0.58 + 0.2 * tw : 0.16 + 0.1 * tw;
+      return vec4(vec3(0.85, 0.85, 1.0) * (0.55 + 0.45 * tw), tone);
+    }
+  }
+  return vec4(0.0, 0.0, 0.0, -1.0);
 }
 
-// Signed distance to a box standing on y = 0, rounded at the corners.
-float miBox(vec2 p, float halfW, float height, float radius) {
-  vec2 q = abs(vec2(p.x, p.y - height * 0.5)) - vec2(halfW, height * 0.5) + radius;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+// ---- Brickell towers -----------------------------------------------------
+
+// Each tower: x centre, half width, height above the street, crown kind
+// (0 flat, 1 slanted, 2 stepped, 3 rounded, 4 spire) and, for a lit crown,
+// which neon (0 none, 1 magenta, 2 cyan, 3 gold). A beacon tops the tall ones.
+void miTowerSpec(float i, out vec4 spec, out vec2 lit) {
+  spec = vec4(-0.72, 0.03, 0.3, 0.0); lit = vec2(0.0, 0.0);
+  if (i == 1.0) { spec = vec4(-0.55, 0.038, 0.4, 1.0); lit = vec2(0.0, 0.0); }
+  if (i == 2.0) { spec = vec4(-0.39, 0.028, 0.35, 4.0); lit = vec2(0.0, 1.0); }
+  if (i == 3.0) { spec = vec4(-0.22, 0.044, 0.49, 2.0); lit = vec2(3.0, 1.0); }
+  if (i == 4.0) { spec = vec4(-0.04, 0.032, 0.43, 0.0); lit = vec2(2.0, 0.0); }
+  if (i == 5.0) { spec = vec4(0.13, 0.046, 0.56, 0.0); lit = vec2(0.0, 1.0); }
+  if (i == 6.0) { spec = vec4(0.3, 0.034, 0.45, 3.0); lit = vec2(1.0, 1.0); }
+  if (i == 7.0) { spec = vec4(0.47, 0.04, 0.37, 0.0); lit = vec2(0.0, 0.0); }
+  if (i == 8.0) { spec = vec4(0.63, 0.028, 0.32, 1.0); lit = vec2(2.0, 0.0); }
+  if (i == 9.0) { spec = vec4(0.8, 0.036, 0.27, 0.0); lit = vec2(0.0, 0.0); }
 }
 
-// One art deco hotel per lot: a rounded body, stepped setbacks on the roof,
-// a vertical neon fin with a sign, a neon roofline and rows of windows with
-// eyebrow ledges. Returns vec4(0) where the lot is open sky.
-vec4 miHotel(vec2 p, float t, float pixel) {
-  float lot = (p.x - MI_SUN_X) / MI_LOT + 0.5;
-  float id = floor(lot);
-  float u = fract(lot) - 0.5;
-  float r1 = hash21(vec2(id, 3.1));
-  float r2 = hash21(vec2(id, 7.7));
-  float r3 = hash21(vec2(id, 12.9));
-  // The lot in front of the sun holds a low pavilion so the sun shows.
-  bool low = abs(id) < 0.5;
-  float halfW = (0.3 + r2 * 0.1) * MI_LOT;
-  float height = low ? 0.045 : 0.12 + r1 * 0.16;
-  float x = u * MI_LOT;
-  float y = p.y - MI_BASE;
+vec3 miNeonOf(float k) {
+  return k < 1.5 ? miMagenta : k < 2.5 ? miCyan : miGold;
+}
 
-  // Stepped crown: up to three setbacks, each narrower and a sample row or
-  // more higher. The silhouette is the union of rounded boxes, so the neon
-  // tube traces the outline and not the inner edges of each setback.
-  float steps = low ? 0.0 : floor(1.0 + r3 * 2.99);
-  float stepH = max(0.022, pixel * 1.2);
-  float radius = min(0.022, halfW * 0.3);
-  float body = miBox(vec2(x, y), halfW, height, radius);
-  float top = height;
-  float stepHalf = halfW;
+// The roof height of a tower at local x.
+float miTowerTop(float x, float halfW, float h, float crown) {
+  if (crown == 1.0) {
+    return h - (x + halfW) * 0.45;
+  }
+  if (crown == 2.0) {
+    return abs(x) < halfW * 0.4 ? h : abs(x) < halfW * 0.72 ? h - 0.022 : h - 0.044;
+  }
+  if (crown == 3.0) {
+    float u = clamp(x / halfW, -1.0, 1.0);
+    return h - 0.05 + 0.05 * sqrt(1.0 - u * u);
+  }
+  return h;
+}
+
+vec4 miTowers(vec2 p, float t) {
+  for (int k = 0; k < 10; k++) {
+    float i = float(k);
+    vec4 spec;
+    vec2 lit;
+    miTowerSpec(i, spec, lit);
+    vec2 q = vec2(p.x - spec.x, p.y - MI_BASE);
+    float halfW = spec.y;
+    float crown = spec.w;
+    float top = miTowerTop(q.x, halfW, spec.z, crown);
+
+    // A spire or a beacon above the roof.
+    if (crown == 4.0 && miCol(q.x, 0.0) && q.y > top && q.y < top + 0.07) {
+      return vec4(miCool * 0.7, 0.62);
+    }
+    float tip = crown == 4.0 ? top + 0.07 : top;
+    if (lit.y > 0.5 && miCol(q.x, 0.0) && miRow(q.y, tip + miPx.y)) {
+      // An aviation light: one slow pulse every 1.8 seconds.
+      float f = fract(t / 1.8 + i * 0.37);
+      float pulse = smoothstep(0.0, 0.15, f) * (1.0 - smoothstep(0.3, 0.75, f));
+      return vec4(1.0, 0.18, 0.2, 0.9 * pulse);
+    }
+
+    if (abs(q.x) >= halfW || q.y < 0.0 || q.y >= top) {
+      continue;
+    }
+    float leftOut = abs(q.x - miPx.x) >= halfW ? 1.0 : 0.0;
+    float rightOut = abs(q.x + miPx.x) >= halfW ? 1.0 : 0.0;
+    float topOut = q.y + miPx.y >= miTowerTop(q.x, halfW, spec.z, crown) ? 1.0 : 0.0;
+    float sideOut = q.y + miPx.y >= miTowerTop(q.x + miPx.x, halfW, spec.z, crown)
+      || q.y + miPx.y >= miTowerTop(q.x - miPx.x, halfW, spec.z, crown) ? 1.0 : 0.0;
+    if (topOut + sideOut > 0.5 && q.y > 0.04) {
+      // The crown line: neon on the lit towers, a pale edge on the rest.
+      if (lit.x > 0.5) {
+        return vec4(miNeonOf(lit.x) * mix(0.35, 1.0, miNeon), 0.6 + 0.3 * miNeon);
+      }
+      return vec4(vec3(0.34, 0.42, 0.62), 0.58);
+    }
+    if (leftOut + rightOut > 0.5) {
+      return vec4(vec3(0.22, 0.28, 0.46), 0.55);
+    }
+
+    // Glass floors: one row of windows every few sample rows, a window in
+    // every other column, counted from the left edge so the spacing stays
+    // even across the face.
+    float floorH = miSamples(0.013, miPx.y, 2.0);
+    float row = floor(q.y / miPx.y);
+    float colW = miSamples(0.009, miPx.x, 2.0);
+    float col = floor((q.x + halfW) / miPx.x);
+    float cols = floor(halfW * 2.0 / miPx.x);
+    if (mod(row, floorH) < 1.0 && mod(col, colW) > 0.5 && mod(col, colW) < 1.5 && col < cols - 1.0) {
+      // Offices light a few windows at a time along a floor.
+      vec2 id = vec2(i * 97.0 + floor(col / colW / 3.0), floor(row / floorH));
+      float on = miLit(id, 0.32, t);
+      float tint = hash21(id + 0.5);
+      vec3 c = tint < 0.7 ? miCool : tint < 0.88 ? vec3(0.5, 0.95, 1.0) : miWarm;
+      return vec4(c * mix(0.2, 0.7, on), mix(0.0, 0.76, on));
+    }
+    // Dark glass: no glyph, but it hides what is behind.
+    return vec4(0.0);
+  }
+  return vec4(0.0, 0.0, 0.0, -1.0);
+}
+
+// ---- Ocean Drive hotels -----------------------------------------------------
+
+// The hotel on a lot: half width, body height, parapet steps, step height,
+// then the fin's x (relative to the centre) and top (0 for no fin), whether
+// it has portholes, whether its eyebrows carry neon, and its neon colours.
+float miKind(float id) {
+  return mod(id, 5.0);
+}
+
+void miHotelSpec(float id, out vec4 body, out vec4 extra) {
+  float kind = miKind(id);
+  // body: half width, height, steps, step height
+  // extra: fin x, fin top, portholes, neon eyebrows
+  body = vec4(0.118, 0.17, 3.0, 0.02); extra = vec4(0.0, 0.3, 0.0, 1.0);
+  if (kind == 1.0) { body = vec4(0.125, 0.14, 3.0, 0.018); extra = vec4(0.0, 0.0, 1.0, 0.0); }
+  if (kind == 2.0) { body = vec4(0.088, 0.2, 1.0, 0.018); extra = vec4(-0.058, 0.27, 0.0, 0.0); }
+  if (kind == 3.0) { body = vec4(0.114, 0.21, 2.0, 0.022); extra = vec4(0.0, 0.0, 1.0, 1.0); }
+  if (kind == 4.0) { body = vec4(0.108, 0.115, 1.0, 0.016); extra = vec4(0.08, 0.19, 0.0, 1.0); }
+}
+
+bool miHotelIn(vec2 q, vec4 body, vec4 extra) {
+  if (q.y < 0.0) {
+    return false;
+  }
+  if (abs(q.x) < body.x && q.y < body.y) {
+    return true;
+  }
   for (int i = 0; i < 3; i++) {
-    if (float(i) >= steps) {
+    float fi = float(i);
+    if (fi >= body.z) {
       break;
     }
-    float w = halfW * (0.66 - float(i) * 0.2);
-    float h = height + float(i + 1) * stepH;
-    body = min(body, miBox(vec2(x, y), w, h, min(radius, w * 0.4)));
-    if (abs(x) < w) {
-      top = h;
-      stepHalf = w;
+    float w = body.x * (0.62 - 0.17 * fi);
+    if (abs(q.x) < w && q.y < body.y + (fi + 1.0) * body.w) {
+      return true;
     }
   }
-
-  // The fin rises through the middle of the roof, a sign above it.
-  float finW = max(0.008, pixel * 0.6);
-  float finTop = top + (low ? 0.0 : max(0.05, pixel * 2.5) + r2 * 0.06);
-  float fin = (!low && abs(x) < finW && y < finTop && y > height * 0.45) ? 1.0 : 0.0;
-
-  vec3 pastel = r1 < 0.25 ? vec3(1.0, 0.72, 0.82)
-    : r1 < 0.5 ? vec3(0.62, 1.0, 0.86)
-    : r1 < 0.75 ? vec3(1.0, 0.9, 0.62)
-    : vec3(0.78, 0.72, 1.0);
-  vec3 neon = r2 > 0.5 ? miPink : miTeal;
-  vec3 neon2 = r2 > 0.5 ? miTeal : miPink;
-  // Most signs hum steadily; a few stutter.
-  float buzz = 1.0 - step(0.9, hash21(vec2(id, floor(t * 9.0)))) * step(0.55, r3) * 0.85;
-  float lit = buzz * miNeon;
-
-  if (fin > 0.5) {
-    // Stacked segments down the fin, like letters on a blade sign, that
-    // light from the top one at a time and then hold.
-    // Each segment is two sample rows: a lit row and a dark gap.
-    float segH = max(0.024, pixel * 2.0);
-    float seg = floor((finTop - y) / segH);
-    float gap = step(0.5, fract((finTop - y) / segH));
-    float count = 1.0 + floor((finTop - height * 0.45) / segH);
-    float chase = mod(t * 2.2 + r3 * 9.0, count + 6.0);
-    float on = step(seg, chase);
-    float tone = mix(0.2, 1.0, on * (1.0 - gap) * lit);
-    return vec4(mix(neon * 0.35, neon, on * lit), tone);
-  }
-  if (body > pixel * 0.5) {
-    // Just outside the roofline: the neon tube's glow.
-    float glow = exp(-body / max(pixel * 1.4, 0.006)) * lit * step(height * 0.8, y);
-    return glow > 0.08 ? vec4(neon, glow * 0.55) : vec4(0.0);
-  }
-
-  // The facade: solid pastel at dusk, a little brighter toward the street
-  // lights, so each hotel reads as a block against the thinner sky glow.
-  float uplight = 1.0 - smoothstep(0.0, height, y) * 0.4;
-  float edge = smoothstep(y < height ? halfW : stepHalf, (y < height ? halfW : stepHalf) - 0.02, abs(x));
-  vec3 col = pastel * mix(0.7, 1.0, uplight) * mix(0.8, 1.0, edge);
-  float tone = 0.34 + 0.06 * uplight;
-
-  // A neon tube traces the roofline and the setbacks and turns down the
-  // upper corners. Columns are narrower than rows, so the sides get a
-  // thinner tube than the roof.
-  float roof = step(top - pixel * 1.2, y);
-  float rim = step(-body, max(pixel * mix(0.45, 0.9, roof), 0.005)) * step(height * 0.55, y);
-  if (rim > 0.0) {
-    return vec4(mix(col, neon, rim * lit), mix(tone, 1.0, rim * lit));
-  }
-
-  // A horizontal sign band under the roof on wide hotels: lettered blocks
-  // that wipe on from the left, hold, and go dark together.
-  float bandY = height - max(0.035, pixel * 1.5);
-  if (!low && abs(y - bandY) < max(0.009, pixel * 0.5) && abs(x) < halfW * 0.62) {
-    float letter = floor((x + halfW) / 0.014);
-    float ink = step(0.3, hash21(vec2(id, letter))) * step(0.2, fract((x + halfW) / 0.014));
-    float wipe = mod(t * 0.5 + r1 * 5.0, 3.0);
-    float on = step((x + halfW) / (halfW * 2.0), wipe) * step(wipe, 2.6);
-    float l = ink * on * lit;
-    return vec4(mix(col * 0.5, neon2, l), mix(0.2, 0.95, l));
-  }
-
-  // Rows of windows cut into the facade as dark holes, a few lit warm,
-  // each floor capped by an eyebrow ledge that wraps the corner.
-  float floorH = max(0.05, pixel * 3.0);
-  float fy = (y - 0.02) / floorH;
-  float row = floor(fy);
-  float inRow = fract(fy);
-  if (y > 0.02 && y < bandY - pixel && !low) {
-    if (inRow > 0.7) {
-      return vec4(mix(pastel, vec3(1.0), 0.35), 0.5);
-    }
-    float colW = max(0.04, pixel * 2.4);
-    float wx = fract(x / colW + 0.5);
-    if (inRow > 0.1 && inRow < 0.6 && wx > 0.25 && wx < 0.75 && edge > 0.5) {
-      float cell = floor(x / colW + 0.5);
-      float on = step(0.7, hash21(vec2(cell + id * 31.0, row + floor(t * 0.03 + r2 * 4.0) * 7.0)));
-      vec3 warm = mix(vec3(1.0, 0.78, 0.5), vec3(0.75, 0.9, 1.0), step(0.8, hash21(vec2(cell, row + id))));
-      // A dark window is a hole, but not open sky: a tone too small to draw.
-      return on > 0.5 ? vec4(warm, 0.6) : vec4(col * 0.3, 0.001);
-    }
-  }
-  // The pavilion's door glows; otherwise plain facade.
-  if (low && abs(x) < 0.02 && y < 0.03) {
-    return vec4(vec3(1.0, 0.8, 0.55), 0.6);
-  }
-  return vec4(col, tone);
+  float finW = max(miPx.x * 1.01, 0.007);
+  return extra.y > 0.0 && abs(q.x - extra.x) < finW && q.y < extra.y;
 }
 
-// A palm: a curved, ringed trunk and a crown of drooping fronds that sway.
-// Checks this palm slot and its neighbours, since crowns overlap.
-vec4 miPalms(vec2 p, float t, float pixel) {
-  float spacing = 0.36;
-  float slot = floor(p.x / spacing);
-  vec4 best = vec4(0.0);
-  for (int k = -1; k <= 1; k++) {
-    float id = slot + float(k);
-    float r = hash21(vec2(id, 41.0));
-    float r2 = hash21(vec2(id, 59.0));
-    float baseX = (id + 0.5 + (r - 0.5) * 0.5) * spacing;
-    float baseY = 0.24 + r2 * 0.03;
-    float height = 0.36 + r * 0.22;
-    float lean = (r2 - 0.5) * 0.14;
-    float wind = sin(t * 0.7 + id * 1.9) * 0.012 * miSway;
-    // Keep the sun clear.
-    if (abs(baseX - MI_SUN_X) < 0.16) {
-      continue;
-    }
+vec4 miHotels(vec2 p, float t) {
+  float id = floor(p.x / MI_LOT + 0.5);
+  vec2 q = vec2(p.x - id * MI_LOT, p.y - MI_BASE);
+  vec4 body;
+  vec4 extra;
+  miHotelSpec(id, body, extra);
+  float halfW = body.x;
+  float h = body.y;
+  vec3 neon = miNeonOf(1.0 + mod(id, 3.0));
+  vec3 neon2 = miNeonOf(1.0 + mod(id + 1.0, 3.0));
+  float n = miNeon;
+  float k = mod(id * 7.0, 5.0);
+  vec3 wall = k < 1.0 ? vec3(1.0, 0.72, 0.8)
+    : k < 2.0 ? vec3(0.65, 1.0, 0.86)
+    : k < 3.0 ? vec3(1.0, 0.92, 0.66)
+    : k < 4.0 ? vec3(0.8, 0.74, 1.0)
+    : vec3(0.95, 0.95, 0.92);
 
-    // Trunk: x offset grows with the square of height, so it bends.
-    float s = (p.y - baseY) / height;
-    if (s > 0.0 && s < 1.0) {
-      float cx = baseX + (lean + wind) * s * s;
-      float w = mix(0.0105, 0.0065, s);
-      w = max(w, pixel * 0.9);
-      float d = abs(p.x - cx);
-      if (d < w) {
-        float ring = step(0.5, fract(s * height / max(pixel * 2.0, 0.018)));
-        float side = 1.0 - d / w;
-        vec3 col = mix(vec3(0.3, 0.18, 0.32), vec3(0.85, 0.5, 0.6), side * 0.6);
-        best = vec4(col, 0.34 + 0.18 * ring * side);
+  // Floors: a ground floor of shopfronts, then storeys of a few sample rows
+  // each, capped by an eyebrow ledge that sticks out past the corners.
+  float ground = 0.022;
+  float floorH = miSamples(0.03, miPx.y, 3.0);
+  float rows = floor((q.y - ground) / miPx.y);
+  float inFloor = mod(rows, floorH);
+  float storey = floor(rows / floorH);
+  float topStorey = floor((h - 0.012 - ground) / miPx.y / floorH);
+  bool facade = q.y > ground && storey < topStorey;
+  bool eyebrow = facade && inFloor > floorH - 1.5;
+  if (eyebrow && abs(q.x) < halfW + miPx.x * 1.01 && abs(q.x) >= halfW) {
+    return vec4(wall * 0.8, 0.6);
+  }
+
+  if (!miHotelIn(q, body, extra)) {
+    return vec4(0.0, 0.0, 0.0, -1.0);
+  }
+  float finW = max(miPx.x * 1.01, 0.007);
+  bool onFin = extra.y > 0.0 && abs(q.x - extra.x) < finW && (q.y >= h || abs(q.x) >= halfW * 0.6);
+  bool openUp = !miHotelIn(q + vec2(0.0, miPx.y), body, extra);
+  bool openSide = !miHotelIn(q + vec2(miPx.x, 0.0), body, extra)
+    || !miHotelIn(q - vec2(miPx.x, 0.0), body, extra);
+
+  // Neon traces the roofline, every step of the parapet and the fin.
+  if (openUp && q.y > h * 0.5) {
+    return vec4(neon * mix(0.3, 1.0, n), 0.62 + 0.33 * n);
+  }
+  if (onFin) {
+    if (openSide) {
+      return vec4(neon * mix(0.3, 1.0, n), 0.62 + 0.33 * n);
+    }
+    // The blade sign: stacked letters, a lit row and a dark row.
+    float lit = mod(floor((extra.y - q.y) / miPx.y), 2.0) < 1.0 ? 1.0 : 0.0;
+    return vec4(neon2 * mix(0.25, 1.0, n * lit), mix(0.3, 0.9, n * lit));
+  }
+  if (openSide) {
+    return vec4(wall * 0.75, 0.58);
+  }
+
+  // The parapet steps: plain wall, with portholes on the first step.
+  if (q.y >= h) {
+    if (extra.z > 0.5 && q.y < h + body.w) {
+      vec2 d = vec2(mod(q.x + 0.5 * 0.024, 0.024) - 0.012, q.y - h - body.w * 0.5) / miPx;
+      if (length(d) < max(1.1, 0.0045 / miPx.y)) {
+        return vec4(miWarm, 0.8);
       }
     }
+    return vec4(wall * 0.55, miFill(0.3));
+  }
 
-    // The crown sits on the bent tip of the trunk.
-    vec2 crown = vec2(baseX + lean + wind, baseY + height);
-    if (abs(p.x - crown.x) < 0.28 && abs(p.y - crown.y) < 0.2) {
-      for (int f = 0; f < 7; f++) {
-        float ff = float(f);
-        float rf = hash21(vec2(id, ff + 3.0));
-        // Fronds leave the crown upward and arch over, like a fountain.
-        float ang = mix(0.15, 2.99, ff / 6.0) + (rf - 0.5) * 0.3
-          + sin(t * 0.9 + id * 2.3 + ff * 0.7) * 0.07 * miSway;
-        float len = 0.16 + rf * 0.06;
-        float droop = 0.14 + 0.05 * rf;
-        vec2 dir = vec2(cos(ang), sin(ang) * 0.7);
-        vec2 prev = crown;
-        for (int j = 1; j <= 6; j++) {
-          float q = float(j) / 6.0;
-          vec2 next = crown + dir * len * q - vec2(0.0, droop * q * q);
-          vec2 seg = miSegment(p, prev, next);
-          float along = (float(j - 1) + seg.y) / 6.0;
-          // Wide near the middle, pointed at the tip, never under a sample.
-          float w = max(0.01 * sin(3.14159 * min(along * 1.1 + 0.08, 1.0)), pixel * 0.7);
-          if (seg.x < w) {
-            // Leaflets: the frond is combed into short strokes.
-            float comb = step(0.3, fract(along * 14.0 + seg.x * 40.0));
-            float top = clamp(0.5 + (p.y - mix(prev.y, next.y, seg.y)) / (w * 2.0), 0.0, 1.0);
-            vec3 col = mix(vec3(0.12, 0.62, 0.5), vec3(1.0, 0.5, 0.68), top * 0.6);
-            best = vec4(col, mix(0.3, 0.6, comb));
-          }
-          prev = next;
-        }
+  // Shopfronts: a warm lit band broken by pilasters.
+  float col = floor(abs(q.x) / miPx.x);
+  float colW = miSamples(0.02, miPx.x, 2.0);
+  if (q.y < ground) {
+    if (mod(col, colW * 2.0) < 1.0) {
+      return vec4(wall * 0.6, 0.58);
+    }
+    return vec4(miWarm * 0.9, 0.74);
+  }
+  if (eyebrow) {
+    if (extra.w > 0.5) {
+      return vec4(neon2 * mix(0.3, 1.0, n), 0.6 + 0.3 * n);
+    }
+    return vec4(wall * 0.85, 0.6);
+  }
+
+  // Windows, mirrored about the centre, a sample row under each eyebrow.
+  // Hotels with portholes put a round window down the middle instead.
+  if (facade && inFloor > 0.5 && inFloor < floorH - 1.5) {
+    if (extra.z > 0.5 && abs(q.x) < 0.012) {
+      vec2 d = vec2(q.x, mod(q.y - ground, floorH * miPx.y) - floorH * miPx.y * 0.45) / miPx;
+      if (length(d) < max(1.1, 0.0045 / miPx.y)) {
+        return vec4(miWarm, 0.8);
       }
-      // A dark knot where the fronds meet.
-      if (length((p - crown) * vec2(1.0, 1.4)) < 0.012) {
-        best = vec4(0.35, 0.2, 0.3, 0.72);
-      }
+      return vec4(wall * 0.55, miFill(0.3));
+    }
+    float edge = floor(halfW / miPx.x);
+    if (mod(col, colW) < colW * 0.5 && col < edge - 1.0) {
+      vec2 id2 = vec2(id * 53.0 + col * sign(q.x + 1e-4), storey);
+      float on = miLit(id2, 0.72, t);
+      float tint = hash21(id2 + 2.0);
+      vec3 c = tint < 0.75 ? miWarm : tint < 0.9 ? vec3(1.0, 0.62, 0.72) : miCool;
+      return vec4(c * mix(0.25, 1.0, on), mix(0.0, 0.8, on));
     }
   }
-  return best;
+  return vec4(wall * 0.55, miFill(0.3));
 }
 
-// Two lanes of traffic along the drive: classic cars with headlights
-// throwing a beam ahead and red tail lights. Returns vec4(0) on open road.
-// Sizes are in units of one sample row, at least, so a car is always a
-// whole row of body under a row of cabin.
-vec4 miCar(vec2 p, float t, float lane, float span, float pixel) {
-  float dir = lane < 0.5 ? 1.0 : -1.0;
-  float y0 = lane < 0.5 ? 0.272 : 0.236;
-  float speed = lane < 0.5 ? 0.11 : 0.14;
-  float unit = max(0.012, pixel) * (lane < 0.5 ? 0.9 : 1.0);
-  vec4 hit = vec4(0.0);
-  for (int k = 0; k < 3; k++) {
-    float slot = float(k);
-    float phase = t * speed / span + slot / 3.0 + lane * 0.17;
-    float cycle = floor(phase);
-    if (hash21(vec2(cycle * 3.0 + slot, lane + 5.0)) > miTraffic) {
-      continue;
+// ---- Palms --------------------------------------------------------------
+
+// A still palm: a curved trunk and a crown of tapered fronds that arch
+// out and droop, their edges notched where the leaflets part. Drawn dark,
+// so it reads as a silhouette against the lit hotels behind it.
+vec4 miPalm(vec2 p, vec2 base, float height, float lean, float seed) {
+  vec3 trunkCol = vec3(0.24, 0.16, 0.2);
+  vec3 leafCol = vec3(0.1, 0.3, 0.24);
+  vec4 hit = vec4(0.0, 0.0, 0.0, -1.0);
+
+  float s = (p.y - base.y) / height;
+  if (s >= 0.0 && s <= 1.0) {
+    float cx = base.x + lean * s * s;
+    float w = max(mix(0.0065, 0.004, s), miPx.x * 0.5);
+    if (abs(p.x - cx) < w) {
+      float ring = mod(floor((p.y - base.y) / miPx.y), 3.0) < 1.0 ? 0.7 : 1.0;
+      hit = vec4(trunkCol * ring, 0.8);
     }
-    float cx = (fract(phase) - 0.5) * span * dir;
-    vec2 d = vec2((p.x - cx) * dir, p.y - y0) / unit;
-    if (d.y < 0.0 || d.y > 2.0) {
-      // Only the beam reaches outside the car's two rows.
-      continue;
-    }
-    float paint = hash21(vec2(cycle, slot + lane * 9.0));
-    vec3 col = paint < 0.33 ? vec3(0.4, 0.95, 0.95)
-      : paint < 0.66 ? vec3(1.0, 0.55, 0.75)
-      : vec3(1.0, 0.95, 0.85);
-    bool bodyRow = d.y < 1.0;
-    if (bodyRow && d.x > 2.4 && d.x < 3.0) {
-      return vec4(1.0, 0.97, 0.85, 1.0);
-    }
-    if (bodyRow && d.x < -2.4 && d.x > -3.0) {
-      return vec4(1.0, 0.15, 0.2, 0.9);
-    }
-    if (bodyRow && abs(d.x) < 2.4) {
-      hit = vec4(col * 0.8, 0.5);
-    } else if (!bodyRow && abs(d.x + 0.3) < 1.4) {
-      // A low cabin set back from the nose.
-      hit = vec4(col * 0.5, 0.3);
-    } else if (bodyRow && d.x > 3.0 && d.x < 9.0) {
-      // The beam fades ahead of the car.
-      float beam = 1.0 - (d.x - 3.0) / 6.0;
-      if (hit.a < beam * 0.4) {
-        hit = vec4(1.0, 0.92, 0.7, beam * 0.4);
+  }
+
+  vec2 c = vec2(base.x + lean, base.y + height);
+  if (abs(p.x - c.x) > 0.15 || abs(p.y - c.y) > 0.11) {
+    return hit;
+  }
+  for (int f = 0; f < 9; f++) {
+    float ff = float(f);
+    float rf = hash21(vec2(seed, ff + 3.0));
+    // Spread from just below one horizon to just below the other, the
+    // flatter ones longer and heavier.
+    float ang = mix(-0.25, 3.39, ff / 8.0) + (rf - 0.5) * 0.18;
+    float flat1 = 1.0 - abs(sin(ang));
+    float len = 0.07 + 0.04 * flat1 + 0.012 * rf;
+    float droop = 0.012 + 0.06 * flat1;
+    vec2 dir = vec2(cos(ang), sin(ang) * 0.85);
+    vec2 prev = c;
+    for (int j = 1; j <= 5; j++) {
+      float u = float(j) / 5.0;
+      vec2 next = c + dir * len * u - vec2(0.0, droop * u * u);
+      vec2 seg = miSegment(p, prev, next);
+      float along = (float(j - 1) + seg.y) / 5.0;
+      float notch = step(0.5, fract(along * len / 0.016)) * 0.3 + 0.7;
+      float w = 0.011 * sin(3.14159 * min(along * 0.9 + 0.1, 1.0)) * notch;
+      if (seg.x < max(w, miPx.y * 0.6)) {
+        hit = vec4(leafCol, 0.8);
       }
+      prev = next;
     }
   }
   return hit;
 }
 
-vec4 miStreet(vec2 p, float t, float pixel, float span) {
-  // The curb in front of the hotels, then the asphalt.
-  if (abs(p.y - (MI_BASE - 0.004)) < max(pixel * 0.6, 0.003)) {
-    return vec4(0.9, 0.6, 0.75, 0.28);
+vec4 miPalms(vec2 p, float hw) {
+  vec4 a = miPalm(p, vec2(-hw * 0.82, MI_WATER - 0.004), 0.4, 0.06, 1.0);
+  if (a.a >= 0.0) {
+    return a;
   }
-  vec4 car = miCar(p, t, 0.0, span, pixel);
-  vec4 near = miCar(p, t, 1.0, span, pixel);
-  if (near.a > 0.0 && near.a >= car.a) {
-    car = near;
+  if (hw > 0.6) {
+    vec4 b = miPalm(p, vec2(-hw * 0.7, MI_WATER - 0.004), 0.31, -0.04, 2.0);
+    if (b.a >= 0.0) {
+      return b;
+    }
   }
-  if (car.a > 0.0) {
-    return car;
-  }
-  // Dashes down the middle of the road.
-  if (abs(p.y - 0.262) < max(pixel * 0.5, 0.0025) && fract(p.x * 14.0) < 0.45) {
-    return vec4(1.0, 0.85, 0.5, 0.2);
-  }
-  return vec4(0.0);
+  return miPalm(p, vec2(hw * 0.8, MI_WATER - 0.004), 0.43, -0.07, 3.0);
 }
 
-// The beach between the drive and the water, with a lifeguard stand.
-vec4 miBeach(vec2 p, float t, float pixel) {
-  vec2 g = floor(p * vec2(90.0, 120.0));
-  float grain = step(0.86, hash21(g)) * 0.16;
-  vec4 col = vec4(vec3(1.0, 0.72, 0.58) * 0.7, grain);
-  // The stand: a pastel hut on stilts with a striped roof, left of centre.
-  vec2 s = p - vec2(-0.52, 0.17);
-  if (abs(s.x) < 0.04 && s.y > 0.03 && s.y < 0.058) {
-    float stripe = step(0.5, fract(s.x * 50.0));
-    return vec4(mix(vec3(0.3, 0.95, 0.9), vec3(1.0, 0.55, 0.75), stripe), 0.6);
+// ---- Shore and water -------------------------------------------------------
+
+// The promenade: the seawall's edge with low bollard lights along it.
+vec4 miShore(vec2 p) {
+  if (miRow(p.y, MI_WATER + miPx.y * 0.5)) {
+    float slot = floor(p.x / 0.065 + 0.5);
+    if (miCol(p.x, slot * 0.065)) {
+      return vec4(miWarm, 0.88);
+    }
+    return vec4(vec3(0.5, 0.42, 0.55), 0.56);
   }
-  if (abs(s.x) < 0.032 && s.y > 0.058 && s.y < 0.07 - abs(s.x) * 0.3) {
-    return vec4(1.0, 0.4, 0.6, 0.7);
-  }
-  if ((abs(s.x - 0.024) < pixel * 0.9 || abs(s.x + 0.024) < pixel * 0.9) && s.y > 0.0 && s.y < 0.03) {
-    return vec4(0.9, 0.8, 0.8, 0.45);
-  }
-  return col;
+  return vec4(0.0, 0.0, 0.0, -1.0);
 }
 
-// Surf rolling toward the shore under the sky's colours, with the sun's
-// glitter path running down to the viewer.
-vec4 miWater(vec2 p, float t, float pixel, float shore) {
-  float dd = max(shore - p.y, 0.0);
-  // Crests bunch up toward the shore, which is further away.
-  float phase = sqrt(dd) * 16.0 + t * 0.32;
-  float wob = 0.12 * snoise(vec2(p.x * 3.0, floor(phase) * 1.7)) + 0.1 * snoise(vec2(p.x * 9.0, t * 0.1));
-  float crest = 1.0 - abs(fract(phase + wob) - 0.5) * 2.0;
-  float width = mix(0.86, 0.94, smoothstep(0.0, 0.12, dd));
-  float broken = smoothstep(0.35, 0.6, fbm(vec2(p.x * 4.0 - floor(phase) * 3.3, floor(phase))));
-  float foam = smoothstep(width, 1.0, crest) * broken;
+// Everything above the water that can light it.
+vec4 miLand(vec2 p, float t, float hw) {
+  if (p.y < MI_BASE) {
+    vec4 shore = miShore(p);
+    if (shore.a >= 0.0) {
+      return shore;
+    }
+  }
+  vec4 hotel = miHotels(p, t);
+  if (hotel.a >= 0.0) {
+    return hotel;
+  }
+  vec4 tower = miTowers(p, t);
+  if (tower.a >= 0.0) {
+    return tower;
+  }
+  return miSky(p, t, hw);
+}
 
-  vec3 sea = mix(vec3(0.6, 0.3, 0.75), vec3(0.18, 0.12, 0.42), smoothstep(0.0, 0.14, dd));
-  float tone = 0.1 + 0.06 * smoothstep(0.75, 1.0, crest);
-  vec3 col = sea;
+// A small boat crossing the bay very slowly: a hull line, two cabin
+// windows and a white masthead light.
+vec4 miBoat(vec2 p, float t, float hw) {
+  float span = hw * 2.0 + 0.4;
+  float x = mod(t * 0.011 + 0.3, span) - span * 0.5;
+  vec2 q = p - vec2(x, 0.14);
+  if (miRow(q.y, 0.0) && abs(q.x) < 0.035) {
+    return vec4(vec3(0.6, 0.6, 0.7), 0.6);
+  }
+  if (miRow(q.y, miPx.y) && abs(q.x + 0.004) < 0.018) {
+    float win = mod(floor(q.x / miPx.x), 3.0) < 1.0 ? 1.0 : 0.0;
+    return vec4(mix(vec3(0.4, 0.4, 0.5), miWarm, win), mix(0.56, 0.85, win));
+  }
+  if (miCol(q.x, -0.006) && q.y > 0.0 && q.y < 0.05) {
+    return miRow(q.y, 0.05 - miPx.y * 0.5) ? vec4(1.0, 1.0, 1.0, 0.9) : vec4(vec3(0.4, 0.4, 0.5), 0.56);
+  }
+  return vec4(0.0, 0.0, 0.0, -1.0);
+}
 
-  // The swash: a lacy line of foam where each wave runs up the sand.
-  float lace = exp(-dd / max(pixel * 1.6, 0.006)) * smoothstep(0.3, 0.6, fbm(vec2(p.x * 6.0, t * 0.2)));
-  foam = max(foam, lace);
-  col = mix(col, vec3(0.98, 0.95, 1.0), foam);
-  tone = max(tone, foam * 0.78);
-
-  // Glitter under the sun: broken bright cells, wider toward the viewer.
-  float pathW = 0.025 + dd * 0.5;
-  float inPath = 1.0 - smoothstep(pathW * 0.6, pathW, abs(p.x - MI_SUN_X));
-  vec2 cell = floor(vec2(p.x * 60.0, phase * 6.0));
-  float spark = step(0.55, hash21(cell + floor(t * 3.0) * 0.37)) * inPath;
-  col = mix(col, vec3(1.0, 0.7, 0.45), spark);
-  tone = max(tone, spark * mix(1.0, 0.65, smoothstep(0.0, 0.15, dd)));
-  return vec4(col, tone);
+// Calm water: only lights reflect, as dimmer copies stretched downward and
+// broken into short dashes that come and go slowly, sparser with depth.
+vec4 miWater(vec2 p, float t, float hw) {
+  vec4 boat = miBoat(p, t, hw);
+  if (boat.a >= 0.0) {
+    return boat;
+  }
+  float depth = MI_WATER - p.y;
+  float row = floor(depth / miPx.y);
+  float dash = floor(p.x / 0.008 + hash21(vec2(row, 1.0)) * 4.0);
+  float flip = floor(t * 0.45 + hash21(vec2(row, dash)) * 9.0);
+  float keep = hash21(vec2(row * 1.3 + dash, flip));
+  if (keep > mix(0.72, 0.18, clamp(depth / 0.24, 0.0, 1.0))) {
+    return vec4(0.0);
+  }
+  vec4 src = miLand(vec2(p.x, MI_WATER + depth * 0.62), t, hw);
+  // Neon, beacons and the shore lights reflect; only some windows do.
+  float col = floor(p.x / miPx.x);
+  if (src.a < 0.84 && (src.a < 0.7 || hash21(vec2(col, 4.0)) > 0.3)) {
+    return vec4(0.0);
+  }
+  // Dimmer means toward the paper, which is white on a light theme.
+  vec3 dim = miOnLight > 0.5 ? mix(src.rgb, vec3(1.0), 0.5) : src.rgb * 0.5;
+  return vec4(dim, miDots > 0.5 ? 0.64 : 0.36);
 }
 
 vec2 miCacheUv = vec2(-1.0);
@@ -427,47 +504,28 @@ vec4 miScene(vec2 uv, vec2 res, float t) {
     return miCacheValue;
   }
   float aspect = res.x / res.y;
-  vec2 base = vec2((uv.x - 0.5) * aspect, uv.y);
-  vec2 ptr = (u_pointer.xy - 0.5) * u_pointer.z * miParallax;
-  float pixel = 1.0 / res.y;
-  // Nearer layers slide further with the pointer.
-  vec2 farP = base + ptr * vec2(0.012, 0.004);
-  vec2 hotelP = base + ptr * vec2(0.03, 0.006);
-  vec2 palmP = base + ptr * vec2(0.065, 0.01);
-  vec2 nearP = base + ptr * vec2(0.08, 0.012);
-  float shore = miShore(nearP.x, t);
+  miPx = vec2(aspect / ascii_samples.x, 1.0 / res.y);
+  miS = floor(uv * ascii_samples);
+  miDots = step(1.5, miGrid.x * miGrid.y);
+  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y);
+  float hw = aspect * 0.5;
 
-  vec4 c = vec4(0.0);
-  if (nearP.y < shore) {
-    c = miWater(nearP, t, pixel, shore);
-  } else {
-    vec4 palm = miPalms(palmP, t, pixel);
-    if (palm.a > 0.0) {
-      c = palm;
-    } else if (nearP.y < MI_BASE) {
-      vec4 street = nearP.y > 0.232 ? miStreet(nearP, t, pixel, aspect + 0.4) : vec4(0.0);
-      c = street.a > 0.0 ? street : miBeach(nearP, t, pixel);
-      // Wet sand just above the waterline mirrors the sky.
-      float wet = 1.0 - smoothstep(0.0, 0.02, nearP.y - shore);
-      c = mix(c, vec4(0.85, 0.45, 0.65, max(c.a, 0.14)), wet * step(c.a, 0.2));
-    } else {
-      vec4 hotel = miHotel(hotelP, t, pixel);
-      vec4 sky = miSky(farP, t, pixel);
-      // The roofline glow lies over the sky rather than replacing it, and
-      // dark windows (a near-zero tone) hide the sky behind the facade.
-      c = hotel.a > 0.0 && (hotel.a < 0.01 || hotel.a >= sky.a) ? hotel : sky;
-    }
+  vec4 c = miPalms(p, hw);
+  if (c.a < 0.0) {
+    c = p.y < MI_WATER ? miWater(p, t, hw) : miLand(p, t, hw);
   }
-
   vec3 col = c.rgb;
+  float tone = max(c.a, 0.0);
+  // Intensity thins the tone by its square root, so Braille dots survive
+  // longer than the colour does, and fades the colour toward the paper.
+  tone *= sqrt(miIntensity);
   if (miOnLight > 0.5) {
-    // Pastels vanish on a light paper; deepen them toward their own hue.
-    col = col * col * 0.85;
+    // Neon and pastels vanish on a light paper; deepen them.
+    col = mix(vec3(1.0), col * col * 0.8, miIntensity);
+  } else {
+    col *= miIntensity;
   }
-  float tone = c.a * miIntensity;
-  // Below the faintest glyph the tone is exactly empty, so open areas of
-  // the scene draw clean paper instead of a scatter of dots.
-  tone = tone < 0.05 ? 0.0 : tone;
+  tone = tone < 0.04 ? 0.0 : tone;
   miCacheUv = uv;
   miCacheT = t;
   miCacheValue = vec4(col, tone);
@@ -481,9 +539,25 @@ float field(vec2 uv, vec2 res, float t) {
 }
 `;
 
+// Braille and quadrant cells show one colour for all their dots, which the
+// engine averages over every sample. Giving each sample the colour of the
+// strongest sample in its cell keeps a one-dot neon line its own colour
+// instead of fading into the dark around it.
 const COLOR_FIELD = `${SCENE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
-  return miScene(uv, res, t).rgb;
+  vec2 origin = floor(floor(uv * ascii_samples) / miGrid) * miGrid;
+  vec4 best = vec4(0.0, 0.0, 0.0, -1.0);
+  for (int y = 0; y < 4; y++) {
+    for (int x = 0; x < 2; x++) {
+      if (float(x) < miGrid.x && float(y) < miGrid.y) {
+        vec4 c = miScene((origin + vec2(float(x), float(y)) + 0.5) / ascii_samples, res, t);
+        if (c.a > best.a) {
+          best = c;
+        }
+      }
+    }
+  }
+  return best.rgb;
 }
 `;
 
@@ -492,7 +566,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "radial-gradient(circle at 58% 57%, #ffd480 0 5%, #ff6f8f 7%, transparent 14%), linear-gradient(to bottom, #1a1040 0%, #6a3aa8 35%, #ff5c9a 60%, #ff9a5a 70%, #2a1840 71%, #3a2050 85%, #1a1238 100%)",
+        "linear-gradient(to bottom, #07051a 0%, #1a0f3a 45%, #4a1d5a 62%, #0a0a18 75%, #05050f 100%)",
     }}
   />
 );
@@ -500,7 +574,7 @@ const FALLBACK = (
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-/** True when the paper is light, so the shader deepens its pastels. */
+/** True when the paper is light, so the shader deepens its colours. */
 const usePaperIsLight = (
   paper: AsciiColor,
   phosphor: PhosphorName | undefined
@@ -516,65 +590,59 @@ const usePaperIsLight = (
 export interface MiamiProps extends AsciiSceneProps {
   /** How much the scene shows, from 0 (empty paper) to 1. Lower it under body text. Default 1. */
   intensity?: number;
-  /** Brightness of the neon fins, signs and rooflines, from 0 (off) to 1. Default 1. */
+  /** Brightness of the neon on the hotels and the lit tower crowns, from 0 (off) to 1. Default 1. */
   neon?: number;
-  /** How many cars drive along Ocean Drive, from 0 (none) to 1. Default 0.6. */
-  traffic?: number;
-  /** How far the palms and surf move in the breeze, from 0 (still) to 2. Default 1. */
-  sway?: number;
   /** The surface behind the glyphs. Default `"--ascii-paper"`, or the phosphor's glass. */
   paper?: AsciiColor;
-  /** What the pointer does to the glyphs, on top of the parallax. Default `"none"`. */
-  interaction?: Interaction;
-  /** Shown without WebGL and until the first frame. Default: a dusk gradient. */
+  /** Shown without WebGL and until the first frame. Default: a night gradient. */
   fallback?: ReactNode;
 }
 
 /**
- * Miami. Ocean Drive at dusk, seen from the surf: art deco hotels with
- * stepped crowns and flickering neon fins, palms swaying in front, cars
- * along the drive and waves rolling in under a low sun. Decorative and
- * full-bleed: size it with `className`, usually `absolute inset-0`.
+ * Miami. Ocean Drive at nightfall, seen from the water: a row of art deco
+ * hotels with stepped parapets and neon trim, the glass towers of Brickell
+ * behind, still palms in front and the lights reflected in the bay.
+ * Decorative and full-bleed: size it with `className`, usually
+ * `absolute inset-0`.
  */
 export const Miami = ({
   intensity = 1,
   neon = 1,
-  traffic = 0.6,
-  sway = 1,
   paper = "--ascii-paper",
-  charset = "standard",
+  charset = "quadrants",
+  chars,
   colorMode,
   phosphor,
-  cell = 12,
+  cell = 9,
   fps = 30,
-  stillTime = 7,
-  interactive = true,
-  interaction = "none",
+  stillTime = 12,
+  // Part of the shared scene props; nothing here follows the pointer.
+  interactive: _interactive,
   fallback = FALLBACK,
   ...props
 }: MiamiProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
   const onLight = usePaperIsLight(paper, phosphor);
+  const [gx, gy] = resolveCharset(charset, chars).grid;
   return (
     <AsciiShader
       field={FIELD}
       colorField={COLOR_FIELD}
       uniforms={{
+        miGrid: [gx, gy],
         miIntensity: clamp(intensity, 0, 1),
         miNeon: clamp(neon, 0, 1),
         miOnLight: onLight ? 1 : 0,
-        miParallax: interactive ? 1 : 0,
-        miSway: clamp(sway, 0, 2),
-        miTraffic: clamp(traffic, 0, 1),
       }}
       charset={charset}
+      chars={chars}
       colorMode={mode}
       phosphor={phosphor}
       paper={phosphor === undefined ? paper : undefined}
       cell={cell}
       fps={fps}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
+      interaction="none"
       fallback={fallback}
       {...props}
     />

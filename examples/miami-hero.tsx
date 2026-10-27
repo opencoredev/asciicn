@@ -6,11 +6,11 @@ export default function MiamiHero() {
     <section className="relative isolate flex size-full flex-col items-center justify-start gap-3 px-6 pt-14 text-center">
       <Miami intensity={0.55} className="absolute inset-0 -z-10" />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance sm:text-4xl">
-        Dusk on Ocean Drive
+        Night on Ocean Drive
       </h3>
       <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        Lower the intensity and the hotels, palms and surf fall back behind your
-        copy.
+        Lower the intensity and the hotels, palms and towers fall back behind
+        your copy.
       </p>
     </section>
   );

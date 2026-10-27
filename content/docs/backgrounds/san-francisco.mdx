@@ -1,6 +1,6 @@
 ---
 title: "San Francisco"
-description: "The Golden Gate Bridge on a foggy morning: orange towers, fog rolling through the strait and under the deck, the city and the Transamerica Pyramid behind, and sailboats on the bay."
+description: "The Golden Gate Bridge at night: orange towers with stepped portals, the main cable dipping to the deck, the Marin Headlands, a low fog bank and the downtown skyline with the Transamerica Pyramid and Salesforce Tower."
 ---
 
 import SanFranciscoDemo from "@/examples/san-francisco-demo";
@@ -36,13 +36,15 @@ export function Hero() {
 }
 ```
 
-The view is from the bay on a grey morning. The Golden Gate Bridge spans the strait: two orange towers with stepped portals between their legs, the main cables sagging between them, a suspender hanging every few columns and a deep truss under the deck. A red light blinks on each tower and cars cross with their lights on. A fog bank rolls in from the ocean side, thickest over the Marin headlands on the left, and pours under the deck while the tower tops stay clear. Behind the south end the city climbs its hills, with the Transamerica Pyramid among the downtown towers and Coit Tower on its hill. Sailboats cross the bay and gulls drift overhead.
+The view is from the ocean side at night, looking in through the Golden Gate. The bridge fills the middle: two towers in International Orange, each with four stepped portals above the deck and X bracing below it, standing on concrete piers. The main cable runs from one anchorage up over both towers and dips almost to the road at mid-span, with a suspender every few columns. Under the deck runs the stiffening truss, with amber lamps along the rail. The Marin Headlands rise on the left, and the downtown skyline stands far off on the right, with the Transamerica Pyramid and its spire and the Salesforce Tower with its lit crown.
 
-The towers move apart as the box gets wider, so a phone screen still shows both of them. With `interactive` on, the default, the layers slide apart as the pointer moves: the water and boats move most, the sky least.
+Nothing built moves, and the pointer has no effect. What changes is slow: a few cars cross the deck as single dots of light, white one way and red the other. The red beacons on the tower tops pulse once every 1.8 seconds. City windows switch on and off a few at a time. The stars brighten and dim, the reflections in the water break and rejoin, and a low fog bank lies behind the bridge on the Marin side, drifting a few box widths an hour.
 
-It draws in `standard` glyphs by default. The fog uses light glyphs and the steel uses the densest ones, so the bridge reads in every colour mode. In `truecolor` mode, also the default, the bridge is International Orange over pale blue-grey fog. On a light paper the fog and houses are darkened so they still show. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `ember` or `glacier`.
+The towers move apart as the box gets wider and keep their height, so a phone screen still shows the whole span. Edges, cables and suspenders are snapped to the sample grid, so they come out as clean lines of glyphs.
 
-`fog` sets how much of the bridge is buried. At 0 the strait is clear; at 1 the bank covers the deck and climbs the headlands. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
+It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, and `standard` and `dense` draw the same scene in letters and symbols. In `truecolor` mode, also the default, the bridge is orange against a dark sky; on a light paper the colours are deepened so they still read. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `ember` or `glacier`.
+
+`fog` sets how high the bank rises against the headlands, from none at 0. `traffic` sets how many cars cross, up to six. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
 
 ## Examples
 
@@ -60,7 +62,7 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
 
 ### Amber terminal
 
-`phosphor="p3"` draws the scene in amber on dark glass. The `dense` charset, `fog={0.9}` and a CRT finish from `fx` make it look like a weather camera on an old monitor.
+`phosphor="p3"` draws the scene in amber on dark glass. `braille` dots, `fog={0.9}` and a CRT finish from `fx` make it look like a night camera on an old monitor.
 
 <ComponentPreview
   src="examples/san-francisco-phosphor.tsx"
@@ -84,21 +86,15 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
     {
       name: "fog",
       type: "number",
-      default: "0.6",
+      default: "0.5",
       description:
-        "How thick the fog bank is, from 0 (a clear strait) to 1 (the deck buried).",
-    },
-    {
-      name: "sails",
-      type: "number",
-      default: "0.6",
-      description: "How many sailboats are out on the bay, from 0 (none) to 1.",
+        "How high the fog bank behind the bridge rises against the headlands, from 0 (none) to 1.",
     },
     {
       name: "traffic",
       type: "number",
       default: "0.5",
-      description: "How many cars cross the bridge, from 0 (none) to 1.",
+      description: "How many cars cross the bridge, from 0 (none) to 1 (six).",
     },
     {
       name: "paper",
@@ -110,7 +106,7 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
     {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -192,23 +188,9 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Pointer parallax between the layers. false holds the view still and turns interaction off.",
-    },
-    {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description:
-        "What the pointer does to the glyphs, on top of the parallax.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -233,14 +215,14 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
     {
       name: "stillTime",
       type: "number",
-      default: "9",
+      default: "12",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
     {
       name: "fallback",
       type: "ReactNode",
-      default: "a morning fog gradient",
+      default: "a night gradient",
       description: "Shown without WebGL and until the first frame.",
     },
     {
@@ -264,4 +246,4 @@ It draws in `standard` glyphs by default. The fog uses light glyphs and the stee
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows a CSS gradient in the scene's colours.
-- The whole scene is drawn on the GPU in one pass. The fog costs the most per sample, and `braille` samples eight times per cell. See [Performance](/docs/engine/performance).
+- The whole scene is drawn on the GPU in one pass. In `braille` and `quadrants` each cell takes the colour of its brightest dot, so a cable or suspender one dot thick stays orange. The colour pass reads every dot of the cell to do that, so these two charsets cost more per frame than the others. See [Performance](/docs/engine/performance).
