@@ -1,6 +1,6 @@
 ---
 title: "Rio de Janeiro"
-description: "Sugarloaf and Corcovado in the late afternoon over Copacabana, with cable cars, breaking surf, the wave-mosaic promenade and frigatebirds."
+description: "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay."
 ---
 
 import RioDemo from "@/examples/rio-demo";
@@ -36,17 +36,17 @@ export function Hero() {
 }
 ```
 
-The Sugarloaf rises from the bay as a granite dome, gold on the side that faces the low sun, with Morro da Urca in front of it. Two cable cars go back and forth: one from the shore to the top of Urca, one from Urca to the summit. Behind them the forested range climbs to Corcovado, where the statue stands with its arms open. Below, the sun lays a path of glitter on the water, rollers break in white lines on the curve of Copacabana, and the promenade's black and white wave mosaic runs along the bottom. Frigatebirds glide overhead and a couple of sailboats cross the bay.
+On the right, Sugarloaf rises straight out of the bay as a granite dome, lit on the side that faces the moon, with the lower, forested Morro da Urca in front of it. A cable runs from the top of Urca to the top of Sugarloaf, and one cable car crosses it: it waits about 12 seconds at each station, then takes about half a minute to cross. On the left, Corcovado climbs out of the forested range to a sharp granite peak, with Christ the Redeemer on the summit in white, arms straight out. Below them, Copacabana curves away along the shore: a string of lamps on the promenade, a wall of apartment blocks with lit windows, and homes on the lower slopes.
 
-On wide boxes the mountains sit right of centre, so a headline fits on the left. On tall boxes the peaks move toward the middle and draw a little smaller. Moving the pointer slides the near layers further than the far ones.
+Only a few things move. A handful of windows switch on or off, each fading over a couple of seconds and changing only every minute or more. Stars glint faintly. The lamps, Sugarloaf and the moon lay broken reflections on the water, which shift sideways a little as the bay moves. The mountains, the statue and the buildings stay still, and nothing reacts to the pointer.
 
-It draws in `standard` glyphs by default. `braille` gives the finest detail, `blocks` and `dense` solid shapes, and `edge` an outline drawing. In `truecolor`, the default, it paints its own greens, warm stone and sea blue on a deep evening blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2 grid of samples, so outlines, the statue and window grids land on whole samples and stay sharp. `braille` gives finer, thinner dots, and `blocks`, `standard` and `dense` also work. In `truecolor`, the default, it paints its own colours on a night blue. In `mono`, `duotone` and `palette`, where colour no longer carries brightness, the hills and Sugarloaf fill with ordered dot patterns of different densities so they stay apart.
 
 ## Examples
 
 ### Behind a headline
 
-`colorMode="duotone"` with the `sodium` ramp turns the scene golden, and `intensity={0.6}` thins the glyphs so white text on the left reads first.
+`colorMode="duotone"` with the `sodium` ramp turns the scene gold on its night blue, and `intensity={0.6}` dims the colours and thins the fills. The headline sits low, over the open water, so it reads first.
 
 <ComponentPreview src="examples/rio-headline.tsx" size="lg" align="stretch">
   <RioHeadline />
@@ -54,7 +54,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
 
 ### On a green monitor
 
-`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset, an 11px cell and `fx` scanlines, bloom and vignette finish the look, and `surf={0.9}` brings in bigger rollers.
+`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset and `fx` scanlines, bloom and vignette finish the look.
 
 <ComponentPreview src="examples/rio-phosphor.tsx">
   <RioPhosphor />
@@ -72,30 +72,18 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
         "How strongly the city draws, from 0 to 1. Lower it to keep text on top readable.",
     },
     {
-      name: "surf",
-      type: "number",
-      default: "0.6",
-      description:
-        "How big the surf runs on the beach, from 0 (flat water) to 1 (wide bands of rollers).",
-    },
-    {
-      name: "birds",
-      type: "number",
-      default: "5",
-      description: "How many frigatebirds glide over the bay, from 0 to 8.",
-    },
-    {
       name: "cableCar",
       type: "boolean",
       default: "true",
-      description: "The two Sugarloaf cable cars and their cables.",
+      description:
+        "The cable from Urca to Sugarloaf, its two stations and the car crossing it.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep evening blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -106,7 +94,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -159,7 +147,8 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
       name: "threshold",
       type: "number",
       default: "0.5",
-      description: "Braille and quadrants: the tone that lights a dot.",
+      description:
+        "Braille and quadrants: the tone that lights a dot. The scene lights its dots at a tone of 0.6 or more, so only values above that thin it out.",
     },
     {
       name: "edgeThreshold",
@@ -172,7 +161,8 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
       default: '"none"',
-      description: "Ordered dithering between neighbouring glyph levels.",
+      description:
+        "Ordered dithering between neighbouring glyph levels. In braille and quadrants the scene already fills with its own ordered patterns where colour cannot carry brightness.",
     },
     {
       name: "background",
@@ -189,21 +179,9 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "What the pointer does to the glyphs.",
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description: "false turns off the parallax and any pointer interaction.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -228,7 +206,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "stillTime",
       type: "number",
-      default: "6",
+      default: "28",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -251,6 +229,8 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
-- The whole city is one shader pass on the GPU. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 28 seconds, catches the cable car halfway up.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat night-blue gradient.
+- On wide boxes the whole bay fits. On narrow ones the view closes in on the stretch from Corcovado to the moon and draws it smaller, so both peaks stay in view.
+- The whole city is one shader pass on the GPU. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

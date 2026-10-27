@@ -10,8 +10,6 @@ export default function RioDemo() {
       charset={usePreviewValue(knobs.charset)}
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
-      surf={usePreviewValue(knobs.surf)}
-      birds={usePreviewValue(knobs.birds)}
       cableCar={usePreviewValue(knobs.cableCar)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}

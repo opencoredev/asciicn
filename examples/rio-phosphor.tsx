@@ -8,14 +8,12 @@ export default function RioPhosphor() {
         charset="braille"
         colorMode="mono"
         phosphor="p1"
-        surf={0.9}
-        cell={11}
         fx={{ bloom: 0.5, scanlines: 0.4, vignette: 0.45 }}
         className="absolute inset-0 -z-10"
       />
       <div className="flex items-center justify-between border-b border-[#0f3a1a] bg-[#020a04]/80 px-3 py-1.5 text-[11px] text-[#33ff66]/70">
-        <span>copacabana.cam</span>
-        <span>17:20 · 22.97S 43.18W</span>
+        <span>baia.cam</span>
+        <span>22:40 · 22.95S 43.16W</span>
       </div>
     </div>
   );

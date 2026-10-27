@@ -2,680 +2,668 @@
 
 import type { ReactNode } from "react";
 
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  ColorMode,
-  Interaction,
-} from "@/lib/ascii";
+import { resolveCharset } from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// The scene is painted back to front: stars, fireworks, the far skyline
-// with Sydney Tower, the Harbour Bridge, then the Opera House on its
-// podium. Below the waterline the same picture is drawn again from its
-// mirror image, stretched with depth so the fireworks reach the water, and
-// broken into ripple streaks; the ferry crosses on top. Landmarks live in a
-// scene frame (y 0 to 1, x centred, same units both ways) that shrinks
-// about the waterline on narrow boxes so both landmarks stay in view;
-// stars and fireworks use the box's own frame so they still fill the sky.
-// Glyph colour carries brightness in truecolor, and tone carries presence:
-// anything Braille should dot sits above 0.5, fills sit below it. Braille
-// and quadrant cells average the colour of all their samples, lit or not,
-// so empty samples near a light take its colour (at zero tone) to keep a
-// thin spark trail from fading to grey.
+// Sydney Harbour at night from the east. The scene lives in a frame
+// measured in box heights (x centred, y up) with the water at SYD_SEA; on
+// narrow boxes the frame shrinks about that line so the Opera House and
+// most of the bridge stay in view. Everything solid is decided per sample
+// against exact outlines, and small things (truss members, windows, lamps,
+// stars, the ferry) sit on whole samples, so edges stay crisp at every
+// density. Nothing that is built moves: only window lights, star glints,
+// one beacon, the water and the ferry change over time. Tone carries
+// density: in Braille and quadrants a fill becomes an ordered dot pattern
+// of that density unless the glyph colour already carries brightness.
 const SCENE = `
-const float SYDNEY_WATER = 0.27;
-const float SYDNEY_DECK = 0.36;
-const float SYDNEY_PODIUM = 0.3;
-const float SYDNEY_BRIDGE_X = 0.4;
-const float SYDNEY_SPAN = 0.36;
-const float SYDNEY_OPERA_X = -0.41;
-const float SYDNEY_OPERA_SCALE = 1.2;
-const float SYDNEY_TOWER_X = -0.08;
-const float SYDNEY_FERRY_Y = 0.13;
+const float SYD_SEA = 0.28;
+const float SYD_PODIUM = 0.33;
+// The bridge, measured in metres from the water at this scale.
+const float SYD_M = 0.001254;
+const float SYD_SOUTH = -0.07;
+const float SYD_NORTH = 0.62;
+const float SYD_PYLON_W = 0.06;
+// Where the water line sits on screen, from the bottom.
+const float SYD_SCREEN = 0.3;
+const float SYD_PANELS = 28.0;
+const float SYD_BLOCK = 0.05;
 
-// Integral of a 0/1 pulse that is on from a to b in every unit period.
-float sydneyPulseSum(float x, float a, float b) {
-  return floor(x) * (b - a) + clamp(fract(x) - a, 0.0, b - a);
+float sydAspect = 1.0;
+float sydK = 1.0;
+float sydOff = 0.0;
+vec2 sydSamples = vec2(1.0);
+float sydPx = 0.01;
+float sydPw = 0.01;
+
+void sydLayout(vec2 res) {
+  sydAspect = res.x / res.y;
+  sydSamples = max(ascii_samples, vec2(1.0));
+  // Wide boxes show the towers, the Opera House and the whole bridge;
+  // narrow ones close in on the Opera House and the bridge's south half.
+  float wide = smoothstep(0.85, 1.25, sydAspect);
+  float span = max(sydAspect, mix(0.9, 1.47, wide));
+  sydK = sydAspect / span;
+  sydOff = mix(-0.25, -0.075, wide);
+  sydPx = 1.0 / (sydSamples.y * sydK);
+  sydPw = sydAspect / (sydSamples.x * sydK);
 }
 
-// How much of a footprint fw wide, centred on x, the pulse covers.
-float sydneyPulse(float x, float a, float b, float fw) {
-  float w = max(fw, 1e-4);
-  return (sydneyPulseSum(x + w * 0.5, a, b) - sydneyPulseSum(x - w * 0.5, a, b)) / w;
+vec2 sydFrame(vec2 uv) {
+  return vec2((uv.x - 0.5) * sydAspect / sydK + sydOff, SYD_SEA + (uv.y - SYD_SCREEN) / sydK);
 }
 
-// A stroke at distance d from its centre line, never thinner than a sample.
-float sydneyStroke(float d, float w, float fw) {
-  float hw = max(w, fw * 0.55);
-  return 1.0 - smoothstep(hw, hw + fw * 0.6, d);
+// The sample (column, row) that holds a frame point.
+vec2 sydCellOf(vec2 f) {
+  vec2 uv = vec2((f.x - sydOff) * sydK / sydAspect + 0.5, SYD_SCREEN + (f.y - SYD_SEA) * sydK);
+  return floor(uv * sydSamples);
 }
 
-void sydneyPaint(inout vec4 acc, vec4 layer, float cover) {
-  acc = mix(acc, layer, clamp(cover, 0.0, 1.0));
+// A frame x as a continuous column: column c spans c to c + 1.
+float sydColumn(float x) {
+  return ((x - sydOff) * sydK / sydAspect + 0.5) * sydSamples.x;
 }
 
-// Paints a layer and keeps the colour of the nearest light it passes on to
-// empty samples: a layer returns its colour at zero tone where it is near
-// but not drawn.
-void sydneyLayer(inout vec4 acc, inout vec3 halo, vec4 layer, float cover) {
-  if (cover > 0.001) {
-    sydneyPaint(acc, layer, cover);
-    halo = layer.rgb;
-  } else if (layer.a < 0.001 && dot(layer.rgb, vec3(1.0)) > 0.0) {
-    halo = layer.rgb;
-  }
+vec2 sydCentre(vec2 cell) {
+  return sydFrame((cell + 0.5) / sydSamples);
 }
 
-vec4 sydneyStars(vec2 p, float t, vec2 px) {
-  if (p.y < 0.5) {
-    return vec4(0.0);
-  }
-  vec2 g = p / 0.05;
-  vec2 id = floor(g);
-  float r = hash21(id + 7.7);
-  if (r < 0.86) {
-    return vec4(0.0);
-  }
-  vec2 at = vec2(hash21(id + 2.3), hash21(id + 9.1)) * 0.7 + 0.15;
-  // One sample per star, whatever the charset.
-  vec2 d = abs((fract(g) - at) * 0.05);
-  float twinkle = 0.55 + 0.45 * sin(t * (0.7 + r * 2.5) + r * 40.0);
-  float star = step(d.x, px.x * 0.5) * step(d.y, px.y * 0.5) * smoothstep(0.5, 0.66, p.y);
-  return vec4(vec3(0.78, 0.84, 1.0) * twinkle, star * (0.45 + 0.4 * twinkle));
+// The shared hash repeats every 50 steps on whole numbers, and lights,
+// stars and windows here are keyed on whole sample and slot indices.
+float sydHash(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Shell colours: bright, saturated hues, with gold for willows.
-vec3 sydneyShellColor(float h, float willow) {
-  vec3 hue = toSrgb(oklch(0.8, 0.19, h * 6.2831853));
-  return mix(hue, vec3(1.0, 0.78, 0.36), willow);
+float sydBayerPair(vec2 a) {
+  return mod(2.0 * a.x + 3.0 * a.y, 4.0);
 }
 
-// Where a spark is tau seconds after the break: it flies out along dir,
-// slowed by drag, and droops as it falls.
-vec2 sydneySpark(float tau, vec2 dir, float reach, float drag, float fall) {
-  return dir * reach * (1.0 - exp(-drag * tau)) - vec2(0.0, fall * tau * tau);
+// A 4x4 ordered threshold, so fills in dot charsets are even patterns.
+float sydBayer(vec2 cell) {
+  vec2 a = mod(cell, 2.0);
+  vec2 b = mod(floor(cell / 2.0), 2.0);
+  return (4.0 * sydBayerPair(a) + sydBayerPair(b) + 0.5) / 16.0;
 }
 
-// Distance from q to one spark's trail, and how long ago the spark passed
-// the nearest point, through behind. The trail is six straight pieces.
-float sydneyTrail(vec2 q, float j, float stepA, float seed, float ring, float age, float trail, float radius, float drag, float fall, out float behind) {
-  float a = (j + (hash21(vec2(j, seed + 3.0)) - 0.5) * 0.35) * stepA;
-  vec2 dir = vec2(cos(a), sin(a));
-  float reach = radius * mix(0.72 + 0.32 * hash21(vec2(j, seed)), 1.0, ring);
-  float t0 = max(age - trail, 0.0);
-  float best = 1e3;
-  behind = 0.0;
-  vec2 from = sydneySpark(age, dir, reach, drag, fall);
-  for (int k = 1; k <= 6; k++) {
-    float tk = mix(age, t0, float(k) / 6.0);
-    vec2 to = sydneySpark(tk, dir, reach, drag, fall);
-    vec2 seg = to - from;
-    float h = clamp(dot(q - from, seg) / max(dot(seg, seg), 1e-8), 0.0, 1.0);
-    float d = length(q - from - seg * h);
-    if (d < best) {
-      best = d;
-      behind = age - mix(mix(age, t0, float(k - 1) / 6.0), tk, h);
-    }
-    from = to;
-  }
-  return best;
-}
-
-// One burst, age seconds old. Sparks fly out from the centre, slow down,
-// droop and fade, each leaving a trail; late in life they glitter as they
-// fall. Each sample checks only the two sparks whose paths pass nearest,
-// so the cost doesn't grow with the spark count.
-vec4 sydneyBurst(vec2 q, float age, float radius, float kind, float seed, vec3 tint, vec2 px, float t) {
-  float willow = step(0.7, kind);
-  float ring = step(kind, 0.25);
-  float life = mix(2.1, 3.1, willow);
-  if (age < 0.0 || age > life) {
-    return vec4(0.0);
-  }
-  float drag = mix(2.7, 1.6, willow);
-  float fall = mix(0.22, 0.4, willow) * radius;
-  float trail = mix(mix(0.55, 0.25, ring), 1.2, willow);
-  float droop = fall * age * age;
-  if (length(q + vec2(0.0, droop * 0.5)) > radius * 1.2 + droop) {
-    return vec4(0.0);
-  }
-  float fade = 1.0 - smoothstep(life * 0.5, life, age);
-  vec4 near = vec4(tint * fade, 0.0);
-  float sparks = mix(22.0, 30.0, ring);
-  float stepA = 6.2831853 / sparks;
-  // Undo the droop of the trail's middle to find which sparks are nearest.
-  float mid = max(age - trail * 0.4, 0.0);
-  vec2 g = q + vec2(0.0, fall * mid * mid);
-  float x = atan(g.y, g.x) / stepA;
-  float j = floor(x);
-  float b0;
-  float b1;
-  float d0 = sydneyTrail(q, j, stepA, seed, ring, age, trail, radius, drag, fall, b0);
-  float d1 = sydneyTrail(q, j + 1.0, stepA, seed, ring, age, trail, radius, drag, fall, b1);
-  float d = min(d0, d1);
-  float behind = d0 < d1 ? b0 : b1;
-  float spark = d0 < d1 ? j : j + 1.0;
-  float head = 1.0 - smoothstep(0.0, 0.08, behind);
-  float tail = pow(1.0 - clamp(behind / trail, 0.0, 1.0), 1.3);
-  float line = sydneyStroke(d, px.x * (0.9 + 0.8 * head), px.x);
-  float glitter = mix(1.0, step(0.4, hash21(vec2(spark * 7.0 + floor(t * 14.0), seed + floor(behind * 20.0)))), smoothstep(0.9, 1.6, age));
-  float glow = line * tail * fade * glitter;
-  // The flash at the centre as the shell breaks.
-  float flash = (1.0 - smoothstep(0.0, 0.12, age)) * (1.0 - smoothstep(radius * 0.04, radius * 0.1, length(q)));
-  glow = max(glow, flash);
-  if (glow < 0.02) {
-    return near;
-  }
-  vec3 col = mix(tint, vec3(1.0, 0.62, 0.28), smoothstep(0.3, 1.0, behind / trail) * 0.5 * (1.0 - willow));
-  col = mix(col, vec3(1.0, 0.97, 0.9), max(head * 0.5, flash));
-  return vec4(col * (0.55 + 0.45 * glow), 0.3 + 0.7 * glow);
-}
-
-// A rocket climbing from (x, from) to (x, to), k of the way through its rise.
-vec4 sydneyRocket(vec2 p, float x, float from, float to, float k, vec2 px, float t) {
-  float y = mix(from, to, 1.0 - (1.0 - k) * (1.0 - k));
-  float along = y - p.y;
-  float len = 0.06;
-  vec4 near = vec4(1.0, 0.82, 0.55, 0.0) * step(abs(p.x - x), px.x * 4.0);
-  if (along < -px.y || along > len) {
-    return near;
-  }
-  float lateral = abs(p.x - x - 0.0025 * sin(p.y * 140.0 + x * 30.0) * along / len);
-  float line = sydneyStroke(lateral, px.x * 0.6, px.x);
-  float sparkle = 0.75 + 0.25 * step(0.5, hash21(vec2(floor(p.y / px.y), floor(t * 20.0))));
-  float glow = line * pow(1.0 - clamp(along / len, 0.0, 1.0), 1.5) * sparkle;
-  if (glow < 0.02) {
-    return near;
-  }
-  return vec4(vec3(1.0, 0.82, 0.55) * (0.4 + 0.6 * glow), 0.3 + 0.7 * glow);
-}
-
-// Five shells on their own clocks, plus one wherever the pointer clicks.
-// flash returns the colour and strength of the newest break, which lights
-// the steel and the sails.
-vec4 sydneyShow(vec2 p, float t, vec2 px, float aspect, float bridgeX, float deckY, out vec4 flash) {
-  vec4 acc = vec4(0.0);
-  flash = vec4(0.0);
-  float spread = min(aspect * 0.4, 0.5);
-  float scale = clamp(aspect, 0.65, 1.0);
-  for (int i = 0; i < 5; i++) {
-    float fi = float(i);
-    if (fi + 0.5 > sydneyFireworks * 5.0) {
-      break;
-    }
-    float period = 3.9 + fi * 0.83;
-    // Offsets put every shell in bloom at the default stillTime of 4 s.
-    float clock = t + fi + 1.3;
-    float cycle = floor(clock / period);
-    float age = clock - cycle * period;
-    vec2 seed = vec2(cycle * 1.31, fi * 13.1);
-    vec2 at = vec2(bridgeX + (hash21(seed + 0.3) - 0.5) * 2.0 * spread, 0.6 + 0.23 * hash21(seed + 1.7));
-    float radius = (0.09 + 0.07 * hash21(seed + 2.9)) * scale;
-    at.x = clamp(at.x, radius - aspect * 0.5, aspect * 0.5 - radius);
-    float rise = 0.7 + 0.25 * hash21(seed + 4.1);
-    float kind = hash21(seed + 5.5);
-    vec3 tint = sydneyShellColor(hash21(seed + 6.7), step(0.7, kind));
-    vec4 shell;
-    if (age < rise) {
-      shell = sydneyRocket(p, at.x, deckY, at.y, age / rise, px, t);
-    } else {
-      shell = sydneyBurst(p - at, age - rise, radius, kind, seed.x + fi, tint, px, t);
-      float lit = 1.0 - smoothstep(0.0, 0.9, age - rise);
-      if (lit > flash.a) {
-        flash = vec4(tint, lit);
-      }
-    }
-    if (shell.a > acc.a || (acc.a < 0.001 && shell.rgb != vec3(0.0))) {
-      acc = shell;
-    }
-  }
-  // A click launches a shell from the deck below it.
-  float since = u_click.z;
-  if (sydneyPointer > 0.5 && since < 4.0) {
-    vec2 at = vec2((u_click.x - 0.5) * aspect, max(u_click.y, deckY + 0.08));
-    float rise = 0.45;
-    vec4 shell;
-    vec3 tint = sydneyShellColor(fract(u_click.x * 3.7 + u_click.y * 1.3), 0.0);
-    if (since < rise) {
-      shell = sydneyRocket(p, at.x, deckY, at.y, since / rise, px, t);
-    } else {
-      shell = sydneyBurst(p - at, since - rise, 0.11 * scale, 0.5, 91.0, tint, px, t);
-      float lit = 1.0 - smoothstep(0.0, 0.9, since - rise);
-      if (lit > flash.a) {
-        flash = vec4(tint, lit);
-      }
-    }
-    if (shell.a > acc.a || (acc.a < 0.001 && shell.rgb != vec3(0.0))) {
-      acc = shell;
-    }
-  }
-  return acc;
-}
-
-// The far skyline: the CBD's towers to the left of the bridge, North
-// Sydney's to the right, and Sydney Tower's golden turret above them.
-vec4 sydneyCity(vec2 p, float t, vec2 px, out float cover) {
+// A point light that owns its whole glyph: the light's sample is lit and
+// the glyph's other samples carry its colour at zero tone, so it stays
+// bright where a glyph averages its samples. cover is 1 inside the glyph.
+vec4 sydLight(vec2 cell, vec2 spot, vec3 col, float tone, out float cover) {
   cover = 0.0;
-  if (p.y < SYDNEY_WATER || p.y > 0.7) {
-    return vec4(0.0);
-  }
-  float tx = abs(p.x - SYDNEY_TOWER_X);
-  if (tx < 0.02) {
-    float lo = 0.555;
-    float hi = 0.595;
-    if (p.y < lo && tx < max(0.0032, px.x * 0.6)) {
-      cover = 1.0;
-      return vec4(vec3(0.62, 0.6, 0.56), 0.56);
-    }
-    if (p.y >= lo && p.y < hi) {
-      // The turret flares out from the shaft, with a band of gold glass.
-      float s = (p.y - lo) / (hi - lo);
-      float hw = 0.004 + 0.0115 * smoothstep(0.0, 0.3, s) - 0.003 * smoothstep(0.82, 1.0, s);
-      if (tx < hw) {
-        cover = 1.0;
-        float glass = step(0.36, s) * step(s, 0.74);
-        float rim = step(tx, hw - px.x * 1.1);
-        return glass > 0.5
-          ? vec4(vec3(1.0, 0.76, 0.3), 0.92)
-          : vec4(vec3(0.82, 0.74, 0.58) * mix(0.6, 1.0, rim), 0.62);
-      }
-    }
-    if (p.y >= hi && p.y < 0.66 && tx < max(0.0012, px.x * 0.5)) {
-      cover = 1.0;
-      float beacon = step(0.66 - px.y * 2.0, p.y) * step(0.5, fract(t * 0.5));
-      return mix(vec4(vec3(0.6, 0.6, 0.62), 0.55), vec4(1.0, 0.15, 0.1, 0.95), beacon);
-    }
-  }
-  float w = 0.026;
-  float xs = p.x / w;
-  float id = floor(xs);
-  float f = fract(xs);
-  float r1 = hash21(vec2(id, 3.1));
-  float r2 = hash21(vec2(id, 8.4));
-  float r3 = hash21(vec2(id, 12.9));
-  float left = 0.04 + r2 * 0.14;
-  float right = 0.96 - r3 * 0.14;
-  if (f < left || f > right) {
-    return vec4(0.0);
-  }
-  float cx = (id + 0.5) * w;
-  float cbd = exp(-pow((cx + 0.04) / 0.22, 2.0));
-  float north = exp(-pow((cx - 0.9) / 0.16, 2.0));
-  float top = 0.31 + 0.22 * cbd + 0.08 * north;
-  float h = 0.285 + (top - 0.285) * (0.45 + 0.55 * pow(r1, 1.2));
-  // Setback crowns on the tall ones.
-  float mid = abs(f - (left + right) * 0.5) / (right - left);
-  if (r2 > 0.6 && mid < 0.3 && h > 0.34) {
-    h += 0.012 + 0.016 * r3;
-  }
-  if (p.y > h) {
+  if (floor(spot / sydGrid) != floor(cell / sydGrid)) {
     return vec4(0.0);
   }
   cover = 1.0;
-  vec2 size = vec2(0.0065, 0.0095);
-  vec2 g = vec2(p.x - (id + left) * w, p.y) / size;
-  float on = sydneyPulse(g.x, 0.25, 0.75, px.x / size.x) * sydneyPulse(g.y, 0.3, 0.75, px.y / size.y);
-  vec2 cell = floor(g);
-  float epoch = floor(t * 0.05 + hash21(cell + id) * 9.0);
-  float lit = step(0.5, hash21(cell * 1.3 + vec2(id, epoch)));
-  float glass = on * lit;
-  float roof = 1.0 - smoothstep(px.y * 0.6, px.y * 1.6, h - p.y);
-  vec3 warm = r3 < 0.55 ? vec3(1.0, 0.84, 0.58) : vec3(0.7, 0.84, 1.0);
-  if (glass > 0.3) {
-    return vec4(warm, 0.52 + 0.3 * glass);
-  }
-  // The facade takes its windows' colour at low tone, so lit windows keep
-  // their colour where a cell averages them with the wall.
-  return vec4(mix(warm, vec3(0.5, 0.6, 0.95), max(roof, 0.5)), max(roof * 0.56, 0.12));
+  return vec4(col, spot == cell ? (sydDots > 0.5 ? 1.0 : tone) : 0.0);
 }
 
-// The Harbour Bridge: two granite pylons at each end, the steel arch with
-// its top and bottom chords and the truss between them, hangers down to
-// the deck, and a row of lamps along the deck.
-vec4 sydneyBridge(vec2 p, float t, vec2 px, vec4 flash, out float cover) {
+// ---- The Opera House ----------------------------------------------------
+
+// Shell i, back to front: (x0, x1) its base on the podium, z the x of its
+// tip and w its height above the podium. dir is 1 when the shell faces
+// right (its tip over x1) and -1 when it faces left. The back hall peeks
+// out behind the front one; the small restaurant shells sit at the south
+// end on the left.
+vec4 sydShellDef(float i, out float dir, out float lit) {
+  dir = 1.0;
+  lit = 1.0;
+  if (i < 0.5) {
+    dir = -1.0;
+    lit = 0.74;
+    return vec4(-0.44, -0.35, -0.455, 0.1);
+  }
+  if (i < 1.5) {
+    lit = 0.8;
+    return vec4(-0.42, -0.29, -0.275, 0.13);
+  }
+  if (i < 2.5) {
+    lit = 0.8;
+    return vec4(-0.36, -0.2, -0.18, 0.162);
+  }
+  if (i < 3.5) {
+    dir = -1.0;
+    lit = 0.86;
+    return vec4(-0.63, -0.555, -0.645, 0.055);
+  }
+  if (i < 4.5) {
+    lit = 0.93;
+    return vec4(-0.615, -0.5, -0.49, 0.075);
+  }
+  if (i < 5.5) {
+    dir = -1.0;
+    lit = 0.88;
+    return vec4(-0.485, -0.385, -0.5, 0.085);
+  }
+  if (i < 6.5) {
+    return vec4(-0.47, -0.33, -0.315, 0.12);
+  }
+  if (i < 7.5) {
+    return vec4(-0.41, -0.24, -0.22, 0.15);
+  }
+  return vec4(-0.34, -0.15, -0.125, 0.175);
+}
+
+// A shell's outline: a back that rises steeply from the podium and rolls
+// over to the tip, and a nearly straight front that drops from the tip.
+bool sydInShell(vec2 p, vec4 s, float dir) {
+  float v = (p.y - SYD_PODIUM) / s.w;
+  if (v < 0.0 || v > 1.0) {
+    return false;
+  }
+  float back = dir > 0.0 ? s.x : s.y;
+  float front = dir > 0.0 ? s.y : s.x;
+  float xb = back + (s.z - back) * v * v;
+  float xf = mix(front, s.z, v);
+  return dir > 0.0 ? p.x >= xb && p.x <= xf : p.x <= xb && p.x >= xf;
+}
+
+// The front-most shell at p, as its index plus one, or 0.
+float sydShellAt(vec2 p) {
+  if (p.y < SYD_PODIUM || p.y > SYD_PODIUM + 0.18 || p.x < -0.66 || p.x > -0.1) {
+    return 0.0;
+  }
+  float id = 0.0;
+  for (int i = 0; i < 9; i++) {
+    float dir;
+    float lit;
+    vec4 s = sydShellDef(float(i), dir, lit);
+    if (sydInShell(p, s, dir)) {
+      id = float(i) + 1.0;
+    }
+  }
+  return id;
+}
+
+// The shells, lit cream-white, with a dark seam wherever one shell passes
+// in front of another, so each reads as its own sail.
+vec4 sydShells(vec2 p, out float cover) {
   cover = 0.0;
-  float u = (p.x - SYDNEY_BRIDGE_X) / SYDNEY_SPAN;
-  float au = abs(u);
-  if (p.y < SYDNEY_WATER || p.y > 0.62 || u < -1.6) {
+  float id = sydShellAt(p);
+  if (id < 0.5) {
     return vec4(0.0);
   }
-  vec3 steel = mix(vec3(0.56, 0.64, 0.82), flash.rgb, flash.a * 0.35);
-  float bright = 1.0 + flash.a * 0.35;
-  vec2 fu = px / SYDNEY_SPAN;
-  // The deck, with its lamps along the top edge.
-  float deck = SYDNEY_DECK - 0.01 * smoothstep(1.15, 1.6, au);
-  if (p.y < deck && p.y > deck - 0.011) {
-    cover = 1.0;
-    float lip = step(deck - px.y * 1.3, p.y);
-    float lamp = sydneyPulse(p.x / 0.016, 0.0, 0.3, px.x / 0.016) * lip;
-    if (lamp > 0.4) {
-      float glint = 0.85 + 0.15 * sin(t * 2.0 + floor(p.x / 0.016) * 1.7);
-      return vec4(vec3(1.0, 0.86, 0.55) * glint, 0.95);
-    }
-    return vec4(steel * 0.85, mix(0.36, 0.6, lip));
+  cover = 1.0;
+  float up = sydShellAt(p + vec2(0.0, sydPx));
+  float left = sydShellAt(p - vec2(sydPw, 0.0));
+  float right = sydShellAt(p + vec2(sydPw, 0.0));
+  float down = sydShellAt(p - vec2(0.0, sydPx));
+  float dir;
+  float lit;
+  vec4 s = sydShellDef(id - 1.0, dir, lit);
+  if (up > id || left > id || right > id || down > id) {
+    return vec4(vec3(1.0, 0.94, 0.82) * lit * 0.35, 0.0);
   }
-  // Pylons: granite towers at each end of the arch.
-  if (au > 1.0 && au < 1.13) {
-    float s = (au - 1.0) / 0.13;
-    float top = 0.465 - 0.012 * step(0.25, abs(s - 0.5) * 2.0);
-    if (p.y < top) {
-      cover = 1.0;
-      // An arched opening where the deck runs through.
-      if (abs(s - 0.5) < 0.24 && p.y > deck - 0.035 && p.y < deck + 0.025 + 0.012 * (1.0 - pow(abs(s - 0.5) / 0.24, 2.0))) {
-        return vec4(vec3(0.2, 0.18, 0.2), 0.0);
-      }
-      float course = sydneyPulse(p.y / 0.012, 0.0, 0.14, px.y / 0.012);
-      float edge = step(min(s, 1.0 - s) * 0.13 * SYDNEY_SPAN, px.x * 1.1);
-      vec3 stone = vec3(0.95, 0.82, 0.64) * mix(0.75, 1.0, 1.0 - smoothstep(SYDNEY_WATER, top, p.y)) * bright;
-      return vec4(stone, max(0.62 - course * 0.3, edge * 0.7));
-    }
+  float v = (p.y - SYD_PODIUM) / s.w;
+  vec3 col = vec3(1.0, 0.95, 0.84) * lit * (0.9 + 0.1 * v);
+  return vec4(col, 0.6 + 0.35 * lit);
+}
+
+// The podium on Bennelong Point: a broad dark base with a lit top edge,
+// a row of foyer lights, and the Monumental Steps falling away to the left.
+vec4 sydPodium(vec2 cell, vec2 p, out float cover) {
+  cover = 0.0;
+  if (p.y < SYD_SEA || p.x < -0.78 || p.x > -0.09) {
     return vec4(0.0);
   }
-  // Approach spans: piers from the water up to the deck.
-  if (au >= 1.13) {
-    if (p.y < deck - 0.011 && sydneyPulse(p.x / 0.05, 0.0, 0.12, px.x / 0.05) > 0.3) {
-      cover = 1.0;
-      return vec4(steel * 0.45, 0.4);
-    }
+  float top = SYD_PODIUM;
+  if (p.x < -0.7) {
+    top = min(SYD_PODIUM, SYD_SEA + 0.05 * (floor((p.x + 0.78) / 0.016) + 1.0) / 5.0);
+  }
+  if (p.x > -0.12) {
+    top = SYD_PODIUM - 0.6 * (p.x + 0.12);
+  }
+  if (p.y >= top) {
     return vec4(0.0);
   }
-  float k = 1.0 - u * u;
-  float yb = 0.293 + 0.252 * k;
-  float yt = 0.425 + 0.16 * pow(k, 0.72);
-  // Distances to the chords, measured across their slope.
-  float sb = 0.504 * au / SYDNEY_SPAN;
-  float st = 0.16 * 0.72 * pow(max(k, 1e-3), -0.28) * 2.0 * au / SYDNEY_SPAN;
-  float db = abs(p.y - yb) / sqrt(1.0 + sb * sb);
-  float dt = abs(p.y - yt) / sqrt(1.0 + st * st);
-  float chord = max(sydneyStroke(db, 0.0026, px.y), sydneyStroke(dt, 0.0022, px.y));
-  // Lamps along the top chord, and a red light on each flagpole at the crown.
-  float lamp = step(dt, px.y * 1.2) * sydneyPulse(u * 20.0, 0.0, 0.18, fu.x * 20.0);
-  float pole = step(abs(au - 0.06), fu.x * 0.5) * step(yt, p.y) * step(p.y, yt + 0.022);
-  if (pole > 0.5) {
+  cover = 1.0;
+  if (sydCellOf(vec2(p.x, top - 0.5 * sydPx)).y == cell.y) {
+    return vec4(0.86, 0.8, 0.7, 0.85);
+  }
+  // Foyer lights along the face, one per glyph on every other glyph.
+  vec2 g = sydGrid;
+  vec2 glyph = floor(cell / g);
+  float row = sydCellOf(vec2(p.x, SYD_PODIUM - 0.02)).y;
+  if (floor(row / g.y) == glyph.y && mod(glyph.x, 3.0) < 0.5 && p.x > -0.68 && p.x < -0.14) {
+    float c;
+    vec4 light = sydLight(cell, vec2(glyph.x * g.x, row), vec3(1.0, 0.78, 0.46), 0.75, c);
+    if (c > 0.5) {
+      return light;
+    }
+  }
+  return vec4(0.3, 0.25, 0.22, 0.4);
+}
+
+// ---- The Harbour Bridge -------------------------------------------------
+
+float sydLower(float x) {
+  float u = (x - 0.5 * (SYD_SOUTH + SYD_NORTH)) / (0.5 * (SYD_NORTH - SYD_SOUTH) - 0.5 * SYD_PYLON_W);
+  return SYD_SEA + 5.0 * SYD_M + 111.0 * SYD_M * (1.0 - u * u);
+}
+
+float sydUpper(float x) {
+  float u = (x - 0.5 * (SYD_SOUTH + SYD_NORTH)) / (0.5 * (SYD_NORTH - SYD_SOUTH) - 0.5 * SYD_PYLON_W);
+  return SYD_SEA + 70.0 * SYD_M + 64.0 * SYD_M * (1.0 - u * u);
+}
+
+float sydDeck() {
+  return SYD_SEA + 49.0 * SYD_M;
+}
+
+// A line through a curve y(x) of the given slope, never thinner than one
+// sample in either direction.
+bool sydOnCurve(vec2 p, float y, float slope) {
+  return abs(p.y - y) <= 0.5 * sydPx + 0.5 * sydPw * abs(slope);
+}
+
+// One granite pylon, centred at cx: a slight taper, a stepped crown, a
+// floodlit face and a darker side.
+vec4 sydPylon(vec2 p, float cx, float dim, out float cover) {
+  cover = 0.0;
+  float h = 89.0 * SYD_M;
+  float v = (p.y - SYD_SEA) / h;
+  if (v < 0.0 || v > 1.0) {
+    return vec4(0.0);
+  }
+  float hw = 0.5 * SYD_PYLON_W * (1.0 - 0.08 * v) * (v > 0.93 ? 0.8 : 1.0);
+  float dx = p.x - cx;
+  if (abs(dx) > hw) {
+    return vec4(0.0);
+  }
+  cover = 1.0;
+  bool rim = v > 1.0 - sydPx / h || (v > 0.93 - sydPx / h && v <= 0.93 && abs(dx) > 0.8 * hw);
+  vec3 stone = vec3(0.72, 0.64, 0.54) * dim;
+  if (rim) {
+    return vec4(stone * 1.25, 0.9);
+  }
+  // The face toward us is floodlit; the side turned away is not.
+  return dx < 0.2 * hw ? vec4(stone, 0.55) : vec4(stone * 0.62, 0.42);
+}
+
+vec4 sydBridge(vec2 cell, vec2 p, float t, out float cover) {
+  cover = 0.0;
+  if (p.y < SYD_SEA || p.y > SYD_SEA + 140.0 * SYD_M || p.x < -0.13) {
+    return vec4(0.0);
+  }
+  // Each end has a pair of pylons, one either side of the deck; the far
+  // one shows just to the left of the near one.
+  vec4 hit = sydPylon(p, SYD_SOUTH, 1.0, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydPylon(p, SYD_NORTH, 1.0, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydPylon(p, SYD_SOUTH - 0.013, 0.6, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydPylon(p, SYD_NORTH - 0.013, 0.6, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  float deck = sydDeck();
+  float a = SYD_SOUTH + 0.5 * SYD_PYLON_W;
+  float b = SYD_NORTH - 0.5 * SYD_PYLON_W;
+  float yl = sydLower(p.x);
+  float yu = sydUpper(p.x);
+  bool arch = p.x > a && p.x < b;
+  // A red light on the crown pulses about every 1.8 seconds.
+  float mid = 0.5 * (a + b);
+  vec2 crown = sydCellOf(vec2(mid, sydUpper(mid) + sydPx));
+  float glow = 0.5 + 0.5 * cos(t * 3.49);
+  vec4 beacon = sydLight(cell, crown, vec3(1.0, 0.16, 0.12) * (0.45 + 0.55 * glow * glow), 0.7, cover);
+  if (cover > 0.5) {
+    return beacon;
+  }
+  // Lamps along the deck, one at every panel point.
+  float panel = (b - a) / SYD_PANELS;
+  float k = floor((p.x - a) / panel + 0.5);
+  float lampX = a + k * panel;
+  if (lampX > -0.12 + panel) {
+    hit = sydLight(cell, sydCellOf(vec2(lampX, deck + 1.5 * sydPx)), vec3(1.0, 0.8, 0.5), 0.7, cover);
+    if (cover > 0.5) {
+      return hit;
+    }
+  }
+  vec3 steel = vec3(0.6, 0.66, 0.78);
+  // The deck runs the full width, two rows thick in dot charsets.
+  if (abs(p.y - deck) <= (sydGrid.y > 1.5 ? 1.0 : 0.5) * sydPx) {
     cover = 1.0;
-    float beacon = step(yt + 0.022 - px.y * 1.5, p.y) * step(0.45, fract(t * 0.55 + step(0.0, u) * 0.5));
-    return mix(vec4(steel * 0.8, 0.55), vec4(1.0, 0.14, 0.1, 0.95), beacon);
+    return vec4(steel * 0.7, 0.8);
   }
-  if (lamp > 0.4) {
+  if (!arch) {
+    return vec4(0.0);
+  }
+  float e = 0.004;
+  if (sydOnCurve(p, yu, (sydUpper(p.x + e) - sydUpper(p.x - e)) / (2.0 * e)) || sydOnCurve(p, yl, (sydLower(p.x + e) - sydLower(p.x - e)) / (2.0 * e))) {
     cover = 1.0;
-    return vec4(vec3(0.96, 0.95, 1.0), 0.95);
+    return vec4(steel, 0.9);
   }
-  if (chord > 0.35) {
+  float f = (p.x - a) / panel - k;
+  // Hangers from the arch down to the deck at every panel point.
+  if (p.y > deck && p.y < yl && abs(f) * panel <= 0.5 * sydPw) {
     cover = 1.0;
-    return vec4(steel * bright, 0.52 + 0.3 * chord);
+    return vec4(steel * 0.6, 0.6);
   }
-  // The truss between the chords: verticals and alternating diagonals.
-  float panels = (u + 1.0) * 14.0;
-  float pw = fu.x * 14.0;
-  // Coarse charsets can't resolve the truss: drop it there and keep the
-  // chords, which still read as the arch.
-  float detail = smoothstep(2.5, 4.0, 1.0 / max(pw, 1e-4));
-  if (p.y > yb && p.y < yt) {
-    float v = (p.y - yb) / (yt - yb);
-    float n = floor(panels);
-    float fp = fract(panels);
-    float target = mod(n, 2.0) < 0.5 ? v : 1.0 - v;
-    float slope = (yt - yb) / (SYDNEY_SPAN / 14.0);
-    float diag = sydneyStroke(abs(fp - target) / sqrt(1.0 + 1.0 / max(slope * slope, 1e-3)), 0.0, pw);
-    float vert = sydneyPulse(panels + 0.06, 0.0, 0.12, pw);
-    float member = max(diag, vert) * detail;
-    cover = step(0.3, member);
-    return vec4(steel * bright, 0.56 * member * cover);
-  }
-  // Hangers from the arch down to the deck.
-  if (p.y < yb && p.y > deck) {
-    float hanger = sydneyPulse(panels + 0.04, 0.0, 0.08, pw) * detail;
-    cover = step(0.3, hanger);
-    return vec4(steel * 0.9 * bright, 0.54 * hanger * cover);
+  if (p.y > yl && p.y < yu) {
+    float depth = yu - yl;
+    float bv = (p.y - yl) / depth;
+    // Posts at the panel points and one diagonal per panel, alternating.
+    float fp = (p.x - a) / panel;
+    float fk = floor(fp);
+    float ff = fp - fk;
+    float d = mod(fk, 2.0) < 0.5 ? ff - bv : ff - (1.0 - bv);
+    bool post = abs(f) * panel <= 0.5 * sydPw;
+    bool brace = abs(d) <= 0.5 * (sydPw / panel + sydPx / depth);
+    // With one sample per glyph the bracing would fill solid: keep the
+    // chords and every other post.
+    if (sydDots < 0.5) {
+      post = post && mod(k, 2.0) < 0.5;
+      brace = false;
+    }
+    cover = 1.0;
+    if (post || brace) {
+      return vec4(steel * 0.62, 0.7);
+    }
+    return vec4(steel * 0.4, 0.0);
   }
   return vec4(0.0);
 }
 
-// One of the Opera House's shells, tip leaning right: its back edge rises
-// on an arc from b0 and meets the tip at an angle, so the tip stays sharp;
-// its front edge sweeps out from b1. Under the front edge, the glass wall fills the mouth. Mirror q.x to
-// lean it left.
-vec4 sydneyShell(vec2 q, float b0, float b1, vec2 tip, vec2 px, vec4 flash, out float cover) {
+// ---- The city ---------------------------------------------------------
+
+// Whether window id is lit. Most windows keep their state; a few switch,
+// each on its own slow clock, and fade over a couple of seconds.
+float sydWindowLit(vec3 id, float rate, float t) {
+  float h = sydHash(id.yz + id.x * 7.13);
+  if (sydHash(id.zy + id.x * 3.31 + 1.7) > 0.25) {
+    return step(h, rate);
+  }
+  float period = 70.0 + 110.0 * sydHash(id.yz * 1.37 + id.x);
+  float phase = t / period + h * 13.0;
+  float k = floor(phase);
+  float now = step(sydHash(vec2(k, h * 91.0)), rate);
+  float next = step(sydHash(vec2(k + 1.0, h * 91.0)), rate);
+  return mix(now, next, smoothstep(0.0, 2.5 / period, fract(phase) - (1.0 - 2.5 / period)));
+}
+
+// Towers on whole glyphs: Circular Quay and the CBD to the left of the
+// Opera House, and lower North Sydney towers past the bridge. Each slot
+// along x holds one tower with a window grid of one-glyph-wide windows on
+// every other glyph and every other row; the tallest carry a slow red
+// aviation light.
+vec4 sydTowers(vec2 cell, vec2 p, float t, out float cover) {
   cover = 0.0;
-  float s = (q.y - SYDNEY_PODIUM) / (tip.y - SYDNEY_PODIUM);
-  if (s < 0.0 || s > 1.0) {
+  bool south = p.x < -0.52;
+  bool north = p.x > SYD_NORTH + 0.06;
+  if (!south && !north || p.y < SYD_SEA) {
     return vec4(0.0);
   }
-  float xb = b0 + (tip.x - b0) * (1.0 - sqrt(1.0 - 0.6724 * s * s)) / 0.4279;
-  float xf = b1 + (tip.x - b1) * pow(s, 1.5);
-  float xg = b1 + (tip.x - b1) * s;
-  if (q.x < xb || q.x > max(xf, xg)) {
+  vec2 g = sydGrid;
+  float group = floor(cell.x / g.x);
+  float xg = sydCentre(vec2(group * g.x + 0.5 * (g.x - 1.0), cell.y)).x;
+  float n = floor(xg / SYD_BLOCK);
+  float ca = min(g.x * ceil((sydColumn(n * SYD_BLOCK) - 0.5 * g.x) / g.x), group * g.x);
+  float cb = max(g.x * ceil((sydColumn((n + 1.0) * SYD_BLOCK) - 0.5 * g.x) / g.x), (group + 1.0) * g.x);
+  float h1 = sydHash(vec2(n, 3.1));
+  // The CBD climbs behind the south end of the Opera House and falls away
+  // further left; North Sydney stays low.
+  float tall = south ? (0.14 + 0.32 * h1) * (1.0 - 0.55 * smoothstep(-0.9, -1.6, xg)) : 0.035 + 0.06 * h1;
+  float baseRow = g.y * floor(sydCellOf(vec2(xg, SYD_SEA)).y / g.y) + g.y;
+  float rows = g.y * max(2.0, floor(tall / (sydPx * g.y)));
+  float r = cell.y - baseRow;
+  // A narrow gap between some neighbours, a whole glyph wide.
+  float gap = sydHash(vec2(n, 5.7)) < 0.5 ? g.x : 0.0;
+  float cc = cell.x - ca;
+  float w = cb - ca - gap;
+  if (r < 0.0 || r >= rows || cc >= w) {
     return vec4(0.0);
   }
   cover = 1.0;
-  if (q.x > xf) {
-    // The mouth: amber glass with mullions fanning up from the base.
-    float m = sydneyPulse((q.x - b1) / max(tip.x - b1, 1e-3) / max(s, 0.05) * 5.0, 0.0, 0.2, px.x * 5.0 / max((tip.x - b1) * max(s, 0.05), 1e-3));
-    return vec4(vec3(1.0, 0.72, 0.34) * mix(1.0, 0.6, m), mix(0.62, 0.36, m));
+  vec3 tint = sydHash(vec2(n, 8.3)) < 0.65 ? vec3(1.0, 0.82, 0.52) : vec3(0.78, 0.86, 1.0);
+  // The tallest towers carry a red light that pulses every 1.7 seconds.
+  if (tall > 0.36) {
+    vec2 top = vec2(ca + g.x * floor(0.5 * w / g.x), baseRow + rows);
+    float glow = 0.5 + 0.5 * cos(t * 3.7 + n);
+    float c;
+    vec4 beacon = sydLight(cell, top - vec2(0.0, 1.0), vec3(1.0, 0.16, 0.12) * (0.45 + 0.55 * glow * glow), 0.7, c);
+    if (c > 0.5 && r >= rows - g.y) {
+      return beacon;
+    }
   }
-  vec3 sail = mix(vec3(1.0, 0.96, 0.88), flash.rgb, flash.a * 0.3);
-  // The back edge is a gap, so a shell reads against the one behind it.
-  if (q.x - xb < px.x * 0.9 + 0.0015) {
-    return vec4(sail * 0.5, 0.2);
+  // A dim facade, so each tower keeps its outline against the sky; lit
+  // windows are brighter glyphs in it.
+  vec3 wall = vec3(0.13, 0.15, 0.23) * (0.85 + 0.3 * sydHash(vec2(n, 4.4)));
+  // Windows are whole glyphs on every other glyph column and row.
+  float wc = floor(cc / g.x);
+  float wr = floor(r / g.y);
+  bool pane = mod(wc, 2.0) > 0.5 && cc < w - g.x && mod(wr, 2.0) < 0.5 && r < rows - g.y;
+  if (!pane) {
+    return vec4(wall, 0.3);
   }
-  // Tiles run in ribs that follow the shell's curve.
-  float w = (q.x - xb) / max(xf - xb, 1e-4);
-  float ribW = max(xf - xb, 1e-4) / 4.0;
-  float rib = sydneyPulse(w * 4.0, 0.0, 0.16, px.x / ribW) * step(0.12, s) * step(w, 0.9) * smoothstep(3.0, 6.0, ribW / px.x);
-  float lit = mix(1.0, 0.8, s) + flash.a * 0.2;
-  float rim = step(xf - q.x, px.x * 1.3);
-  return vec4(sail * lit, max(0.8 * lit - rib * 0.45, rim));
+  float rate = 0.35 + 0.35 * sydHash(vec2(n, 1.9));
+  float lit = sydWindowLit(vec3(n, wc, wr), rate, t);
+  vec3 col = sydHash(vec2(wc, wr) + n * 1.31) < 0.85 ? tint : vec3(1.0, 0.64, 0.34);
+  return vec4(mix(wall, col * (0.75 + 0.25 * sydHash(vec2(wr, wc) + n)), lit), 0.3 + 0.6 * lit);
 }
 
-// The Opera House on Bennelong Point: two rows of nested shells leaning
-// toward the harbour, the restaurant's small pair leaning back, all on
-// the broad podium.
-vec4 sydneyOpera(vec2 p, vec2 px, vec4 flash, out float cover) {
+// Low dark headlands on the far shore, under the towers and the bridge's
+// north end, with a few fixed lights.
+vec4 sydShore(vec2 cell, vec2 p, out float cover) {
   cover = 0.0;
-  float k = SYDNEY_OPERA_SCALE;
-  vec2 q = vec2((p.x - SYDNEY_OPERA_X) / k, SYDNEY_PODIUM + (p.y - SYDNEY_PODIUM) / k);
-  if (q.x < -0.26 || q.x > 0.25 || q.y > 0.51 || p.y < SYDNEY_WATER) {
-    return vec4(0.0);
-  }
-  px /= k;
-  vec4 acc = vec4(0.0);
-  float c;
-  if (p.y < SYDNEY_PODIUM) {
-    // The podium, banded and floodlit, its edge a bright line.
-    if (abs(q.x + 0.005) > 0.235) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float ledge = step(SYDNEY_PODIUM - px.y * k * 1.3, p.y);
-    float band = sydneyPulse(p.y / 0.009, 0.0, 0.28, px.y * k / 0.009);
-    return vec4(vec3(0.95, 0.78, 0.62) * mix(1.0, 0.6, band), max(ledge * 0.9, 0.6 - band * 0.3));
-  }
-  // The restaurant: two small shells leaning left.
-  vec2 r = vec2(-q.x, q.y);
-  sydneyPaint(acc, sydneyShell(r, 0.13, 0.18, vec2(0.228, 0.368), px, flash, c), c);
-  cover = max(cover, c);
-  sydneyPaint(acc, sydneyShell(r, 0.095, 0.15, vec2(0.192, 0.346), px, flash, c), c);
-  cover = max(cover, c);
-  // The concert hall, behind.
-  sydneyPaint(acc, sydneyShell(q, -0.15, -0.065, vec2(-0.03, 0.412), px, flash, c), c);
-  cover = max(cover, c);
-  sydneyPaint(acc, sydneyShell(q, -0.09, 0.005, vec2(0.05, 0.46), px, flash, c), c);
-  cover = max(cover, c);
-  sydneyPaint(acc, sydneyShell(q, -0.025, 0.08, vec2(0.135, 0.508), px, flash, c), c);
-  cover = max(cover, c);
-  // The opera theatre, in front and lower.
-  sydneyPaint(acc, sydneyShell(q, -0.05, 0.02, vec2(0.065, 0.378), px, flash, c), c);
-  cover = max(cover, c);
-  sydneyPaint(acc, sydneyShell(q, 0.015, 0.095, vec2(0.145, 0.414), px, flash, c), c);
-  cover = max(cover, c);
-  sydneyPaint(acc, sydneyShell(q, 0.085, 0.165, vec2(0.22, 0.448), px, flash, c), c);
-  cover = max(cover, c);
-  return acc;
-}
-
-// A green and gold harbour ferry heading right, with lit cabins.
-vec4 sydneyFerry(vec2 p, float x0, vec2 px, out float cover) {
-  cover = 0.0;
-  float len = 0.15;
-  float k = 1.45;
-  vec2 q = vec2(p.x - x0, p.y - SYDNEY_FERRY_Y) / k;
-  px /= k;
-  if (q.x < 0.0 || q.x > len || q.y < 0.0 || q.y > 0.062) {
-    return vec4(0.0);
-  }
-  float a = q.x / len;
-  if (q.y < 0.016) {
-    // The hull rises at the bow and stern.
-    float rake = 0.016 * (1.0 - smoothstep(0.0, 0.08, a) * (1.0 - smoothstep(0.86, 1.0, a)));
-    if (q.y < rake) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float stripe = step(0.011, q.y);
-    return vec4(mix(vec3(0.1, 0.5, 0.3), vec3(1.0, 0.85, 0.42), stripe), mix(0.5, 0.7, stripe));
-  }
-  float cabin = step(0.07, a) * step(a, 0.93) * step(q.y, 0.033);
-  float upper = step(0.2, a) * step(a, 0.8) * step(0.033, q.y) * step(q.y, 0.046);
-  float wheel = step(0.42, a) * step(a, 0.58) * step(0.046, q.y) * step(q.y, 0.055);
-  float mast = step(abs(q.x - len * 0.5), max(0.0012, px.x * 0.5)) * step(0.055, q.y);
-  if (cabin + upper + wheel + mast < 0.5) {
+  float rise = p.x > 0.55 ? 0.022 + 0.01 * sin(p.x * 9.0) : p.x < -0.6 ? 0.012 : 0.0;
+  if (p.y < SYD_SEA || p.y > SYD_SEA + rise) {
     return vec4(0.0);
   }
   cover = 1.0;
-  if (mast > 0.5) {
-    float light = step(0.062 - px.y * 1.5, q.y);
-    return mix(vec4(vec3(0.7), 0.5), vec4(1.0, 1.0, 0.95, 0.95), light);
+  vec2 glyph = floor(cell / sydGrid);
+  if (sydHash(glyph + 41.3) < 0.18) {
+    vec2 spot = glyph * sydGrid + floor(vec2(sydHash(glyph + 2.3), sydHash(glyph + 6.1)) * sydGrid);
+    return vec4(vec3(1.0, 0.78, 0.48) * (0.6 + 0.4 * sydHash(glyph)), spot == cell ? 0.8 : 0.0);
   }
-  float rowY = cabin > 0.5 ? 0.0245 : 0.0395;
-  float pane = sydneyPulse(q.x / 0.008, 0.2, 0.8, px.x / 0.008) * step(abs(q.y - rowY), 0.0035);
-  if (pane > 0.4) {
-    return vec4(vec3(1.0, 0.88, 0.6), 0.9);
-  }
-  return vec4(vec3(0.96, 0.9, 0.72) * 0.75, 0.55);
+  return vec4(0.1, 0.13, 0.18, 0.25);
 }
 
-// Everything above the waterline at p (the box's frame) and s (the scene
-// frame), each layer shifted by its own share of the pointer. Empty
-// samples carry the colour of the nearest light at zero tone.
-vec4 sydneyAbove(vec2 p, float t, vec2 px, float aspect, float sc, float shift, vec2 ptr) {
-  vec2 spx = px / sc;
-  vec4 acc = vec4(0.0);
-  vec3 halo = vec3(0.0);
+// ---- Sky, ferry and water -----------------------------------------------
+
+// One star at most per square of the box, each a single sample, glinting
+// slowly in colour while its glyph stays put.
+vec4 sydStar(vec2 uv, vec2 cell, float t) {
+  vec2 s = vec2(uv.x * sydAspect, uv.y);
+  float g = 0.032;
+  vec2 id = floor(s / g);
+  float h = sydHash(id + 23.0);
+  if (h > 0.18 * smoothstep(0.4, 0.9, uv.y)) {
+    return vec4(0.0);
+  }
+  vec2 at = (id + 0.15 + 0.7 * vec2(sydHash(id + 3.1), sydHash(id + 8.7))) * g;
+  vec2 starCell = floor(vec2(at.x / sydAspect, at.y) * sydSamples);
+  if (floor(starCell / sydGrid) != floor(cell / sydGrid)) {
+    return vec4(0.0);
+  }
+  float b = 0.35 + 0.55 * sydHash(id + 9.2);
+  float glint = 0.8 + 0.2 * sin(t * (0.3 + 0.6 * sydHash(id + 5.0)) + h * 40.0);
+  // A full dot, or the lightest glyphs of a ramp, never a heavy one.
+  float tone = sydDots > 0.5 ? 0.9 : 0.12 + 0.14 * b;
+  return vec4(vec3(0.76, 0.82, 1.0) * b * glint, starCell == cell ? tone : 0.0);
+}
+
+// One harbour ferry: a green hull, a cream deckhouse with lit windows and
+// a small wheelhouse, crossing about once every two and a half minutes.
+// It moves a whole sample at a time.
+// The ferry's bow, low and left, its keel on a glyph boundary.
+vec2 sydFerryCell(float t) {
+  float travel = mod(t * 0.012 + 0.9, 3.6) - 1.8;
+  vec2 bow = sydCellOf(vec2(travel, SYD_SEA - 0.15));
+  return vec2(bow.x, sydGrid.y * floor(bow.y / sydGrid.y));
+}
+
+vec4 sydFerry(vec2 cell, float t, out float cover) {
+  cover = 0.0;
+  if (sydFerryOn < 0.5) {
+    return vec4(0.0);
+  }
+  vec2 bow = sydFerryCell(t);
+  float len = max(12.0, floor(0.13 / sydPw));
+  vec2 d = cell - bow;
+  // One glyph row per part in dot charsets, so the hull, the deckhouse and
+  // the wheelhouse never share a glyph.
+  float rowsPer = sydGrid.y > 1.5 ? sydGrid.y : max(1.0, floor(0.011 / sydPx));
+  float row = floor(d.y / rowsPer);
+  if (d.x < 0.0 || d.x >= len || d.y < 0.0 || row > 2.0) {
+    return vec4(0.0);
+  }
+  float u = d.x / len;
+  if (row < 0.5) {
+    // The hull tapers at both ends.
+    if (u < 0.04 || u > 0.96) {
+      return vec4(0.0);
+    }
+    cover = 1.0;
+    return vec4(0.16, 0.42, 0.26, 0.75);
+  }
+  if (row < 1.5) {
+    if (u < 0.1 || u > 0.9) {
+      return vec4(0.0);
+    }
+    cover = 1.0;
+    bool pane = mod(floor(d.x / sydGrid.x), 2.0) > 0.5;
+    return pane ? vec4(1.0, 0.8, 0.48, 0.95) : vec4(0.9, 0.86, 0.74, 0.8);
+  }
+  if (u < 0.38 || u > 0.62) {
+    return vec4(0.0);
+  }
+  cover = 1.0;
+  return vec4(0.9, 0.86, 0.74, 0.8);
+}
+
+// Everything that stands above the water, without the sky.
+vec4 sydAbove(vec2 cell, vec2 p, float t, out float cover) {
+  vec4 hit = sydShells(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydPodium(cell, p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydBridge(cell, p, t, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = sydTowers(cell, p, t, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  return sydShore(cell, p, cover);
+}
+
+// The harbour: the scene mirrored, a little stretched, broken into short
+// dashes that drift slowly along each row, with each row of samples
+// swaying sideways by whole glyphs. Dark samples keep the colour of what
+// they mirror, so lit dots stay bright.
+vec4 sydWater(vec2 cell, vec2 p, float t) {
   float cover;
-  vec4 star = sydneyStars(p + ptr * 0.004, t, px);
-  sydneyLayer(acc, halo, star, step(0.001, star.a));
-  vec4 flash;
-  float bridgeX = (SYDNEY_BRIDGE_X - shift) * sc;
-  float deckY = SYDNEY_WATER + (SYDNEY_DECK - SYDNEY_WATER) * sc;
-  vec4 fire = sydneyShow(p + ptr * 0.008, t, px, aspect, bridgeX, deckY, flash);
-  sydneyLayer(acc, halo, fire, step(0.001, fire.a));
-  flash.a *= sydneyFireworks;
-  vec2 pc = p + ptr * 0.016;
-  vec4 city = sydneyCity(vec2(pc.x / sc + shift, SYDNEY_WATER + (pc.y - SYDNEY_WATER) / sc), t, spx, cover);
-  sydneyLayer(acc, halo, vec4(mix(city.rgb, vec3(0.45, 0.55, 0.95), 0.25), city.a), cover);
-  vec2 pb = p + ptr * 0.026;
-  vec4 bridge = sydneyBridge(vec2(pb.x / sc + shift, SYDNEY_WATER + (pb.y - SYDNEY_WATER) / sc), t, spx, flash, cover);
-  sydneyLayer(acc, halo, bridge, cover);
-  vec2 po = p + ptr * 0.04;
-  vec4 opera = sydneyOpera(vec2(po.x / sc + shift, SYDNEY_WATER + (po.y - SYDNEY_WATER) / sc), spx, flash, cover);
-  sydneyLayer(acc, halo, opera, cover);
-  return vec4(acc.a < 0.08 ? halo : acc.rgb, acc.a);
+  vec4 boat = sydFerry(cell, t, cover);
+  if (cover > 0.5) {
+    return boat;
+  }
+  vec2 g = sydGrid;
+  float depth = SYD_SEA - p.y;
+  float shift = g.x * floor(1.2 * sin(cell.y * 0.71 + t * 0.35) + 0.5);
+  float c0 = g.x * floor((cell.x + shift) / g.x);
+  vec2 q = sydCentre(vec2(c0 + 0.5 * (g.x - 1.0), cell.y));
+  vec2 m = vec2(q.x, SYD_SEA + depth * 0.75);
+  vec2 mc = sydCellOf(m);
+  vec4 src = sydAbove(mc, m, t, cover);
+  // The ferry's own reflection, mirrored about its waterline.
+  float keel = sydFerryCell(t).y;
+  if (cell.y < keel) {
+    vec4 own = sydFerry(vec2(cell.x, 2.0 * keel - 1.0 - cell.y), t, cover);
+    if (cover > 0.5) {
+      src = own;
+    }
+  }
+  // Streaks on every other row of samples, in long dashes.
+  float on = step(0.5, mod(cell.y, 2.0)) * step(-0.25, snoise(vec2(c0 * 0.06 + t * 0.04, cell.y * 0.35)));
+  float fade = 1.0 - smoothstep(0.02, 0.16, depth);
+  // Only lit things show in the water: the shells, lamps, windows and steel.
+  vec4 hit = vec4(src.rgb * 0.55, src.a >= 0.6 ? 0.8 * on * fade : 0.0);
+  if (sydDots < 0.5) {
+    hit.a *= 0.45;
+  }
+  return hit;
 }
 
-vec2 sydneyCacheUv = vec2(-1.0);
-float sydneyCacheT = -1.0;
-vec4 sydneyCacheValue = vec4(0.0);
+// ---- Composition ------------------------------------------------------
 
-vec4 sydneyScene(vec2 uv, vec2 res, float t) {
-  if (uv == sydneyCacheUv && t == sydneyCacheT) {
-    return sydneyCacheValue;
+vec4 sydCompose(vec2 uv, vec2 cell, vec2 p, float t) {
+  if (p.y < SYD_SEA) {
+    return sydWater(cell, p, t);
   }
-  float aspect = res.x / res.y;
-  float pixel = 1.0 / res.y;
-  // One sample's footprint. Glyph cells run about 0.6 wide to 1 tall and
-  // charsets sample them 1x1 to 2x4, so 0.9 rows wide is a fair middle.
-  vec2 px = vec2(pixel * 0.9, pixel);
-  vec2 ptr = (u_pointer.xy - 0.5) * u_pointer.z * sydneyPointer;
-  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y);
-  // Narrow boxes shrink the landmarks about the waterline and slide the
-  // view toward the bridge, so the Opera House and the arch both fit.
-  float sc = clamp(aspect / 1.6, 0.44, 1.0);
-  float shift = 0.12 * (1.0 - sc);
+  float cover;
+  vec4 hit = sydAbove(cell, p, t, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  return sydStar(uv, cell, t);
+}
 
-  vec4 acc;
-  if (p.y >= SYDNEY_WATER) {
-    acc = sydneyAbove(p, t, px, aspect, sc, shift, ptr);
+vec2 sydCacheUv = vec2(-1.0);
+float sydCacheT = -1.0;
+vec4 sydCacheValue = vec4(0.0);
+
+vec4 sydScene(vec2 uv, vec2 res, float t) {
+  if (uv == sydCacheUv && t == sydCacheT) {
+    return sydCacheValue;
+  }
+  sydLayout(res);
+  vec2 cell = floor(uv * sydSamples);
+  vec4 hit = sydCompose(uv, cell, sydFrame(uv), t);
+  float tone = hit.a;
+  if (sydDots > 0.5) {
+    // Lights and outlines light every dot. Fills light every dot too when
+    // the glyph colour carries brightness; otherwise an even share of them,
+    // so the layers still part by density.
+    bool lit = tone >= 0.85 || tone >= 0.15 && (sydSolid > 0.5 || tone * sydIntensity > sydBayer(cell));
+    tone = lit ? max(tone, 0.6) : 0.0;
   } else {
-    float depth = SYDNEY_WATER - p.y;
-    // The mirror stretches with depth so bursts high in the sky still land
-    // in the water, and ripples bend it more the nearer the water is.
-    float wob = snoise(vec2(p.x * 3.0 + t * 0.12, p.y * 90.0 - t * 0.5));
-    vec2 m = vec2(p.x + wob * (0.002 + depth * 0.035), SYDNEY_WATER + depth * (1.0 + 2.0 * pow(depth / SYDNEY_WATER, 2.0)));
-    vec4 mirror = sydneyAbove(m, t, px, aspect, sc, shift, ptr);
-    float band = max(pixel * 2.2, 0.0045);
-    float streak = snoise(vec2(p.x * 7.0 - t * 0.1, floor(p.y / band) * 1.7 + t * 0.35));
-    float keep = step(-0.35 + depth * 1.6, streak);
-    acc = vec4(mirror.rgb * vec3(0.62, 0.7, 0.85), mirror.a * keep * (1.0 - depth * 1.4));
-    // Faint swell on the open water.
-    float swell = step(0.62, snoise(vec2(p.x * 14.0 + t * 0.2, floor(p.y / band) * 3.1)));
-    if (acc.a < 0.2 && swell > 0.5) {
-      acc = vec4(vec3(0.24, 0.32, 0.55), 0.22);
-    }
-    if (sydneyFerryOn > 0.5) {
-      float span = aspect / sc + 0.5;
-      vec2 pf = p + ptr * 0.06;
-      vec2 s = vec2(pf.x / sc + shift, SYDNEY_WATER + (pf.y - SYDNEY_WATER) / sc);
-      float x0 = mod(t * 0.022 + span * 0.62, span) - span * 0.5 + shift - 0.11;
-      float cover;
-      vec4 ferry = sydneyFerry(s, x0, px / sc, cover);
-      // Its reflection hangs just below it, and a wake trails behind.
-      if (cover < 0.5) {
-        vec4 below = sydneyFerry(vec2(s.x, 2.0 * SYDNEY_FERRY_Y - s.y), x0, px / sc, cover);
-        sydneyPaint(acc, vec4(below.rgb * 0.5, below.a * keep * 0.85), cover);
-        float behind = x0 - s.x;
-        float wake = step(0.0, behind) * step(behind, 0.16) * step(abs(s.y - SYDNEY_FERRY_Y - 0.002 + behind * 0.02 * sin(s.x * 90.0)), 0.003 + behind * 0.02);
-        float foam = wake * step(0.35, hash21(vec2(floor(s.x * sc / px.x), floor(t * 6.0)))) * (1.0 - behind / 0.16);
-        if (foam > 0.1) {
-          acc = vec4(vec3(0.75, 0.85, 1.0) * (0.5 + 0.5 * foam), 0.3 + 0.4 * foam);
-        }
-      } else {
-        acc = ferry;
-      }
-    }
+    tone *= sqrt(sydIntensity);
   }
-
-  // Near-black stays clean paper, so the sky and water don't fill with noise.
-  // Intensity dims colour in step and tone more gently: Braille drops any
-  // sample under half tone, so scaling tone alone would erase the bridge
-  // long before the colours had faded.
-  float tone = acc.a < 0.08 ? 0.0 : acc.a;
-  sydneyCacheUv = uv;
-  sydneyCacheT = t;
-  sydneyCacheValue = vec4(acc.rgb * sydneyIntensity, tone * sqrt(sydneyIntensity));
-  return sydneyCacheValue;
+  sydCacheUv = uv;
+  sydCacheT = t;
+  sydCacheValue = vec4(hit.rgb * sydIntensity, tone);
+  return sydCacheValue;
 }
 `;
 
 const FIELD = `${SCENE}
 float field(vec2 uv, vec2 res, float t) {
-  return sydneyScene(uv, res, t).a;
+  return sydScene(uv, res, t).a;
 }
 `;
 
 const COLOR_FIELD = `${SCENE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
-  return sydneyScene(uv, res, t).rgb;
+  return sydScene(uv, res, t).rgb;
 }
 `;
 
-// Modes that paint the scene's own colours need its night behind them in
-// both themes; mono and palette keep the theme's paper, or the phosphor's.
-const NIGHT = "#040818";
+// Modes that paint the scene's own colours need its night blue behind
+// them in both themes; mono and palette keep the theme's paper, or the
+// phosphor's.
+const NIGHT = "#050916";
 const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
   "duotone",
+]);
+
+// Modes where the glyph colour carries the scene's brightness.
+const SOLID_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
+  "truecolor",
+  "ansi16",
 ]);
 
 const FALLBACK = (
@@ -683,7 +671,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to top, #040818 0%, #0a1634 26%, #040818 27%, #071028 45%, #040818 100%)",
+        "linear-gradient(to bottom, #050916 0%, #050916 60%, #0a1226 72%, #050916 100%)",
     }}
   />
 );
@@ -691,66 +679,63 @@ const FALLBACK = (
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-export interface SydneyProps extends AsciiSceneProps {
-  /** How bright the scene is, from 0 (blank) to 1, so text on top stays readable. Default 1. */
+export interface SydneyProps extends Omit<AsciiSceneProps, "interactive"> {
+  /** How strongly it draws, from 0 (faint, for text on top) to 1. Default 1. */
   intensity?: number;
-  /** How many fireworks shells are in the air, from 0 (none) to 1 (five at once). Default 1. */
-  fireworks?: number;
   /** The ferry crossing the harbour. Default `true`. */
   ferry?: boolean;
-  /** An engine pointer effect on top of the parallax. Default `"none"`. */
-  interaction?: Interaction;
   /**
-   * Paper behind the glyphs. Default: the scene's night colour in
+   * Paper behind the glyphs. Default: the scene's night blue in
    * `truecolor`, `ansi16` and `duotone`; the theme's paper, or the
    * phosphor's, otherwise.
    */
   paper?: AsciiColor;
-  /** Shown without WebGL and until the first frame. Default: a night gradient. */
+  /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
   fallback?: ReactNode;
 }
 
 /**
- * Sydney Harbour at night. The Opera House's shells glow white on their
- * podium, the Harbour Bridge's arch spans behind with lamps along its
- * deck, and the city stands beyond. Fireworks burst over the bridge on
- * their own clocks, and a click launches one more. Everything is mirrored
- * in the rippling harbour, where a ferry crosses. Decorative and
- * full-bleed: size it with `className`, usually `absolute inset-0`.
+ * Sydney Harbour at night. The Opera House's shells stand lit cream-white
+ * on their podium, the Harbour Bridge spans behind them between its
+ * granite pylons, Circular Quay's towers hold grids of lit windows, and
+ * one ferry crosses the calm water under their reflections. Decorative
+ * and full-bleed: size it with `className`, usually `absolute inset-0`.
  */
 export const Sydney = ({
-  charset = "braille",
+  charset = "quadrants",
+  chars,
   colorMode,
   phosphor,
   paper,
-  cell = 10,
-  stillTime = 4,
-  interactive = true,
-  interaction = "none",
+  cell = 9,
+  stillTime = 40,
   intensity = 1,
-  fireworks = 1,
   ferry = true,
   fallback = FALLBACK,
   ...props
 }: SydneyProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
+  const [gx, gy] = resolveCharset(charset, chars).grid;
   return (
     <AsciiShader
       field={FIELD}
       colorField={COLOR_FIELD}
       uniforms={{
-        sydneyFerryOn: ferry ? 1 : 0,
-        sydneyFireworks: clamp(fireworks, 0, 1),
-        sydneyIntensity: clamp(intensity, 0, 1),
-        sydneyPointer: interactive ? 1 : 0,
+        // Braille and quadrants light a dot only above half tone, so fills
+        // are drawn there as ordered dot patterns instead.
+        sydDots: gx * gy > 1 ? 1 : 0,
+        sydFerryOn: ferry ? 1 : 0,
+        sydGrid: [gx, gy],
+        sydIntensity: clamp(intensity, 0, 1),
+        sydSolid: SOLID_MODES.has(mode) ? 1 : 0,
       }}
       charset={charset}
+      chars={chars}
       colorMode={mode}
       phosphor={phosphor}
       paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
       cell={cell}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
       fallback={fallback}
       {...props}
     />

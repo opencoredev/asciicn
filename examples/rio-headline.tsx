@@ -1,9 +1,9 @@
 import { Rio } from "@/components/asciicn/rio";
 
-// Golden-hour duotone at reduced intensity, so the headline reads first.
+// Gold duotone at reduced intensity, so the headline reads first.
 export default function RioHeadline() {
   return (
-    <section className="relative isolate flex size-full flex-col items-start justify-center gap-3 px-8 text-left sm:px-12">
+    <section className="relative isolate flex size-full flex-col items-start justify-end gap-3 px-8 pb-10 text-left sm:px-12 sm:pb-12">
       <Rio
         colorMode="duotone"
         ramp="sodium"

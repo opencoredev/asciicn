@@ -1,6 +1,6 @@
 ---
 title: "Sydney"
-description: "Sydney Harbour at night: the Opera House lit white, the Harbour Bridge behind it, fireworks bursting over the arch and the whole scene mirrored in the water."
+description: "Sydney Harbour at night: the Opera House lit cream-white on its podium, the Harbour Bridge behind it, Circular Quay's towers and one ferry on calm water."
 ---
 
 import SydneyDemo from "@/examples/sydney-demo";
@@ -36,21 +36,19 @@ export function Hero() {
 }
 ```
 
-The scene is built in layers. Stars sit at the back, then the city: the towers of the CBD, North Sydney across the water, and Sydney Tower with its gold turret. The Harbour Bridge spans in front of them, its arch drawn as two steel chords with the truss between, granite pylons at each end and lamps along the deck. The Opera House stands nearest, its shells lit white on the podium with amber glass in their mouths.
+The harbour is seen from the east, at night. The Opera House stands nearest, on the left: a broad podium with a lit edge and a row of foyer lights, and on it the shells in profile, pointed sails of different sizes overlapping in sequence, the tallest at the north end. They are lit cream-white, and a dark seam runs wherever one shell passes in front of another, so each one keeps its own outline. The smaller back hall peeks out behind the front one, and the restaurant's two small shells sit at the south end.
 
-Fireworks rise from the bridge deck and break over the arch, five shells on their own clocks. Some burst as rings, some as peonies, and gold willows droop and glitter as they fall. Each break briefly tints the steel and the sails. With `interactive` on, a click launches one more shell from the deck below the pointer, and the pointer shifts the layers by different amounts, so the Opera House slides further than the skyline.
+Behind it the Harbour Bridge spans the water to the right. Its arch is a steel truss between two curved chords, with hangers down to the deck and lamps along it. Each end has a pair of granite pylons, one either side of the deck, with one face floodlit and the other in shadow. To the left of the Opera House the towers of Circular Quay rise in a cluster, each with a grid of windows, and North Sydney's lower towers stand past the bridge.
 
-Below the waterline the whole picture is drawn again from its mirror image and broken into ripple streaks, so the fireworks land in the harbour too. A green and gold ferry crosses with its cabins lit and a wake behind it.
+Very little moves. A few windows switch on or off, each fading over a couple of seconds and changing only every minute or more. Stars glint faintly. Red aviation lights pulse slowly on the crown of the arch and on the tallest towers, about once every two seconds. One green and cream ferry crosses the harbour in about two and a half minutes. The water carries broken reflections of the lit shells, lamps, windows and steel, which shift a little from side to side. The buildings and the bridge stay still, and nothing reacts to the pointer.
 
-It draws in `braille` by default, which keeps the spark trails and the truss fine. `standard` and `dense` give a typed look, and `blocks` gives solid shapes. In `truecolor`, the default, glyphs take the scene's own colours on a deep navy paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
-
-`intensity` dims the scene: colours fade in step with it, and glyphs thin out more slowly so the landmarks stay legible. Lower it, and `fireworks` with it, to keep a headline on top easy to read.
+It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2 grid of samples, so the shells, the truss and the window grids land on whole samples and stay sharp. `braille` gives finer, thinner dots, and `blocks`, `standard` and `dense` also work; with one sample per glyph the bridge keeps its chords and every other post. In `truecolor`, the default, it paints its own colours on a night blue. In `mono`, `duotone` and `palette`, where colour no longer carries brightness, the podium, pylons and tower walls fill with ordered dot patterns so they stay apart from the white shells.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.6}` and `fireworks={0.6}` keep three shells in the air and push the harbour back, so the headline reads first. Click the sky to launch another.
+`intensity={0.6}` dims the colours and thins the fills, so the headline over the open sky reads first.
 
 <ComponentPreview src="examples/sydney-hero.tsx" size="lg" align="stretch">
   <SydneyHero />
@@ -58,7 +56,7 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
 
 ### Duotone glacier
 
-`colorMode="duotone"` with `ramp="glacier"` runs every tone through one cold ramp. The `blocks` charset draws it in solid cells, with the ferry left out.
+`colorMode="duotone"` with `ramp="glacier"` runs every tone through one cold ramp. The `braille` charset at an 8px cell draws it in fine dots, with the ferry left out.
 
 <ComponentPreview src="examples/sydney-duotone.tsx">
   <SydneyDuotone />
@@ -73,26 +71,19 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
       type: "number",
       default: "1",
       description:
-        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
-    },
-    {
-      name: "fireworks",
-      type: "number",
-      default: "1",
-      description:
-        "How many shells are in the air, from 0 (none) to 1 (five at once).",
+        "How strongly the city draws, from 0 to 1. Lower it to keep text on top readable.",
     },
     {
       name: "ferry",
       type: "boolean",
       default: "true",
-      description: "Draws the ferry crossing the harbour.",
+      description: "The ferry crossing the harbour, and its reflection.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"braille"',
-      description: "Which glyphs draw the scene. See Charsets.",
+      default: '"quadrants"',
+      description: "Which glyphs draw the tones. See Charsets.",
     },
     {
       name: "chars",
@@ -144,7 +135,8 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
       name: "threshold",
       type: "number",
       default: "0.5",
-      description: "Braille and quadrants: the tone that lights a dot.",
+      description:
+        "Braille and quadrants: the tone that lights a dot. The scene lights its dots at a tone of 0.6 or more, so only values above that thin it out.",
     },
     {
       name: "edgeThreshold",
@@ -156,9 +148,9 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      default: '"none"',
       description:
-        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+        "Ordered dithering between neighbouring glyph levels. In braille and quadrants the scene already fills with its own ordered patterns where colour cannot carry brightness.",
     },
     {
       name: "background",
@@ -175,22 +167,9 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "An engine pointer effect on top of the parallax.",
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Pointer parallax, and a shell launched where you click. false turns both off, and interaction with them.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "10",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -215,7 +194,7 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
     {
       name: "stillTime",
       type: "number",
-      default: "4",
+      default: "40",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -231,14 +210,13 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
       type: "AsciiColor",
       default: "–",
       description:
-        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
       type: "ReactNode",
-      default: "–",
-      description:
-        "Shown without WebGL and until the first frame. By default a night gradient.",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
     },
     {
       name: "className",
@@ -252,7 +230,8 @@ It draws in `braille` by default, which keeps the spark trails and the truss fin
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime`, with shells mid-burst, and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dark night gradient.
-- On narrow boxes the landmarks shrink toward the waterline so the Opera House and the arch both stay in view, while the fireworks keep the full sky.
-- The whole scene is one GPU pass. Each sample checks the five shells once, whatever the spark count, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 40 seconds, puts the ferry in front of the Opera House.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat night-blue gradient.
+- On wide boxes the towers, the Opera House and the whole bridge fit. On narrow ones the view closes in on the Opera House and the south half of the bridge, and draws them smaller.
+- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the harbour costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
