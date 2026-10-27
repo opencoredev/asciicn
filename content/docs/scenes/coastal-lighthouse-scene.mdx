@@ -1,0 +1,269 @@
+---
+title: "Midnight Lighthouse & Storm Swell"
+description: "A lighthouse beam sweeping through fog over a breaking procedural sea and dark cliffs."
+---
+
+import CoastalLighthouseSceneDemo from "@/examples/coastal-lighthouse-scene-demo";
+import { controls as sceneControls } from "@/examples/coastal-lighthouse-scene-controls";
+import CoastalLighthouseScenePhosphor from "@/examples/coastal-lighthouse-scene-phosphor";
+import CoastalLighthouseSceneCalm from "@/examples/coastal-lighthouse-scene-calm";
+
+<ComponentPreview
+  src="examples/coastal-lighthouse-scene-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={sceneControls}
+>
+  <CoastalLighthouseSceneDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="coastal-lighthouse-scene" />
+
+## Usage
+
+```tsx
+import { CoastalLighthouseScene } from "@/components/asciicn/scenes/coastal-lighthouse-scene";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[520px]">
+      <CoastalLighthouseScene className="absolute inset-0 -z-10" />
+      <h1 className="text-white">Keep the light on</h1>
+    </section>
+  );
+}
+```
+
+By default it draws in Braille with ordered dithering, so the fog, the moon's halo and the beams show as finer or sparser dots instead of a hard cut at one tone.
+
+A striped lighthouse stands on a headland to the right, with the keeper's cottage beside it and one warm window. Two beams leave the lantern in opposite directions and turn. Each beam is a cone in 3D, so it shortens as it swings toward you or away, and the light it scatters is brightest where it crosses the most fog. When a beam points at the camera the lantern flares, with a flat lens streak across the screen. Beams pass behind the tower and the cliff, not through them.
+
+The sea is a swell of several wave trains rolling toward you, with chop on top. The moon, behind two decks of drifting cloud, lays a path of glitter on the water, and clouds near it get silver edges. Foam gathers on the crests and churns where the swell meets the foot of the cliff. Rain slants through and mist lies low over the water.
+
+Moving the pointer shifts the headland, the far shore and the moon by different amounts, and turns the lamp a little ahead of or behind its sweep.
+
+## Examples
+
+### ANSI blocks on amber phosphor
+
+`phosphor="p3"` switches to one amber ink, and `charset="blocks"` draws the scene in the five shade blocks of old DOS art, so the fog and the beams become bands of `░▒▓`. A higher `storm` thickens the cloud and the rain.
+
+<ComponentPreview
+  src="examples/coastal-lighthouse-scene-phosphor.tsx"
+  size="lg"
+  align="stretch"
+>
+  <CoastalLighthouseScenePhosphor />
+</ComponentPreview>
+
+### A calm night
+
+`storm={0}` clears the rain and most of the cloud, a low `swell` flattens the sea so the moon's path is a clean line, and a slower `beamSpeed` lets each sweep linger. The `dense` charset gives the water a finer grain.
+
+<ComponentPreview
+  src="examples/coastal-lighthouse-scene-calm.tsx"
+  size="lg"
+  align="stretch"
+>
+  <CoastalLighthouseSceneCalm />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "beamSpeed",
+      type: "number",
+      default: "1",
+      description: "How fast the lamp turns, from 0 (beams held still) to 3.",
+    },
+    {
+      name: "swell",
+      type: "number",
+      default: "1",
+      description:
+        "Height of the swell, from 0 (calm) to 2 (heavy). Higher swell raises more foam.",
+    },
+    {
+      name: "storm",
+      type: "number",
+      default: "0.5",
+      description: "Rain and cloud, from 0 (a clear night) to 1 (a storm).",
+    },
+    {
+      name: "fog",
+      type: "number",
+      default: "0.7",
+      description:
+        "The fog the beams light up and the mist over the water, from 0 to 1.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description:
+        "Which glyphs draw the scene: standard, dense, blocks, quadrants, braille, cp437, petscii, katakana, dots or edge.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: '"mono" when phosphor is set. How glyphs are coloured.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass for mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description:
+        "The ramp duotone reads tones through: a ramp name or #rrggbb stops.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "The 16-colour table for ansi16.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "Night colour in truecolor, ansi16 and duotone",
+      description:
+        "Paper behind the glyphs. In mono and palette it follows the theme, or the phosphor.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied before glyphs are chosen.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description: "Edge charset: the Sobel strength that draws - / | \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between glyph levels. In braille and quadrants it also sets which dots light, so gradients show as dot density.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws glyphs only, so the page shows between them.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT post effects: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1. CRT_FX is a full set.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Scales every motion in the scene. 0 freezes it.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false holds a still frame: stillTime if it never moved, the current frame if it did.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "60",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0.4",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Lets the pointer move the camera. false keeps the view fixed.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description:
+        "An engine pointer effect drawn on top. Only applies while interactive is true.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle for export: capture() returns the glyphs on screen.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "A gradient in the scene's colours",
+      description:
+        "Shown without WebGL2, until the first frame, and while far offscreen.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on it draws one still frame, at `stillTime`, with both beams across the sky, and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and gives up its WebGL context when far offscreen. Without WebGL2 it shows `fallback`, a gradient of the moonlit sky and sea.
+- The scene is one GLSL function evaluated once per sample, with no loops over the beams or waves beyond a fixed handful. Braille samples eight times per glyph, so it costs more than single-sample charsets on large screens. See [Performance](/docs/engine/performance).
