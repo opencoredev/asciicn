@@ -73,9 +73,10 @@ const themeListeners = new Set<() => void>();
 let themeObserver: MutationObserver | null = null;
 
 /**
- * Call `listener` whenever the class or style of `<html>` changes, which is
- * how next-themes and most theme switchers swap palettes. One observer is
- * shared by every subscriber. Returns the unsubscribe function.
+ * Call `listener` whenever the class, style, `data-theme` or `data-palette`
+ * of `<html>` changes, which is how next-themes, most theme switchers and
+ * the asciicn palette switcher swap colours. One observer is shared by
+ * every subscriber. Returns the unsubscribe function.
  */
 export const subscribeToTheme = (listener: () => void): (() => void) => {
   themeListeners.add(listener);
@@ -86,7 +87,7 @@ export const subscribeToTheme = (listener: () => void): (() => void) => {
       }
     });
     themeObserver.observe(document.documentElement, {
-      attributeFilter: ["class", "style", "data-theme"],
+      attributeFilter: ["class", "style", "data-theme", "data-palette"],
       attributes: true,
     });
   }
