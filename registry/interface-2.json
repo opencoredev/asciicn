@@ -1,19 +1,5 @@
 [
   {
-    "name": "avatar",
-    "type": "registry:component",
-    "title": "Avatar",
-    "description": "An avatar drawn in glyphs: initials set over a lit disc of Braille dots, or a photo sampled into a glyph portrait, with a status glyph and overlapping groups.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/avatar.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/avatar.tsx"
-      }
-    ]
-  },
-  {
     "name": "divider",
     "type": "registry:component",
     "title": "Divider",
@@ -56,34 +42,6 @@
     ]
   },
   {
-    "name": "logo-marquee",
-    "type": "registry:component",
-    "title": "Logo marquee",
-    "description": "Logos sampled into glyph art, in a row that loops and pauses on hover, or a still wall.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/logo-marquee.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/logo-marquee.tsx"
-      }
-    ]
-  },
-  {
-    "name": "not-found",
-    "type": "registry:component",
-    "title": "Not found",
-    "description": "A complete 404 block: the code in big block glyphs with a shaded extrusion under a field of stars, a shell line for the failed path, a message and actions.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/not-found.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/not-found.tsx"
-      }
-    ]
-  },
-  {
     "name": "progress-bar",
     "type": "registry:component",
     "title": "Progress bar",
@@ -108,20 +66,6 @@
         "path": "components/asciicn/skeleton.tsx",
         "type": "registry:component",
         "target": "components/asciicn/skeleton.tsx"
-      }
-    ]
-  },
-  {
-    "name": "stat-card",
-    "type": "registry:component",
-    "title": "Stat card",
-    "description": "A KPI card in a box-drawing frame with a big number, a coloured ▲ or ▼ delta and an eighth-block sparkline.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/stat-card.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/stat-card.tsx"
       }
     ]
   }

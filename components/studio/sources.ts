@@ -81,29 +81,13 @@ export type MediaSource = SourceBase & {
 export type StudioSource = FieldSource | SceneSource | MediaSource;
 
 export const SOURCE_GROUPS = [
-  { id: "backgrounds", label: "Backgrounds" },
+  { id: "backgrounds", label: "Fields" },
   { id: "objects", label: "3D objects" },
   { id: "cities", label: "Cities" },
   { id: "media", label: "Media" },
 ] as const;
 
 const FIELD_SOURCES: readonly FieldSource[] = [
-  {
-    defaults: { cell: 12, charset: "blocks", colorMode: "native" },
-    group: "backgrounds",
-    hint: "Folds of cloth catching the light",
-    id: "silk",
-    importName: "Silk",
-    importPath: "@/components/asciicn/silk",
-    kind: "field",
-    label: "Silk",
-    load: async () => {
-      const { Silk } = await import("@/components/asciicn/silk");
-      return Silk;
-    },
-    registry: "silk",
-    seeded: false,
-  },
   {
     defaults: { charset: "dense", colorMode: "truecolor" },
     group: "backgrounds",
@@ -119,22 +103,6 @@ const FIELD_SOURCES: readonly FieldSource[] = [
     },
     registry: "nebula",
     seeded: true,
-  },
-  {
-    defaults: { cell: 12, charset: "blocks", colorMode: "truecolor" },
-    group: "backgrounds",
-    hint: "Interfering sine blobs",
-    id: "plasma",
-    importName: "Plasma",
-    importPath: "@/components/asciicn/plasma",
-    kind: "field",
-    label: "Plasma",
-    load: async () => {
-      const { Plasma } = await import("@/components/asciicn/plasma");
-      return Plasma;
-    },
-    registry: "plasma",
-    seeded: false,
   },
   {
     defaults: { charset: "dense", colorMode: "truecolor" },
@@ -342,22 +310,22 @@ export const SOURCES: readonly StudioSource[] = [
   ...MEDIA_SOURCES,
 ];
 
-// Silk is always there: it ships with the first registry build.
+// Nebula is always there: it ships with the first registry build.
 const FALLBACK: StudioSource = {
-  defaults: { cell: 12, charset: "blocks", colorMode: "native" },
+  defaults: { charset: "dense", colorMode: "truecolor" },
   group: "backgrounds",
-  hint: "Folds of cloth catching the light",
-  id: "silk",
-  importName: "Silk",
-  importPath: "@/components/asciicn/silk",
+  hint: "Gas clouds lit from within",
+  id: "nebula",
+  importName: "Nebula",
+  importPath: "@/components/asciicn/nebula",
   kind: "field",
-  label: "Silk",
+  label: "Nebula",
   load: async () => {
-    const { Silk } = await import("@/components/asciicn/silk");
-    return Silk;
+    const { Nebula } = await import("@/components/asciicn/nebula");
+    return Nebula;
   },
-  registry: "silk",
-  seeded: false,
+  registry: "nebula",
+  seeded: true,
 };
 
 const BY_ID = new Map<SourceId, StudioSource>(

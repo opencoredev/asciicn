@@ -35,7 +35,7 @@ const DOCS_PATH = /^\/docs\/([^/]+)\/([^/#?]+)/;
 
 /**
  * The docs page an event happened on, as the component and its group, e.g.
- * /docs/charts/area-chart -> { category: "charts", component_name: "area-chart" }.
+ * /docs/scenes/ascii-donut -> { category: "scenes", component_name: "ascii-donut" }.
  */
 export const pageContext = (): EventProperties => {
   if (typeof window === "undefined") {

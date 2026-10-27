@@ -1,6 +1,6 @@
 {
-  "title": "Backgrounds",
-  "description": "Animated ASCII backgrounds: famous cities, and fields for heroes, sections and cards.",
+  "title": "City skylines",
+  "description": "Animated ASCII skylines of ten cities, each one component you put behind a hero.",
   "pages": [
     "miami",
     "tokyo",
@@ -11,29 +11,6 @@
     "san-francisco",
     "hong-kong",
     "rio",
-    "sydney",
-    "silk",
-    "nebula",
-    "prism",
-    "ionize",
-    "squall",
-    "satin",
-    "aurora",
-    "plasma",
-    "waves",
-    "noise-field",
-    "mesh-gradient",
-    "smoke",
-    "contours",
-    "ripples",
-    "ridgelines",
-    "metaballs",
-    "tunnel",
-    "retro-grid",
-    "horizon",
-    "eclipse",
-    "starfield",
-    "halftone",
-    "beams"
+    "sydney"
   ]
 }

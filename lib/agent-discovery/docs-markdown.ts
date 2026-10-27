@@ -6,7 +6,7 @@ import { registryItemUrl } from "@/lib/registry-items";
 
 /**
  * The Markdown mirror of a docs page keeps MDX components as raw JSX. An agent
- * reading `<InstallBlock name="waves" />` learns nothing, so each component
+ * reading `<InstallBlock name="nebula" />` learns nothing, so each component
  * that carries code, a command or a prompt becomes that code, command or
  * prompt, and layout-only wrappers go away.
  *

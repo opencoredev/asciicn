@@ -14,7 +14,7 @@ import { readOptionalFromRoot } from "@/lib/registry";
  * A demo on a framed stage with Preview and Code tabs.
  *
  * ```mdx
- * <ComponentPreview src="examples/aurora-demo.tsx" size="lg" align="stretch">
+ * <ComponentPreview src="examples/nebula-demo.tsx" size="lg" align="stretch">
  *   <AuroraDemo />
  * </ComponentPreview>
  * ```

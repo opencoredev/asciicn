@@ -7,7 +7,7 @@ import type { CityRenderer } from "@/lib/cities";
 
 /**
  * What /backgrounds can put on a stage: the city backgrounds, plus a few
- * background shaders from the catalogue. Site-only.
+ * seeded fields from the catalogue. Site-only.
  */
 
 /** `gpu` sources draw through WebGL2 and count against the context budget. */
@@ -51,74 +51,74 @@ export const CITY_SOURCES: readonly StageSource[] = CITIES.map((city) => ({
 // props through keeps the look switches working as the shader learns them.
 export const SHADER_SOURCES: readonly StageSource[] = [
   {
-    charset: "blocks",
-    description: "Interfering sine waves bent by slow noise.",
-    exportName: "Plasma",
-    href: "/docs/backgrounds/plasma",
-    id: "plasma",
+    charset: "dense",
+    description: "Gas clouds lit from within, reshaped by a seed.",
+    exportName: "Nebula",
+    href: "/docs/fields/nebula",
+    id: "nebula",
     kind: "shader",
     load: async () => {
-      const { Plasma } = await import("@/components/asciicn/plasma");
-      return (props: AsciiSceneProps) => <Plasma {...props} />;
+      const { Nebula } = await import("@/components/asciicn/nebula");
+      return Nebula;
     },
     renderer: "gpu",
-    title: "Plasma",
+    title: "Nebula",
+  },
+  {
+    charset: "dense",
+    description: "Refracting ribbons of light, reshaped by a seed.",
+    exportName: "Prism",
+    href: "/docs/fields/prism",
+    id: "prism",
+    kind: "shader",
+    load: async () => {
+      const { Prism } = await import("@/components/asciicn/prism");
+      return Prism;
+    },
+    renderer: "gpu",
+    title: "Prism",
   },
   {
     charset: "braille",
-    description: "Curtains of light folding across the sky.",
-    exportName: "Aurora",
-    href: "/docs/backgrounds/aurora",
-    id: "aurora",
+    description: "Charged filaments that branch and fade, reshaped by a seed.",
+    exportName: "Ionize",
+    href: "/docs/fields/ionize",
+    id: "ionize",
     kind: "shader",
     load: async () => {
-      const { Aurora } = await import("@/components/asciicn/aurora");
-      return (props: AsciiSceneProps) => <Aurora {...props} />;
+      const { Ionize } = await import("@/components/asciicn/ionize");
+      return Ionize;
     },
     renderer: "gpu",
-    title: "Aurora",
+    title: "Ionize",
   },
   {
     charset: "standard",
-    description: "Rings rushing toward the viewer down an endless tube.",
-    exportName: "Tunnel",
-    href: "/docs/backgrounds/tunnel",
-    id: "tunnel",
+    description: "Gusts and squalls blown across the box, reshaped by a seed.",
+    exportName: "Squall",
+    href: "/docs/fields/squall",
+    id: "squall",
     kind: "shader",
     load: async () => {
-      const { Tunnel } = await import("@/components/asciicn/tunnel");
-      return (props: AsciiSceneProps) => <Tunnel {...props} />;
+      const { Squall } = await import("@/components/asciicn/squall");
+      return Squall;
     },
     renderer: "gpu",
-    title: "Tunnel",
+    title: "Squall",
   },
   {
-    charset: "quadrants",
-    description: "Soft blobs that merge and split as they drift.",
-    exportName: "Metaballs",
-    href: "/docs/backgrounds/metaballs",
-    id: "metaballs",
+    charset: "blocks",
+    description: "A soft sheen rolling over cloth, reshaped by a seed.",
+    exportName: "Satin",
+    href: "/docs/fields/satin",
+    id: "satin",
     kind: "shader",
     load: async () => {
-      const { Metaballs } = await import("@/components/asciicn/metaballs");
-      return (props: AsciiSceneProps) => <Metaballs {...props} />;
+      const { Satin } = await import("@/components/asciicn/satin");
+      return Satin;
     },
     renderer: "gpu",
-    title: "Metaballs",
-  },
-  {
-    charset: "standard",
-    description: "Height lines over a slowly moving noise terrain.",
-    exportName: "Contours",
-    href: "/docs/backgrounds/contours",
-    id: "contours",
-    kind: "shader",
-    load: async () => {
-      const { Contours } = await import("@/components/asciicn/contours");
-      return (props: AsciiSceneProps) => <Contours {...props} />;
-    },
-    renderer: "gpu",
-    title: "Contours",
+    title: "Satin",
   },
 ];
 

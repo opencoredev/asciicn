@@ -4,8 +4,9 @@
     "(root)",
     "examples",
     "backgrounds",
+    "scenes",
+    "fields",
     "images",
-    "charts",
     "text",
     "interface",
     "engine"

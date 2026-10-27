@@ -1,0 +1,109 @@
+[
+  {
+    "name": "seed-field",
+    "type": "registry:component",
+    "title": "Seed field",
+    "description": "Any string drawn as a field of glyphs: folded ribbons of light or warped gas, each seed with its own OKLCH palette, shape and motion. The base of Prism, Ionize, Squall, Satin and Nebula.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/seed-field.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/seed-field.tsx"
+      }
+    ]
+  },
+  {
+    "name": "nebula",
+    "type": "registry:component",
+    "title": "Nebula",
+    "description": "Cosmic gas drawn in glyphs: warped clouds with bright filaments, dark dust lanes and a few stars. Every seed is a different nebula.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/nebula.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/nebula.tsx"
+      }
+    ]
+  },
+  {
+    "name": "prism",
+    "type": "registry:component",
+    "title": "Prism",
+    "description": "Layered glass folds in violet and teal, drawn in glyphs. Each seed bends the ribbons differently and shifts both hues.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/prism.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/prism.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ionize",
+    "type": "registry:component",
+    "title": "Ionize",
+    "description": "Electric blue plasma ribbons: thin, bright, quick and tightly twisted, drawn in Braille dots.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ionize.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ionize.tsx"
+      }
+    ]
+  },
+  {
+    "name": "squall",
+    "type": "registry:component",
+    "title": "Squall",
+    "description": "Stormy bands of teal and slate that churn and fold across the box, in the classic ASCII ramp.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/squall.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/squall.tsx"
+      }
+    ]
+  },
+  {
+    "name": "satin",
+    "type": "registry:component",
+    "title": "Satin",
+    "description": "Deep magenta satin: a few wide folds that turn slowly and catch the light along their edges, in ANSI shade blocks.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/satin.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/satin.tsx"
+      }
+    ]
+  }
+]

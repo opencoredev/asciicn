@@ -9,19 +9,10 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
 // Each demo is its own chunk, fetched when its tile nears the viewport.
-const AuroraBorealis = dynamic(() => import("@/examples/aurora-borealis"), {
-  ssr: false,
-});
-const AvatarDemo = dynamic(() => import("@/examples/avatar-demo"), {
-  ssr: false,
-});
-const BarChartDemo = dynamic(() => import("@/examples/bar-chart-demo"), {
-  ssr: false,
-});
-const AsciiButtonDemo = dynamic(() => import("@/examples/ascii-button-demo"), {
-  ssr: false,
-});
 const AsciiGlobeDemo = dynamic(() => import("@/examples/ascii-globe-demo"), {
+  ssr: false,
+});
+const AsciiDonutDemo = dynamic(() => import("@/examples/ascii-donut-demo"), {
   ssr: false,
 });
 const AsciiImageDemo = dynamic(() => import("@/examples/ascii-image-demo"), {
@@ -30,24 +21,21 @@ const AsciiImageDemo = dynamic(() => import("@/examples/ascii-image-demo"), {
 const AsciiTextDemo = dynamic(() => import("@/examples/ascii-text-demo"), {
   ssr: false,
 });
-const DonutChartDemo = dynamic(() => import("@/examples/donut-chart-demo"), {
+const TokyoDemo = dynamic(() => import("@/examples/tokyo-demo"), {
   ssr: false,
 });
-const GaugeDemo = dynamic(() => import("@/examples/gauge-demo"), {
-  ssr: false,
-});
-const HeatmapDemo = dynamic(() => import("@/examples/heatmap-demo"), {
+const NebulaDemo = dynamic(() => import("@/examples/nebula-demo"), {
   ssr: false,
 });
 const ProgressBarDemo = dynamic(() => import("@/examples/progress-bar-demo"), {
   ssr: false,
 });
-const StatCardDemo = dynamic(() => import("@/examples/stat-card-demo"), {
-  ssr: false,
-});
-const WavesDemo = dynamic(() => import("@/examples/waves-demo"), {
-  ssr: false,
-});
+const ScrambleTextDemo = dynamic(
+  () => import("@/examples/scramble-text-demo"),
+  {
+    ssr: false,
+  }
+);
 
 /**
  * The landing's example wall: the same demos the docs pages open with,
@@ -71,32 +59,25 @@ interface Example {
 
 const EXAMPLES: readonly Example[] = [
   {
-    Demo: AuroraBorealis,
+    Demo: AsciiGlobeDemo,
     align: "stretch",
     span: "sm:col-span-2 lg:col-span-4 lg:row-span-2",
     stage: "h-80 sm:h-[420px] lg:h-auto lg:flex-1",
-    url: "/docs/backgrounds/aurora",
+    url: "/docs/scenes/ascii-globe",
   },
   {
-    Demo: GaugeDemo,
+    Demo: AsciiDonutDemo,
     align: "center",
     span: "lg:col-span-2",
     stage: "h-80",
-    url: "/docs/charts/gauge",
+    url: "/docs/scenes/ascii-donut",
   },
   {
-    Demo: StatCardDemo,
+    Demo: AsciiImageDemo,
     align: "center",
     span: "lg:col-span-2",
     stage: "h-80",
-    url: "/docs/interface/stat-card",
-  },
-  {
-    Demo: BarChartDemo,
-    align: "center",
-    span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[420px]",
-    url: "/docs/charts/bar-chart",
+    url: "/docs/images/ascii-image",
   },
   {
     Demo: AsciiTextDemo,
@@ -106,49 +87,18 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/text/ascii-text",
   },
   {
-    Demo: AsciiGlobeDemo,
-    align: "stretch",
-    span: "lg:col-span-2",
-    stage: "h-[420px]",
-    url: "/docs/images/ascii-globe",
-  },
-  {
-    Demo: DonutChartDemo,
-    align: "center",
-    span: "lg:col-span-2",
-    stage: "h-[420px]",
-    url: "/docs/charts/donut-chart",
-    wide: true,
-  },
-  {
-    Demo: AvatarDemo,
-    align: "center",
-    span: "lg:col-span-2",
-    stage: "h-[420px]",
-    url: "/docs/interface/avatar",
-    wide: true,
-  },
-  {
-    Demo: AsciiImageDemo,
-    align: "center",
-    span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[440px]",
-    url: "/docs/images/ascii-image",
-  },
-  {
-    Demo: WavesDemo,
+    Demo: TokyoDemo,
     align: "stretch",
     span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[440px]",
-    url: "/docs/backgrounds/waves",
-    wide: true,
+    stage: "h-[420px]",
+    url: "/docs/backgrounds/tokyo",
   },
   {
-    Demo: HeatmapDemo,
-    align: "center",
+    Demo: NebulaDemo,
+    align: "stretch",
     span: "lg:col-span-2",
     stage: "h-72",
-    url: "/docs/charts/heatmap",
+    url: "/docs/fields/nebula",
     wide: true,
   },
   {
@@ -159,11 +109,11 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/interface/progress-bar",
   },
   {
-    Demo: AsciiButtonDemo,
+    Demo: ScrambleTextDemo,
     align: "center",
     span: "lg:col-span-2",
     stage: "h-72",
-    url: "/docs/interface/ascii-button",
+    url: "/docs/text/scramble-text",
     wide: true,
   },
 ];

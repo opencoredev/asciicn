@@ -1,14 +1,5 @@
 {
-  "title": "Images, video & 3D",
-  "description": "Images, video, webcam and 3D objects turned into live glyphs.",
-  "pages": [
-    "ascii-image",
-    "ascii-video",
-    "image-compare",
-    "scroll-reveal-image",
-    "ascii-logo",
-    "ascii-globe",
-    "ascii-donut",
-    "ascii-orb"
-  ]
+  "title": "Media & filters",
+  "description": "Turn images, video and logos into ASCII.",
+  "pages": ["ascii-image", "ascii-video", "ascii-logo", "avatar"]
 }

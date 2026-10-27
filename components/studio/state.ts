@@ -151,7 +151,7 @@ export interface StudioState {
   readonly media: MediaSettings;
 }
 
-export const DEFAULT_SOURCE: SourceId = "silk";
+export const DEFAULT_SOURCE: SourceId = "nebula";
 
 /** The longest custom ramp the Studio accepts, in glyphs. */
 export const MAX_RAMP = 96;

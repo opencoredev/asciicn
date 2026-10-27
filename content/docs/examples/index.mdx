@@ -11,17 +11,17 @@ Each component and background installs as plain source into `components/asciicn/
 
 Install any component by name. It brings the parts of the engine it needs the first time:
 
-<InstallBlock name="plasma" />
+<InstallBlock name="nebula" />
 
 Backgrounds fill the box you give them. Put one behind your content with `absolute inset-0`:
 
 ```tsx
-import { Plasma } from "@/components/asciicn/plasma";
+import { Nebula } from "@/components/asciicn/nebula";
 
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <Plasma charset="braille" className="absolute inset-0 -z-10" />
+      <Nebula charset="braille" className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );

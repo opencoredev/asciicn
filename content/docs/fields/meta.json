@@ -1,0 +1,5 @@
+{
+  "title": "Shaders & fields",
+  "description": "Seeded glyph fields that run on the GPU, for heroes, sections and cards.",
+  "pages": ["nebula", "prism", "ionize", "squall", "satin"]
+}

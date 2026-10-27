@@ -1,5 +1,5 @@
 {
-  "title": "Text",
+  "title": "Text & typography",
   "description": "Display type drawn, scrambled, dissolved or counted in glyphs.",
-  "pages": ["ascii-text", "scramble-text", "dissolve-text", "ascii-number"]
+  "pages": ["ascii-text", "scramble-text"]
 }

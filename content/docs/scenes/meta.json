@@ -1,0 +1,5 @@
+{
+  "title": "3D & scenes",
+  "description": "Real-time 3D objects and animated scenes drawn in glyphs.",
+  "pages": ["ascii-globe", "ascii-donut"]
+}

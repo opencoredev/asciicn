@@ -31,40 +31,6 @@
     ]
   },
   {
-    "name": "image-compare",
-    "type": "registry:component",
-    "title": "Image compare",
-    "description": "A draggable, keyboard-accessible slider between a photo's glyphs and the photo itself, or between two looks.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-image.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/image-compare.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/image-compare.tsx"
-      }
-    ]
-  },
-  {
-    "name": "scroll-reveal-image",
-    "type": "registry:component",
-    "title": "Scroll reveal image",
-    "description": "A photo that resolves from coarse blocks to fine Braille as it scrolls into view, then fades into the original.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-image.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scroll-reveal-image.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scroll-reveal-image.tsx"
-      }
-    ]
-  },
-  {
     "name": "ascii-logo",
     "type": "registry:component",
     "title": "ASCII logo",
@@ -78,23 +44,6 @@
         "path": "components/asciicn/ascii-logo.tsx",
         "type": "registry:component",
         "target": "components/asciicn/ascii-logo.tsx"
-      }
-    ]
-  },
-  {
-    "name": "ascii-globe",
-    "type": "registry:component",
-    "title": "ASCII globe",
-    "description": "A lit, rotating planet in glyphs with a day and night terminator, ocean glints, an atmosphere, markers and arcs.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/world-land.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/ascii-globe.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/ascii-globe.tsx"
       }
     ]
   },
@@ -113,30 +62,16 @@
     ]
   },
   {
-    "name": "ascii-donut",
+    "name": "avatar",
     "type": "registry:component",
-    "title": "ASCII donut",
-    "description": "A lit, ray-marched torus spinning in glyphs, with specular highlights, a rim light and drag to spin.",
+    "title": "Avatar",
+    "description": "An avatar drawn in glyphs: initials set over a lit disc of Braille dots, or a photo sampled into a glyph portrait, with a status glyph and overlapping groups.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
-        "path": "components/asciicn/ascii-donut.tsx",
+        "path": "components/asciicn/avatar.tsx",
         "type": "registry:component",
-        "target": "components/asciicn/ascii-donut.tsx"
-      }
-    ]
-  },
-  {
-    "name": "ascii-orb",
-    "type": "registry:component",
-    "title": "ASCII orb",
-    "description": "A glyph orb for voice interfaces that breathes when idle, listens and speaks, driven by a microphone or your audio.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/ascii-orb.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/ascii-orb.tsx"
+        "target": "components/asciicn/avatar.tsx"
       }
     ]
   }

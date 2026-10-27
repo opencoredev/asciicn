@@ -1,0 +1,33 @@
+[
+  {
+    "name": "ascii-globe",
+    "type": "registry:component",
+    "title": "ASCII globe",
+    "description": "A lit, rotating planet in glyphs with a day and night terminator, ocean glints, an atmosphere, markers and arcs.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/world-land.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-globe.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-globe.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-donut",
+    "type": "registry:component",
+    "title": "ASCII donut",
+    "description": "A lit, ray-marched torus spinning in glyphs, with specular highlights, a rim light and drag to spin.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-donut.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-donut.tsx"
+      }
+    ]
+  }
+]

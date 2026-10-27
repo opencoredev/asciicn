@@ -3,16 +3,14 @@ import {
   POSTHOG_HOST,
   POSTHOG_KEY,
 } from "@/lib/analytics/config";
-import backgrounds1 from "@/registry/backgrounds-1.json";
-import backgrounds2 from "@/registry/backgrounds-2.json";
 import base from "@/registry/base.json";
-import charts1 from "@/registry/charts-1.json";
-import charts2 from "@/registry/charts-2.json";
 import cities from "@/registry/cities.json";
 import engine from "@/registry/engine.json";
+import fields from "@/registry/fields.json";
 import images from "@/registry/images.json";
 import interface1 from "@/registry/interface-1.json";
 import interface2 from "@/registry/interface-2.json";
+import scenes from "@/registry/scenes.json";
 import shader from "@/registry/shader.json";
 import text from "@/registry/text.json";
 import tokens from "@/registry/tokens.json";
@@ -25,7 +23,7 @@ type Category =
   | "skill"
   | "engine"
   | "backgrounds"
-  | "charts"
+  | "scenes"
   | "ui"
   | "text"
   | "media"
@@ -36,9 +34,9 @@ const named = (items: readonly { name: string }[], category: Category) =>
   items.map((item) => [item.name, category] as const);
 
 const CATEGORY_BY_ITEM = new Map<string, Category>([
-  ...named([...backgrounds1, ...backgrounds2], "backgrounds"),
+  ...named(fields, "backgrounds"),
   ...named(cities, "backgrounds"),
-  ...named([...charts1, ...charts2], "charts"),
+  ...named(scenes, "scenes"),
   ...named([...interface1, ...interface2], "ui"),
   ...named(text, "text"),
   ...named(images, "media"),
@@ -89,10 +87,10 @@ type InstallType = "skill" | "engine" | "component" | "index";
 
 const INSTALL_TYPE: Record<Category, InstallType> = {
   backgrounds: "component",
-  charts: "component",
   engine: "engine",
   index: "index",
   media: "component",
+  scenes: "component",
   skill: "skill",
   text: "component",
   ui: "component",

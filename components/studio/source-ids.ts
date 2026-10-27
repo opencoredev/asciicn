@@ -6,9 +6,7 @@
 
 /** Seeded GPU backgrounds and the two 3D objects. */
 export const FIELD_SOURCE_IDS = [
-  "silk",
   "nebula",
-  "plasma",
   "prism",
   "ionize",
   "squall",

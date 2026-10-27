@@ -47,20 +47,6 @@
     ]
   },
   {
-    "name": "ascii-fade",
-    "type": "registry:component",
-    "title": "ASCII fade",
-    "description": "A section edge that fades content into the background through a glyph density ramp, with a slow drift.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/ascii-fade.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/ascii-fade.tsx"
-      }
-    ]
-  },
-  {
     "name": "ascii-glow",
     "type": "registry:component",
     "title": "ASCII glow",

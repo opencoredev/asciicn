@@ -26,33 +26,5 @@
         "target": "components/asciicn/scramble-text.tsx"
       }
     ]
-  },
-  {
-    "name": "dissolve-text",
-    "type": "registry:component",
-    "title": "Dissolve text",
-    "description": "Text that assembles out of a glyph density ramp and dissolves back into it, one character or word at a time.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/dissolve-text.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/dissolve-text.tsx"
-      }
-    ]
-  },
-  {
-    "name": "ascii-number",
-    "type": "registry:component",
-    "title": "ASCII number",
-    "description": "A big number drawn in block, half-block, braille or box-drawing digits that counts to its value with tabular alignment and locale formatting.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/ascii-number.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/ascii-number.tsx"
-      }
-    ]
   }
 ]

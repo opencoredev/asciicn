@@ -1,5 +1,5 @@
 {
-  "title": "Interface",
+  "title": "Terminal & UI",
   "description": "Terminal-grade interface pieces: frames, buttons, loaders and status, in real text.",
   "pages": [
     "ascii-button",
@@ -7,14 +7,8 @@
     "ascii-box",
     "divider",
     "progress-bar",
-    "stat-card",
     "loader",
     "skeleton",
-    "avatar",
-    "empty-state",
-    "not-found",
-    "logo-marquee",
-    "ascii-fade",
-    "ascii-glow"
+    "empty-state"
   ]
 }

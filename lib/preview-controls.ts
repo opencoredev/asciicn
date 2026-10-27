@@ -5,7 +5,7 @@
  * `usePreviewValue` from `@/components/preview-controls`.
  *
  * ```ts
- * // examples/area-chart-controls.ts
+ * // examples/ascii-donut-controls.ts
  * export const fill = segmented({ id: "fill", label: "Fill", options: FILL_VARIANTS, default: "gradient" });
  * export const cell = slider({ id: "cell", label: "Cell", min: 2, max: 6, step: 1, default: 3, unit: "px" });
  * export const controls = [fill, cell];
