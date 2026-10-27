@@ -70,6 +70,12 @@ const nextConfig = {
         permanent: true,
         source: `${ROUTES.DOCS}/:path*.mdx`,
       },
+      // The nav calls the catalog "Components"; people type that URL.
+      {
+        destination: ROUTES.DOCS_EXAMPLES,
+        permanent: false,
+        source: `${ROUTES.DOCS}/components`,
+      },
     ];
   },
   // PostHog through a first-party path, so ad blockers that block its domain

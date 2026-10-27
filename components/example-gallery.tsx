@@ -9,33 +9,39 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
 // Each demo is its own chunk, fetched when its tile nears the viewport.
+const TorusKnotDemo = dynamic(() => import("@/examples/torus-knot-demo"), {
+  ssr: false,
+});
 const AsciiGlobeDemo = dynamic(() => import("@/examples/ascii-globe-demo"), {
   ssr: false,
 });
-const AsciiDonutDemo = dynamic(() => import("@/examples/ascii-donut-demo"), {
-  ssr: false,
-});
-const AsciiImageDemo = dynamic(() => import("@/examples/ascii-image-demo"), {
-  ssr: false,
-});
-const AsciiTextDemo = dynamic(() => import("@/examples/ascii-text-demo"), {
-  ssr: false,
-});
-const TokyoDemo = dynamic(() => import("@/examples/tokyo-demo"), {
-  ssr: false,
-});
-const NebulaDemo = dynamic(() => import("@/examples/nebula-demo"), {
-  ssr: false,
-});
-const ProgressBarDemo = dynamic(() => import("@/examples/progress-bar-demo"), {
-  ssr: false,
-});
-const ScrambleTextDemo = dynamic(
-  () => import("@/examples/scramble-text-demo"),
+const AsciiPortraitDemo = dynamic(
+  () => import("@/examples/ascii-portrait-demo"),
   {
     ssr: false,
   }
 );
+const TerminalWindowDemo = dynamic(
+  () => import("@/examples/terminal-window-demo"),
+  {
+    ssr: false,
+  }
+);
+const AsciiTextDemo = dynamic(() => import("@/examples/ascii-text-demo"), {
+  ssr: false,
+});
+const DnaHelixDemo = dynamic(() => import("@/examples/dna-helix-demo"), {
+  ssr: false,
+});
+const SynthwaveSunDemo = dynamic(
+  () => import("@/examples/synthwave-sun-demo"),
+  {
+    ssr: false,
+  }
+);
+const AsciiCanvasDemo = dynamic(() => import("@/examples/ascii-canvas-demo"), {
+  ssr: false,
+});
 
 /**
  * The landing's example wall: the same demos the docs pages open with,
@@ -59,62 +65,61 @@ interface Example {
 
 const EXAMPLES: readonly Example[] = [
   {
-    Demo: AsciiGlobeDemo,
+    Demo: TorusKnotDemo,
     align: "stretch",
     span: "sm:col-span-2 lg:col-span-4 lg:row-span-2",
     stage: "h-80 sm:h-[420px] lg:h-auto lg:flex-1",
+    url: "/docs/scenes/torus-knot",
+  },
+  {
+    Demo: AsciiGlobeDemo,
+    align: "stretch",
+    span: "lg:col-span-2",
+    stage: "h-80",
     url: "/docs/scenes/ascii-globe",
   },
   {
-    Demo: AsciiDonutDemo,
+    Demo: AsciiPortraitDemo,
     align: "center",
     span: "lg:col-span-2",
     stage: "h-80",
-    url: "/docs/scenes/ascii-donut",
+    url: "/docs/images/ascii-portrait",
   },
   {
-    Demo: AsciiImageDemo,
+    Demo: TerminalWindowDemo,
     align: "center",
-    span: "lg:col-span-2",
-    stage: "h-80",
-    url: "/docs/images/ascii-image",
+    span: "sm:col-span-2 lg:col-span-3",
+    stage: "h-[440px]",
+    url: "/docs/interface/terminal-window",
   },
   {
     Demo: AsciiTextDemo,
     align: "center",
     span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[420px]",
+    stage: "h-[440px]",
     url: "/docs/text/ascii-text",
   },
   {
-    Demo: TokyoDemo,
-    align: "stretch",
-    span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[420px]",
-    url: "/docs/backgrounds/tokyo",
-  },
-  {
-    Demo: NebulaDemo,
+    Demo: DnaHelixDemo,
     align: "stretch",
     span: "lg:col-span-2",
-    stage: "h-72",
-    url: "/docs/fields/nebula",
+    stage: "h-[380px]",
+    url: "/docs/scenes/dna-helix",
+  },
+  {
+    Demo: SynthwaveSunDemo,
+    align: "stretch",
+    span: "lg:col-span-2",
+    stage: "h-[380px]",
+    url: "/docs/scenes/synthwave-sun",
     wide: true,
   },
   {
-    Demo: ProgressBarDemo,
-    align: "center",
-    span: "lg:col-span-2",
-    stage: "h-72",
-    url: "/docs/interface/progress-bar",
-  },
-  {
-    Demo: ScrambleTextDemo,
-    align: "center",
-    span: "lg:col-span-2",
-    stage: "h-72",
-    url: "/docs/text/scramble-text",
-    wide: true,
+    Demo: AsciiCanvasDemo,
+    align: "stretch",
+    span: "sm:col-span-2 lg:col-span-2",
+    stage: "h-[380px]",
+    url: "/docs/images/ascii-canvas",
   },
 ];
 

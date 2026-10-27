@@ -5,10 +5,13 @@ import type { AsciiTab } from "@/components/asciicn/ascii-tabs";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-tabs-controls";
 
-const STATS = [
-  ["Requests", "1.28M"],
-  ["p95", "84 ms"],
-  ["Errors", "0.02%"],
+const FILES = [
+  "components/asciicn/",
+  "├─ ascii-tabs.tsx",
+  "├─ ascii-box.tsx",
+  "└─ loader.tsx",
+  "lib/ascii/",
+  "└─ index.ts",
 ] as const;
 
 const DEPLOYS = [
@@ -20,17 +23,21 @@ const DEPLOYS = [
 const TABS: readonly AsciiTab[] = [
   {
     content: (
-      <dl className="grid grid-cols-3 gap-4">
-        {STATS.map(([name, value]) => (
-          <div key={name} className="flex flex-col gap-1">
-            <dt className="text-muted-foreground text-xs">{name}</dt>
-            <dd className="font-mono text-lg tabular-nums">{value}</dd>
-          </div>
+      <pre className="font-mono text-sm leading-6">
+        {FILES.map((line) => (
+          <span
+            key={line}
+            className={
+              line.endsWith("/") ? "text-muted-foreground block" : "block"
+            }
+          >
+            {line}
+          </span>
         ))}
-      </dl>
+      </pre>
     ),
-    label: "Overview",
-    value: "overview",
+    label: "Files",
+    value: "files",
   },
   {
     content: (
@@ -48,8 +55,8 @@ const TABS: readonly AsciiTab[] = [
         ))}
       </ul>
     ),
-    label: "Deploys",
-    value: "deploys",
+    label: "Commits",
+    value: "commits",
   },
   {
     content: (
@@ -58,8 +65,8 @@ const TABS: readonly AsciiTab[] = [
         Preview deploys run for every pull request and expire after 7 days.
       </p>
     ),
-    label: "Settings",
-    value: "settings",
+    label: "Notes",
+    value: "notes",
   },
 ];
 

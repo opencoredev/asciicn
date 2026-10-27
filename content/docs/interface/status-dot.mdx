@@ -31,12 +31,12 @@ export function Presence({ away }: { away: boolean }) {
 
 Each state has its own glyph and colour, so the shape tells them apart even without colour:
 
-| Status    | `dot`                 | `braille`               | Colour |
-| --------- | --------------------- | ----------------------- | ------ |
-| `online`  | `●`, pings `◉ ◎`      | `⠶`, pulses `⣿`         | green  |
-| `busy`    | `◐`, turns `◓ ◑ ◒`    | `⣾`, orbits `⣽ ⣻ ⢿`     | orange |
-| `offline` | `○`, still            | `⠤`, still              | grey   |
-| `error`   | `✕`, flashes `×`      | `⣿`, flashes `⠶`        | red    |
+| Status    | `dot`              | `braille`           | Colour |
+| --------- | ------------------ | ------------------- | ------ |
+| `online`  | `●`, pings `◉ ◎`   | `⠶`, pulses `⣿`     | green  |
+| `busy`    | `◐`, turns `◓ ◑ ◒` | `⣾`, orbits `⣽ ⣻ ⢿` | orange |
+| `offline` | `○`, still         | `⠤`, still          | grey   |
+| `error`   | `✕`, flashes `×`   | `⣿`, flashes `⠶`    | red    |
 
 `label` replaces the state name next to the glyph, such as `"Degraded"` for a busy service. Set `showLabel={false}` to show the glyph alone; screen readers still hear the label.
 

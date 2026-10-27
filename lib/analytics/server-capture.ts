@@ -7,11 +7,17 @@ import base from "@/registry/base.json";
 import cities from "@/registry/cities.json";
 import engine from "@/registry/engine.json";
 import fields from "@/registry/fields.json";
+import images2 from "@/registry/images-2.json";
 import images from "@/registry/images.json";
 import interface1 from "@/registry/interface-1.json";
 import interface2 from "@/registry/interface-2.json";
+import interface3 from "@/registry/interface-3.json";
+import scenesA from "@/registry/scenes-a.json";
+import scenesB from "@/registry/scenes-b.json";
+import scenesC from "@/registry/scenes-c.json";
 import scenes from "@/registry/scenes.json";
 import shader from "@/registry/shader.json";
+import text2 from "@/registry/text-2.json";
 import text from "@/registry/text.json";
 import tokens from "@/registry/tokens.json";
 
@@ -36,10 +42,10 @@ const named = (items: readonly { name: string }[], category: Category) =>
 const CATEGORY_BY_ITEM = new Map<string, Category>([
   ...named(fields, "backgrounds"),
   ...named(cities, "backgrounds"),
-  ...named(scenes, "scenes"),
-  ...named([...interface1, ...interface2], "ui"),
-  ...named(text, "text"),
-  ...named(images, "media"),
+  ...named([...scenes, ...scenesA, ...scenesB, ...scenesC], "scenes"),
+  ...named([...interface1, ...interface2, ...interface3], "ui"),
+  ...named([...text, ...text2], "text"),
+  ...named([...images, ...images2], "media"),
   ...named([...base, ...shader, ...tokens], "engine"),
   ...named(engine, "engine"),
   ["asciicn-skill", "skill"],
