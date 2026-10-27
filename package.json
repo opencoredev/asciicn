@@ -1,8 +1,8 @@
 {
   "name": "asciicn",
   "version": "0.1.0",
-  "description": "ASCII art engine (WebGL2 and Canvas2D), shadcn registry components, animated scenes and an agent skill for React.",
   "private": true,
+  "description": "ASCII art engine (WebGL2 and Canvas2D), shadcn registry components, animated scenes and an agent skill for React.",
   "scripts": {
     "dev": "next dev",
     "build": "pnpm registry:build && next build",
