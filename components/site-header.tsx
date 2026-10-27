@@ -28,7 +28,11 @@ const navItems = [
       "/docs/images",
     ],
   },
-  { href: ROUTES.BACKGROUNDS, label: "Backgrounds", match: ["/docs/backgrounds"] },
+  {
+    href: ROUTES.BACKGROUNDS,
+    label: "Backgrounds",
+    match: ["/docs/backgrounds"],
+  },
   { href: ROUTES.STUDIO, label: "Studio" },
 ];
 
