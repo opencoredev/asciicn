@@ -20,8 +20,7 @@
     "description": "Video, a dropped file or the webcam sampled into glyphs at up to 60 fps, with audio-reactive contrast and jitter.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-image.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
+      "{{REGISTRY_URL}}/ascii-image.json"
     ],
     "files": [
       {
@@ -132,10 +131,7 @@
     "type": "registry:component",
     "title": "ASCII orb",
     "description": "A glyph orb for voice interfaces that breathes when idle, listens and speaks, driven by a microphone or your audio.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/ascii-orb.tsx",

@@ -126,6 +126,11 @@
         "path": "lib/ascii/scene.ts",
         "type": "registry:lib",
         "target": "lib/ascii/scene.ts"
+      },
+      {
+        "path": "lib/ascii/audio.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/audio.ts"
       }
     ]
   },

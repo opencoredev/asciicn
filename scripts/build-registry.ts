@@ -49,7 +49,6 @@ const GPU_MODULES: readonly string[] = [
   "@/lib/ascii/shader",
   "@/lib/ascii/gpu",
   "@/lib/ascii/glsl",
-  "@/lib/ascii/audio",
   "@/lib/ascii/seed",
 ];
 

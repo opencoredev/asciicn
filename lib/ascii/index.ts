@@ -18,6 +18,7 @@ export * from "@/lib/ascii/measure";
 export * from "@/lib/ascii/grid";
 export * from "@/lib/ascii/look";
 export * from "@/lib/ascii/scene";
+export * from "@/lib/ascii/audio";
 export * from "@/lib/ascii/glyphs";
 export * from "@/lib/ascii/paint";
 export * from "@/lib/ascii/sample";

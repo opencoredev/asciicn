@@ -22,11 +22,6 @@
         "target": "lib/ascii/glsl.ts"
       },
       {
-        "path": "lib/ascii/audio.ts",
-        "type": "registry:lib",
-        "target": "lib/ascii/audio.ts"
-      },
-      {
         "path": "lib/ascii/seed.ts",
         "type": "registry:lib",
         "target": "lib/ascii/seed.ts"
