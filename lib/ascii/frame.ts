@@ -14,7 +14,6 @@
 
 import { rampLevel } from "@/lib/ascii/atlas";
 import {
-  BRAILLE_BASE,
   BRAILLE_DOT_BITS,
   edgeChar,
   QUADRANT_BITS,
@@ -333,39 +332,97 @@ interface CellResult {
   readonly tone: number;
 }
 
-/** Braille or quadrants: one bit per sample above the threshold. */
-const packedCell = (
-  sampler: Sampler,
+/** RGBA bytes for one cell, written in place without a temporary array. */
+const writeColor = (colors: Uint8ClampedArray, index: number, rgb: Rgb8) => {
+  const [r, g, b] = rgb;
+  const at = index * 4;
+  colors[at] = r;
+  colors[at + 1] = g;
+  colors[at + 2] = b;
+  colors[at + 3] = 255;
+};
+
+// Graded tones for a whole field, reused between calls so animated scenes
+// don't allocate a buffer every frame.
+let gradedScratch = new Float32Array(0);
+
+const gradeField = (field: ToneField, options: MapOptions): Float32Array => {
+  const { grade, invert = false } = options;
+  const { tones } = field;
+  if (gradedScratch.length < tones.length) {
+    gradedScratch = new Float32Array(tones.length);
+  }
+  const out = gradedScratch;
+  const plain = grade === undefined;
+  for (let index = 0; index < tones.length; index += 1) {
+    const raw = tones[index] ?? 0;
+    const finite = Number.isFinite(raw) ? raw : 0;
+    const graded = plain ? clamp01(finite) : gradeTone(finite, grade);
+    out[index] = invert ? 1 - graded : graded;
+  }
+  return out;
+};
+
+// Sample bit for each position in a cell, row by row.
+const BRAILLE_BITS_FLAT = BRAILLE_DOT_BITS.flat();
+const QUADRANT_BITS_FLAT = QUADRANT_BITS.flat();
+
+/**
+ * Braille and quadrants in one tight pass: each sample above the threshold
+ * (or its dither threshold) sets its bit, and the mask indexes the
+ * charset's glyph table. Same rule as before, minus a closure call, an
+ * object and a string per cell, which dominated CPU scenes in Braille.
+ */
+const mapPacked = (
+  field: ToneField,
+  columns: number,
+  rows: number,
   charset: Charset,
-  column: number,
-  row: number,
-  threshold: number
-): CellResult => {
+  options: MapOptions,
+  frame: MutableFrame,
+  paint: ((column: number, row: number, tone: number) => Rgb8) | null
+): void => {
   const [gx, gy] = charset.grid;
   const braille = charset.kind === "braille";
-  let mask = 0;
-  let sum = 0;
-  for (let dy = 0; dy < gy; dy += 1) {
-    for (let dx = 0; dx < gx; dx += 1) {
-      const x = column * gx + dx;
-      const y = row * gy + dy;
-      const tone = sampler.tone(x, y);
-      sum += tone;
-      if (tone > (sampler.dithered ? sampler.cut(x, y) : threshold)) {
-        // Each sample owns one distinct bit, so adding sets it.
-        const bits = braille ? BRAILLE_DOT_BITS : QUADRANT_BITS;
-        mask += bits[dy]?.[dx] ?? 0;
+  const bits = braille ? BRAILLE_BITS_FLAT : QUADRANT_BITS_FLAT;
+  const table = braille ? charset.glyphs : QUADRANT_GLYPHS;
+  const { dither = "none" } = options;
+  const map = dither === "none" ? null : getThresholdMap(dither);
+  const threshold = options.threshold ?? 0.5;
+  const tones = gradeField(field, options);
+  const { width } = field;
+  const samples = gx * gy;
+  const { glyphs, colors } = frame;
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      let mask = 0;
+      let sum = 0;
+      let bit = 0;
+      for (let dy = 0; dy < gy; dy += 1) {
+        const y = row * gy + dy;
+        const base = y * width + column * gx;
+        for (let dx = 0; dx < gx; dx += 1) {
+          const tone = tones[base + dx] ?? 0;
+          sum += tone;
+          const cut = map
+            ? (map.thresholds[
+                (y % map.size) * map.size + ((column * gx + dx) % map.size)
+              ] ?? 0.5)
+            : threshold;
+          if (tone > cut) {
+            // Each sample owns one distinct bit, so adding sets it.
+            mask += bits[bit] ?? 0;
+          }
+          bit += 1;
+        }
+      }
+      const index = row * columns + column;
+      glyphs[index] = mask === 0 ? " " : (table[mask] ?? " ");
+      if (paint && colors) {
+        writeColor(colors, index, paint(column, row, sum / samples));
       }
     }
   }
-  const tone = sum / (gx * gy);
-  if (!braille) {
-    return { glyph: QUADRANT_GLYPHS[mask] ?? " ", tone };
-  }
-  return {
-    glyph: mask === 0 ? " " : String.fromCodePoint(BRAILLE_BASE + mask),
-    tone,
-  };
 };
 
 /** A ramp level, or for the edge set a directional glyph on strong gradients. */
@@ -501,19 +558,27 @@ export const mapTones = (
   }
   frame.setColored(colored);
 
-  const sampler = createSampler(field, options);
   const paint = colored ? cellColorizer(field, charset, options) : null;
+  if (charset.kind === "braille" || charset.kind === "quadrants") {
+    mapPacked(field, columns, rows, charset, options, frame, paint);
+    return frame;
+  }
+  const sampler = createSampler(field, options);
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
-      const { glyph, tone } =
-        charset.kind === "braille" || charset.kind === "quadrants"
-          ? packedCell(sampler, charset, column, row, options.threshold ?? 0.5)
-          : rampCell(sampler, charset, column, row, columns, rows, options);
+      const { glyph, tone } = rampCell(
+        sampler,
+        charset,
+        column,
+        row,
+        columns,
+        rows,
+        options
+      );
       const index = row * columns + column;
       frame.glyphs[index] = glyph;
       if (paint && frame.colors) {
-        const [r, g, b] = paint(column, row, tone);
-        frame.colors.set([r, g, b, 255], index * 4);
+        writeColor(frame.colors, index, paint(column, row, tone));
       }
     }
   }
