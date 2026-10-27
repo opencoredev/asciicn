@@ -1,0 +1,258 @@
+---
+title: "Sydney"
+description: "Sydney Harbour at night: the Opera House lit white, the Harbour Bridge behind it, fireworks bursting over the arch and the whole scene mirrored in the water."
+---
+
+import SydneyDemo from "@/examples/sydney-demo";
+import { controls as demoControls } from "@/examples/sydney-controls";
+import SydneyDuotone from "@/examples/sydney-duotone";
+import SydneyHero from "@/examples/sydney-hero";
+
+<ComponentPreview
+  src="examples/sydney-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <SydneyDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="sydney" />
+
+## Usage
+
+```tsx
+import { Sydney } from "@/components/asciicn/sydney";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Sydney intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The scene is built in layers. Stars sit at the back, then the city: the towers of the CBD, North Sydney across the water, and Sydney Tower with its gold turret. The Harbour Bridge spans in front of them, its arch drawn as two steel chords with the truss between, granite pylons at each end and lamps along the deck. The Opera House stands nearest, its shells lit white on the podium with amber glass in their mouths.
+
+Fireworks rise from the bridge deck and break over the arch, five shells on their own clocks. Some burst as rings, some as peonies, and gold willows droop and glitter as they fall. Each break briefly tints the steel and the sails. With `interactive` on, a click launches one more shell from the deck below the pointer, and the pointer shifts the layers by different amounts, so the Opera House slides further than the skyline.
+
+Below the waterline the whole picture is drawn again from its mirror image and broken into ripple streaks, so the fireworks land in the harbour too. A green and gold ferry crosses with its cabins lit and a wake behind it.
+
+It draws in `braille` by default, which keeps the spark trails and the truss fine. `standard` and `dense` give a typed look, and `blocks` gives solid shapes. In `truecolor`, the default, glyphs take the scene's own colours on a deep navy paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+
+`intensity` dims the scene: colours fade in step with it, and glyphs thin out more slowly so the landmarks stay legible. Lower it, and `fireworks` with it, to keep a headline on top easy to read.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.6}` and `fireworks={0.6}` keep three shells in the air and push the harbour back, so the headline reads first. Click the sky to launch another.
+
+<ComponentPreview src="examples/sydney-hero.tsx" size="lg" align="stretch">
+  <SydneyHero />
+</ComponentPreview>
+
+### Duotone glacier
+
+`colorMode="duotone"` with `ramp="glacier"` runs every tone through one cold ramp. The `blocks` charset draws it in solid cells, with the ferry left out.
+
+<ComponentPreview src="examples/sydney-duotone.tsx">
+  <SydneyDuotone />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+    },
+    {
+      name: "fireworks",
+      type: "number",
+      default: "1",
+      description:
+        "How many shells are in the air, from 0 (none) to 1 (five at once).",
+    },
+    {
+      name: "ferry",
+      type: "boolean",
+      default: "true",
+      description: "Draws the ferry crossing the harbour.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the scene. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        'How glyphs are coloured. truecolor uses the scene\'s own colours, mono uses the theme ink or a phosphor, duotone runs tone through a ramp. "mono" when a phosphor is set.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass for mono mode. Setting one switches colorMode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      description:
+        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "An engine pointer effect on top of the parallax.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer parallax, and a shell launched where you click. false turns both off, and interaction with them.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "–",
+      description:
+        "Shown without WebGL and until the first frame. By default a night gradient.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime`, with shells mid-burst, and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dark night gradient.
+- On narrow boxes the landmarks shrink toward the waterline so the Opera House and the arch both stay in view, while the fireworks keep the full sky.
+- The whole scene is one GPU pass. Each sample checks the five shells once, whatever the spark count, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
