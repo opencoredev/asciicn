@@ -1,0 +1,206 @@
+[
+  {
+    "name": "cyberpunk-rain-scene",
+    "type": "registry:component",
+    "title": "Neon Rain Metropolis",
+    "description": "A layered cyberpunk skyline in the rain: glowing katakana holograms, wet street reflections and diagonal rain streaks, with pointer parallax across the depth layers.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/cyberpunk-rain-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/cyberpunk-rain-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "black-hole-scene",
+    "type": "registry:component",
+    "title": "Gargantua Accretion Disk",
+    "description": "A black hole bending the starfield behind it: a lensed accretion disk, a Doppler-shifted photon ring and swirling infalling matter.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/black-hole-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/black-hole-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "synthwave-horizon-scene",
+    "type": "registry:component",
+    "title": "Outrun Wireframe Horizon",
+    "description": "Scrolling wireframe mountains under a segmented retro sun, with starlight and scanlines over a perspective grid.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/synthwave-horizon-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/synthwave-horizon-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "coastal-lighthouse-scene",
+    "type": "registry:component",
+    "title": "Midnight Lighthouse & Storm Swell",
+    "description": "A lighthouse beam sweeping through fog over a breaking procedural sea and dark cliffs.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/coastal-lighthouse-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/coastal-lighthouse-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "terminal-deck-scene",
+    "type": "registry:component",
+    "title": "Retro CRT Cyberdeck OS",
+    "description": "A live multi-pane terminal console: a rotating wireframe satellite, a scrolling hex dump, a waveform scope and system diagnostics.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/terminal-deck-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/terminal-deck-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "sacred-torus-scene",
+    "type": "registry:component",
+    "title": "Sacred Geometry Torus Knot",
+    "description": "A z-buffered 3D p-q torus knot and morphing polyhedra, shaded with directional edge glyphs.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/sacred-torus-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/sacred-torus-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "matrix-cathedral-scene",
+    "type": "registry:component",
+    "title": "Digital Rain Vault",
+    "description": "Perspective columns built from falling half-width katakana and hex streams, fading into depth fog.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/matrix-cathedral-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/matrix-cathedral-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "campfire-woods-scene",
+    "type": "registry:component",
+    "title": "Ember Woods & Fireflies",
+    "description": "A campfire's rising flame and drifting sparks among pine silhouettes, with softly pulsing fireflies.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/campfire-woods-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/campfire-woods-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "warp-tunnel-scene",
+    "type": "registry:component",
+    "title": "Relativistic Starfield Tunnel",
+    "description": "A high-speed wormhole of radially streaking glyphs, with a vanishing point you steer with the pointer.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/warp-tunnel-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/warp-tunnel-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "abyssal-jellyfish-scene",
+    "type": "registry:component",
+    "title": "Bioluminescent Abyss Aquarium",
+    "description": "Jellyfish drifting with sine-driven tentacles, rising bubbles and caustic light rays in the deep.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/abyssal-jellyfish-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/abyssal-jellyfish-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "tempest-storm-scene",
+    "type": "registry:component",
+    "title": "Procedural Lightning & Cumulonimbus",
+    "description": "Volumetric storm clouds split by branching fractal lightning, with screen-flash bloom and wind-driven rain.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/tempest-storm-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/tempest-storm-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "fluid-smoke-scene",
+    "type": "registry:component",
+    "title": "Interactive Curl-Noise Plume",
+    "description": "A smoke and ink plume driven by curl noise that swirls around the pointer, drawn in Braille or dense ramps.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/fluid-smoke-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/fluid-smoke-scene.tsx"
+      }
+    ]
+  }
+]

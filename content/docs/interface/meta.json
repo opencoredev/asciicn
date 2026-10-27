@@ -1,14 +1,20 @@
 {
   "title": "Interface",
-  "description": "Everyday interface pieces with a dithered finish.",
+  "description": "Terminal-grade interface pieces: frames, buttons, loaders and status, in real text.",
   "pages": [
     "ascii-button",
-    "avatar",
     "ascii-card",
+    "ascii-box",
     "divider",
-    "skeleton",
+    "progress-bar",
+    "stat-card",
     "loader",
+    "skeleton",
+    "avatar",
     "empty-state",
-    "not-found"
+    "not-found",
+    "logo-marquee",
+    "ascii-fade",
+    "ascii-glow"
   ]
 }

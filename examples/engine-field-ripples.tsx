@@ -1,7 +1,7 @@
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
-import type { AsciiShaderProps } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 // Step 3: noise bends the rings, time moves them outwards, and uniforms
 // turn the numbers into props.

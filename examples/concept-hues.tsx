@@ -1,5 +1,5 @@
-import { AsciiShader } from "@/lib/ascii";
-import type { AsciiShaderProps } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 // Shared by both functions: the nearest line to this cell, as
 // (distance in line widths, line index).

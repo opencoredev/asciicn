@@ -1,7 +1,9 @@
 "use client";
 
-import { cssColor, DEFAULT_PALETTE, AsciiShader } from "@/lib/ascii";
-import type { AsciiPalette, AsciiShaderProps } from "@/lib/ascii";
+import { cssColor, DEFAULT_PALETTE } from "@/lib/ascii";
+import type { AsciiPalette } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 /** A point in the box: x from the left, y from the top, both 0 to 1. */
 export type GlowPoint = readonly [number, number];

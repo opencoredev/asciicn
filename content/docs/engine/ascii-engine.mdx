@@ -10,7 +10,8 @@ import ConceptDiffusion from "@/examples/concept-diffusion";
 `ascii-core` is the dither engine. It installs into `lib/ascii` as plain source, with the [agent skill](/docs/installation) or the first time you add an example, and every dither on this site is built on it. Import it to build your own:
 
 ```tsx
-import { AsciiShader, asciiMaskStyle, ditherImage } from "@/lib/ascii";
+import { asciiMaskStyle, ditherImage } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 ```
 
 It draws dithers three ways. Pick by what you're making:

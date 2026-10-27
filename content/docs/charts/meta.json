@@ -1,7 +1,8 @@
 {
   "title": "Charts",
-  "description": "Charts and status displays with a dithered fill.",
+  "description": "Charts and data displays drawn in Braille, eighth blocks and box-drawing glyphs.",
   "pages": [
+    "cartesian-chart",
     "area-chart",
     "bar-chart",
     "line-chart",
@@ -10,8 +11,7 @@
     "donut-chart",
     "radar-chart",
     "gauge",
-    "progress-bar",
     "uptime-bar",
-    "stat-card"
+    "dot-map"
   ]
 }

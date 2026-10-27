@@ -1,0 +1,206 @@
+[
+  {
+    "name": "aurora",
+    "type": "registry:component",
+    "title": "Aurora",
+    "description": "Curtains of light that fold, sway and shimmer, drawn as a dither, with props for colours, curtains, rays, tilt, drift and masks.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/aurora.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/aurora.tsx"
+      }
+    ]
+  },
+  {
+    "name": "beams",
+    "type": "registry:component",
+    "title": "Beams",
+    "description": "God rays from a point or an edge that sweep slowly and fade with distance.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/beams.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/beams.tsx"
+      }
+    ]
+  },
+  {
+    "name": "contours",
+    "type": "registry:component",
+    "title": "Contours",
+    "description": "A topographic map: contour lines over slowly drifting hills, with heavier index lines and a light hillshade.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/contours.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/contours.tsx"
+      }
+    ]
+  },
+  {
+    "name": "eclipse",
+    "type": "registry:component",
+    "title": "Eclipse",
+    "description": "A dark disc with a glowing rim and a soft corona that breathes slowly.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/eclipse.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/eclipse.tsx"
+      }
+    ]
+  },
+  {
+    "name": "halftone",
+    "type": "registry:component",
+    "title": "Halftone",
+    "description": "Print-style round dots on a rotated grid that grow with a noise, radial or linear source.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/halftone.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/halftone.tsx"
+      }
+    ]
+  },
+  {
+    "name": "horizon",
+    "type": "registry:component",
+    "title": "Horizon",
+    "description": "A planet's horizon from space: a lit rim, a drifting aurora glow and fixed stars.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/horizon.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/horizon.tsx"
+      }
+    ]
+  },
+  {
+    "name": "mesh-gradient",
+    "type": "registry:component",
+    "title": "Mesh gradient",
+    "description": "Three to five colour blobs that drift and blend, drawn as a dither.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/mesh-gradient.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/mesh-gradient.tsx"
+      }
+    ]
+  },
+  {
+    "name": "metaballs",
+    "type": "registry:component",
+    "title": "Metaballs",
+    "description": "Soft blobs that drift, merge and split like a lava lamp, as shaded shapes or rings of contour lines.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/metaballs.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/metaballs.tsx"
+      }
+    ]
+  },
+  {
+    "name": "noise-field",
+    "type": "registry:component",
+    "title": "Noise field",
+    "description": "A slow, folding noise texture in four styles (smoke, ridges, contours, marble), with a sized mask that clears space for text.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/noise-field.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/noise-field.tsx"
+      }
+    ]
+  },
+  {
+    "name": "plasma",
+    "type": "registry:component",
+    "title": "Plasma",
+    "description": "Classic plasma: overlapping sine waves that flow into each other, dithered in two colours or a palette.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/plasma.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/plasma.tsx"
+      }
+    ]
+  },
+  {
+    "name": "retro-grid",
+    "type": "registry:component",
+    "title": "Retro grid",
+    "description": "A perspective grid floor scrolling towards a horizon under a striped, glowing sun.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/retro-grid.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/retro-grid.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ridgelines",
+    "type": "registry:component",
+    "title": "Ridgelines",
+    "description": "Stacked ridge lines like a pulsar plot, each hiding the ones behind it, with peaks that shift slowly.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ridgelines.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ridgelines.tsx"
+      }
+    ]
+  }
+]

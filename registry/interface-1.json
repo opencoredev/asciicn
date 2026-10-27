@@ -1,0 +1,65 @@
+[
+  {
+    "name": "ascii-button",
+    "type": "registry:component",
+    "title": "Dither button",
+    "description": "A button with a lit, dithered surface that brightens on hover and presses in on click, in four fills, two variants and any palette colour.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-button.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-button.tsx"
+      }
+    ],
+    "dependencies": ["radix-ui"]
+  },
+  {
+    "name": "ascii-card",
+    "type": "registry:component",
+    "title": "Dither card",
+    "description": "A card with a dithered glow in a corner or along an edge and a dithered rim on its border, which can grow on hover.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-card.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-card.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-fade",
+    "type": "registry:component",
+    "title": "Dither fade",
+    "description": "A dithered edge that fades a section's content into a solid colour.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-fade.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-fade.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-glow",
+    "type": "registry:component",
+    "title": "Dither glow",
+    "description": "A soft dithered spotlight from an edge, a corner or any point, for heroes and cards.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-glow.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-glow.tsx"
+      }
+    ]
+  }
+]

@@ -1,6 +1,6 @@
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 // Step 2: square units, then rings around a point that fade with distance.
 const FIELD = `

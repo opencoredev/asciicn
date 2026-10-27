@@ -1,5 +1,5 @@
-import { AsciiShader } from "@/lib/ascii";
 import type { DitherMatrix } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 // A left-to-right ramp: tone equals the horizontal position.
 const RAMP = `float field(vec2 uv, vec2 res, float t) { return uv.x; }`;

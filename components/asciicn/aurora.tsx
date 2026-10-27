@@ -1,7 +1,9 @@
 "use client";
 
-import { cssColor, AsciiShader } from "@/lib/ascii";
-import type { AsciiColor, AsciiPalette, AsciiShaderProps } from "@/lib/ascii";
+import { cssColor } from "@/lib/ascii";
+import type { AsciiColor, AsciiPalette } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 /** Where the aurora fades to paper so text on top stays clean. */
 export type AuroraMask = "none" | "top" | "bottom" | "edges";

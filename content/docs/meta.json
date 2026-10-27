@@ -3,11 +3,12 @@
   "pages": [
     "(root)",
     "examples",
+    "scenes",
     "backgrounds",
-    "charts",
-    "interface",
-    "text",
     "images",
+    "charts",
+    "text",
+    "interface",
     "engine"
   ]
 }

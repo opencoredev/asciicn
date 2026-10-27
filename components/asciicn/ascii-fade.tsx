@@ -1,5 +1,6 @@
-import { cssColor, asciiMaskStyle, AsciiShader } from "@/lib/ascii";
+import { cssColor, asciiMaskStyle } from "@/lib/ascii";
 import type { AsciiColor, DitherMatrix } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 import { cn } from "@/lib/utils";
 
 /** The edge of the parent the fade sits on. The colour is solid at that edge. */

@@ -13,4 +13,6 @@ export default defineConfig({
     ".changeset/**",
     ".claude/**",
   ],
+  // Glyph masks (Braille dots, quadrants) and seeded hashes are bit fields.
+  overrides: [{ files: ["lib/ascii/**"], rules: { "no-bitwise": "off" } }],
 });

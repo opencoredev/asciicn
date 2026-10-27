@@ -1,7 +1,9 @@
 "use client";
 
-import { cssColor, AsciiShader } from "@/lib/ascii";
-import type { AsciiPalette, AsciiShaderProps } from "@/lib/ascii";
+import { cssColor } from "@/lib/ascii";
+import type { AsciiPalette } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 export type SilkProps = Omit<
   AsciiShaderProps,

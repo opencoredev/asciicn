@@ -1,6 +1,7 @@
 "use client";
 
-import { AsciiShader, asciiMask } from "@/lib/ascii";
+import { asciiMask } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 import { cn } from "@/lib/utils";
 
 /**

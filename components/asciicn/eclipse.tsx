@@ -1,7 +1,9 @@
 "use client";
 
-import { cssColor, AsciiShader } from "@/lib/ascii";
-import type { AsciiColor, AsciiShaderProps } from "@/lib/ascii";
+import { cssColor } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 /** A point in the box: x from the left, y from the top, both 0 to 1. */
 export type EclipsePoint = readonly [number, number];

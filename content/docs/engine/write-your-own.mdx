@@ -26,7 +26,7 @@ The field runs once for every cell and returns a tone from 0 to 1: 0 is paper, 1
 ```tsx
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -88,8 +88,8 @@ Three changes finish it. Noise bends the rings so they look like water, `t` move
 ```tsx
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
-import type { AsciiShaderProps } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {

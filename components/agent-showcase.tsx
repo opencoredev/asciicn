@@ -7,13 +7,13 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icon";
 import {
-  AsciiShader,
   fillStyle,
   useDocumentVisible,
   useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type { DitherMatrix } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 

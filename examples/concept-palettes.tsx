@@ -1,4 +1,5 @@
-import { AsciiPattern, AsciiShader } from "@/lib/ascii";
+import { AsciiPattern } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 const RAMP = `float field(vec2 uv, vec2 res, float t) { return uv.x; }`;
 

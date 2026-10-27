@@ -1,16 +1,17 @@
 import { POSTHOG_HOST, POSTHOG_KEY } from "@/lib/analytics/config";
-import backgroundsA from "@/registry/backgrounds-a.json";
-import backgroundsB from "@/registry/backgrounds-b.json";
-import backgroundsC from "@/registry/backgrounds-c.json";
-import backgroundsD from "@/registry/backgrounds-d.json";
-import backgrounds from "@/registry/backgrounds.json";
+import backgrounds1 from "@/registry/backgrounds-1.json";
+import backgrounds2 from "@/registry/backgrounds-2.json";
 import base from "@/registry/base.json";
-import chartsA from "@/registry/charts-a.json";
-import chartsB from "@/registry/charts-b.json";
+import charts1 from "@/registry/charts-1.json";
+import charts2 from "@/registry/charts-2.json";
 import engine from "@/registry/engine.json";
 import images from "@/registry/images.json";
-import ui from "@/registry/interface.json";
+import interface1 from "@/registry/interface-1.json";
+import interface2 from "@/registry/interface-2.json";
+import scenes from "@/registry/scenes.json";
+import shader from "@/registry/shader.json";
 import text from "@/registry/text.json";
+import tokens from "@/registry/tokens.json";
 
 // Agents and CLIs fetch these files without running any JavaScript, so the
 // request proxy records them server-side. Nothing here may delay or fail the
@@ -20,6 +21,7 @@ type Category =
   | "skill"
   | "engine"
   | "backgrounds"
+  | "scenes"
   | "charts"
   | "ui"
   | "text"
@@ -31,21 +33,13 @@ const named = (items: readonly { name: string }[], category: Category) =>
   items.map((item) => [item.name, category] as const);
 
 const CATEGORY_BY_ITEM = new Map<string, Category>([
-  ...named(
-    [
-      ...backgrounds,
-      ...backgroundsA,
-      ...backgroundsB,
-      ...backgroundsC,
-      ...backgroundsD,
-    ],
-    "backgrounds"
-  ),
-  ...named([...chartsA, ...chartsB], "charts"),
-  ...named(ui, "ui"),
+  ...named([...backgrounds1, ...backgrounds2], "backgrounds"),
+  ...named(scenes, "scenes"),
+  ...named([...charts1, ...charts2], "charts"),
+  ...named([...interface1, ...interface2], "ui"),
   ...named(text, "text"),
   ...named(images, "media"),
-  ...named(base, "engine"),
+  ...named([...base, ...shader, ...tokens], "engine"),
   ...named(engine, "engine"),
   ["asciicn-skill", "skill"],
   ["registry", "index"],
@@ -96,6 +90,7 @@ const INSTALL_TYPE: Record<Category, InstallType> = {
   engine: "engine",
   index: "index",
   media: "component",
+  scenes: "component",
   skill: "skill",
   text: "component",
   ui: "component",

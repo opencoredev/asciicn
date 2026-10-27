@@ -44,6 +44,13 @@ const FORBIDDEN_IMPORTS = [
   "@hugeicons/",
 ] as const;
 
+// Modules that belong to the ascii-shader item rather than ascii-core.
+const GPU_MODULES: readonly string[] = [
+  "@/lib/ascii/shader",
+  "@/lib/ascii/glsl",
+  "@/lib/ascii/seed",
+];
+
 interface RegistryFile {
   path: string;
   type: string;
@@ -157,16 +164,31 @@ for (const { file, item } of items) {
       if (FORBIDDEN_IMPORTS.some((prefix) => specifier.startsWith(prefix))) {
         errors.push(`${where}, a site-only module`);
       }
-      const component = /^@\/components\/asciicn\/([^/]+)/.exec(specifier)?.[1];
+      const component = /^@\/components\/asciicn\/(?:scenes\/)?([^/]+)/.exec(
+        specifier
+      )?.[1];
       if (component && !dependencies.has(`${PLACEHOLDER}/${component}.json`)) {
         errors.push(
           `${where} without "${PLACEHOLDER}/${component}.json" in registryDependencies`
         );
       }
+      // The GPU renderer is its own item, so CPU-only pieces never ship WebGL.
+      const gpu = GPU_MODULES.some((module) => specifier === module);
       if (
+        gpu &&
+        item.name !== "ascii-shader" &&
+        !dependencies.has(`${PLACEHOLDER}/ascii-shader.json`)
+      ) {
+        errors.push(
+          `${where} without "${PLACEHOLDER}/ascii-shader.json" in registryDependencies`
+        );
+      }
+      if (
+        !gpu &&
         specifier.startsWith("@/lib/ascii") &&
-        item.name !== "ascii-core" &&
-        !dependencies.has(`${PLACEHOLDER}/ascii-core.json`)
+        !["ascii-core", "ascii-shader"].includes(item.name) &&
+        !dependencies.has(`${PLACEHOLDER}/ascii-core.json`) &&
+        !dependencies.has(`${PLACEHOLDER}/ascii-shader.json`)
       ) {
         errors.push(
           `${where} without "${PLACEHOLDER}/ascii-core.json" in registryDependencies`

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 // Slow drifting noise: two fbm layers moving against each other.
 const DRIFT = `

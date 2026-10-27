@@ -1,6 +1,6 @@
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 // Step 1: the tone is just the height. 0 at the bottom (paper), 1 at the top (ink).
 const FIELD = `

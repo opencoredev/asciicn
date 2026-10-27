@@ -1,0 +1,26 @@
+[
+  {
+    "name": "ascii-shader",
+    "type": "registry:lib",
+    "title": "ASCII shader",
+    "description": "The WebGL2 renderer: any GLSL field drawn as real glyphs in one GPU pass, with every charset, colour mode, CRT post effects, pointer interaction and audio-reactive input. Pauses offscreen and shares a WebGL context budget across the page.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "lib/ascii/shader.tsx",
+        "type": "registry:lib",
+        "target": "lib/ascii/shader.tsx"
+      },
+      {
+        "path": "lib/ascii/glsl.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/glsl.ts"
+      },
+      {
+        "path": "lib/ascii/seed.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/seed.ts"
+      }
+    ]
+  }
+]

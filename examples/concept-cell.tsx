@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 // A soft glow from the lower left corner.
 const GLOW = `

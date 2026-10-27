@@ -1,0 +1,104 @@
+[
+  {
+    "name": "ripples",
+    "type": "registry:component",
+    "title": "Ripples",
+    "description": "Concentric rings spreading from one to four points and crossing like drops on still water.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ripples.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ripples.tsx"
+      }
+    ]
+  },
+  {
+    "name": "silk",
+    "type": "registry:component",
+    "title": "Silk",
+    "description": "Folds of silk catching the light, with a bright highlight along each crest.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/silk.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/silk.tsx"
+      }
+    ]
+  },
+  {
+    "name": "smoke",
+    "type": "registry:component",
+    "title": "Smoke",
+    "description": "Soft smoke billowing upward and thinning out, lit from above, with props for scale, height, wind and density.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/smoke.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/smoke.tsx"
+      }
+    ]
+  },
+  {
+    "name": "starfield",
+    "type": "registry:component",
+    "title": "Starfield",
+    "description": "Dithered stars in three parallax layers that twinkle and drift slowly.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/starfield.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/starfield.tsx"
+      }
+    ]
+  },
+  {
+    "name": "tunnel",
+    "type": "registry:component",
+    "title": "Tunnel",
+    "description": "A slow flight down a tunnel of round or square rings, with spokes along the walls and fog at the vanishing point.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/tunnel.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/tunnel.tsx"
+      }
+    ]
+  },
+  {
+    "name": "waves",
+    "type": "registry:component",
+    "title": "Waves",
+    "description": "Layered swells under a glowing horizon, or thin lines like a sound wave.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/waves.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/waves.tsx"
+      }
+    ]
+  }
+]

@@ -9,8 +9,9 @@ The shape every dithered background follows: typed props become uniforms, the fi
 ```tsx
 "use client";
 
-import { cssColor, DEFAULT_PALETTE, AsciiShader } from "@/lib/ascii";
-import type { AsciiShaderProps } from "@/lib/ascii";
+import { cssColor, DEFAULT_PALETTE } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -92,7 +93,7 @@ A full-bleed field behind a headline, with a rounded box cleared around the text
 
 import { useEffect, useRef, useState } from "react";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 const FIELD = `
 float heroHeight(vec2 p) {
@@ -205,8 +206,8 @@ Wavy lines with a dithered glow, each carrying a rainbow that runs along it and 
 ```tsx
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
-import type { AsciiShaderProps } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 // Shared by both functions: the nearest line to this cell, as
 // (distance in line widths, line index).

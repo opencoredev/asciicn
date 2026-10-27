@@ -1,11 +1,13 @@
 {
   "title": "Engine",
-  "description": "How ascii-core works and how to build your own dither on it.",
+  "description": "How the asciicn engine turns tones into glyphs, and how to build your own on it.",
   "pages": [
     "ascii-engine",
+    "charsets",
+    "color-modes",
+    "cell-metrics",
     "write-your-own",
-    "palettes",
-    "pixel-scale",
+    "post-effects",
     "motion",
     "performance",
     "export"

@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
-import { cssColor, AsciiShader, usePrefersReducedMotion } from "@/lib/ascii";
-import type { AsciiColor, AsciiPalette, AsciiShaderProps } from "@/lib/ascii";
+import { cssColor, usePrefersReducedMotion } from "@/lib/ascii";
+import type { AsciiColor, AsciiPalette } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+import type { AsciiShaderProps } from "@/lib/ascii/shader";
 import { cn } from "@/lib/utils";
 
 export type AsciiOrbProps = Omit<

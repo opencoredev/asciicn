@@ -1,7 +1,19 @@
 /**
- * ascii-core: the shared engine behind every asciicn component.
- * Import from `@/lib/ascii`.
+ * ascii-core: the CPU side of the asciicn engine, shared by every
+ * component. Import from `@/lib/ascii`.
+ *
+ * The WebGL2 renderer lives in `@/lib/ascii/shader` (the ascii-shader
+ * registry item), so components that only draw text, charts or interface
+ * pieces never ship WebGL code.
  */
+
+export * from "@/lib/ascii/charsets";
+export * from "@/lib/ascii/palettes";
+export * from "@/lib/ascii/frame";
+export * from "@/lib/ascii/measure";
+export * from "@/lib/ascii/grid";
+export * from "@/lib/ascii/look";
+export * from "@/lib/ascii/scene";
 
 export {
   BAYER_2,
@@ -16,10 +28,10 @@ export {
 export type { DitherMatrix, ThresholdMap } from "@/lib/ascii/matrices";
 
 export {
-  cssColor,
-  DEFAULT_PALETTE,
   ASCII_COLOR_NAMES,
   ASCII_COLORS,
+  cssColor,
+  DEFAULT_PALETTE,
   MOTION,
 } from "@/lib/ascii/tokens";
 export type {
@@ -70,14 +82,6 @@ export type {
   FrameLoopOptions,
   FrameLoopState,
 } from "@/lib/ascii/motion";
-
-export { AsciiShader, MAX_LIVE_CONTEXTS } from "@/lib/ascii/shader";
-export type {
-  AsciiShaderProps,
-  AsciiShaderState,
-  AsciiUniforms,
-  ShaderUniformValue,
-} from "@/lib/ascii/shader";
 
 export { BloomBox, BloomGroup, FillPattern } from "@/lib/ascii/fill";
 export type {

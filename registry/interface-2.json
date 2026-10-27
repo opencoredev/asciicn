@@ -1,0 +1,131 @@
+[
+  {
+    "name": "avatar",
+    "type": "registry:component",
+    "title": "Avatar",
+    "description": "A generative avatar drawn from a string as a mirrored dither face on a lit, dithered disc, with an overlapping avatar group.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/avatar.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/avatar.tsx"
+      }
+    ]
+  },
+  {
+    "name": "divider",
+    "type": "registry:component",
+    "title": "Divider",
+    "description": "A horizontal or vertical dithered rule with fading ends and an optional label.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/divider.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/divider.tsx"
+      }
+    ]
+  },
+  {
+    "name": "empty-state",
+    "type": "registry:component",
+    "title": "Empty state",
+    "description": "A lit, dithered illustration (box, magnifier, folder or planet) with a title, a description and an action, for views with nothing in them yet.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/empty-state.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/empty-state.tsx"
+      }
+    ]
+  },
+  {
+    "name": "loader",
+    "type": "registry:component",
+    "title": "Loader",
+    "description": "A small dithered loading indicator: a ring with a comet tail, three dissolving dots, a pulse or a bar.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/loader.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/loader.tsx"
+      }
+    ]
+  },
+  {
+    "name": "logo-marquee",
+    "type": "registry:component",
+    "title": "Logo marquee",
+    "description": "A looping row or still wall of logos in one dithered treatment, with soft or dithered edge fades.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-logo.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/logo-marquee.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/logo-marquee.tsx"
+      }
+    ]
+  },
+  {
+    "name": "not-found",
+    "type": "registry:component",
+    "title": "Not found",
+    "description": "A complete 404 block with a big dithered code, a message and actions.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/not-found.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/not-found.tsx"
+      }
+    ]
+  },
+  {
+    "name": "progress-bar",
+    "type": "registry:component",
+    "title": "Progress bar",
+    "description": "A progress bar built from dither cells: any fill texture with a solid leading edge, stacked parts, step segments and an indeterminate comet.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/progress-bar.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/progress-bar.tsx"
+      }
+    ]
+  },
+  {
+    "name": "skeleton",
+    "type": "registry:component",
+    "title": "Skeleton",
+    "description": "Loading placeholders for blocks, text lines and avatars, drawn in dither, with a dense band that sweeps across or a pulse that steps through the Bayer levels.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/skeleton.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/skeleton.tsx"
+      }
+    ]
+  },
+  {
+    "name": "stat-card",
+    "type": "registry:component",
+    "title": "Stat card",
+    "description": "A KPI card with a value, a coloured delta and a dithered trend area on a dotted surface.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/stat-card.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/stat-card.tsx"
+      }
+    ]
+  }
+]

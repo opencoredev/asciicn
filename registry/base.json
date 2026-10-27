@@ -1,58 +1,9 @@
 [
   {
-    "name": "ascii-tokens",
-    "type": "registry:item",
-    "title": "Dither tokens",
-    "description": "CSS variables every asciicn piece reads: ink, paper, cell size, bloom strength and the named colour palette (blue, purple, green, pink, orange, red, grey), tuned for light and dark.",
-    "cssVars": {
-      "theme": {
-        "color-ascii-ink": "var(--ascii-ink)",
-        "color-ascii-paper": "var(--ascii-paper)",
-        "color-dither-blue": "var(--ascii-color-blue)",
-        "color-dither-purple": "var(--ascii-color-purple)",
-        "color-dither-green": "var(--ascii-color-green)",
-        "color-dither-pink": "var(--ascii-color-pink)",
-        "color-dither-orange": "var(--ascii-color-orange)",
-        "color-dither-red": "var(--ascii-color-red)",
-        "color-dither-grey": "var(--ascii-color-grey)"
-      }
-    },
-    "css": {
-      "@layer base": {
-        ":root": {
-          "--ascii-ink": "var(--primary)",
-          "--ascii-paper": "var(--background)",
-          "--ascii-cell": "3px",
-          "--ascii-color-blue": "oklch(0.56 0.18 248)",
-          "--ascii-color-purple": "oklch(0.53 0.22 302)",
-          "--ascii-color-green": "oklch(0.58 0.15 152)",
-          "--ascii-color-pink": "oklch(0.58 0.21 355)",
-          "--ascii-color-orange": "oklch(0.64 0.17 52)",
-          "--ascii-color-red": "oklch(0.55 0.21 27)",
-          "--ascii-color-grey": "oklch(0.55 0 0)",
-          "--ascii-bloom": "0.6"
-        },
-        ".dark": {
-          "--ascii-ink": "var(--primary)",
-          "--ascii-paper": "var(--background)",
-          "--ascii-cell": "3px",
-          "--ascii-color-blue": "oklch(0.72 0.14 240)",
-          "--ascii-color-purple": "oklch(0.7 0.18 304)",
-          "--ascii-color-green": "oklch(0.78 0.17 152)",
-          "--ascii-color-pink": "oklch(0.74 0.17 354)",
-          "--ascii-color-orange": "oklch(0.79 0.15 62)",
-          "--ascii-color-red": "oklch(0.68 0.2 25)",
-          "--ascii-color-grey": "oklch(0.66 0 0)",
-          "--ascii-bloom": "1"
-        }
-      }
-    }
-  },
-  {
     "name": "ascii-core",
     "type": "registry:lib",
-    "title": "Dither core",
-    "description": "The engine every asciicn component uses: threshold matrices with blue noise, a WebGL dither shader, SVG patterns and CSS masks, image dithering, theme colours and motion hooks.",
+    "title": "ASCII core",
+    "description": "The CPU side of the asciicn engine: charsets (classic, dense, ANSI blocks, quadrants, Braille 2x4, CP437, PETSCII, katakana, halftone, Sobel edges), colour modes and palettes, a frame model with tone-to-glyph mapping, cell metrics, a Canvas2D glyph grid, theme colours and motion hooks.",
     "docs": "asciicn's components are examples built on this engine. To have your coding agent build any dither of its own on it, add the agent skill if you haven't: npx shadcn@latest add {{REGISTRY_URL}}/asciicn-skill.json",
     "registryDependencies": ["utils", "{{REGISTRY_URL}}/ascii-tokens.json"],
     "files": [
@@ -60,6 +11,31 @@
         "path": "lib/ascii/index.ts",
         "type": "registry:lib",
         "target": "lib/ascii/index.ts"
+      },
+      {
+        "path": "lib/ascii/charsets.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/charsets.ts"
+      },
+      {
+        "path": "lib/ascii/palettes.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/palettes.ts"
+      },
+      {
+        "path": "lib/ascii/frame.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/frame.ts"
+      },
+      {
+        "path": "lib/ascii/measure.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/measure.ts"
+      },
+      {
+        "path": "lib/ascii/grid.tsx",
+        "type": "registry:lib",
+        "target": "lib/ascii/grid.tsx"
       },
       {
         "path": "lib/ascii/matrices.ts",
@@ -87,16 +63,6 @@
         "target": "lib/ascii/motion.ts"
       },
       {
-        "path": "lib/ascii/glsl.ts",
-        "type": "registry:lib",
-        "target": "lib/ascii/glsl.ts"
-      },
-      {
-        "path": "lib/ascii/shader.tsx",
-        "type": "registry:lib",
-        "target": "lib/ascii/shader.tsx"
-      },
-      {
         "path": "lib/ascii/pattern.tsx",
         "type": "registry:lib",
         "target": "lib/ascii/pattern.tsx"
@@ -115,6 +81,30 @@
         "path": "lib/ascii/diffuse.ts",
         "type": "registry:lib",
         "target": "lib/ascii/diffuse.ts"
+      },
+      {
+        "path": "lib/ascii/look.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/look.ts"
+      },
+      {
+        "path": "lib/ascii/scene.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/scene.ts"
+      }
+    ]
+  },
+  {
+    "name": "ascii-export",
+    "type": "registry:lib",
+    "title": "ASCII export",
+    "description": "Save any ASCII frame as plain .txt, ANSI .ans (truecolor or 16-colour), crisp vector .svg, high-DPI .png, or a .webm video recorded from the live canvas.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "lib/ascii/export.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/export.ts"
       }
     ]
   }
