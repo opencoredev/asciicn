@@ -1,0 +1,263 @@
+---
+title: "Hong Kong"
+description: "Victoria Harbour at night from Kowloon: towers up the slopes of Victoria Peak, the Bank of China Tower and IFC, a rooftop light show, and a junk and a Star Ferry on the mirrored water."
+---
+
+import HongKongDemo from "@/examples/hong-kong-demo";
+import { controls as demoControls } from "@/examples/hong-kong-controls";
+import HongKongDuotone from "@/examples/hong-kong-duotone";
+import HongKongHero from "@/examples/hong-kong-hero";
+
+<ComponentPreview
+  src="examples/hong-kong-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <HongKongDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="hong-kong" />
+
+## Usage
+
+```tsx
+import { HongKong } from "@/components/asciicn/hong-kong";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <HongKong intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The view looks across Victoria Harbour from Kowloon. At the back, the ridge of Victoria Peak rises with the Peak Tower near the top and lamps scattered up the slope. Slim residential towers climb the hill in two rows. In front of them stand Central Plaza with its glass pyramid, the Bank of China Tower with its white X braces and sloping roof, and Two IFC with its crown of fins. A dense row of waterfront towers runs along the shore.
+
+Windows switch on and off slowly. Some rooftops run bands of colour and some towers have LED strips running up one edge. Now and then a searchlight or a laser switches on and sweeps the sky or the water. Below the shoreline the harbour mirrors all of it, broken into ripples, while a junk under three red sails and a green and white Star Ferry cross in opposite directions. With `interactive` on, the pointer shifts the layers by different amounts, so the waterfront slides further than the Peak.
+
+It draws in `braille` by default, which keeps the X braces and the window grids fine. `standard` and `dense` give a typed look, and `blocks` gives solid shapes. In `truecolor`, the default, glyphs take the scene's own colours on a deep blue night. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+
+`intensity` scales every glyph's tone and darkens its colour. Lower it to keep a headline on top easy to read. In `braille` and `quadrants` the dot threshold drops with it, so a dimmed harbour keeps its outline. `lights` turns the light show down without dimming the windows.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.55}` and `lights={0.6}` push the harbour back so the headline reads first.
+
+<ComponentPreview src="examples/hong-kong-hero.tsx" size="lg" align="stretch">
+  <HongKongHero />
+</ComponentPreview>
+
+### Duotone print
+
+`colorMode="duotone"` with the `vapor` ramp runs every tone from violet to pink, and the `dense` charset fills the towers with typed glyphs.
+
+<ComponentPreview src="examples/hong-kong-duotone.tsx">
+  <HongKongDuotone />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+    },
+    {
+      name: "lights",
+      type: "number",
+      default: "1",
+      description:
+        "The light show, from 0 (off) to 1: rooftop displays, LED strips, searchlights and lasers.",
+    },
+    {
+      name: "waves",
+      type: "number",
+      default: "1",
+      description:
+        "How much the harbour ripples, from 0 (a still mirror) to 2.",
+    },
+    {
+      name: "boats",
+      type: "boolean",
+      default: "true",
+      description: "Draws the junk and the Star Ferry crossing the harbour.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the scene. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        'How glyphs are coloured. truecolor uses the scene\'s own colours, mono uses the theme ink or a phosphor, duotone runs tone through a ramp. "mono" when a phosphor is set.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass for mono mode. Setting one switches colorMode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5 × (0.5 + 0.5 × intensity)",
+      description:
+        "Braille and quadrants: the tone that lights a dot. By default it drops with intensity, so a dimmed scene keeps its outline.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      description:
+        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "An engine pointer effect on top of the parallax.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer parallax: near layers slide further than far ones. false turns it off, and interaction with it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "–",
+      description:
+        "Shown without WebGL and until the first frame. By default a deep blue night gradient.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a deep blue night gradient.
+- The harbour draws the skyline a second time for its reflection, so the cost per sample stays about the same above and below the shoreline. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
