@@ -1,9 +1,9 @@
 ---
 title: Catalog
-description: Every component and scene built on the asciicn engine, grouped by what it's for.
+description: Every component and background built on the asciicn engine, grouped by what it's for.
 ---
 
-Each component installs as plain source into `components/asciicn/`, and each scene into `components/asciicn/scenes/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-any-ascii-effect) or [write your own](/docs/engine/write-your-own). To try looks before you install, open the [Studio](/studio).
+Each component and background installs as plain source into `components/asciicn/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-any-ascii-effect) or [write your own](/docs/engine/write-your-own). To try looks before you install, open the [Studio](/studio).
 
 <CatalogIndex className="mt-8" />
 
@@ -13,7 +13,7 @@ Install any component by name. It brings the parts of the engine it needs the fi
 
 <InstallBlock name="plasma" />
 
-Backgrounds and scenes fill the box you give them. Put one behind your content with `absolute inset-0`:
+Backgrounds fill the box you give them. Put one behind your content with `absolute inset-0`:
 
 ```tsx
 import { Plasma } from "@/components/asciicn/plasma";

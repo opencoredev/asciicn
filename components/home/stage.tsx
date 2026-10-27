@@ -28,7 +28,7 @@ import type { AsciiSceneProps } from "@/lib/ascii/scene";
 import { cn } from "@/lib/utils";
 
 /**
- * A live ASCII stage: one scene or shader drawn by the engine, framed like
+ * A live ASCII stage: one city or shader drawn by the engine, framed like
  * an instrument. Cell rulers run along the top and left, a status line
  * reports the charset, grid, frame rate and glyph count as they change,
  * and the inspector reads back the glyph under the pointer. Overlays
@@ -454,7 +454,7 @@ export interface StageProps {
   cell: number;
   /** Filled by the renderer; the export strip reads it too. */
   handle: RefObject<AsciiHandle | null>;
-  /** Pointer steering and repulsion in the scene. Default true. */
+  /** Pointer steering and repulsion in the background. Default true. */
   interactive?: boolean;
   /** Inspector: a full panel, a compact chip, or none. Default "panel". */
   inspector?: "panel" | "chip" | "none";

@@ -5,7 +5,7 @@ import { createPageMetadata } from "@/seo/metadata";
 
 export const metadata = createPageMetadata({
   description:
-    "Turn shaders, scenes, photos, video, your webcam or a line of text into live ASCII. Tune every engine setting, then copy the TSX or export .txt, .ans, .svg, .png or .webm.",
+    "Turn shaders, city backgrounds, photos, video, your webcam or a line of text into live ASCII. Tune every engine setting, then copy the TSX or export .txt, .ans, .svg, .png or .webm.",
   ogImage: ROUTES.OG,
   path: ROUTES.STUDIO,
   title: "ASCII Studio",

@@ -9,15 +9,15 @@ import type { AsciiFrame, AsciiHandle } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
 
 /**
- * Still frames of every scene, for thumbnails that cost nothing to show.
- * `StillBaker` mounts one scene at a time, offscreen-invisible and paused,
+ * Still frames of every city, for thumbnails that cost nothing to show.
+ * `StillBaker` mounts one city at a time, offscreen-invisible and paused,
  * captures its first frame through the handle and unmounts it, so baking
- * twelve scenes never holds more than one extra WebGL context. Stills last
+ * every city never holds more than one extra WebGL context. Stills last
  * for the tab's session.
  */
 
-const STORAGE_KEY = "asciicn-scene-stills-v2";
-// Gives a scene that never draws (no WebGL, a broken chunk) up to this
+const STORAGE_KEY = "asciicn-city-stills-v1";
+// Gives a city that never draws (no WebGL, a broken chunk) up to this
 // long before the baker moves on.
 const BAKE_TIMEOUT_MS = 5000;
 const POLL_MS = 120;
@@ -31,7 +31,7 @@ interface StoredFrame {
 }
 
 /**
- * A baked frame and the paper it was drawn on. Coloured scenes paint their
+ * A baked frame and the paper it was drawn on. Coloured cities paint their
  * own background, so the still keeps it; mono ones follow the theme.
  */
 export interface Still {
@@ -114,7 +114,7 @@ const persist = () => {
   }
 };
 
-/** Record a frame for a scene (from the baker or a live stage). */
+/** Record a frame for a city (from the baker or a live stage). */
 export const recordStill = (id: string, still: Still | null) => {
   if (still === null && stills.has(id)) {
     return;
@@ -136,7 +136,7 @@ const subscribe = (listener: () => void) => {
 const getVersion = () => version;
 const getServerVersion = () => -1;
 
-/** The still for a scene: `null` if it can't be baked, `undefined` while pending. */
+/** The still for a city: `null` if it can't be baked, `undefined` while pending. */
 export const useStill = (id: string): Still | null | undefined => {
   useSyncExternalStore(subscribe, getVersion, getServerVersion);
   useEffect(restore, []);

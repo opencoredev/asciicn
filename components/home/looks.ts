@@ -18,7 +18,7 @@ import type {
 
 /**
  * The switches a stage exposes, and how each becomes `AsciiLook` props.
- * Shared by the home hero, the scene switcher and /scenes.
+ * Shared by the stage and its controls on /backgrounds.
  */
 
 /** One glyph per charset that shows what it draws, for the switcher buttons. */
@@ -141,7 +141,7 @@ export type CellSize = (typeof CELL_SIZES)[number];
 export const isCellSize = (value: number): value is CellSize =>
   CELL_SIZES.some((size) => size === value);
 
-/** The CRT switches on /scenes, each a slice of the full CRT look. */
+/** The CRT switches on /backgrounds, each a slice of the full CRT look. */
 export const FX_SWITCHES = [
   "scanlines",
   "bloom",

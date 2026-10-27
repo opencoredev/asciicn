@@ -14,7 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
       url: SITE.URL,
     },
-    // The Studio and the scenes gallery, right after home: both are
+    // The Studio and the backgrounds gallery, right after home: both are
     // destinations in their own right.
     ...APP_PAGE_SLUGS.map((slug) => ({
       changeFrequency: "weekly" as const,
@@ -30,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   ];
 
-  // Every docs page, scenes and engine guides included.
+  // Every docs page, city backgrounds and engine guides included.
   const docPages: MetadataRoute.Sitemap = source.getPages().map((page) => ({
     changeFrequency: "weekly" as const,
     lastModified: now,

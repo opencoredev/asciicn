@@ -47,7 +47,7 @@ const INSTALLS = [
   [".claude/skills/asciicn/", "The same skill, for Claude Code."],
   [
     "lib/ascii/",
-    "The engine, added by your agent the first time it builds a dither.",
+    "The engine, added by your agent the first time it builds an effect.",
   ],
   ["globals.css", "--ascii-ink, --ascii-paper and friends, from your theme."],
 ] as const;
@@ -64,7 +64,7 @@ export default function IndexPage() {
         {/*
          * Pulled up under the sticky header, so the nav pill floats on the
          * plate. The plate runs to the bottom of the first screen and stops
-         * square there, so the planet's arc sits on the section's edge.
+         * square there, so the city's skyline sits on the section's edge.
          */}
         <section className="container-wrapper -mt-(--header-height) pt-2">
           {/* Always the dark plate, in both site themes. */}
@@ -75,14 +75,14 @@ export default function IndexPage() {
                 style={stagger(0)}
                 className="rise-in text-[2.6rem] leading-[1.02] font-medium tracking-[-0.045em] text-balance sm:text-6xl lg:text-[4.75rem]"
               >
-                Add dithers to anything in your app.
+                Add ASCII to anything in your app.
               </h1>
               <p
                 style={stagger(1)}
                 className="rise-in text-muted-foreground max-w-xl text-lg text-balance sm:text-xl"
               >
-                Dithered shaders and UI for shadcn/ui. One prompt for your
-                coding agent.
+                ASCII shaders and UI for shadcn/ui. One prompt for your coding
+                agent.
               </p>
               <div style={stagger(2)} className="rise-in">
                 <HeroActions />
@@ -123,7 +123,7 @@ export default function IndexPage() {
           <div className="container flex flex-col gap-10 py-20 md:py-28">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-12">
               <h2 id="ask-heading" className={H2_CLS}>
-                Ask for any dither.
+                Ask for any ASCII effect.
               </h2>
               <p className={LEAD_CLS}>
                 The skill teaches your agent the engine, so one sentence is
@@ -149,7 +149,7 @@ export default function IndexPage() {
               <p className={LEAD_CLS}>
                 Add the skill with the skills CLI, for Claude Code, Codex,
                 Cursor or any other agent. Your agent adds the engine the first
-                time it builds a dither.
+                time it builds an ASCII effect.
               </p>
             </div>
             <CommandBox tool="skills" className="w-full max-w-3xl text-left" />

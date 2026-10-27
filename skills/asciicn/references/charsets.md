@@ -32,7 +32,7 @@ Rules of thumb:
 | ----------- | ------------------------------------------------------------------------------ | --------------------------------------------------------- |
 | `mono`      | Every glyph in `--ascii-ink`, or a `phosphor`                                  | Most UI, terminals, anything that should follow the theme |
 | `palette`   | The tone picks a colour from `palette` (paper, then inks from faint to strong) | Theme-coloured backgrounds with depth, charts with series |
-| `duotone`   | The tone picks a colour on a `ramp`, dark to bright                            | Moody backgrounds, heat, night scenes                     |
+| `duotone`   | The tone picks a colour on a `ramp`, dark to bright                            | Moody backgrounds, heat, night skies                      |
 | `truecolor` | The source colour per glyph: a `colorField`, an image, a video                 | Photos, video, sunsets, neon, anything with real colour   |
 | `ansi16`    | The source colour snapped to 16 terminal colours (`ansi="vga"` or `"xterm"`)   | ANSI art, terminal screenshots, `.ans` export             |
 

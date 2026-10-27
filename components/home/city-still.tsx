@@ -1,15 +1,15 @@
 "use client";
 
+import { useStill } from "@/components/home/city-stills";
 import { charsetSweep, FramePre } from "@/components/home/frame-pre";
-import { useStill } from "@/components/home/scene-stills";
 import type { StageSource } from "@/components/home/sources";
 import { cn } from "@/lib/utils";
 
 /**
- * A scene's still frame as text, filling a 16:9 box. Until the still is
- * baked (or if it can't be), the scene's charset swept across the box.
+ * A city's still frame as text, filling a 16:9 box. Until the still is
+ * baked (or if it can't be), the city's charset swept across the box.
  */
-export const SceneStill = ({
+export const CityStill = ({
   source,
   className,
 }: {

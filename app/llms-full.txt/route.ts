@@ -11,7 +11,7 @@ type DocsPage = ReturnType<typeof source.getPages>[number];
 /**
  * Agents are often handed this file whole, so it reads in the order they
  * need: getting started, then the engine, then the examples, then the Studio
- * and scenes gallery pages. The sidebar keeps its own order for people.
+ * and backgrounds gallery pages. The sidebar keeps its own order for people.
  */
 const readingOrder = (page: DocsPage) => {
   const [section = ""] = page.slugs;

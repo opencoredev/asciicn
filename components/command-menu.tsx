@@ -311,7 +311,7 @@ export const CommandMenu = ({
           className="rounded-none bg-transparent font-mono **:data-[slot=command-input-wrapper]:h-12 **:data-[slot=command-input-wrapper]:gap-3 **:data-[slot=command-input-wrapper]:px-4 **:data-[slot=command-input-wrapper]:[&>svg]:text-ink **:data-[slot=command-input]:h-12 **:data-[slot=command-input]:text-sm"
         >
           <CommandInput
-            placeholder="search components, scenes and docs"
+            placeholder="search components, backgrounds and docs"
             onValueChange={trackSearch}
           />
           <div className="flex h-[min(26rem,58vh)] min-h-0">

@@ -3,7 +3,7 @@ title: Introduction
 description: An ASCII engine, components and an agent skill for drawing real glyphs in React and shadcn/ui apps.
 ---
 
-asciicn draws pictures with characters. It is a WebGL2 and Canvas2D engine that turns a tone into a glyph, about 80 shadcn components and 12 animated scenes built on it, an ASCII Studio for tuning a look, and an agent skill that teaches your coding agent to build new effects on the same engine.
+asciicn draws pictures with characters. It is a WebGL2 and Canvas2D engine that turns a tone into a glyph, about 80 shadcn components and ten animated city backgrounds built on it, an ASCII Studio for tuning a look, and an agent skill that teaches your coding agent to build new effects on the same engine.
 
 Every component draws real glyphs: letters, block elements, Braille dots, CP437 and PETSCII characters, katakana. Cells snap to whole device pixels, so the text stays sharp at any zoom and on any screen.
 
@@ -11,8 +11,8 @@ Every component draws real glyphs: letters, block elements, Braille dots, CP437 
 
 - **The engine.** `ascii-core` installs into `lib/ascii` as plain source: charsets, palettes, cell metrics, the `AsciiGrid` canvas and `mapTones`, which turns a grid of tones into glyphs. `ascii-shader` adds `AsciiShader`, a WebGL2 renderer that draws a GLSL field as glyphs from a glyph atlas, with colour modes, pointer interaction, audio input and CRT effects. `ascii-export` saves any frame as `.txt`, `.ans`, `.svg` or `.png`, and records `.webm`.
 - **The components.** Backgrounds, charts, interface pieces, text effects, and image and video converters, each installable with `npx shadcn add`. Browse them in the [catalog](/docs/examples).
-- **The scenes.** Twelve full animated pieces, from a starling murmuration to a clockwork orrery. See them in the [scenes gallery](/scenes).
-- **The Studio.** [/studio](/studio) lets you pick a scene or component, change its charset, colours and CRT effects, and export the frame or the JSX.
+- **The backgrounds.** Ten animated cities, from Tokyo at night to fog over the Golden Gate Bridge. See them in the [backgrounds gallery](/backgrounds).
+- **The Studio.** [/studio](/studio) lets you pick a background or component, change its charset, colours and CRT effects, and export the frame or the JSX.
 - **The agent skill.** A `SKILL.md` and references that teach Claude Code, Codex, Cursor and other agents the engine: which charset suits which picture, how to write a field, where to place it on a page, how to colour it from your theme, and how to check it in a browser. [Installation](/docs/installation) adds it to your project.
 
 ## How ASCII art works here
@@ -60,7 +60,7 @@ You don't need to know which component or API fits. The skill sends the agent th
 ## How the docs are organised
 
 - **Get started:** this page, [Installation](/docs/installation) and [Theming](/docs/theming).
-- **Examples:** the [catalog](/docs/examples), then one page per component, grouped into Scenes, Backgrounds, Images, Charts, Text and Interface.
+- **Examples:** the [catalog](/docs/examples), then one page per component, grouped into Backgrounds, Images, Charts, Text and Interface.
 - **Engine:** how `lib/ascii` works, for when you want to build an effect yourself. Start with the [ASCII engine](/docs/engine/ascii-engine) and [Write your own](/docs/engine/write-your-own).
 
 ## Principles

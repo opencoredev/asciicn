@@ -8,7 +8,7 @@ import { SITE } from "@/constants/site";
  */
 export const agentStartHere = (base: string) => `## Start here
 
-asciicn is an ASCII engine, not a component menu. The scenes, backgrounds, charts, interface pieces, text and image components in these docs are examples of what the engine draws. When a user asks for an ASCII effect, build the one they asked for:
+asciicn is an ASCII engine, not a component menu. The backgrounds, charts, interface pieces, text and image components in these docs are examples of what the engine draws. When a user asks for an ASCII effect, build the one they asked for:
 
 1. Install the engine and the agent skill: \`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\`. Then follow the skill (${base}${ROUTES.AGENT_SKILL}).
 2. For anything that moves or varies per cell, write a GLSL \`field\` for \`AsciiShader\` (\`@/lib/ascii/shader\`): [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md). A field returns a tone from 0 to 1 and the engine picks the glyph. For grids you compute on the CPU (3D, simulations, terminal panes, charts), draw into \`AsciiGrid\` (\`@/lib/ascii\`) and map tones with \`mapTones\`.

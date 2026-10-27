@@ -9,11 +9,11 @@ const NAMED_PIECES = 4;
 
 const PARTS = [
   {
-    body: "ascii-core installs into lib/ascii as plain source you own. It turns a tone between 0 and 1 into dots with Bayer and blue-noise threshold matrices, then draws them three ways: a WebGL shader for anything that moves, SVG patterns and CSS masks for static fills, and a one-off pass for photos and logos. Colours come from your shadcn theme, animation pauses offscreen and respects reduced motion, and any dither exports to PNG, SVG or CSS.",
+    body: "ascii-core installs into lib/ascii as plain source you own. It turns a tone between 0 and 1 into a glyph from one of ten charsets, then draws it three ways: a WebGL2 glyph shader for anything that moves, a Canvas2D grid for what you compute in JavaScript, and a sampler for photos, video and your webcam. Colours come from your shadcn theme, animation pauses offscreen and respects reduced motion, and any frame exports to text, ANSI, SVG or PNG.",
     title: "The engine",
   },
   {
-    body: "A SKILL.md with references that teaches Claude Code, Codex, Cursor, Gemini and other coding agents to use the engine. It walks the agent through picking a technique, writing a field, placing the dither on a landing page or dashboard, colouring it from your theme, and checking it in a browser in light and dark mode at desktop and phone widths.",
+    body: "A SKILL.md with references that teaches Claude Code, Codex, Cursor, Gemini and other coding agents to use the engine. It walks the agent through picking a technique, writing a field, placing the effect on a landing page or dashboard, colouring it from your theme, and checking it in a browser in light and dark mode at desktop and phone widths.",
     title: "The agent skill",
   },
 ] as const;
@@ -47,8 +47,8 @@ export const HomeOverview = ({
           What's inside.
         </h2>
         <p className={leadClassName}>
-          asciicn is an open-source dither engine for shadcn/ui projects, with
-          an agent skill that teaches your coding agent to use it. Everything
+          asciicn is an open-source ASCII engine for shadcn/ui projects, with an
+          agent skill that teaches your coding agent to use it. Everything
           installs as code in your repo.
         </p>
       </div>

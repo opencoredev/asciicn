@@ -62,7 +62,7 @@ const isRateLimited = (pathname: string) =>
   RATE_LIMITED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
 /**
- * `/studio`, `/scenes`, `/about` (or the same with `.md`) to the page's slug,
+ * `/studio`, `/backgrounds`, `/about` (or the same with `.md`) to the page's slug,
  * if it is one of the app pages with a Markdown twin.
  */
 const pageSlug = (pathname: string) => {

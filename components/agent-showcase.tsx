@@ -7,19 +7,18 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/icon";
 import {
-  fillStyle,
   useDocumentVisible,
   useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { DitherMatrix } from "@/lib/ascii";
+import type { CharsetName } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 
 /**
  * Landing centrepiece: a sentence you might give your agent, sitting in a
- * composer on top of the dither it asks for. Each result is a short GLSL
+ * composer on top of the ASCII effect it asks for. Each result is a short GLSL
  * field on the engine's AsciiShader, written for this page, not an
  * installed example. When real agent runs replace them, `caption` carries
  * the credit ("Built by <model> from this sentence").
@@ -34,12 +33,14 @@ import { cn } from "@/lib/utils";
 // middle, clear of the composer. uv has y up.
 const FOCUS = "vec2(0.5, 0.6)";
 
-// A soft hole around the mock headline so it reads over the dither. Half
-// extents in cells: wide on desktop, the full text column on phones.
+// A soft hole around the mock headline so it reads over the glyphs. Half
+// extents in box heights: wide on desktop, the full text column on phones.
 const CLEAR = `
 float showClear(vec2 uv, vec2 res) {
-  vec2 extent = vec2(min(130.0, res.x * 0.46), 30.0);
-  return smoothstep(0.0, 0.7, length((uv - ${FOCUS}) * res / extent) - 1.0);
+  float aspect = res.x / res.y;
+  vec2 extent = vec2(min(0.62, aspect * 0.46), 0.15);
+  vec2 d = (uv - ${FOCUS}) * vec2(aspect, 1.0);
+  return smoothstep(0.0, 0.7, length(d / extent) - 1.0);
 }
 `;
 
@@ -109,11 +110,12 @@ interface ShowcaseItem {
   /** Who or what made the result. Technique only until real runs exist. */
   caption: string;
   field: string;
-  matrix: DitherMatrix;
+  /** The glyphs the effect draws with. */
+  charset: CharsetName;
   uniforms?: Record<string, number>;
   /** Field seconds shown under reduced motion. */
   stillTime: number;
-  /** The page content the dither sits behind. */
+  /** The page content the effect sits behind. */
   scene: ReactNode;
 }
 
@@ -123,12 +125,12 @@ const HEADLINE_CLS =
 const SHOWCASE = [
   {
     caption: techniqueCaption(TOPO_FIELD),
+    charset: "standard",
     field: TOPO_FIELD,
     id: "contours",
     label: "Contours",
-    matrix: "bayer4",
     prompt:
-      "A dithered topographic background behind the hero. Slow, and quiet enough to read over.",
+      "An ASCII topographic background behind the hero. Slow, and quiet enough to read over.",
     scene: (
       <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
         <p className={HEADLINE_CLS}>Field notes for the trail</p>
@@ -141,10 +143,10 @@ const SHOWCASE = [
   },
   {
     caption: techniqueCaption(METER_FIELD),
+    charset: "blocks",
     field: METER_FIELD,
     id: "meter",
     label: "Usage meter",
-    matrix: "bayer8",
     prompt:
       "A radial usage meter for the billing card. 72% used, with the number in the middle.",
     scene: (
@@ -162,10 +164,10 @@ const SHOWCASE = [
   },
   {
     caption: techniqueCaption(RIPPLE_FIELD),
+    charset: "braille",
     field: RIPPLE_FIELD,
     id: "ripples",
     label: "Ripples",
-    matrix: "bayer8",
     prompt: "Ripples spreading out from behind the pricing headline.",
     scene: (
       <div className="flex flex-col items-center gap-3 text-center">
@@ -191,13 +193,6 @@ const nextId = (id: ShowcaseId): ShowcaseId => {
 
 /** How long each result holds before the next, while auto-advancing. */
 const HOLD_MS = 7000;
-
-// The tab's progress line: a dithered ramp, densest at its moving end.
-const PROGRESS_FILL = fillStyle("gradient", {
-  cell: 2,
-  edge: "right",
-  length: 40,
-});
 
 /**
  * Fills from left to right over HOLD_MS, then calls `onDone`. Driven by
@@ -252,7 +247,6 @@ const TabProgress = ({
       <span
         ref={ref}
         className="bg-ascii-ink block size-full origin-left scale-x-0"
-        style={PROGRESS_FILL}
       />
     </span>
   );
@@ -276,7 +270,7 @@ const Stage = ({ item }: { item: ShowcaseItem }) => (
   <div className="bg-background relative isolate flex h-[560px] flex-col items-center overflow-hidden rounded-[24px] border px-4 pt-10 pb-5 sm:h-[600px] sm:px-8 sm:pb-8 lg:h-[640px]">
     <AsciiShader
       field={item.field}
-      matrix={item.matrix}
+      charset={item.charset}
       uniforms={item.uniforms}
       stillTime={item.stillTime}
       className="absolute inset-0 -z-10"
@@ -288,7 +282,7 @@ const Stage = ({ item }: { item: ShowcaseItem }) => (
   </div>
 );
 
-/** The stage plus its credit line, which sits outside the dither so it always reads. */
+/** The stage plus its credit line, which sits outside the effect so it always reads. */
 const Result = ({ item }: { item: ShowcaseItem }) => (
   <figure className="flex flex-col gap-3">
     <Stage item={item} />

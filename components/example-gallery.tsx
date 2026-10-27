@@ -89,7 +89,7 @@ const EXAMPLES: readonly Example[] = [
     align: "center",
     span: "lg:col-span-2",
     stage: "h-80",
-    url: "/docs/charts/stat-card",
+    url: "/docs/interface/stat-card",
   },
   {
     Demo: BarChartDemo,
@@ -110,7 +110,7 @@ const EXAMPLES: readonly Example[] = [
     align: "stretch",
     span: "lg:col-span-2",
     stage: "h-[420px]",
-    url: "/docs/backgrounds/ascii-globe",
+    url: "/docs/images/ascii-globe",
   },
   {
     Demo: DonutChartDemo,
@@ -156,7 +156,7 @@ const EXAMPLES: readonly Example[] = [
     align: "center",
     span: "lg:col-span-2",
     stage: "h-72",
-    url: "/docs/charts/progress-bar",
+    url: "/docs/interface/progress-bar",
   },
   {
     Demo: AsciiButtonDemo,

@@ -17,7 +17,7 @@ import { gzipSync } from "node:zlib";
 export const SKILL_NAME = "asciicn";
 
 export const SKILL_DESCRIPTION =
-  "Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app: animated scenes, backgrounds, charts, meters, cards, loaders, text effects, image and video to ASCII, and .txt/.ans/.svg/.png/.webm export. When to use: the user asks for ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, or code imports lib/ascii or components/asciicn.";
+  "Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app: animated backgrounds and city skylines, charts, meters, cards, loaders, text effects, image and video to ASCII, and .txt/.ans/.svg/.png/.webm export. When to use: the user asks for ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, or code imports lib/ascii or components/asciicn.";
 
 const ROOT = process.cwd();
 const SKILL_DIR = path.join(ROOT, "skills", SKILL_NAME);
@@ -28,7 +28,7 @@ const EXAMPLES_FILE = "references/examples.md";
 
 /** Example groups in docs order, keyed by the start of their fragment's name. */
 const GROUPS = [
-  { id: "scenes", title: "Scenes" },
+  { id: "cities", title: "City backgrounds" },
   { id: "backgrounds", title: "Backgrounds" },
   { id: "images", title: "Images and video" },
   { id: "charts", title: "Charts" },
@@ -106,7 +106,7 @@ const examplesMarkdown = (): string => {
 
   return `# Examples
 
-Components built on the engine. They are references, not a menu: install one when it is exactly what the user asked for, and otherwise write your own and borrow technique from the closest one. Each installs as plain source into \`components/asciicn/<name>.tsx\` (scenes into \`components/asciicn/scenes/\`), so you can read its field or grid code. Install one with:
+Components built on the engine. They are references, not a menu: install one when it is exactly what the user asked for, and otherwise write your own and borrow technique from the closest one. Each installs as plain source into \`components/asciicn/<name>.tsx\`, so you can read its field or grid code. Install one with:
 
 \`\`\`bash
 npx shadcn@latest add {{REGISTRY_URL}}/<name>.json

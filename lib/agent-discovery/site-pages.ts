@@ -6,15 +6,15 @@ import {
   isTrustPageSlug,
   trustPageMarkdown,
 } from "@/lib/trust-pages";
-import scenes from "@/registry/cities.json";
+import cities from "@/registry/cities.json";
 
 /**
  * The app pages outside /docs that answer `Accept: text/markdown` (and
- * `<path>.md`): the Studio, the scenes gallery and the trust pages. The home
+ * `<path>.md`): the Studio, the backgrounds gallery and the trust pages. The home
  * page has its own route (`homeContentRoute`). Agents can't run a WebGL
  * canvas, so each page says in words what it shows and how to build it.
  */
-export const APP_PAGE_SLUGS = ["studio", "scenes"] as const;
+export const APP_PAGE_SLUGS = ["studio", "backgrounds"] as const;
 export type AppPageSlug = (typeof APP_PAGE_SLUGS)[number];
 
 export const isAppPageSlug = (value: string): value is AppPageSlug =>
@@ -24,26 +24,26 @@ export const isAppPageSlug = (value: string): value is AppPageSlug =>
 export const isMarkdownPageSlug = (value: string): boolean =>
   isAppPageSlug(value) || isTrustPageSlug(value);
 
-interface SceneItem {
+interface CityItem {
   readonly name: string;
   readonly title?: string;
   readonly description?: string;
 }
 
-const isSceneItem = (value: unknown): value is SceneItem =>
+const isCityItem = (value: unknown): value is CityItem =>
   typeof value === "object" &&
   value !== null &&
   "name" in value &&
   typeof value.name === "string";
 
-// Read through `unknown`: scene agents edit this fragment while the site runs.
-const CITIES: readonly SceneItem[] = (scenes as readonly unknown[]).filter(
-  isSceneItem
+// Read through `unknown`: city agents edit this fragment while the site runs.
+const CITIES: readonly CityItem[] = (cities as readonly unknown[]).filter(
+  isCityItem
 );
 
 const studioMarkdown = (base: string) => `# ASCII Studio
 
-> Pick a scene or component, tune how the asciicn engine draws it, and export the frame or the code. Runs in the browser at ${base}/studio.
+> Pick a background or component, tune how the asciicn engine draws it, and export the frame or the code. Runs in the browser at ${base}/studio.
 
 ${AGENT_DOCS_DIRECTIVE_MARKDOWN}
 
@@ -52,7 +52,7 @@ The Studio is an interactive editor for the asciicn engine. Every control in it 
 ## Sources
 
 - **GPU backgrounds:** \`silk\`, \`nebula\`, \`plasma\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
-- **The 12 scenes** from the [scenes gallery](${base}/scenes.md).
+- **The ${CITIES.length} city backgrounds** from the [backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md).
 - **Media:** a sample image, a video URL, your webcam, or text you type, sampled on the CPU into glyphs. Files and camera frames stay in the browser and never enter the URL.
 
 ## What you can change
@@ -83,38 +83,38 @@ npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json
 That installs the engine and the agent skill. Then follow the skill at ${base}${ROUTES.AGENT_SKILL}, or start with [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
 `;
 
-const sceneLine = (base: string, scene: SceneItem) => {
-  const title = scene.title ?? scene.name;
-  const summary = scene.description ? `: ${scene.description}` : "";
-  return `- **${title}** (\`${scene.name}\`)${summary} Docs: ${base}/docs/scenes/${scene.name}.md. Install: \`npx shadcn@latest add ${SITE.REGISTRY}/${scene.name}.json\``;
+const cityLine = (base: string, city: CityItem) => {
+  const title = city.title ?? city.name;
+  const summary = city.description ? `: ${city.description}` : "";
+  return `- **${title}** (\`${city.name}\`)${summary} Docs: ${base}${ROUTES.DOCS_BACKGROUNDS}/${city.name}.md. Install: \`npx shadcn@latest add ${SITE.REGISTRY}/${city.name}.json\``;
 };
 
-const scenesMarkdown = (base: string) => `# ASCII scenes
+const backgroundsMarkdown = (base: string) => `# ASCII backgrounds
 
-> ${CITIES.length} animated ASCII scenes drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}/scenes.
+> ${CITIES.length} animated city backgrounds drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}${ROUTES.BACKGROUNDS}.
 
 ${AGENT_DOCS_DIRECTIVE_MARKDOWN}
 
-Every scene renders on the WebGL2 glyph shader, follows the \`--ascii-*\` theme tokens, holds one still frame under \`prefers-reduced-motion\`, and pauses offscreen and in hidden tabs. Most react to the pointer. Each accepts the engine's look props (\`charset\`, \`colorMode\`, \`phosphor\`, \`ramp\`, \`fx\`, \`cell\`, \`speed\`) and a \`handle\` for export.
+Every background follows the \`--ascii-*\` theme tokens, holds one still frame under \`prefers-reduced-motion\`, and pauses offscreen and in hidden tabs. Each accepts the engine's look props (\`charset\`, \`colorMode\`, \`phosphor\`, \`ramp\`, \`fx\`, \`cell\`, \`speed\`) and a \`handle\` for export. Put one behind your content with \`absolute inset-0\`.
 
-## Scenes
+## Cities
 
-${CITIES.map((scene) => sceneLine(base, scene)).join("\n")}
+${CITIES.map((city) => cityLine(base, city)).join("\n")}
 
 ## Use one
 
 \`\`\`tsx
-import { SynthwaveHorizonScene } from "@/components/asciicn/scenes/synthwave-horizon-scene";
+import { Tokyo } from "@/components/asciicn/tokyo";
 
 export const Hero = () => (
   <section className="relative h-[70vh]">
-    <SynthwaveHorizonScene className="absolute inset-0" charset="braille" />
+    <Tokyo className="absolute inset-0" />
     <h1 className="relative">Your headline</h1>
   </section>
 );
 \`\`\`
 
-To build a scene that isn't here, install the agent skill (\`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\`) and read [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
+More backgrounds (aurora, plasma, waves, starfield and others) are in the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md). To build one that isn't here, install the agent skill (\`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\`) and read [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
 `;
 
 /** The Markdown for an app or trust page, or `null` for any other slug. */
@@ -123,8 +123,8 @@ export const pageMarkdown = (slug: string, origin: string): string | null => {
   if (slug === "studio") {
     return studioMarkdown(base);
   }
-  if (slug === "scenes") {
-    return scenesMarkdown(base);
+  if (slug === "backgrounds") {
+    return backgroundsMarkdown(base);
   }
   return isTrustPageSlug(slug)
     ? trustPageMarkdown(TRUST_PAGES[slug], base)

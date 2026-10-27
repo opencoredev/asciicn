@@ -8,7 +8,7 @@ The engine installs as plain source. When this file and the code disagree, the c
 
 ## Look props
 
-Both renderers, and every component and scene, take the same look props (`AsciiLook` in `lib/ascii/look.ts`):
+Both renderers, and every component and background, take the same look props (`AsciiLook` in `lib/ascii/look.ts`):
 
 | Prop            | Type                                                          | What it does                                                                                                                                    |
 | --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |

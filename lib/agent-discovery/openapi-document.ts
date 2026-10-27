@@ -12,7 +12,7 @@ type Schema = Record<string, unknown>;
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 
-const DESCRIPTION = `Read-only HTTP surfaces for ${SITE.NAME}, an ASCII art engine for React: the documentation site, its shadcn/ui component registry (engine, components and animated scenes) and its agent skill. No authentication, no writes, no webhooks, so pagination and idempotency keys don't apply.
+const DESCRIPTION = `Read-only HTTP surfaces for ${SITE.NAME}, an ASCII art engine for React: the documentation site, its shadcn/ui component registry (engine, components and animated backgrounds) and its agent skill. No authentication, no writes, no webhooks, so pagination and idempotency keys don't apply.
 
 Versioning: JSON endpoints are versioned in the URL path (\`/api/v1/\`). Clients may also send the optional \`${API_VERSION_HEADER}\` header; the only version is \`${API_VERSION}\`, and any other value is rejected with a 400 \`unsupported_api_version\` problem. Breaking changes ship under a new path version (\`/api/v2/\`), never in place. Unversioned paths such as \`${ROUTES.API_STATUS}\` are aliases of the current version.
 
@@ -354,13 +354,25 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.REGISTRY]: {
         get: operation({
           description:
-            "Every item in the asciicn shadcn/ui registry: the engine (ascii-core, ascii-shader, ascii-export, ascii-tokens), the agent skill, the animated scenes and each component.",
+            "Every item in the asciicn shadcn/ui registry: the engine (ascii-core, ascii-shader, ascii-export, ascii-tokens), the agent skill, the animated city backgrounds and each component.",
           id: "getRegistry",
           mediaType: "application/json",
           okDescription: "The registry manifest",
           schema: ref("Registry"),
           summary: "List registry items",
           tag: "Registry",
+        }),
+      },
+      "/backgrounds.md": {
+        get: operation({
+          description:
+            "The backgrounds gallery as Markdown: every animated ASCII city background with its install command. /backgrounds returns the same body for Accept: text/markdown.",
+          id: "getBackgroundsMarkdown",
+          mediaType: "text/markdown",
+          okDescription: "Backgrounds gallery Markdown",
+          schema: MARKDOWN,
+          summary: "Get the backgrounds gallery as Markdown",
+          tag: "Discovery",
         }),
       },
       "/r/{name}.json": {
@@ -373,7 +385,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           parameters: [
             {
               description:
-                "Item name from the registry manifest, such as ascii-core, ascii-shader, synthwave-horizon-scene or asciicn-skill.",
+                "Item name from the registry manifest, such as ascii-core, ascii-shader, tokyo or asciicn-skill.",
               in: "path",
               name: "name",
               required: true,
@@ -453,18 +465,6 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           okDescription: "The OpenAPI document",
           schema: ref("OpenApiDocument"),
           summary: "Get the OpenAPI description",
-          tag: "Discovery",
-        }),
-      },
-      "/scenes.md": {
-        get: operation({
-          description:
-            "The scenes gallery as Markdown: every animated ASCII scene with its install command. /scenes returns the same body for Accept: text/markdown.",
-          id: "getScenesMarkdown",
-          mediaType: "text/markdown",
-          okDescription: "Scenes gallery Markdown",
-          schema: MARKDOWN,
-          summary: "Get the scenes gallery as Markdown",
           tag: "Discovery",
         }),
       },

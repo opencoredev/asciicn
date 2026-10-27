@@ -2,21 +2,21 @@ import type { ComponentType } from "react";
 
 import type { CharsetName } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { CITIES } from "@/lib/cities";
+import { CITIES, cityDocsUrl } from "@/lib/cities";
 import type { CityRenderer } from "@/lib/cities";
 
 /**
- * What the home page and /scenes can put on a stage: the 12 scenes, plus a
- * few background shaders from the catalogue. Site-only.
+ * What /backgrounds can put on a stage: the city backgrounds, plus a few
+ * background shaders from the catalogue. Site-only.
  */
 
-/** `gpu` scenes draw through WebGL2 and count against the context budget. */
+/** `gpu` sources draw through WebGL2 and count against the context budget. */
 export type Renderer = CityRenderer;
 
 export interface StageSource {
   /** Registry name, docs slug and `?source=` value. */
   readonly id: string;
-  readonly kind: "scene" | "shader";
+  readonly kind: "city" | "shader";
   readonly title: string;
   readonly description: string;
   readonly renderer: Renderer;
@@ -35,19 +35,19 @@ const pascal = (id: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-export const SCENE_SOURCES: readonly StageSource[] = CITIES.map((scene) => ({
-  charset: scene.charset,
-  description: scene.description,
-  exportName: pascal(scene.id),
-  href: `/docs/scenes/${scene.id}`,
-  id: scene.id,
-  kind: "scene",
-  load: scene.load,
-  renderer: scene.renderer,
-  title: scene.title,
+export const CITY_SOURCES: readonly StageSource[] = CITIES.map((city) => ({
+  charset: city.charset,
+  description: city.description,
+  exportName: pascal(city.id),
+  href: cityDocsUrl(city.id),
+  id: city.id,
+  kind: "city",
+  load: city.load,
+  renderer: city.renderer,
+  title: city.title,
 }));
 
-// The background components take the shader's props. Spreading the scene
+// The background components take the shader's props. Spreading the city
 // props through keeps the look switches working as the shader learns them.
 export const SHADER_SOURCES: readonly StageSource[] = [
   {
@@ -123,7 +123,7 @@ export const SHADER_SOURCES: readonly StageSource[] = [
 ];
 
 export const STAGE_SOURCES: readonly StageSource[] = [
-  ...SCENE_SOURCES,
+  ...CITY_SOURCES,
   ...SHADER_SOURCES,
 ];
 

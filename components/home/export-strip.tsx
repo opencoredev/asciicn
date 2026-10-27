@@ -29,10 +29,7 @@ import { cn } from "@/lib/utils";
 export const installCommand = (origin: string, id: string) =>
   `npx shadcn@latest add ${origin}/r/${id}.json`;
 
-const importPath = (source: StageSource) =>
-  source.kind === "scene"
-    ? `@/components/asciicn/scenes/${source.id}`
-    : `@/components/asciicn/${source.id}`;
+const importPath = (source: StageSource) => `@/components/asciicn/${source.id}`;
 
 const jsxValue = (value: unknown): string => {
   if (typeof value === "string") {

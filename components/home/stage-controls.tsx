@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The switches for a stage: source, charset, colour, cell size and (on
- * /scenes) the CRT effects. `StageControls` lays them out as one strip on
+ * /backgrounds) the CRT effects. `StageControls` lays them out as one strip on
  * wide screens; under `lg` it shrinks to the source picker and a button
  * that opens the rest in a bottom sheet.
  */
@@ -64,7 +64,7 @@ export const SourceSelect = ({
   className?: string;
 }) => {
   const id = useId();
-  const scenes = sources.filter((source) => source.kind === "scene");
+  const cities = sources.filter((source) => source.kind === "city");
   const shaders = sources.filter((source) => source.kind === "shader");
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>
@@ -78,8 +78,8 @@ export const SourceSelect = ({
           onChange={(event) => onChange({ sourceId: event.target.value })}
           className="border-rule bg-background text-foreground hover:border-foreground/40 focus-visible:outline-ring h-7 w-full min-w-0 cursor-pointer appearance-none truncate border py-0 pr-7 pl-2 font-mono text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
         >
-          <optgroup label="Scenes">
-            {scenes.map((source) => (
+          <optgroup label="Cities">
+            {cities.map((source) => (
               <option key={source.id} value={source.id}>
                 {source.id}
               </option>

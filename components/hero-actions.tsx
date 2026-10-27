@@ -16,7 +16,8 @@ import { quickStartPrompt } from "@/lib/agent-prompts";
 import { asciiMaskStyle } from "@/lib/ascii";
 import { trackEvent } from "@/lib/events";
 
-const COPIED_WASH = asciiMaskStyle(0.25, { cell: 2 });
+// Small glyphs, so the wash reads as a texture behind the label.
+const COPIED_WASH = asciiMaskStyle(0.25, { cell: 8 });
 
 /**
  * The landing hero's actions: read the docs, or copy a prompt that sets
@@ -65,7 +66,7 @@ export const HeroActions = () => {
           data-copied={isCopied}
           className="group/copy bg-foreground/[0.04] hover:bg-foreground/[0.08] border-foreground/15 relative isolate h-11 overflow-hidden rounded-full pr-5 pb-px pl-[19px] text-[0.95rem] motion-safe:active:scale-100"
         >
-          {/* Stays while it says Copied: the site's ink, as a fine dither. */}
+          {/* Stays while it says Copied: the site's ink, as a glyph texture. */}
           <span
             aria-hidden="true"
             className="bg-ascii-ink absolute inset-0 -z-10 opacity-0 transition-opacity duration-150 ease-out group-data-[copied=true]/copy:opacity-30"

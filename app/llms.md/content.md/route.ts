@@ -20,11 +20,12 @@ ${agentStartHere(base)}
 
 ## What's on the home page
 
-- A live ASCII hero drawn by the engine, with a charset and palette switcher.
-- The three parts of asciicn: the engine (\`lib/ascii\`: a WebGL2 glyph shader and Canvas2D grids), about 80 shadcn registry components, and the agent skill.
-- The 12 animated scenes, linked to the [scenes gallery](${base}/scenes.md).
-- The [ASCII Studio](${base}/studio.md), for tuning a look and exporting it.
-- The quick-start prompt to paste into a coding agent.
+- A hero over an animated ASCII city background, with links to the docs and a quick-start prompt to paste into a coding agent.
+- A wall of live examples from the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md): backgrounds, charts, text, images and interface pieces.
+- Requests you might give your agent, each shown over the ASCII effect it asks for.
+- What's inside: the engine (\`lib/ascii\`: a WebGL2 glyph shader and Canvas2D grids), the agent skill, and every example group.
+- The one command that installs the skill, and the files it adds.
+- The city backgrounds have their own [backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md).
 
 ## Quick links
 
@@ -34,7 +35,7 @@ ${agentStartHere(base)}
 - [Theming](${base}${ROUTES.DOCS_THEMING}.md)
 - [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md)
 - [Catalog of components](${base}${ROUTES.DOCS_EXAMPLES}.md)
-- [Scenes gallery](${base}/scenes.md)
+- [Backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md)
 - [ASCII Studio](${base}/studio.md)
 - [Registry index](${base}${ROUTES.REGISTRY})
 - [LLM index (llms.txt)](${base}${ROUTES.LLMS})

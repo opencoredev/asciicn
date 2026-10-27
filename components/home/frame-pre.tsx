@@ -95,9 +95,9 @@ export const FramePre = ({
 );
 
 /**
- * A charset's own ramp swept corner to corner, for a card whose scene
- * hasn't been captured yet. Honest about what it is: the glyphs the scene
- * draws with, not a picture of the scene.
+ * A charset's own ramp swept corner to corner, for a card whose city
+ * hasn't been captured yet. Honest about what it is: the glyphs the city
+ * draws with, not a picture of the city.
  */
 export const charsetSweep = (
   charset: CharsetName,

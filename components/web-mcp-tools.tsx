@@ -88,7 +88,7 @@ export const WebMcpTools = () => {
     });
 
     register({
-      description: `Open the ${SITE.NAME} ASCII Studio (/studio), where a scene or component can be restyled and exported, or the gallery of animated ASCII scenes (/scenes).`,
+      description: `Open the ${SITE.NAME} ASCII Studio (/studio), where a background or component can be restyled and exported, or the gallery of animated ASCII city backgrounds (/backgrounds).`,
       execute: (input) => {
         const path = getPath(input, STUDIO_PATH);
         const target = APP_PAGES.find((page) => page === path) ?? STUDIO_PATH;

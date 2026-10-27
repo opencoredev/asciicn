@@ -9,7 +9,7 @@ interface CreatePageMetadataOptions {
   description?: string;
   /**
    * Markdown mirror for a page the proxy doesn't know. Docs pages, the home
-   * page, /studio, /scenes and the trust pages get theirs automatically.
+   * page, /studio, /backgrounds and the trust pages get theirs automatically.
    */
   markdownPath?: string;
   noIndex?: boolean;

@@ -28,7 +28,7 @@ export interface StageProbe {
 }
 
 const POLL_MS = 500;
-// Every scene and shader on the site draws at 30 fps unless told otherwise.
+// Every city and shader on the site draws at 30 fps unless told otherwise.
 export const STAGE_FPS = 30;
 
 const readState = (root: Element | null): StageState => {

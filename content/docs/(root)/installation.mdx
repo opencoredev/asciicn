@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Add the asciicn engine and agent skill to a shadcn project, or install a single component or scene.
+description: Add the asciicn engine and agent skill to a shadcn project, or install a single component or background.
 ---
 
-asciicn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill. After that you ask your agent for ASCII effects, or install components and scenes one at a time.
+asciicn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill. After that you ask your agent for ASCII effects, or install components and backgrounds one at a time.
 
 ## Quick start with your agent
 
@@ -75,19 +75,19 @@ Then ask your agent for an effect. The [introduction](/docs#ask-your-agent-for-a
 
 ## What's in the skill
 
-| File                          | What it covers                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `SKILL.md`                    | The four steps the agent follows, how to choose a technique, and the rules for every effect                        |
-| `references/engine-api.md`    | The engine's exports: `AsciiShader`, `AsciiGrid`, `mapTones`, charsets, palettes, metrics, motion hooks and export |
-| `references/fields.md`        | Writing a GLSL field: the `uv`/`res`/`t` contract, sub-sampled charsets, uniforms, pointer and audio input         |
-| `references/charsets.md`      | Choosing a charset and a colour mode for a picture, custom ramps, phosphors and duotone ramps                      |
-| `references/recipes.md`       | Complete components to adapt: a shader background, a CPU grid, a chart, a terminal pane, an image, a scene         |
-| `references/landing-pages.md` | Designing the page around the effect: start from the product, one memorable hero, true copy, the tells to avoid    |
-| `references/placement.md`     | Layering, sizing, server and client components, text over glyphs                                                   |
-| `references/theme.md`         | The `--ascii-*` tokens, named colours, palettes, light and dark mode                                               |
-| `references/export.md`        | Saving frames as text, ANSI, SVG and PNG, and recording WebM                                                       |
-| `references/quality.md`       | The checks: crisp glyphs, contrast, reduced motion, accessibility, performance                                     |
-| `references/examples.md`      | Every component and scene, with its install command and docs link                                                  |
+| File                          | What it covers                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `SKILL.md`                    | The four steps the agent follows, how to choose a technique, and the rules for every effect                                   |
+| `references/engine-api.md`    | The engine's exports: `AsciiShader`, `AsciiGrid`, `mapTones`, charsets, palettes, metrics, motion hooks and export            |
+| `references/fields.md`        | Writing a GLSL field: the `uv`/`res`/`t` contract, sub-sampled charsets, uniforms, pointer and audio input                    |
+| `references/charsets.md`      | Choosing a charset and a colour mode for a picture, custom ramps, phosphors and duotone ramps                                 |
+| `references/recipes.md`       | Complete components to adapt: a shader background, a CPU grid, a chart, a terminal pane, an image, a full animated background |
+| `references/landing-pages.md` | Designing the page around the effect: start from the product, one memorable hero, true copy, the tells to avoid               |
+| `references/placement.md`     | Layering, sizing, server and client components, text over glyphs                                                              |
+| `references/theme.md`         | The `--ascii-*` tokens, named colours, palettes, light and dark mode                                                          |
+| `references/export.md`        | Saving frames as text, ANSI, SVG and PNG, and recording WebM                                                                  |
+| `references/quality.md`       | The checks: crisp glyphs, contrast, reduced motion, accessibility, performance                                                |
+| `references/examples.md`      | Every component and background, with its install command and docs link                                                        |
 
 The skill matches the engine it installs with and points your agent at the files in your project, so it never has to guess at an API.
 
@@ -104,15 +104,15 @@ done
 
 The skill tells the agent to install the engine into a project the first time it needs it.
 
-## Install the engine, a component or a scene
+## Install the engine, a component or a background
 
 Without the skill, install the engine on its own. `ascii-core` is the CPU side (charsets, `AsciiGrid`, `mapTones`); add `ascii-shader` for the WebGL2 renderer:
 
 <InstallBlock name="ascii-shader" />
 
-Or install any component or scene. Each one brings the parts of the engine it uses on its first install:
+Or install any component or background. Each one brings the parts of the engine it uses on its first install:
 
-<InstallBlock name="synthwave-horizon-scene" />
+<InstallBlock name="tokyo" />
 
 ## Update the engine
 
@@ -141,7 +141,7 @@ Then install with the `@asciicn` prefix:
 
 ```bash
 npx shadcn@latest add @asciicn/asciicn-skill
-npx shadcn@latest add @asciicn/synthwave-horizon-scene
+npx shadcn@latest add @asciicn/tokyo
 ```
 
 See the shadcn docs on [namespaced registries](https://ui.shadcn.com/docs/registry/namespace) for more options, including authentication.
@@ -151,13 +151,13 @@ See the shadcn docs on [namespaced registries](https://ui.shadcn.com/docs/regist
 The skill is the main way in. The site also publishes plain-text surfaces for agents that browse:
 
 - [`/llms.txt`](/llms.txt) lists every docs page with a one-line description and a Markdown link, and [`/llms-full.txt`](/llms-full.txt) is the whole documentation as one file.
-- Add `.md` to any docs URL for its Markdown, for example [`/docs/installation.md`](/docs/installation.md), or send an `Accept: text/markdown` header. The home page, [`/studio`](/studio.md) and [`/scenes`](/scenes.md) answer Markdown requests too.
+- Add `.md` to any docs URL for its Markdown, for example [`/docs/installation.md`](/docs/installation.md), or send an `Accept: text/markdown` header. The home page, [`/studio`](/studio.md) and [`/backgrounds`](/backgrounds.md) answer Markdown requests too.
 - The registry index is at [`/r/registry.json`](/r/registry.json), and each item at `/r/<name>.json`. The [shadcn MCP server](https://ui.shadcn.com/docs/mcp) can browse and install from it once you have [added the `@asciicn` namespace](#use-a-namespace).
 - [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json) lists the skill archive with its SHA-256 digest, [`/.well-known/api-catalog`](/.well-known/api-catalog) links every machine-readable surface (RFC 9727), [`/openapi.json`](/openapi.json) describes the read-only endpoints, and [`/api/v1/status`](/api/v1/status) returns `{"status":"ok"}`. The home page sends these as `Link` headers too.
 
 ## Next steps
 
 - [Ask your agent for any ASCII effect](/docs#ask-your-agent-for-any-ascii-effect) with the skill installed.
-- Browse the [catalog](/docs/examples) or the [scenes](/scenes) for something to install as it is.
+- Browse the [catalog](/docs/examples) or the [backgrounds](/backgrounds) for something to install as it is.
 - Try a look in the [Studio](/studio) and export the JSX.
 - [Write your own](/docs/engine/write-your-own) field, step by step.

@@ -2,7 +2,7 @@
 
 /**
  * What draws on the Studio stage. Component sources (backgrounds, 3D
- * objects, scenes) load on demand and take the look as props, so changing
+ * objects, cities) load on demand and take the look as props, so changing
  * a control re-renders without remounting. Media sources are sampled on
  * the CPU with the engine's `sampleToField` and drawn by an `AsciiGrid`.
  */

@@ -11,7 +11,7 @@
 ╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝╚═╝ ╚═════╝╚═╝  ╚═══╝
 ```
 
-asciicn draws pictures with real glyphs in React. It is a WebGL2 and Canvas2D ASCII engine, about 80 shadcn registry components and 12 animated scenes built on it, an ASCII Studio for tuning a look, and an agent skill that teaches Claude Code, Codex, Cursor and other agents to build new effects on the same engine.
+asciicn draws pictures with real glyphs in React. It is a WebGL2 and Canvas2D ASCII engine, about 80 shadcn registry components and ten animated city backgrounds built on it, an ASCII Studio for tuning a look, and an agent skill that teaches Claude Code, Codex, Cursor and other agents to build new effects on the same engine.
 
 Everything installs with the shadcn CLI as plain source you own.
 
@@ -30,10 +30,10 @@ From a project that uses shadcn/ui, Tailwind CSS v4 and React 19:
 npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
 ```
 
-This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--ascii-*` CSS variables. Any component or scene installs the same way, by URL or through the `@asciicn` namespace:
+This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--ascii-*` CSS variables. Any component or background installs the same way, by URL or through the `@asciicn` namespace:
 
 ```bash
-npx shadcn@latest add https://asciicn.dev/r/synthwave-horizon-scene.json
+npx shadcn@latest add https://asciicn.dev/r/tokyo.json
 npx shadcn@latest add @asciicn/plasma
 ```
 
@@ -77,7 +77,7 @@ For grids you compute in JavaScript (3D, simulations, charts, terminal panes), d
 | Group            | Items                                                                                                                                                                                                            |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Engine           | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                                                     |
-| Scenes           | synthwave horizon, terminal deck, sacred torus, warp tunnel, tempest storm, fluid smoke, morphogenesis, murmuration, woven banner, circuit bloom, orrery, hourglass                                              |
+| Cities           | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                                                                              |
 | Backgrounds      | aurora, beams, contours, eclipse, halftone, horizon, mesh gradient, metaballs, noise field, plasma, retro grid, ridgelines, ripples, silk, smoke, starfield, tunnel, waves, nebula, prism, ionize, squall, satin |
 | Images and video | ascii-image, ascii-video, image-compare, scroll-reveal-image, ascii-logo, ascii-globe, world-land, ascii-donut, ascii-orb                                                                                        |
 | Charts           | cartesian-chart, area-chart, bar-chart, line-chart, sparkline, heatmap, donut-chart, radar-chart, gauge, uptime-bar, dot-map                                                                                     |
@@ -86,9 +86,9 @@ For grids you compute in JavaScript (3D, simulations, charts, terminal panes), d
 
 The full, current list is at [`/r/registry.json`](https://asciicn.dev/r/registry.json) and in the [catalog](https://asciicn.dev/docs/examples).
 
-## Studio and scenes
+## Studio and backgrounds
 
-[asciicn.dev/studio](https://asciicn.dev/studio) lets you pick a scene or component, change its charset, colour mode, grade, cell size and CRT effects, and export the frame or the JSX. [asciicn.dev/scenes](https://asciicn.dev/scenes) shows all 12 scenes running.
+[asciicn.dev/studio](https://asciicn.dev/studio) lets you pick a background or component, change its charset, colour mode, grade, cell size and CRT effects, and export the frame or the JSX. [asciicn.dev/backgrounds](https://asciicn.dev/backgrounds) shows all ten city backgrounds running.
 
 ## For agents
 
@@ -114,8 +114,8 @@ Set `SITE_URL` to the public origin when deploying. Without it, a Vercel product
 ## Project structure
 
 ```text
-├── app/                  # Next.js app: home, /studio, /scenes, docs, OG images, agent routes
-├── components/asciicn/   # Shipped components, one file each; scenes/ holds the scenes
+├── app/                  # Next.js app: home, /studio, /backgrounds, docs, OG images, agent routes
+├── components/asciicn/   # Shipped components and city backgrounds, one file each
 ├── components/           # Site components (ui/ holds the shadcn primitives)
 ├── content/docs/         # Docs (MDX): (root) is Get started, engine/ the engine guides, the rest component groups
 ├── examples/             # Docs demos and their preview controls (site only)

@@ -1,15 +1,15 @@
 ---
 name: asciicn
-description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, an ASCII background, hero, scene, chart, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
+description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, an ASCII background, hero, city skyline, chart, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
 ---
 
 # asciicn
 
-asciicn is an ASCII engine. It draws pictures with real glyphs: a tone from 0 (empty) to 1 (full) becomes a character from a charset, coloured by a colour mode, on a grid of cells that snap to whole device pixels. You build the effect the user asked for on top of it. The asciicn components and scenes are examples of what the engine draws, not a menu. Install one only when it is exactly what the user asked for. Otherwise write your own, and borrow technique from the closest example's source.
+asciicn is an ASCII engine. It draws pictures with real glyphs: a tone from 0 (empty) to 1 (full) becomes a character from a charset, coloured by a colour mode, on a grid of cells that snap to whole device pixels. You build the effect the user asked for on top of it. The asciicn components and backgrounds are examples of what the engine draws, not a menu. Install one only when it is exactly what the user asked for. Otherwise write your own, and borrow technique from the closest example's source.
 
 The engine has two renderers that share one set of look props:
 
-- **`AsciiShader`** (`@/lib/ascii/shader`, registry item `ascii-shader`): WebGL2. You write a GLSL `field` that returns a tone per sample; the GPU picks glyphs from a glyph atlas. For anything that moves or varies per cell: backgrounds, scenes, glows, noise, tunnels, rain.
+- **`AsciiShader`** (`@/lib/ascii/shader`, registry item `ascii-shader`): WebGL2. You write a GLSL `field` that returns a tone per sample; the GPU picks glyphs from a glyph atlas. For anything that moves or varies per cell: backgrounds, cities, glows, noise, tunnels, rain.
 - **`AsciiGrid`** (`@/lib/ascii`, registry item `ascii-core`): Canvas2D. You write a `draw` function that fills a frame of glyphs on the CPU, directly or through `mapTones`. For things you compute in JavaScript: 3D meshes, simulations, charts, terminal panes, sampled images and video, text layouts.
 
 ## 1. Set up the engine

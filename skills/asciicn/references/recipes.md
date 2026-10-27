@@ -458,9 +458,9 @@ export const AsciiPhoto = ({
 
 `useMediaElement(source)` takes a URL, a `Blob` (a file the user picked) or a `MediaStream`, and returns `{ element, kind, error }`; show a message when `error` is set. `into` reuses the field between frames, and `aspect` tells the sampler the box's real shape so the image isn't stretched. For video, leave `animate` on so each frame resamples; for a webcam, pass the stream from `navigator.mediaDevices.getUserMedia({ video: true })`, set `mirror: true`, and stop its tracks on unmount. Frames never leave the browser.
 
-## A scene with colour, CRT and the pointer
+## A full background with colour, CRT and the pointer
 
-Combine a `field`, a `colorField`, CRT effects and pointer parallax into a full animated piece. This is how the scenes in the registry are built; read one (`components/asciicn/scenes/*.tsx`) for a larger example.
+Combine a `field`, a `colorField`, CRT effects and pointer parallax into a full animated piece. This is how the city backgrounds in the registry are built; read one (`components/asciicn/tokyo.tsx`) for a larger example.
 
 ```tsx
 "use client";
@@ -494,7 +494,7 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
   return p.y < duneHeight(p, t) ? sand : mix(sand, dusk, sky);
 }`;
 
-export const DuneScene = ({
+export const DuneBackground = ({
   charset = "dense",
   fx = CRT_FX,
   stillTime = 4,

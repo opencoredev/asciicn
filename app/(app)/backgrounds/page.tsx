@@ -1,4 +1,4 @@
-import { SceneGallery } from "@/components/home/scene-gallery";
+import { BackgroundGallery } from "@/components/home/background-gallery";
 import { SiteFooter } from "@/components/site-footer";
 import { ROUTES } from "@/constants/routes";
 import { CITIES } from "@/lib/cities";
@@ -8,23 +8,23 @@ import { createPageMetadata } from "@/seo/metadata";
 export const dynamic = "force-static";
 export const revalidate = false;
 
-const TITLE = "ASCII scenes";
-const DESCRIPTION = `${CITIES.length} animated ASCII scenes for React, drawn in real glyphs. Switch charsets, colours and CRT effects live, then install one with the shadcn CLI or export the frame.`;
+const TITLE = "ASCII backgrounds";
+const DESCRIPTION = `${CITIES.length} animated city backgrounds for React, drawn in real glyphs. Switch charsets, colours and CRT effects live, then install one with the shadcn CLI or export the frame.`;
 
 export const metadata = createPageMetadata({
   description: DESCRIPTION,
   ogImage: `${ROUTES.OG}?${new URLSearchParams({ description: DESCRIPTION, title: TITLE })}`,
-  path: "/scenes",
+  path: ROUTES.BACKGROUNDS,
   title: TITLE,
 });
 
-export default function ScenesPage() {
+export default function BackgroundsPage() {
   return (
     <>
       <BreadcrumbJsonLd
         items={[
           { name: "Home", path: ROUTES.HOME },
-          { name: "Scenes", path: "/scenes" },
+          { name: "Backgrounds", path: ROUTES.BACKGROUNDS },
         ]}
       />
       <div className="container-wrapper pt-6 pb-20 md:pb-28">
@@ -33,19 +33,19 @@ export default function ScenesPage() {
             <div className="flex flex-col gap-2">
               <p className="text-faint flex items-center gap-3 font-mono text-[11px]">
                 <span className="text-ink tabular">{CITIES.length}</span>
-                components/asciicn/scenes/
+                components/asciicn/
               </p>
               <h1 className="font-display text-[2rem] leading-[1.06] tracking-[-0.035em] sm:text-[2.6rem]">
-                Scenes
+                Backgrounds
               </h1>
             </div>
             <p className="text-muted-foreground max-w-xl text-[15px] text-pretty">
-              Procedural worlds drawn in glyphs. Each is one component that
-              reacts to the pointer and takes every charset, colour mode and CRT
+              Ten cities drawn in glyphs. Each is one component you can put
+              behind a hero, and each takes every charset, colour mode and CRT
               effect. Point at the stage to read any glyph.
             </p>
           </header>
-          <SceneGallery />
+          <BackgroundGallery />
         </div>
       </div>
       <SiteFooter />

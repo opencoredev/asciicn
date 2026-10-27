@@ -9,19 +9,19 @@ import {
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
+import { CityStill } from "@/components/home/city-still";
+import { StillBaker } from "@/components/home/city-stills";
 import { TEXT_LINK } from "@/components/home/cta";
 import { ExportStrip, installCommand } from "@/components/home/export-strip";
 import { CHARSET_SIGNS, lookProps } from "@/components/home/looks";
-import { SceneStill } from "@/components/home/scene-still";
-import { StillBaker } from "@/components/home/scene-stills";
-import { findSource, SCENE_SOURCES } from "@/components/home/sources";
+import { CITY_SOURCES, findSource } from "@/components/home/sources";
 import type { StageSource } from "@/components/home/sources";
 import { Stage } from "@/components/home/stage";
 import {
   CompactStageControls,
   StageControls,
 } from "@/components/home/stage-controls";
-import { useStageSettings } from "@/components/home/studio-hero";
+import { useStageSettings } from "@/components/home/use-stage-settings";
 import { Icon } from "@/components/icon";
 import { Kbd } from "@/components/terminal/kbd";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
@@ -32,13 +32,13 @@ import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 
 /**
- * /scenes: the selected scene on a big stage with every switch (charset,
- * colour, cell, CRT effects), then all scenes as cards. `?scene=<id>`
+ * /backgrounds: the selected city on a big stage with every switch
+ * (charset, colour, cell, CRT effects), then all cities as cards. `?city=<id>`
  * selects one and stays in the address bar as you switch, so a link
- * reopens the same scene. `[` and `]` step through them.
+ * reopens the same city. `[` and `]` step through them.
  */
 
-const FIRST_SCENE = SCENE_SOURCES[0]?.id ?? "";
+const FIRST_CITY = CITY_SOURCES[0]?.id ?? "";
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -56,7 +56,7 @@ const CopyInstall = ({ source }: { source: StageSource }) => {
         if (await copyToClipboard(command)) {
           trackEvent({
             name: "install_command_copied",
-            properties: { component_name: source.id, section: "scene_card" },
+            properties: { component_name: source.id, section: "city_card" },
           });
         }
       }}
@@ -77,26 +77,26 @@ const CopyInstall = ({ source }: { source: StageSource }) => {
   );
 };
 
-export const SceneGallery = () => {
+export const BackgroundGallery = () => {
   const { settings, source, update } = useStageSettings(
     {
       cell: 12,
       charset: null,
       colorId: null,
       fx: new Set(),
-      sourceId: FIRST_SCENE,
+      sourceId: FIRST_CITY,
     },
-    SCENE_SOURCES
+    CITY_SOURCES
   );
   const handle = useRef<AsciiHandle | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const charset = settings.charset ?? source.charset;
-  const index = SCENE_SOURCES.indexOf(source);
+  const index = CITY_SOURCES.indexOf(source);
 
-  // Read ?scene= once on load; the server render shows the first scene.
+  // Read ?city= once on load; the server render shows the first city.
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("scene");
-    if (requested && findSource(requested, SCENE_SOURCES)) {
+    const requested = new URLSearchParams(window.location.search).get("city");
+    if (requested && findSource(requested, CITY_SOURCES)) {
       update({ sourceId: requested });
     }
     // Only on mount: later changes come from the page itself.
@@ -106,10 +106,10 @@ export const SceneGallery = () => {
   // Keep the address bar in step, without adding history entries.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("scene") === source.id) {
+    if (url.searchParams.get("city") === source.id) {
       return;
     }
-    url.searchParams.set("scene", source.id);
+    url.searchParams.set("city", source.id);
     window.history.replaceState(window.history.state, "", url);
   }, [source.id]);
 
@@ -124,9 +124,9 @@ export const SceneGallery = () => {
       ) {
         return;
       }
-      const count = SCENE_SOURCES.length;
+      const count = CITY_SOURCES.length;
       const next =
-        SCENE_SOURCES[(index + (event.key === "]" ? 1 : -1) + count) % count];
+        CITY_SOURCES[(index + (event.key === "]" ? 1 : -1) + count) % count];
       if (next) {
         update({ sourceId: next.id });
       }
@@ -160,14 +160,14 @@ export const SceneGallery = () => {
             <StageControls
               settings={settings}
               source={source}
-              sources={SCENE_SOURCES}
+              sources={CITY_SOURCES}
               onChange={update}
               fx
             />
           </div>
           <div className="bg-background/92 border-rule absolute bottom-3 left-3 z-20 max-w-[min(28rem,calc(100%-1.5rem))] border p-3 backdrop-blur-sm">
             <p className="label-caps text-muted-foreground tabular">
-              {String(index + 1).padStart(2, "0")} / {SCENE_SOURCES.length} ·{" "}
+              {String(index + 1).padStart(2, "0")} / {CITY_SOURCES.length} ·{" "}
               {source.renderer === "gpu" ? "WebGL2" : "Canvas2D"}
             </p>
             <h2 className="font-display mt-1 text-[15px] leading-snug">
@@ -190,7 +190,7 @@ export const SceneGallery = () => {
           className="lg:hidden"
           settings={settings}
           source={source}
-          sources={SCENE_SOURCES}
+          sources={CITY_SOURCES}
           onChange={update}
           fx
         />
@@ -199,17 +199,17 @@ export const SceneGallery = () => {
           <p className="text-muted-foreground hidden items-center gap-1.5 font-mono text-[11px] lg:flex">
             <Kbd>[</Kbd>
             <Kbd>]</Kbd>
-            step through scenes
+            step through cities
           </p>
         </div>
       </div>
 
       <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-        {SCENE_SOURCES.map((scene, position) => {
-          const selected = scene.id === source.id;
+        {CITY_SOURCES.map((city, position) => {
+          const selected = city.id === source.id;
           return (
             <li
-              key={scene.id}
+              key={city.id}
               className={cn(
                 "border-rule flex flex-col border transition-colors duration-150",
                 selected && "border-ink"
@@ -217,12 +217,12 @@ export const SceneGallery = () => {
             >
               <button
                 type="button"
-                onClick={() => show(scene.id)}
+                onClick={() => show(city.id)}
                 aria-pressed={selected}
-                aria-label={`Show ${scene.title} on the stage`}
+                aria-label={`Show ${city.title} on the stage`}
                 className="group/show focus-visible:outline-ring relative block focus-visible:outline-2 focus-visible:-outline-offset-2"
               >
-                <SceneStill source={scene} />
+                <CityStill source={city} />
                 <span className="bg-background/92 border-rule text-foreground absolute right-2 bottom-2 flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] opacity-0 transition-opacity duration-150 group-hover/show:opacity-100 group-focus-visible/show:opacity-100">
                   <Icon icon={PlayIcon} className="size-3" />
                   {selected ? "on stage" : "show on stage"}
@@ -231,35 +231,35 @@ export const SceneGallery = () => {
               <div className="border-rule flex flex-1 flex-col gap-2 border-t p-3">
                 <div className="text-faint flex items-center justify-between gap-2 font-mono text-[11px]">
                   <span className={cn("tabular", selected && "text-ink")}>
-                    {String(position + 1).padStart(2, "0")} · {scene.id}
+                    {String(position + 1).padStart(2, "0")} · {city.id}
                   </span>
                   <span
                     className="flex items-center gap-1"
-                    title={`Default charset: ${CHARSETS[scene.charset].label}`}
+                    title={`Default charset: ${CHARSETS[city.charset].label}`}
                   >
                     <span aria-hidden className="text-muted-foreground">
-                      {CHARSET_SIGNS[scene.charset]}
+                      {CHARSET_SIGNS[city.charset]}
                     </span>
-                    {scene.charset} ·{" "}
-                    {scene.renderer === "gpu" ? "webgl2" : "canvas"}
+                    {city.charset} ·{" "}
+                    {city.renderer === "gpu" ? "webgl2" : "canvas"}
                   </span>
                 </div>
                 <h3 className="font-display text-[14px] leading-snug">
                   <Link
-                    href={scene.href}
+                    href={city.href}
                     transitionTypes={["nav-forward"]}
                     className="hover:text-ink focus-visible:outline-ring transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2"
                   >
-                    {scene.title}
+                    {city.title}
                   </Link>
                 </h3>
                 <p className="text-muted-foreground line-clamp-2 text-[13px] text-pretty">
-                  {scene.description}
+                  {city.description}
                 </p>
                 <div className="mt-auto flex items-center gap-1.5 pt-1">
-                  <CopyInstall source={scene} />
+                  <CopyInstall source={city} />
                   <Link
-                    href={`/studio?source=${scene.id}`}
+                    href={`/studio?source=${city.id}`}
                     className="border-rule text-muted-foreground hover:text-foreground hover:border-foreground/40 focus-visible:outline-ring flex h-8 shrink-0 items-center border px-2 font-mono text-[11px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1"
                   >
                     Studio
@@ -270,7 +270,7 @@ export const SceneGallery = () => {
           );
         })}
       </ul>
-      <StillBaker sources={SCENE_SOURCES} active />
+      <StillBaker sources={CITY_SOURCES} active />
     </div>
   );
 };

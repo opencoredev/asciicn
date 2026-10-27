@@ -39,7 +39,7 @@ const createPointerStore = (): PointerStore => {
 
 /**
  * A store per stage, so the pointer readouts re-render on their own and
- * the scene under them doesn't re-render on every pointer move.
+ * the background under them doesn't re-render on every pointer move.
  */
 export const usePointerStore = (): PointerStore => {
   const [store] = useState(createPointerStore);

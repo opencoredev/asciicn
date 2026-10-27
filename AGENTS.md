@@ -7,12 +7,12 @@ Guide for coding agents working in this repository. It covers the site at asciic
 | Path                                                                                                 | What it is                                                                                                                                             | Shipped to users?       |
 | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
 | `lib/ascii/`                                                                                         | The engine. `index.ts` is `ascii-core` (CPU); `shader.tsx`, `glsl.ts`, `gpu.ts`, `atlas.ts` are `ascii-shader` (WebGL2); `export.ts` is `ascii-export` | Yes                     |
-| `components/asciicn/`                                                                                | Registry components, one file each. `scenes/` holds the 12 scenes                                                                                      | Yes                     |
+| `components/asciicn/`                                                                                | Registry components and the ten city backgrounds, one file each                                                                                        | Yes                     |
 | `registry/*.json`                                                                                    | Registry fragments, one per group. `{{REGISTRY_URL}}` is filled in at build time                                                                       | Yes (built)             |
 | `skills/asciicn/`                                                                                    | The agent skill. `references/examples.md` is generated from the fragments                                                                              | Yes, as `asciicn-skill` |
 | `content/docs/`                                                                                      | Docs pages (MDX, Fumadocs). Folder `meta.json` files set sidebar order                                                                                 | No                      |
 | `examples/`                                                                                          | Docs demos (`<name>-demo.tsx`), preview knobs (`<name>-controls.ts`) and variants                                                                      | No                      |
-| `app/`                                                                                               | Next.js App Router: home, `/studio`, `/scenes`, `/docs`, OG images, agent routes                                                                       | No                      |
+| `app/`                                                                                               | Next.js App Router: home, `/studio`, `/backgrounds`, `/docs`, OG images, agent routes                                                                  | No                      |
 | `app/llms.txt`, `app/llms-full.txt`, `app/llms.md`, `app/.well-known`, `app/openapi.json`, `app/api` | Agent discovery surfaces                                                                                                                               | No                      |
 | `lib/agent-discovery/`                                                                               | Markdown for agents, the skill renderer and archive, OpenAPI, RFC 9457 problems                                                                        | No                      |
 | `proxy.ts`                                                                                           | Markdown negotiation (`Accept: text/markdown` and `.md`), API version check, server analytics                                                          | No                      |
@@ -52,7 +52,7 @@ Run `ultracite fix` on the files you touched, not the whole repo, when other wor
 
 ## Adding a component
 
-1. `components/asciicn/<name>.tsx` (scenes: `components/asciicn/scenes/<name>.tsx`): one exported component and its `Props` interface. Import only from `@/lib/ascii`, `@/lib/ascii/shader`, `@/lib/utils`, `react`, other `@/components/asciicn/*` items and existing npm packages.
+1. `components/asciicn/<name>.tsx`: one exported component and its `Props` interface. Import only from `@/lib/ascii`, `@/lib/ascii/shader`, `@/lib/utils`, `react`, other `@/components/asciicn/*` items and existing npm packages.
 2. A registry entry in the right `registry/<group>.json`: `name`, `type: "registry:component"`, `title`, `description` (one sentence, same as the docs page), `registryDependencies` (`{{REGISTRY_URL}}/ascii-core.json`, plus `ascii-shader.json` if it imports `@/lib/ascii/shader`, plus every `@/components/asciicn/*` it imports), and `files`.
 3. `content/docs/<group>/<name>.mdx`: frontmatter `title` and `description`, a `<ComponentPreview>` first, then `## Installation` (`<InstallBlock name="<name>" />`), `## Usage`, `## Examples`, `## Props` (`<PropsTable>`), `## Notes`.
 4. `examples/<name>-demo.tsx`, `examples/<name>-controls.ts` and two or three variants. Every demo shows the effect on its first frame and has a charset knob where charsets apply.
@@ -69,7 +69,7 @@ Never hard-code a host in a fragment; use `{{REGISTRY_URL}}`.
 
 ## Agent surfaces
 
-Every page has a Markdown twin: docs pages through `lib/source.ts` (`getLLMText`), the home page at `/llms.md/content.md`, and `/studio`, `/scenes`, `/about`, `/contact` and `/privacy` through `lib/agent-discovery/site-pages.ts`. When you add an MDX component that carries content (code, a command, a prompt), teach `lib/agent-discovery/docs-markdown.ts` to turn it into Markdown. When you add a top-level page, add its Markdown to `site-pages.ts` and its URL to `app/sitemap.ts`.
+Every page has a Markdown twin: docs pages through `lib/source.ts` (`getLLMText`), the home page at `/llms.md/content.md`, and `/studio`, `/backgrounds`, `/about`, `/contact` and `/privacy` through `lib/agent-discovery/site-pages.ts`. When you add an MDX component that carries content (code, a command, a prompt), teach `lib/agent-discovery/docs-markdown.ts` to turn it into Markdown. When you add a top-level page, add its Markdown to `site-pages.ts` and its URL to `app/sitemap.ts`.
 
 ## Verifying a change
 

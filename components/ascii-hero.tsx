@@ -1,136 +1,163 @@
 "use client";
 
-import { asciiMask } from "@/lib/ascii";
-import { AsciiShader } from "@/lib/ascii/shader";
+import { useEffect, useRef, useState } from "react";
+import type { ComponentType } from "react";
+
+import {
+  useDocumentVisible,
+  useInView,
+  usePrefersReducedMotion,
+} from "@/lib/ascii";
+import type { AsciiSceneProps } from "@/lib/ascii/scene";
+import { CITIES } from "@/lib/cities";
+import type { CityEntry } from "@/lib/cities";
 import { cn } from "@/lib/utils";
 
 /**
- * Site illustration, not a registry piece: a slow aurora over a planet's
- * horizon, ordered-dithered with the 4x4 Bayer matrix.
+ * Site illustration, not a registry piece: the city backgrounds behind the
+ * landing hero. Each visit opens on a random city, then the next one fades
+ * in over it every HOLD_MS. Rotation pauses offscreen and in hidden tabs,
+ * and never runs under reduced motion, where the city holds a still frame.
  *
- * Drawn by <AsciiShader /> from ascii-core. The static CSS rings below
- * are its fallback: they paint first and stay for anyone without WebGL.
+ * Cities load one at a time, so the page only pays for the one on screen.
+ * The dark plate shows through until the first one arrives.
  */
 
-// Shared geometry: an ellipse whose top edge is the horizon. Centre and radii
-// are fractions of the card's width and height, measured from the top.
-const PLANET = { cx: 0.5, cy: 1.3, rx: 0.76, ry: 0.42 } as const;
+const HOLD_MS = 20_000;
+const FADE_MS = 1600;
 
-// Static composition: rings around the planet's edge, as fractions of its
-// radius, each filled at one Bayer level. Densest at the rim.
-const RINGS = [
-  { from: 0.95, level: 4, to: 0.98 },
-  { from: 0.98, level: 10, to: 1 },
-  { from: 1, level: 14, to: 1.04 },
-  { from: 1.04, level: 9, to: 1.1 },
-  { from: 1.1, level: 5, to: 1.18 },
-  { from: 1.18, level: 2, to: 1.28 },
-] as const;
+// Darkens the middle of the plate, from the headline down to the buttons,
+// so the copy reads over the busiest skyline.
+const SCRIM =
+  "radial-gradient(ellipse var(--scrim-width) 40% at 50% 52%, color-mix(in oklab, var(--background) 92%, transparent) 0%, color-mix(in oklab, var(--background) 84%, transparent) 55%, transparent 100%)";
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+interface Layer {
+  readonly city: CityEntry;
+  /** Grows with every switch, so a city that comes round again remounts. */
+  readonly key: number;
+}
 
-const ringStyle = ({
-  from,
-  level,
-  to,
-}: (typeof RINGS)[number]): React.CSSProperties => {
-  const ring = `radial-gradient(ellipse ${pct(PLANET.rx)} ${pct(PLANET.ry)} at ${pct(PLANET.cx)} ${pct(PLANET.cy)}, transparent ${pct(from)}, #000 ${pct(from)}, #000 ${pct(to)}, transparent ${pct(to)})`;
-  const images = `${asciiMask(level / 16)}, ${ring}`;
-  const sizes = "calc(var(--ascii-cell) * 4), 100% 100%";
-  return {
-    WebkitMaskComposite: "source-in",
-    WebkitMaskImage: images,
-    WebkitMaskRepeat: "repeat, no-repeat",
-    WebkitMaskSize: sizes,
-    maskComposite: "intersect",
-    maskImage: images,
-    maskRepeat: "repeat, no-repeat",
-    maskSize: sizes,
-  };
+const randomCity = (): CityEntry | undefined =>
+  CITIES[Math.floor(Math.random() * CITIES.length)];
+
+const nextCity = (city: CityEntry): CityEntry | undefined =>
+  CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];
+
+/** One city, invisible until its chunk loads, then faded in. */
+const CityLayer = ({
+  city,
+  onShown,
+}: {
+  city: CityEntry;
+  /** Called once the city is fully faded in. */
+  onShown?: () => void;
+}) => {
+  const [Scene, setScene] = useState<ComponentType<AsciiSceneProps> | null>(
+    null
+  );
+  const shown = useRef(onShown);
+
+  useEffect(() => {
+    shown.current = onShown;
+  }, [onShown]);
+
+  useEffect(() => {
+    let live = true;
+    const show = async () => {
+      try {
+        const loaded = await city.load();
+        if (live) {
+          setScene(() => loaded);
+        }
+      } catch {
+        // A failed chunk leaves the plate (or the previous city) showing.
+      }
+    };
+    show();
+    return () => {
+      live = false;
+    };
+  }, [city]);
+
+  useEffect(() => {
+    if (!Scene) {
+      return;
+    }
+    const id = window.setTimeout(() => shown.current?.(), FADE_MS);
+    return () => window.clearTimeout(id);
+  }, [Scene]);
+
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 opacity-0 transition-opacity ease-out motion-reduce:transition-none",
+        Scene && "opacity-100"
+      )}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
+    >
+      {Scene ? <Scene className="absolute inset-0" /> : null}
+    </div>
+  );
 };
 
-// The field: tone in [0, 1] for one dither cell. Its helpers are prefixed
-// `hero` so they never collide with ascii-core's own `fbm`.
-const FIELD = `
-const vec2 PLANET_CENTRE = vec2(${PLANET.cx.toFixed(3)}, ${(1 - PLANET.cy).toFixed(3)});
-const vec2 PLANET_RADIUS = vec2(${PLANET.rx.toFixed(3)}, ${PLANET.ry.toFixed(3)});
+export const AsciiHero = ({ className }: { className?: string }) => {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { rootMargin: "0px" });
+  const visible = useDocumentVisible();
+  const reducedMotion = usePrefersReducedMotion();
+  const [layers, setLayers] = useState<readonly Layer[]>([]);
+  const [settled, setSettled] = useState(false);
+  const current = layers.at(-1);
 
-float heroNoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
-    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
-    u.y
-  );
-}
+  // Picked on the client, so the server render and hydration agree.
+  useEffect(() => {
+    const city = randomCity();
+    if (city) {
+      setLayers([{ city, key: 0 }]);
+    }
+  }, []);
 
-float heroFbm(vec2 p) {
-  float sum = 0.0;
-  float amp = 0.5;
-  for (int i = 0; i < 3; i++) {
-    sum += amp * heroNoise(p);
-    p = p * 2.03 + vec2(17.1, 9.2);
-    amp *= 0.5;
-  }
-  return sum / 0.875;
-}
+  const rotating =
+    settled && !reducedMotion && inView && visible && CITIES.length > 1;
 
-float field(vec2 p, vec2 res, float t) {
-  vec2 cell = p * res;
-  float aspect = res.x / res.y;
-  vec2 world = vec2(p.x * aspect, p.y);
+  useEffect(() => {
+    if (!rotating || !current) {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      const city = nextCity(current.city);
+      if (city) {
+        setSettled(false);
+        setLayers((previous) => [...previous, { city, key: current.key + 1 }]);
+      }
+    }, HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [rotating, current]);
 
-  // Domain-warped noise, drifting slowly sideways along the horizon.
-  vec2 warp = vec2(
-    heroFbm(world * 1.3 + vec2(t * 0.021, 0.0)),
-    heroFbm(world * 1.3 + vec2(5.2, 1.3) - vec2(0.0, t * 0.017))
-  );
-  float n = heroFbm(world * vec2(1.1, 2.6) + 1.7 * warp + vec2(t * 0.013, 0.0));
+  // Once the newest city covers the plate, the ones under it can go.
+  const settle = () => {
+    setLayers((previous) => previous.slice(-1));
+    setSettled(true);
+  };
 
-  // Signed distance from the horizon, in planet radii.
-  float e = length((p - PLANET_CENTRE) / PLANET_RADIUS) - 1.0;
-  float above = max(e, 0.0);
-  float below = max(-e, 0.0);
-
-  // Aurora curtains: noise stretched vertically, sliding along the horizon.
-  // It thins out fast, so the upper half stays clear for the headline.
-  float curtains = heroFbm(vec2(world.x * 5.0 + 2.0 * warp.x - t * 0.03, above * 1.5 - t * 0.01));
-  float lit = 0.35 + 0.9 * n * curtains + 0.25 * n;
-  float glow = exp(-above * 10.0) * lit + 0.22 * exp(-above * 5.5) * curtains * curtains;
-  // A lit rim just inside the edge, then the dark planet.
-  float rim = exp(-below * 34.0) * (0.85 + 0.4 * n);
-  float tone = e > 0.0 ? glow : rim;
-
-  // A few fixed stars in the dark sky, kept off the headline column. They
-  // never move or blink.
-  vec2 starCell = floor(cell);
-  float starSeed = hash21(vec2(hash21(starCell), hash21(starCell.yx + 31.7)) * 97.0);
-  float star = step(0.9988, starSeed) * step(0.3, above) * step(0.22, abs(p.x - 0.5));
-  return max(tone, star);
-}
-`;
-
-// Reduced motion shows this moment of the animation, held still.
-const STILL_TIME = 14;
-
-const Fallback = () =>
-  RINGS.map((ring) => (
+  return (
     <div
-      key={ring.from}
-      className="bg-ascii-ink absolute inset-0"
-      style={ringStyle(ring)}
-    />
-  ));
-
-export const AsciiHero = ({ className }: { className?: string }) => (
-  <AsciiShader
-    field={FIELD}
-    matrix="bayer4"
-    levels={17}
-    stillTime={STILL_TIME}
-    fallback={<Fallback />}
-    className={cn("ascii-hero absolute inset-0", className)}
-  />
-);
+      ref={rootRef}
+      aria-hidden="true"
+      className={cn("ascii-hero absolute inset-0", className)}
+    >
+      {layers.map((layer) => (
+        <CityLayer
+          key={layer.key}
+          city={layer.city}
+          onShown={layer === current ? settle : undefined}
+        />
+      ))}
+      {/* Wider on phones, where the text column fills the plate. */}
+      <div
+        className="absolute inset-0 [--scrim-width:95%] sm:[--scrim-width:50%]"
+        style={{ background: SCRIM }}
+      />
+    </div>
+  );
+};
