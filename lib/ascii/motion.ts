@@ -127,7 +127,9 @@ export const useFrameLoop = (
     let lastDraw = -Infinity;
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick);
-      const delta = Math.min((now - lastTick) / 1000, MAX_DELTA);
+      // A frame's timestamp can predate the performance.now() the loop
+      // started from, so the first delta can be negative: clamp it.
+      const delta = Math.max(0, Math.min((now - lastTick) / 1000, MAX_DELTA));
       lastTick = now;
       timeRef.current += delta;
       // A small tolerance so 60Hz screens hit 30fps evenly.
