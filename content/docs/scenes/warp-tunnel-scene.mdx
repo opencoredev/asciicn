@@ -1,0 +1,255 @@
+---
+title: "Relativistic Starfield Tunnel"
+description: "A high-speed wormhole of radially streaking glyphs, with a vanishing point you steer with the pointer."
+---
+
+import WarpTunnelSceneDemo from "@/examples/warp-tunnel-scene-demo";
+import { controls as sceneControls } from "@/examples/warp-tunnel-scene-controls";
+import WarpTunnelSceneEdge from "@/examples/warp-tunnel-scene-edge";
+import WarpTunnelSceneJump from "@/examples/warp-tunnel-scene-jump";
+
+<ComponentPreview
+  src="examples/warp-tunnel-scene-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={sceneControls}
+>
+  <WarpTunnelSceneDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="warp-tunnel-scene" />
+
+## Usage
+
+```tsx
+import { WarpTunnelScene } from "@/components/asciicn/scenes/warp-tunnel-scene";
+
+export function Launch() {
+  return (
+    <section className="relative isolate min-h-[520px]">
+      <WarpTunnelScene className="absolute inset-0 -z-10" />
+      <h1 className="text-white">Ship faster</h1>
+    </section>
+  );
+}
+```
+
+Stars stream out of the vanishing point as thin radial streaks, longer and brighter the closer they pass. Their colour shifts with position: blue near the centre, where you are flying toward them, white abreast, and red at the edges as they fall behind. The lanes twist into a slow spiral, the tunnel walls slide past as ribs and panels, and every few seconds a ring of light races out of the tunnel.
+
+The vanishing point eases toward the pointer, so you steer the flight. A press fires the drive: for about two seconds the streaks stretch, the colours shift further and a ring leaves the centre.
+
+`velocity` sets the flight speed only, while `speed` scales every motion in the scene, including the twist and the rings.
+
+## Examples
+
+### Edge glyphs
+
+The `edge` charset draws the direction of each streak with `- / | \`, so the tunnel becomes a fan of slashes that turn as they go round. Dim `walls` keep the streaks the only edges, and the blueprint phosphor draws them in one cyan ink.
+
+<ComponentPreview
+  src="examples/warp-tunnel-scene-edge.tsx"
+  size="lg"
+  align="stretch"
+>
+  <WarpTunnelSceneEdge />
+</ComponentPreview>
+
+### Jump to lightspeed
+
+Higher `velocity`, longer `streak` and more `twist` turn the field into a spinning vortex. Braille draws each streak as a one-dot line, eight dots per glyph.
+
+<ComponentPreview
+  src="examples/warp-tunnel-scene-jump.tsx"
+  size="lg"
+  align="stretch"
+>
+  <WarpTunnelSceneJump />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "velocity",
+      type: "number",
+      default: "1",
+      description:
+        "Flight speed, from 0.2 to 3. Separate from speed, which scales all motion.",
+    },
+    {
+      name: "streak",
+      type: "number",
+      default: "1",
+      description: "Streak length, from 0.2 to 3.",
+    },
+    {
+      name: "density",
+      type: "number",
+      default: "1",
+      description: "How many stars fly past, from 0.2 to 2.",
+    },
+    {
+      name: "twist",
+      type: "number",
+      default: "0.35",
+      description: "Spiral twist of the lanes, from -1.5 to 1.5.",
+    },
+    {
+      name: "walls",
+      type: "number",
+      default: "1",
+      description: "Brightness of the tunnel walls, from 0 to 1.5.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description:
+        "Which glyphs draw the scene: standard, dense, blocks, quadrants, braille, cp437, petscii, katakana, dots or edge.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: 'How glyphs are coloured. "mono" when phosphor is set.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description: "A CRT ink and glass for mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description:
+        "The ramp duotone reads tones through: a ramp name or #rrggbb stops.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "The 16-colour table for ansi16.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "Night colour in truecolor, ansi16 and duotone",
+      description:
+        "Paper behind the glyphs. In mono and palette it follows the theme, or the phosphor.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied before glyphs are chosen.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description: "Edge charset: the Sobel strength that draws - / | \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws glyphs only, so the page shows between them.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT post effects: scanlines, bloom, curvature, glitch, flicker, vignette, each 0 to 1. CRT_FX is a full set.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Time multiplier for all motion.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds a still frame.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "60",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Lets the pointer steer the scene. false ignores it.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle for export: capture() returns the glyphs on screen.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "\u2013",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws the `stillTime` frame and stops. It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen.
+- The pointer is read from the window, so it works under overlays and text; the canvas itself never takes pointer events.
+- Stars live in a grid laid out in log-polar space around the vanishing point, where flying outward is a constant scroll. Each star keeps its cell for its whole flight, so nothing is stored between frames. See [Performance](/docs/engine/performance).
