@@ -1,158 +1,167 @@
-# ascii-core API
+# Engine API
 
-Everything imports from `@/lib/ascii` (the project's `lib` alias), except export functions, which live in `@/lib/ascii/export`. The installed source in `lib/ascii/` is the final word; each export has a doc comment.
+The engine installs as plain source. When this file and the code disagree, the code wins: read `lib/ascii/index.ts` and the file named in each section.
 
-## Shared types
+- `@/lib/ascii` (item `ascii-core`): CPU side. Charsets, palettes, frames, cell metrics, `AsciiGrid`, `mapTones`, theme and motion hooks. No WebGL.
+- `@/lib/ascii/shader` (item `ascii-shader`): `AsciiShader`, the WebGL2 glyph renderer.
+- `@/lib/ascii/export` (item `ascii-export`): files. See [export.md](export.md).
 
-```ts
-type AsciiColor = AsciiColorName | string;
-// A palette name ("ink" | "blue" | "purple" | "green" | "pink" | "orange" | "red" | "grey"),
-// a CSS variable name ("--chart-1"), or any CSS colour ("var(--chart-1)", "oklch(0.7 0.15 272)", "#fff", "transparent").
-// Names win over CSS keywords: "red" is the asciicn red.
+## Look props
 
-type AsciiPalette = readonly [AsciiColor, AsciiColor, ...AsciiColor[]];
-// From tone 0 (paper) to tone 1 (ink). At least two.
+Both renderers, and every component and scene, take the same look props (`AsciiLook` in `lib/ascii/look.ts`):
 
-type DitherMatrix = "bayer2" | "bayer4" | "bayer8" | "blue-noise";
-```
+| Prop            | Type                                                          | What it does                                                                                                                                    |
+| --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `charset`       | `CharsetName`                                                 | Which glyphs draw the tones. See [charsets.md](charsets.md)                                                                                     |
+| `chars`         | `string`                                                      | A custom ramp from empty to dense, such as `" .oO@"`. Wins over `charset`                                                                       |
+| `colorMode`     | `"mono" \| "truecolor" \| "ansi16" \| "duotone" \| "palette"` | How glyphs are coloured                                                                                                                         |
+| `phosphor`      | `"p1" \| "p3" \| "ibm" \| "blueprint"`                        | `mono`: a CRT screen colour instead of `--ascii-ink`                                                                                            |
+| `ramp`          | `RampName \| string[]`                                        | `duotone`: a named ramp or `#rrggbb` stops, dark to bright                                                                                      |
+| `ansi`          | `"vga" \| "xterm"`                                            | `ansi16`: which 16-colour table. Default `"vga"`                                                                                                |
+| `grade`         | `{ brightness, contrast, gamma, saturation }`                 | Tone grading before the glyph is chosen                                                                                                         |
+| `invert`        | `boolean`                                                     | Dense glyphs for dark tones. Use for dark-on-light art                                                                                          |
+| `threshold`     | `number`                                                      | Braille and quadrants: the tone that lights a dot. Default 0.5                                                                                  |
+| `edgeThreshold` | `number`                                                      | `edge`: Sobel strength that draws `- / \| \`. Default 0.22                                                                                      |
+| `dither`        | `"none" \| "bayer2" \| "bayer4" \| "bayer8" \| "blue-noise"`  | Ordered dithering between glyph levels, for smooth gradients with few glyphs                                                                    |
+| `background`    | `"paper" \| "transparent"`                                    | `"transparent"` draws glyphs only, so the page shows between them                                                                               |
+| `fx`            | `PostFx`                                                      | CRT effects, each 0 to 1: `scanlines`, `bloom`, `curvature`, `glitch`, `flicker`, `vignette`. `CRT_FX` is a full preset, `NO_FX` turns them off |
 
-Matrices: `bayer4` is the default, a regular printed crosshatch with 17 tones. `bayer8` has 65 tones and finer gradients. `bayer2` is chunky, 5 tones. `blue-noise` is a 64×64 tile with no visible grid, like film grain; best for large soft surfaces.
-
-`level` (static fills) and tone (shaders) both mean coverage from 0 (no cells inked) to 1 (all). With `bayer4`, `k / 16` inks exactly k of every 16 cells.
+Shared runtime props: `cell` (glyph cell height in CSS px, default `--ascii-cell`), `speed` (time multiplier, default 1), `animate` (`false` holds a still frame), `fps` (cap), `stillTime` (seconds drawn when motion is off or reduced), `fallback` (shown until the first frame) and `handle` (a ref filled with an `AsciiHandle` for export).
 
 ## AsciiShader
 
-A client component that draws a GLSL field as a dither on a WebGL canvas at one canvas pixel per cell, scaled up with crisp edges.
+`lib/ascii/shader.tsx`. A client component that fills its positioned parent.
 
 ```tsx
-<AsciiShader
-  field={FIELD} // GLSL defining float field(vec2 uv, vec2 res, float t). See fields.md.
-  colorField={COLOR_FIELD} // optional GLSL defining vec3 (or vec4) colorField(vec2 uv, vec2 res, float t): the ink colour per cell. See fields.md#colour.
-  uniforms={{ glowCentre: [0.5, 0.2], glowSize: 0.4 }} // declared for you: number → float, [a,b] → vec2, up to vec4
-  matrix="bayer4" // default "bayer4"
-  levels={17} // tones the field snaps to before dithering, 2 to 256. Default: every tone the matrix draws
-  cell={3} // cell size in CSS px. Default: --ascii-cell, or 3
-  palette={["--ascii-paper", "--ascii-ink"]} // default
-  speed={1} // time multiplier, default 1. Changing it never jumps the motion
-  animate // default true. false stops motion: holds the current frame, or draws stillTime if it never moved
-  fps={30} // frame cap, default 30
-  stillTime={0} // seconds of field time shown under reduced motion, or when animate starts false
-  fallback={
-    <div className="absolute inset-0 bg-linear-to-t from-ascii-ink/30 to-transparent" />
-  }
-  className="absolute inset-0" // plus any div prop: style, ref, id, data-*
-/>
+"use client";
+
+import { AsciiShader } from "@/lib/ascii/shader";
+
+const FIELD = /* glsl */ `
+float field(vec2 uv, vec2 res, float t) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  return smoothstep(0.45, 0.0, length(p)) * (0.75 + 0.25 * sin(t));
+}`;
+
+export const Glow = () => (
+  <AsciiShader field={FIELD} charset="braille" className="absolute inset-0" />
+);
 ```
 
-- The root is `relative overflow-hidden pointer-events-none`, `aria-hidden` by default. It renders no children: put content in a sibling.
-- It sizes to its box. A box with no height draws nothing.
-- `fallback` shows before the first frame, without WebGL, and while the shader is far offscreen. Default: flat `palette[0]`. Make it resemble the dither (a CSS gradient in the ink colour).
-- Free behaviour: resize observer, whole-device-pixel cells, theme changes re-read the palette, pauses offscreen and in hidden tabs, a still frame under reduced motion, context loss recovery. At most 8 shaders hold a WebGL context at once (`MAX_LIVE_CONTEXTS`); past that, a shader coming on screen takes one from a shader just off screen, never from one still on screen, and waits otherwise, showing `fallback`.
-- `data-state` on the root: `running`, `paused` (offscreen or hidden tab), `static` (reduced motion or `animate={false}`), `fallback` (no frame drawn).
-- With `colorField`, each cell is either paper (`palette[0]`) or the colour `colorField` returns there; the field's tone still decides which, so density and colour are independent. The rest of the palette is what the `paletteColor(x)` helper reads. Without it, the palette maps tone to colour as before.
-- Changing `uniforms`, `palette`, `matrix`, `levels` or `speed` is cheap. Changing the `field` or `colorField` string recompiles, so keep it a module constant and drive variation through uniforms.
-- `AsciiShaderProps` is exported. A wrapper component usually takes `Omit<AsciiShaderProps, "field" | "colorField" | "uniforms" | "fallback">` plus its own props, and spreads the rest.
+| Prop           | What it does                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `field`        | GLSL: `float field(vec2 uv, vec2 res, float t)` returning a tone in [0, 1]. See [fields.md](fields.md)          |
+| `colorField`   | GLSL: `vec3 colorField(vec2 uv, vec2 res, float t)` (or `vec4`) returning RGB 0..1 for `truecolor` and `ansi16` |
+| `uniforms`     | `{ name: number \| [x, y] \| [x, y, z] \| [x, y, z, w] }`, declared for you. Names must not start with `u_`     |
+| `palette`      | Paper then inks, as token names or CSS colours. Used by `colorMode="palette"`                                   |
+| `ink`, `paper` | Mono overrides                                                                                                  |
+| `interaction`  | `"none" \| "repel" \| "ripple" \| "trail"`: what the pointer does to the field                                  |
+| `audio`        | Audio bands from `useAudioBands` (`lib/ascii/audio.ts`), read as `u_audio`, or `null`                           |
+| `seed`         | A number read as `u_seed`, for seeded variations. Default 0                                                     |
+| look props     | All of the table above                                                                                          |
 
-## Static fills
+Default `colorMode` is `truecolor` when `colorField` is set, otherwise `palette` (paper to ink). Keep the `field` string a module-level constant and pass changing values through `uniforms`; a new string recompiles the shader.
 
-All server-safe and free after first paint.
+`data-state` on the root reports `running`, `paused` (offscreen or hidden tab), `static` (reduced motion or `animate={false}`) or `fallback` (no WebGL2, or a compile error, which is logged with the line).
 
-### FillPattern (SVG)
+## AsciiGrid
+
+`lib/ascii/grid.tsx`. A Canvas2D grid of glyphs drawn by a function you write, at device resolution, theme-aware, paused offscreen, one still frame under reduced motion.
 
 ```tsx
-<svg viewBox="0 0 200 120">
-  <defs>
-    <FillPattern
-      id={id}
-      fill="gradient"
-      color="blue"
-      cell={3}
-      ramp={{ edge: "bottom", at: 120, length: 90 }}
-    />
-  </defs>
-  <rect x={0} y={30} width={200} height={90} fill={`url(#${id})`} />
-</svg>
+"use client";
+
+import { AsciiGrid } from "@/lib/ascii";
+import type { AsciiGridDrawContext } from "@/lib/ascii";
+
+const draw = ({ frame, columns, rows, time }: AsciiGridDrawContext) => {
+  const message = "SYSTEM READY";
+  const x = Math.floor((columns - message.length) / 2);
+  frame.write(x, Math.floor(rows / 2), message);
+  frame.put(
+    x + message.length + 1,
+    Math.floor(rows / 2),
+    time % 1 < 0.5 ? "█" : " "
+  );
+};
+
+export const Ready = () => (
+  <AsciiGrid draw={draw} className="absolute inset-0" />
+);
 ```
 
-| Prop     | Type                                                                                            | Default    | Notes                                                                                     |
-| -------- | ----------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
-| `id`     | `string`                                                                                        | required   | Use `useId()` so two instances never collide.                                             |
-| `fill`   | `"gradient" \| "dotted" \| "hatched" \| "solid"`                                                | required   | `dotted`: a sparse lattice. `hatched`: diagonal lines.                                    |
-| `color`  | `AsciiColor`                                                                                    | `"ink"`    |                                                                                           |
-| `cell`   | `number`                                                                                        | `3`        | In SVG user units. With a scaling `viewBox` the cells scale too.                          |
-| `level`  | `number`                                                                                        | `1`        | Gradient only: coverage at the dense edge, or the even coverage without `ramp`.           |
-| `floor`  | `number`                                                                                        | `0.0625`   | Gradient: coverage past the fade.                                                         |
-| `matrix` | `DitherMatrix`                                                                                  | `"bayer4"` | Gradient only.                                                                            |
-| `ramp`   | `{ edge: "top" \| "bottom" \| "left" \| "right"; at: number; length: number; extent?: number }` | none       | Gradient: densest at `edge`, located at coordinate `at`, fading over `length` user units. |
+`draw(ctx)` runs every frame while animating, once for a still frame, and again on resize. `ctx` holds:
 
-`dotted` and `hatched` have a fixed coverage (a quarter of the cells); vary their strength with `opacity` or the colour. `fill="gradient"` without `ramp` fills one even `level`, like `AsciiPattern`.
+- `frame`: a `MutableFrame`, cleared to spaces before each draw. `put(x, y, glyph, rgba?)`, `write(x, y, text, rgba?)`, `fillRect(x, y, w, h, glyph, rgba?)`, `get(x, y)`. Out-of-bounds writes are ignored, so you never need to clip. Row 0 is the top.
+- `columns`, `rows`: the grid size for the current box and cell.
+- `time` (seconds, scaled by `speed`), `delta` (seconds since the last draw, 0 when still).
+- `pointer`: `{ x, y, inside, down }` in cell units, when `interactive` is set.
+- `metrics`: the measured `CellMetrics`.
 
-`AsciiPattern` is the older, simpler pattern: `<AsciiPattern id level matrix? cell? color? background? />` fills one even `level`, with an optional `background` colour behind the ink. Prefer `FillPattern` unless you need `background`.
+Props: `draw`, `cell`, `ink`, `paper` (default `"transparent"`), `colored` (per-glyph colour; set it when you pass `rgba` or use a colour mode), `speed`, `animate`, `fps` (default 30), `stillTime`, `interactive`, `fallback`, `handle`.
 
-For exact pixel cells inside an SVG, give it a `viewBox` in CSS pixels that matches its rendered size (measure with a `ResizeObserver`), or keep the SVG at a fixed pixel size.
+### Tones to glyphs on the CPU
 
-### fillStyle and asciiMaskStyle (DOM)
-
-```tsx
-<div className="relative h-2 overflow-hidden rounded-full">
-  <div className="absolute inset-y-0 left-0" style={{ width: "62%", ...fillStyle("gradient", { color: "green", edge: "right", length: 40 }) }} />
-</div>
-
-<div className="bg-ascii-ink absolute inset-0" style={asciiMaskStyle(0.25)} />
-```
-
-- `fillStyle(variant, { color?, cell?, edge?, length?, from?, to?, matrix? })` returns a background colour plus a tiled CSS mask. Gradient: dense at `edge` (default `"bottom"`), fading over `length` cells (default 24) from coverage `from` (1) to `to` (0.0625). `cell` is CSS px or any CSS length; default `var(--ascii-cell)`.
-- `asciiMaskStyle(level, { matrix?, cell? })` masks an element to one even coverage. Pair it with a background colour (`bg-ascii-ink`, `bg-dither-blue`).
-- Both mask the element's children too, so apply them to an empty layer and put content in a sibling.
-- To animate density, cross-fade two layers with `opacity`. The mask itself does not transition.
-- Lower level: `asciiMask(level, { matrix?, cell? })` returns a CSS `url()` for `mask-image`; `asciiPath(level, matrix?)` the SVG path of one tile; `asciiRamp({ edge, length, extent?, from, to, matrix? })` a ramp tile.
-
-### Bloom
-
-A soft glow in the fill's colour, `"off" | "low" | "high"`. `--ascii-bloom` scales it per theme.
-
-- `<BloomBox color="blue" bloom="low">…</BloomBox>` wraps DOM content in a drop-shadow glow that follows the dithered cells.
-- `<BloomGroup bloom="low">{solid copies of shapes}</BloomGroup>` is an SVG group drawn as a blurred glow; render it before the patterned shapes.
-- `bloomStyle(color, bloom)` returns `{ filter }` for any element.
-
-## Colours
-
-- `cssColor(color: AsciiColor): string`: `"green"` → `var(--ascii-color-green, <fallback>)`, `"--x"` → `var(--x)`, others unchanged. Use it for every inline colour.
-- `ASCII_COLOR_NAMES`, `SERIES_COLORS` (distinct hues in order, for multi-series data), `seriesColor(color, index)`.
-- `useAsciiColors(ref, names?)`: resolves colours to `[r, g, b, a]` in [0, 1] and re-resolves on theme change; `null` before mount. Default names `["--ascii-ink", "--ascii-paper"]`.
-- `resolveColor(color, el?)`: one-off resolution in the browser.
-- Tailwind utilities from the tokens: `bg-ascii-ink`, `text-ascii-paper`, `bg-dither-blue`, `text-dither-green` and so on.
-
-## Motion
-
-- `useFrameLoop((time, delta) => { … }, { target?: ref, enabled?: true, fps?: 30, stillTime?: 0 })`: a rAF loop that runs only while `target` is on screen and the tab is visible. Under reduced motion or `enabled: false` it calls once with `(stillTime, 0)`. Returns `"running" | "paused" | "static"`. Use it for canvas or DOM animation you write yourself.
-- `usePrefersReducedMotion()`, `useInView(ref, { rootMargin? })`, `useDocumentVisible()`.
-- `MOTION`: `{ ease: "cubic-bezier(0.23, 1, 0.32, 1)", fast: 150, base: 240, slow: 600 }` (ms) for CSS transitions.
-
-## Images
+For anything with a tone per point (3D shading, a heightmap, a simulation), fill a `ToneField` and let `mapTones` choose glyphs. It handles every charset, sub-cell sampling and colour mode the same way the GPU does.
 
 ```ts
-const out = ditherImage(context.getImageData(0, 0, w, h), {
-  method: "atkinson", // "bayer4" | "bayer8" | "blue-noise" | "floyd-steinberg" | "atkinson" | "sierra-lite"
-  palette: [
-    [0.04, 0.04, 0.06],
-    [0.55, 0.62, 1],
-  ], // RGB in [0, 1], nearest colour wins
-  threshold: 0.5,
-});
-context.putImageData(out, 0, 0);
+import {
+  createToneField,
+  fillToneField,
+  mapTones,
+  resolveCharset,
+} from "@/lib/ascii";
+
+// Inside draw:
+const charset = resolveCharset("braille");
+const field = createToneField(columns, rows, charset); // columns*2 by rows*4 samples for Braille
+fillToneField(field, (u, v) =>
+  /* u, v in [0, 1], v = 0 at the TOP */ Math.max(
+    0,
+    1 - Math.hypot(u - 0.5, v - 0.5) * 2
+  )
+);
+mapTones(field, columns, rows, { charset, colorMode: "mono" }, frame);
 ```
 
-Returns a new `ImageData`; the input is untouched. Draw the image at one pixel per cell (scale it down first), dither, then show the canvas scaled up with `image-rendering: pixelated`. Get theme colours for the palette from `useAsciiColors`. Error-diffusion methods move dots everywhere when the input changes, so use them for still images and ordered methods for anything animated. Over about 512×512, run it in a Web Worker.
+`fillToneField`'s callback may return a tone or `[tone, r, g, b]` (0..255) when the field was created with `{ color: true }`. `mapTones(field, columns, rows, options, into?)` writes into `into` (pass `ctx.frame`) and takes `charset`, `chars`, `grade`, `invert`, `threshold`, `edgeThreshold`, `dither`, `colorMode`, `ramp`, `ansi` and `palette` (paper to ink, as `[r, g, b]` bytes).
 
-## Export
+Reuse the field across frames: create it once per size (keep it in a ref and recreate when `columns` or `rows` change), and refill it each frame.
 
-`import { toPNG, toSVG, toCSS, download, svgDataUrl } from "@/lib/ascii/export"`. The skill installs it; if `lib/ascii/export.ts` is missing, run `npx shadcn@latest add {{REGISTRY_URL}}/ascii-export.json`.
+## Charset helpers
 
-- `toPNG(source: HTMLCanvasElement | PixelBuffer, { scale? }): Promise<Blob>`: crisp upscale by a whole number. Browser only.
-- `toSVG(source: PixelBuffer | { width, height, indices }, { cell?, palette?, background? }): string`: merged runs, pure string.
-- `toCSS({ level, matrix?, cell?, ink?, paper?, mode?: "background" | "mask", selector? })`: one CSS rule that tiles a dither, no JavaScript at runtime. `mode: "mask"` paints with `ink` and accepts CSS variables; `"background"` bakes a literal ink colour into the tile.
-- `toCSS({ kind: "image", image, format?: "png" | "svg", selector? })`: a whole dither as a covering background.
-- `download({ data, filename, type? })` saves a Blob or string.
+`lib/ascii/charsets.ts`:
 
-To export what a `AsciiShader` shows, compute the same tones on the CPU into a `PixelBuffer` and run `ditherImage` with an ordered method: the shader's WebGL canvas does not keep its pixels after drawing.
+- `CHARSETS`, `CHARSET_NAMES`, `resolveCharset(charset, chars?)` returns `{ id, label, kind, glyphs, grid }`. `kind` is `"ramp"`, `"braille"`, `"quadrants"` or `"edge"`; `grid` is the samples per cell (`[2, 4]` for Braille).
+- `rampChar(charset, tone)`: the glyph for a tone on a ramp charset.
+- `brailleChar(mask)` with `BRAILLE_DOT_BITS[row][col]` (row 0..3, col 0..1): build a Braille glyph dot by dot, for line charts and plots.
+- `quadrantChar(mask)`, `QUADRANT_GLYPHS`; `edgeChar(gx, gy)` (y down) picks `-`, `/`, `|` or `\`.
+- `EIGHTHS_UP` (` ▁▂▃▄▅▆▇█`) and `EIGHTHS_RIGHT` (` ▏▎▍▌▋▊▉█`): bars with eighth-cell precision. `eighthsBar(value, width)` returns a horizontal bar string for `value` in [0, 1].
+- `SHADES` (` ░▒▓█`), `BOX` (`ascii`, `light`, `heavy`, `double`, `rounded`, each with `tl tr bl br h v x`), `SPINNERS`.
+
+## Colour helpers
+
+`lib/ascii/palettes.ts` and `lib/ascii/color.ts`:
+
+- `PHOSPHORS`, `RAMPS`, `ANSI16.vga`, `ANSI16.xterm`, `sampleRamp(stops, t)`, `hexToRgb`, `rgbToHex`, `nearestIndex(rgb, palette)` (OKLab distance), `luma`, `gradeTone`, `gradeRgb`.
+- `cssColor(name)`: `"green"` to `var(--ascii-color-green, …)`, `"--chart-1"` to `var(--chart-1)`.
+- `useAsciiColors(ref, names?)`: resolves token names (default paper and ink) to concrete RGBA on the client and re-renders when the theme changes. Returns `null` until mounted. `resolveColor(css)`, `subscribeToTheme(callback)` for non-React code.
+- `seriesColor(i)`, `SERIES_COLORS`: the named colours in chart order.
+
+## Cell metrics
+
+`lib/ascii/measure.ts`: `measureCell({ cell, font, dpr })` returns `{ width, height, deviceWidth, deviceHeight, dpr, fontSize, font }`. The cell height is `cell`; the width is the font's advance; both snap to whole device pixels so glyphs stay sharp. `gridSize(metrics, width, height)` gives `{ columns, rows }`. `readCell(el)` and `readFont(el)` read `--ascii-cell` and `--ascii-font`. `DEFAULT_CELL` is 12.
+
+## Motion hooks
+
+`lib/ascii/motion.ts`: `useFrameLoop((time, delta) => …, { target, enabled, fps, stillTime })` drives your own loop with the same rules as the renderers (pause offscreen and in hidden tabs, one frame under reduced motion). `usePrefersReducedMotion()`, `useInView(ref)`, `useDocumentVisible()`.
+
+## Static art
+
+`AsciiPre` (`lib/ascii/pre.tsx`) renders an `AsciiFrame` as a `<pre>`, with colour runs as spans. It works in server components, emails and RSS. For a fixed banner, a plain `<pre aria-label="…">` with the text is fine too. `frameToText(frame)` and `frameLines(frame)` turn a frame into strings.
+
+For a CPU renderer that needs the CRT look, `CrtOverlay` (`lib/ascii/crt.tsx`) approximates `fx` in CSS over a canvas or DOM text.
+
+## Sampling images and video
+
+`sampleToField(source, { columns, rows, charset, fit, mirror, crop, aspect, into })` (`lib/ascii/sample.ts`) reads an image, video, canvas or webcam frame into a `ToneField` with colour, area-averaged per sample. `autoLevels(field)` stretches its tones to the full range. `useMediaElement(urlOrBlobOrStream)` loads an `<img>` or `<video>` and returns `{ element, kind, error }`. Then `mapTones` as above. [recipes.md](recipes.md#an-image-as-ascii) has the full component.

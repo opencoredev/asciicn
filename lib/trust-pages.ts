@@ -29,34 +29,34 @@ const ISSUES = `${LINK.GITHUB_REPO}/issues`;
 export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
   about: {
     description:
-      "Who makes asciicn, why it exists, and how the dither engine and agent skill are built and licensed.",
-    lead: `${SITE.NAME} is an open-source dither engine for shadcn/ui projects, with an agent skill that teaches your coding agent to use it. Leo builds and maintains it, and it's published by OpenCore, the GitHub organization behind Social SDK, Email SDK and other open-source TypeScript tools.`,
+      "Who makes asciicn, why it exists, and how the ASCII engine, components and agent skill are built and licensed.",
+    lead: `${SITE.NAME} is an open-source ASCII art engine for React and shadcn/ui, with components, animated scenes and an agent skill that teaches your coding agent to use it. Leo builds and maintains it, and it's published by OpenCore, the GitHub organization behind Social SDK, Email SDK and other open-source TypeScript tools.`,
     sections: [
       {
         heading: "What asciicn is",
         paragraphs: [
-          "Three parts that work together. `ascii-core` is the engine: it installs into `lib/ascii` as plain source and turns a tone between 0 and 1 into dots, drawn with WebGL, SVG, CSS masks or a one-off pass for images. The agent skill is a SKILL.md with references that teaches Claude Code, Codex, Cursor and other agents how to build with that engine. The examples, from hero backgrounds to charts, loaders, text effects and dithered photos, show what the engine can make and install with one shadcn command.",
+          "An engine and what it draws. `ascii-core` installs into `lib/ascii` as plain source: charsets, palettes, cell metrics, a Canvas2D glyph grid and the tone-to-glyph mapping. `ascii-shader` adds a WebGL2 renderer that turns a GLSL field into real glyphs from a glyph atlas, with colour modes, pointer interaction and CRT effects. `ascii-export` writes any frame as text, ANSI, SVG or PNG, and records WebM.",
+          "On top of the engine sit about 80 shadcn registry components (backgrounds, charts, interface pieces, text effects, image and video converters), 12 animated scenes, and the [ASCII Studio](/studio) for tuning a look and exporting it. The agent skill is a SKILL.md with references that teaches Claude Code, Codex, Cursor and other agents how to build new effects on the same engine.",
           "Nothing runs on our servers once it's installed. Every file lands in your repo, so you can read it, change it and ship it like the rest of your code.",
         ],
       },
       {
         heading: "Why it exists",
         paragraphs: [
-          "Dithering draws a smooth tone with a few colours by placing dots of ink at a matching density. It started as a workaround for limited screens and printers and now reads as a deliberate texture. Most dither effects on the web are one-off shaders that are hard to theme, ignore reduced motion and don't share anything with each other.",
-          "asciicn puts one engine under every effect, so a background, a chart fill and a loading state share the same cells, colours and motion rules. Because the skill teaches the engine rather than a fixed list of components, your agent can build a dither nobody has made yet instead of copying the closest example.",
+          "ASCII art draws an image with characters: a dense glyph where the picture is dark, a sparse one where it is light. Terminals, BBS screens and home computers made it a craft, with its own character sets such as CP437 and PETSCII. Most ASCII effects on the web today are one-off canvases that blur on high-density screens, ignore reduced motion and can't be themed.",
+          "asciicn puts one engine under every effect, so a scene, a chart and a loading state share the same glyph cells, colours and motion rules, and every glyph snaps to whole device pixels. Because the skill teaches the engine rather than a fixed list of components, your agent can build an effect nobody has made yet instead of copying the closest example.",
         ],
       },
       {
-        heading: "License and credits",
+        heading: "License",
         paragraphs: [
           `asciicn is free and MIT licensed. The source lives at [github.com/opencoredev/asciicn](${LINK.GITHUB_REPO}).`,
-          "[Dither Kit](https://www.tripwire.sh/ascii-kit) by Boring Software set the bar for this project, and Dither Kit credits [EvilCharts](https://evilcharts.com) for the dithered chart style it grew from. The code and the look here are our own.",
         ],
       },
     ],
     slug: "about",
     title: "About asciicn",
-    updated: "2026-10-25",
+    updated: "2026-10-27",
   },
   contact: {
     description:
@@ -66,7 +66,7 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
       {
         heading: "Bugs and feature requests",
         paragraphs: [
-          `Open an issue at [github.com/opencoredev/asciicn/issues](${ISSUES}). For a bug, name the component or engine function, your browser and framework versions, and what you expected to see. A screenshot or a short recording helps most with visual problems, since a dither that looks wrong is easier to show than to describe.`,
+          `Open an issue at [github.com/opencoredev/asciicn/issues](${ISSUES}). For a bug, name the component or engine function, your browser and framework versions, and what you expected to see. A screenshot or a short recording helps most with visual problems, since glyphs that render wrong are easier to show than to describe. The Studio's text export of the frame helps too.`,
           "For a new example or engine feature, describe the page you're building and the effect you want. Requests tied to a real use get built first.",
         ],
       },
@@ -91,7 +91,7 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
     ],
     slug: "contact",
     title: "Contact",
-    updated: "2026-10-25",
+    updated: "2026-10-27",
   },
   privacy: {
     description:
@@ -101,14 +101,20 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
       {
         heading: "Analytics",
         paragraphs: [
-          "The site uses [PostHog](https://posthog.com/privacy) and Vercel Web Analytics. PostHog records page views, time on page, clicks, page-load performance and a few named actions, such as copying an install command or the agent prompt, searching the docs, changing a preview's controls or switching the theme. It stores a random ID in a cookie and local storage so repeat visits count as one visitor, and it receives your IP address with each event, which it uses to estimate your country and city. Vercel Web Analytics counts page views without cookies.",
+          "The site uses [PostHog](https://posthog.com/privacy) and Vercel Web Analytics. PostHog records page views, time on page, clicks, page-load performance and a few named actions, such as copying an install command or the agent prompt, searching the docs, changing a preview's controls or switching the theme. PostHog runs only when the deployment is configured with a PostHog project. It stores a random ID in a cookie and local storage so repeat visits count as one visitor, and it receives your IP address with each event, which it uses to estimate your country and city. Vercel Web Analytics counts page views without cookies.",
           "Events go through asciicn.dev itself on their way to PostHog's US servers. The site doesn't record your screen or keystrokes, doesn't sell or share this data, and doesn't use it for advertising. Blocking cookies or analytics scripts in your browser stops all of it, and the docs work the same.",
         ],
       },
       {
         heading: "What's stored in your browser",
         paragraphs: [
-          "Local storage remembers your theme, your preferred package manager for install commands, and a few docs display settings. A cookie named `sidebar_state` remembers whether the docs sidebar is open. These stay in your browser, aren't used for tracking and aren't shared with anyone. Clearing your site data removes them.",
+          "Local storage remembers your theme and palette, your preferred package manager for install commands, and a few docs and Studio display settings. A cookie named `sidebar_state` remembers whether the docs sidebar is open. These stay in your browser, aren't used for tracking and aren't shared with anyone. Clearing your site data removes them.",
+        ],
+      },
+      {
+        heading: "Images, video and your camera",
+        paragraphs: [
+          "When you open an image or video file, or allow camera access, in the Studio or a component demo, the frames are converted to glyphs in your browser. Nothing is uploaded: the site has no upload endpoint, and the camera stops when you leave the page or turn it off.",
         ],
       },
       {
@@ -127,7 +133,7 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
     ],
     slug: "privacy",
     title: "Privacy",
-    updated: "2026-10-26",
+    updated: "2026-10-27",
   },
 };
 

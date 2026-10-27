@@ -31,7 +31,21 @@ const COMMAND_BOX = new RegExp(
 const CATALOG_INDEX = new RegExp(String.raw`<CatalogIndex\b${ATTRS}\/>`, "g");
 // A fenced code block, which may itself show these components as examples.
 const FENCED = /^[ \t]*(`{3,}|~{3,})[\s\S]*?^[ \t]*\1[ \t]*$/gm;
-const STEPS = /^[ \t]*<\/?Steps>[ \t]*\n/gm;
+const STEPS = /^[ \t]*<\/?Steps?>[ \t]*\n/gm;
+const COMPONENT_SOURCE = new RegExp(
+  String.raw`<ComponentSource\b${ATTRS}?\bsrc=["']([^"']+)["']${ATTRS}\/>`,
+  "g"
+);
+// A callout's body is already Markdown; its title becomes a bold lead-in.
+const CALLOUT_OPEN = new RegExp(
+  String.raw`^[ \t]*<Callout\b(${ATTRS})>[ \t]*\n?`,
+  "gm"
+);
+const CALLOUT_CLOSE = /^[ \t]*<\/Callout>[ \t]*\n?/gm;
+const TITLE_ATTR = /\btitle=["']([^"']+)["']/;
+// Wrappers that only arrange their children: tabs, accordions, cards.
+const LAYOUT_TAGS =
+  /^[ \t]*<\/?(?:Tabs|TabsList|TabsContent|TabsTrigger|CodeTabs|Accordion|AccordionItem|AccordionTrigger|AccordionContent|AspectRatio)\b[^>]*>[ \t]*\n?/gm;
 
 const fence = (language: string, body: string, title?: string) =>
   `\`\`\`${language}${title ? ` title="${title}"` : ""}\n${body.trimEnd()}\n\`\`\``;
@@ -95,7 +109,7 @@ const outsideCode = async (
   return done.join("");
 };
 
-const expandProse = ({
+const expandProse = async ({
   prose,
   target,
   isExample,
@@ -115,14 +129,27 @@ const expandProse = ({
       () =>
         `Every example, with its install command and docs link, is listed in [llms.txt](${ROUTES.LLMS}) and in the skill's [references/examples.md](/.well-known/agent-skills/asciicn/references/examples.md).`
     )
-    .replaceAll(STEPS, "");
+    .replaceAll(STEPS, "")
+    .replaceAll(CALLOUT_OPEN, (_, attrs: string) => {
+      const title = TITLE_ATTR.exec(attrs)?.[1];
+      return title ? `**${title}.** ` : "";
+    })
+    .replaceAll(CALLOUT_CLOSE, "\n")
+    .replaceAll(LAYOUT_TAGS, "");
 
   // Dropped components leave runs of blank lines behind. Tidy them here,
   // before any example source goes in, so code keeps its blank lines.
   if (target === "bundle" && isExample) {
-    return Promise.resolve(collapseBlankLines(plain.replaceAll(PREVIEW, "")));
+    return collapseBlankLines(
+      plain.replaceAll(PREVIEW, "").replaceAll(COMPONENT_SOURCE, "")
+    );
   }
-  return replaceAsync(collapseBlankLines(plain), PREVIEW, previewSource);
+  const withPreviews = await replaceAsync(
+    collapseBlankLines(plain),
+    PREVIEW,
+    previewSource
+  );
+  return replaceAsync(withPreviews, COMPONENT_SOURCE, previewSource);
 };
 
 /** Turn the docs' MDX components into plain Markdown an agent can act on. */
@@ -146,7 +173,7 @@ export const exampleNotice = (name: string | null) => {
   const source = name
     ? ` Its full source is in [${registryItemUrl(name)}](${registryItemUrl(name)}), under \`files[].content\`.`
     : "";
-  return `> **This is an example, not the only option.** It is one component built on the asciicn engine. Install it when it is what you were asked for. For any other look, don't stretch its props to fit: write your own field on \`AsciiShader\` ([Write your own dither](${ROUTES.DOCS_WRITE_YOUR_OWN}.md)), and read this example's source for technique.${source}`;
+  return `> **This is an example, not the only option.** It is one component built on the asciicn engine. Install it when it is what you were asked for. For any other look, don't stretch its props to fit: write your own field on \`AsciiShader\` ([Write your own](${ROUTES.DOCS_WRITE_YOUR_OWN}.md)), or draw a CPU grid with \`AsciiGrid\`, and read this example's source for technique.${source}`;
 };
 
 /** The registry item an example page installs, from its first `<InstallBlock>` outside code. */

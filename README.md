@@ -1,23 +1,26 @@
 <p align="center">
-  <img alt="asciicn: dither primitives your agent builds with. A dither engine and an agent skill for shadcn/ui, shown with a dithered globe, bar chart, gauge, aurora, ridgelines, text and orb." src=".github/assets/readme-banner.png" width="100%" />
+  <img alt="asciicn: an ASCII art engine and components for React. The asciicn wordmark in green box-drawing glyphs over a field of ASCII characters, with an amber Braille wave and the ten charsets listed above it." src=".github/assets/readme-banner.png" width="100%" />
 </p>
 
-<p align="center">
-  <a href="https://github.com/opencoredev/asciicn/stargazers"><img alt="GitHub stars" src="https://shieldcn.dev/github/opencoredev/asciicn/stars.svg?variant=branded&mode=dark" /></a>
-  <a href="https://x.com/leodev"><img alt="Follow @leodev on X" src="https://shieldcn.dev/x/follow/leodev.svg?variant=branded&mode=dark" /></a>
-</p>
+```text
+ █████╗ ███████╗ ██████╗██╗██╗ ██████╗███╗   ██╗
+██╔══██╗██╔════╝██╔════╝██║██║██╔════╝████╗  ██║
+███████║███████╗██║     ██║██║██║     ██╔██╗ ██║
+██╔══██║╚════██║██║     ██║██║██║     ██║╚██╗██║
+██║  ██║███████║╚██████╗██║██║╚██████╗██║ ╚████║
+╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝╚═╝ ╚═════╝╚═╝  ╚═══╝
+```
 
-asciicn gives your coding agent the primitives to add dithers to anything in your app: a dither engine and a skill that teaches it. Ask for a background, a chart, a loading state or a dithered photo, and your agent builds it in your shadcn theme.
+asciicn draws pictures with real glyphs in React. It is a WebGL2 and Canvas2D ASCII engine, about 80 shadcn registry components and 12 animated scenes built on it, an ASCII Studio for tuning a look, and an agent skill that teaches Claude Code, Codex, Cursor and other agents to build new effects on the same engine.
 
-It installs with the shadcn CLI as plain source you own, and works with Claude Code, Codex, Cursor and any agent that reads skills.
+Everything installs with the shadcn CLI as plain source you own.
 
-[Read the installation guide](<content/docs/(root)/installation.mdx>) · [Write your own dither](content/docs/engine/write-your-own.mdx)
-
-- A dither engine (`lib/ascii`): a WebGL shader for anything that moves, SVG and CSS fills for static shapes, image dithering, and PNG, SVG and CSS export
-- An agent skill that teaches your agent to write fields, place a dither on a landing page or dashboard, and check it in light, dark and reduced motion
-- 52 example components across backgrounds, charts, interface, text and images, each a starting point to install and edit
-- Colours from your theme: the dither ink and paper map to your `--primary` and `--background`, and switch with light and dark mode
-- Motion, resizing, offscreen pausing and reduced motion handled by the engine
+- **Ten charsets:** classic, dense (70 glyphs), ANSI blocks, quadrants (2x2), Braille (2x4 dots), CP437, PETSCII, katakana, halftone and Sobel edge glyphs, plus custom ramps.
+- **Five colour modes:** mono (theme ink or a CRT phosphor), truecolor, ANSI 16 (VGA or xterm), duotone ramps and theme palettes.
+- **CRT effects:** scanlines, bloom, curvature, glitch, flicker and vignette.
+- **Export:** `.txt`, `.ans`, `.svg`, `.png` and `.webm`.
+- **Crisp at any zoom:** glyph cells snap to whole device pixels.
+- **Handled for you:** theme changes, resizing, pausing offscreen and in hidden tabs, and one still frame under reduced motion.
 
 ## Install
 
@@ -27,23 +30,28 @@ From a project that uses shadcn/ui, Tailwind CSS v4 and React 19:
 npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
 ```
 
-This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--dither-*` CSS variables. Any example installs the same way, for example `https://asciicn.dev/r/ascii-gradient.json`.
+This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--ascii-*` CSS variables. Any component or scene installs the same way, by URL or through the `@asciicn` namespace:
+
+```bash
+npx shadcn@latest add https://asciicn.dev/r/black-hole-scene.json
+npx shadcn@latest add @asciicn/plasma
+```
 
 ## Usage
 
-Ask your agent for the dither you want, in plain words:
+Ask your agent for the effect you want, in plain words:
 
 ```text
-Add a slow dithered aurora behind the hero headline, in our brand colour,
+Behind the hero headline, add slow Braille contour lines in our accent colour,
 and keep the headline readable.
 ```
 
-The skill sends the agent to the engine, the closest example and the checks it runs before it's done. To write one by hand, a dither is a GLSL field that returns a tone from 0 (paper) to 1 (ink):
+To write one by hand, an effect is a GLSL field that returns a tone from 0 (empty) to 1 (the densest glyph). The engine picks the glyph:
 
 ```tsx
 "use client";
 
-import { AsciiShader } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
 
 const FIELD = `
 float field(vec2 uv, vec2 res, float t) {
@@ -53,13 +61,38 @@ float field(vec2 uv, vec2 res, float t) {
 `;
 
 export const Clouds = () => (
-  <AsciiShader className="absolute inset-0" field={FIELD} stillTime={4} />
+  <AsciiShader
+    field={FIELD}
+    charset="braille"
+    className="absolute inset-0"
+    stillTime={4}
+  />
 );
 ```
 
+For grids you compute in JavaScript (3D, simulations, charts, terminal panes), draw into `AsciiGrid` from `@/lib/ascii` and turn tones into glyphs with `mapTones`.
+
+## What's in the registry
+
+| Group            | Items                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Engine           | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                                                             |
+| Scenes           | cyberpunk rain, black hole, synthwave horizon, coastal lighthouse, terminal deck, sacred torus, fluid smoke, matrix cathedral, campfire woods, warp tunnel, abyssal jellyfish, tempest storm                             |
+| Backgrounds      | aurora, beams, contours, eclipse, halftone, horizon, mesh gradient, metaballs, noise field, plasma, retro grid, ridgelines, ripples, silk, smoke, starfield, tunnel, waves, matrix, nebula, prism, ionize, squall, satin |
+| Images and video | ascii-image, ascii-video, image-compare, scroll-reveal-image, ascii-logo, ascii-globe, world-land, ascii-donut, ascii-orb                                                                                                |
+| Charts           | cartesian-chart, area-chart, bar-chart, line-chart, sparkline, heatmap, donut-chart, radar-chart, gauge, uptime-bar, dot-map                                                                                             |
+| Text             | ascii-text, scramble-text, dissolve-text, ascii-number                                                                                                                                                                   |
+| Interface        | ascii-button, ascii-card, ascii-box, ascii-fade, ascii-glow, avatar, divider, empty-state, loader, logo-marquee, not-found, progress-bar, skeleton, stat-card                                                            |
+
+The full, current list is at [`/r/registry.json`](https://asciicn.dev/r/registry.json) and in the [catalog](https://asciicn.dev/docs/examples).
+
+## Studio and scenes
+
+[asciicn.dev/studio](https://asciicn.dev/studio) lets you pick a scene or component, change its charset, colour mode, grade, cell size and CRT effects, and export the frame or the JSX. [asciicn.dev/scenes](https://asciicn.dev/scenes) shows all 12 scenes running.
+
 ## For agents
 
-The skill is the main surface: `/.well-known/agent-skills/index.json` lists it and `/.well-known/agent-skills/asciicn/SKILL.md` serves it. The site also serves `/llms.txt`, `/llms-full.txt`, a Markdown version of every docs page (append `.md`), an API catalog at `/.well-known/api-catalog` and an OpenAPI description at `/openapi.json`.
+The skill is the main surface: `/.well-known/agent-skills/index.json` lists it with its digest, and `/.well-known/agent-skills/asciicn/SKILL.md` serves it. The site also serves `/llms.txt`, `/llms-full.txt`, Markdown for every page (append `.md` or send `Accept: text/markdown`), an API catalog at `/.well-known/api-catalog` and an OpenAPI description at `/openapi.json`. [AGENTS.md](AGENTS.md) is the guide for agents working in this repo.
 
 ## Develop
 
@@ -70,32 +103,29 @@ pnpm dev
 
 Then open http://localhost:3000. Other scripts:
 
-- `pnpm build` builds the registry, then the site
-- `pnpm registry:build` renders the skill into `.generated/`, merges `registry/*.json` into `registry.json` (both generated, gitignored), checks it, and writes the items to `public/r/`
-- `pnpm check` runs formatting and lint checks (ultracite)
-- `pnpm typecheck` runs TypeScript
+- `pnpm build` builds the registry, then the site.
+- `pnpm registry:build` renders the skill into `.generated/`, merges `registry/*.json` into `registry.json` (both generated, gitignored), checks imports and dependencies, and writes the items to `public/r/`.
+- `pnpm check` runs formatting and lint checks (ultracite). `pnpm fix` fixes what it can.
+- `pnpm typecheck` runs TypeScript.
+- `pnpm test` compiles every GLSL field.
 
-Set `SITE_URL` to the public origin when deploying. Without it, a Vercel production build uses the project's production URL, a Vercel preview uses its deployment URL, and anywhere else falls back to `http://localhost:3000`.
+Set `SITE_URL` to the public origin when deploying. Without it, a Vercel production build uses the project's production URL (or `https://asciicn.dev`), a Vercel preview uses its deployment URL, and local builds use `http://localhost:3000`. Analytics stay off unless `NEXT_PUBLIC_POSTHOG_KEY` is set.
 
 ## Project structure
 
+```text
+├── app/                  # Next.js app: home, /studio, /scenes, docs, OG images, agent routes
+├── components/asciicn/   # Shipped components, one file each; scenes/ holds the scenes
+├── components/           # Site components (ui/ holds the shadcn primitives)
+├── content/docs/         # Docs (MDX): (root) is Get started, engine/ the engine guides, the rest component groups
+├── examples/             # Docs demos and their preview controls (site only)
+├── lib/ascii/            # The shipped engine: ascii-core, ascii-shader, ascii-export
+├── lib/                  # Docs source, catalog, agent discovery, analytics
+├── registry/             # Registry items: one JSON fragment per group
+├── skills/asciicn/       # The agent skill (SKILL.md and references), shipped as asciicn-skill
+├── scripts/              # build-registry.ts, test-glsl.ts, capture-catalog.ts
+└── public/r/             # Built registry items (generated)
 ```
-├── content/docs/       # Docs (MDX). (root) is "Get started", engine/ the engine guides, examples/ the overview, the rest example groups
-├── skills/asciicn/    # The agent skill (SKILL.md and references), served and shipped as asciicn-skill
-├── components/asciicn/ # Shipped components, one file each
-├── lib/ascii/         # ascii-core, the shipped engine
-├── examples/           # Docs demos (site only)
-├── registry/           # Registry items: base.json plus one fragment per group
-├── scripts/            # build-registry.ts, generate-blue-noise.ts
-├── public/r/           # Built registry items (generated by pnpm registry:build)
-├── app/                # Next.js app: site, docs, OG images, agent routes
-├── components/         # Site components (ui/ holds the shadcn primitives)
-└── lib/                # Docs source, catalog, agent discovery
-```
-
-## Credits
-
-[Dither Kit](https://www.tripwire.sh/ascii-kit) by Boring Software set the quality bar for asciicn, and several of our ideas come straight from it: the gradient, dotted, hatched and solid fills, bloom under fills, a named colour palette that works in light and dark, a chart crosshair whose tooltip glides as you scrub, legend hover and click-to-lock, live knobs in the docs, generative avatars, and buttons whose dither thickens on hover and press. We wrote our own code and look, but the ideas are theirs. Dither Kit in turn credits [EvilCharts](https://evilcharts.com) by legions-developer for the dithered chart style, so thanks to them too.
 
 Docs run on [Fumadocs](https://fumadocs.dev), and icons come from [Hugeicons](https://hugeicons.com).
 

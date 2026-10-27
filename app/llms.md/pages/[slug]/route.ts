@@ -1,16 +1,12 @@
 import { requestOrigin } from "@/lib/agent-discovery/request-origin";
+import { APP_PAGE_SLUGS, pageMarkdown } from "@/lib/agent-discovery/site-pages";
 import { markdownResponse } from "@/lib/api";
-import {
-  TRUST_PAGES,
-  TRUST_PAGE_SLUGS,
-  isTrustPageSlug,
-  trustPageMarkdown,
-} from "@/lib/trust-pages";
+import { TRUST_PAGE_SLUGS } from "@/lib/trust-pages";
 
 export const dynamicParams = false;
 
 export const generateStaticParams = () =>
-  TRUST_PAGE_SLUGS.map((slug) => ({ slug }));
+  [...APP_PAGE_SLUGS, ...TRUST_PAGE_SLUGS].map((slug) => ({ slug }));
 
 const respond = async (
   request: Request,
@@ -18,13 +14,11 @@ const respond = async (
   includeBody: boolean
 ) => {
   const { slug } = await params;
-  if (!isTrustPageSlug(slug)) {
+  const markdown = pageMarkdown(slug, requestOrigin(request));
+  if (markdown === null) {
     return new Response(null, { status: 404 });
   }
-  return markdownResponse(
-    trustPageMarkdown(TRUST_PAGES[slug], requestOrigin(request)),
-    includeBody
-  );
+  return markdownResponse(markdown, includeBody);
 };
 
 export const GET = (

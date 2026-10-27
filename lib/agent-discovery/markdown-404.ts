@@ -11,7 +11,7 @@ export const markdownNotFound = (
   const base = origin.replace(/\/$/, "");
   const body = `# Page not found
 
-There is no page at \`${pathname}\` on asciicn. It may have moved, or the URL may have a typo. asciicn is a dither engine for shadcn/ui projects with an agent skill; every page is listed in the places below.
+There is no page at \`${pathname}\` on asciicn. It may have moved, or the URL may have a typo. asciicn is an ASCII art engine and component registry for React and shadcn/ui, with an agent skill; every page is listed in the places below.
 
 - [Documentation](${base}${ROUTES.DOCS}.md): start with the introduction
 - [Sitemap](${base}${ROUTES.SITEMAP}): every page on the site

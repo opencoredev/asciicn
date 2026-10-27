@@ -1,6 +1,9 @@
 // Set SITE_URL (or deploy on Vercel) to get real canonical URLs.
 export const FALLBACK_SITE_ORIGIN = "http://localhost:3000" as const;
 
+/** The canonical production origin, used when a production build has no other. */
+export const PRODUCTION_SITE_ORIGIN = "https://asciicn.dev" as const;
+
 const getBaseUrl = () => {
   if (process.env.SITE_URL) {
     return process.env.SITE_URL;
@@ -14,7 +17,7 @@ const getBaseUrl = () => {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
 
-  return FALLBACK_SITE_ORIGIN;
+  return PRODUCTION_SITE_ORIGIN;
 };
 
 const baseUrl = getBaseUrl();
@@ -32,7 +35,7 @@ export const getRegistryOrigin = (): string => {
   }
   if (process.env.VERCEL_ENV === "production") {
     const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-    return host ? `https://${host}` : FALLBACK_SITE_ORIGIN;
+    return host ? `https://${host}` : PRODUCTION_SITE_ORIGIN;
   }
   if (process.env.VERCEL_ENV && process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
@@ -46,28 +49,30 @@ export const SITE = {
     URL: "https://github.com/leoisadev1",
   },
   DESCRIPTION: {
-    LONG: "Add dithers to anything in your app. asciicn gives your coding agent the primitives: a dither engine and a skill that teaches it. Ask for any dither and your agent builds it on the engine, in your shadcn theme. The backgrounds, charts and interface pieces in the docs are examples.",
-    SHORT: "Add dithers to anything in your app",
+    LONG: "ASCII art for React apps, drawn with real glyphs. asciicn is a WebGL2 and Canvas2D engine with ten charsets (classic, dense, ANSI blocks, quadrants, Braille, CP437, PETSCII, katakana, halftone and Sobel edges), five colour modes and CRT effects, plus a skill that teaches your coding agent to build on it. Around 80 shadcn components, 12 animated scenes and an ASCII Studio show what it draws. Export any frame as text, ANSI, SVG, PNG or WebM.",
+    SHORT: "ASCII art engine and components for React",
   },
   KEYWORDS: [
-    "dither",
-    "dither engine",
-    "agent skill",
-    "dithering",
-    "bayer dither",
-    "ordered dithering",
-    "floyd-steinberg",
-    "shadcn",
+    "ascii art",
+    "ascii shader",
+    "webgl2 ascii",
+    "ascii renderer",
+    "ascii animation",
+    "braille art",
+    "ansi art",
+    "cp437",
+    "petscii",
+    "text mode graphics",
+    "ascii studio",
+    "image to ascii",
+    "crt effect",
+    "react ascii components",
     "shadcn registry",
-    "dithered gradient",
-    "dashboard charts",
-    "landing page background",
+    "agent skill",
     "npx shadcn add",
   ] as const,
   NAME: "asciicn",
   OG_IMAGE: `${baseUrl}/og`,
-  // The silent loop iMessage, Discord and Telegram play for a shared link.
-  OG_VIDEO: `${baseUrl}/og/og-video.mp4`,
   REGISTRY: `${getRegistryOrigin()}/r`,
   URL: baseUrl,
 };

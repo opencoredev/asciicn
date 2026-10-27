@@ -1,44 +1,46 @@
 ---
 title: Catalog
-description: Every example component built on the asciicn engine, grouped by what it's for.
+description: Every component and scene built on the asciicn engine, grouped by what it's for.
 ---
 
-Each component installs as plain source into `components/asciicn/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-a-dither) or [write your own](/docs/engine/write-your-own).
+Each component installs as plain source into `components/asciicn/`, and each scene into `components/asciicn/scenes/`. Drop one into your page as it is, read its source to see how it's made, or point your agent at one and ask for a variation. For anything not here, [ask your agent](/docs#ask-your-agent-for-any-ascii-effect) or [write your own](/docs/engine/write-your-own). To try looks before you install, open the [Studio](/studio).
 
 <CatalogIndex className="mt-8" />
 
-## Using an example
+## Using a component
 
-Install any example by its registry URL. It brings the engine with it the first time:
+Install any component by name. It brings the parts of the engine it needs the first time:
 
-```bash
-npx shadcn@latest add https://asciicn.dev/r/ascii-gradient.json
-```
+<InstallBlock name="plasma" />
 
-Backgrounds fill the box you give them. Put one behind your content with `absolute inset-0`:
+Backgrounds and scenes fill the box you give them. Put one behind your content with `absolute inset-0`:
 
 ```tsx
-import { AsciiGradient } from "@/components/asciicn/ascii-gradient";
+import { Plasma } from "@/components/asciicn/plasma";
 
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <AsciiGradient angle={160} className="absolute inset-0 -z-10" />
+      <Plasma charset="braille" className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-Backgrounds built on `AsciiShader` share these props:
+Components that draw on the engine share these look props:
 
-| Prop      | What it controls                                                            | Default                        |
-| --------- | --------------------------------------------------------------------------- | ------------------------------ |
-| `matrix`  | The threshold pattern: `"bayer2"`, `"bayer4"`, `"bayer8"` or `"blue-noise"` | Varies by component            |
-| `levels`  | How many tones to snap to before dithering                                  | Every tone the matrix can draw |
-| `cell`    | Cell size in CSS pixels                                                     | `--ascii-cell`                 |
-| `palette` | Colours from paper to ink, two or more                                      | `--ascii-paper`, `--ascii-ink` |
-| `animate` | Whether it moves                                                            | `true`                         |
-| `speed`   | How fast it moves                                                           | `1`                            |
+| Prop        | What it controls                                                                                                                         | Default              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `charset`   | The glyph set: `"standard"`, `"dense"`, `"blocks"`, `"quadrants"`, `"braille"`, `"cp437"`, `"petscii"`, `"katakana"`, `"dots"`, `"edge"` | Chosen per component |
+| `chars`     | A custom ramp from empty to dense, such as `" .oO@"`. Wins over `charset`                                                                | none                 |
+| `colorMode` | `"mono"`, `"truecolor"`, `"ansi16"`, `"duotone"` or `"palette"`                                                                          | Chosen per component |
+| `phosphor`  | Mono screen colour: `"p1"`, `"p3"`, `"ibm"` or `"blueprint"`                                                                             | `--ascii-ink`        |
+| `ramp`      | Duotone ramp, such as `"mainframe"`, `"sodium"` or `"glacier"`                                                                           | Chosen per component |
+| `fx`        | CRT post effects: `scanlines`, `bloom`, `curvature`, `glitch`, `flicker`, `vignette`, each 0 to 1                                        | none                 |
+| `cell`      | Glyph cell height in CSS pixels                                                                                                          | `--ascii-cell`       |
+| `animate`   | Whether it moves                                                                                                                         | `true`               |
+| `speed`     | How fast it moves                                                                                                                        | `1`                  |
+| `handle`    | A ref that can capture the current frame for export                                                                                      | none                 |
 
-Charts and interface pieces take a `color` from the [named palette](/docs/theming) and a `fill` of `"gradient"`, `"dotted"`, `"hatched"` or `"solid"`. Each page lists every prop.
+Charts and interface pieces take a `color` from the [named palette](/docs/theming) and their own data props. Each page lists every prop.

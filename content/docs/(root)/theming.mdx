@@ -1,39 +1,75 @@
 ---
 title: Theming
-description: How asciicn reads your shadcn theme, and how to override colours and cell size.
+description: How asciicn reads your shadcn theme, and how to change glyph colour, cell size, font, glow and palettes.
 ---
 
-Every dither reads a few CSS variables, and the main two point at your existing shadcn tokens by default. Change them and every dither on the page follows, including the ones your agent writes.
+Every component reads a few CSS variables, and the main two point at your existing shadcn tokens. Change them and every glyph on the page follows, including the components your agent writes.
 
 ## The variables
 
-| Variable               | Default               | What it controls                                                |
-| ---------------------- | --------------------- | --------------------------------------------------------------- |
-| `--ascii-ink`          | `var(--primary)`      | The colour of the dots                                          |
-| `--ascii-paper`        | `var(--background)`   | The colour behind the dots                                      |
-| `--ascii-cell`         | `3px`                 | The size of one dither cell in CSS pixels                       |
-| `--ascii-bloom`        | `1` dark, `0.6` light | How strong glows are                                            |
-| `--ascii-color-<name>` | tuned per theme       | The named colours: blue, purple, green, pink, orange, red, grey |
+| Variable               | Default              | Controls                  |
+| ---------------------- | -------------------- | ------------------------- |
+| `--ascii-ink`          | `var(--primary)`     | Glyph colour in `mono`    |
+| `--ascii-paper`        | `var(--background)`  | Surface behind the glyphs |
+| `--ascii-cell`         | `12px`               | Glyph cell height         |
+| `--ascii-font`         | the site's mono font | Glyph font                |
+| `--ascii-glow`         | `0.35`, dark `0.9`   | Bloom strength, 0 to 1    |
+| `--ascii-color-<name>` | tuned per theme      | Seven named colours       |
 
-[`ascii-tokens`](/docs/installation) writes these into both `:root` and `.dark`. Components and the engine accept the names `"ink"`, `"blue"`, `"green"` and so on wherever they take a colour, and Tailwind gets matching utilities such as `bg-dither-blue`. When the visitor switches to dark mode, `--primary` and `--background` change, and every dither changes with them.
+The cell width follows the font, so glyphs keep their shape. `--ascii-ink` is also the strongest colour of the default palette. [`ascii-tokens`](/docs/installation) writes these into both `:root` and `.dark`. The named colours are `blue`, `purple`, `green`, `pink`, `orange`, `red` and `grey`. Components accept those names and `"ink"` wherever they take a colour, and Tailwind gets matching utilities such as `text-ascii-blue` and `bg-ascii-paper`. When the visitor switches to dark mode, `--primary` and `--background` change, and every component changes with them on the next frame.
 
 ## Override for one section
 
-Variables cascade, so you can retint a single part of the page by setting them on a wrapper:
+Variables cascade, so you can retint one part of the page by setting them on a wrapper:
 
 ```css
 .pricing-hero {
   --ascii-ink: var(--chart-2);
-  --ascii-cell: 4px;
+  --ascii-cell: 16px;
 }
 ```
 
-Anything inside `.pricing-hero` uses the new ink and a coarser grain. The rest of the page is unchanged.
+Anything inside `.pricing-hero` draws in the new colour with larger glyphs. The rest of the page is unchanged. Cell sizes between 10px and 16px read as texture; above 20px each glyph reads as a letter.
 
-## Pick colours that still read
+## Phosphors
 
-A dither only reads when ink and paper differ enough. As a rule, keep the same contrast you would want for body text, about 4.5:1, between `--ascii-ink` and `--ascii-paper`. Low-contrast pairs look fine as a quiet background, but they lose detail in charts and images.
+For a terminal look, set `colorMode="mono"` and a `phosphor` instead of the theme ink. Each phosphor is a CRT screen colour:
 
-## Multi-step palettes
+| Phosphor    | Colour    | Looks like                |
+| ----------- | --------- | ------------------------- |
+| `p1`        | `#33ff66` | Green monochrome terminal |
+| `p3`        | `#ffb000` | Amber terminal            |
+| `ibm`       | `#f4f4f5` | White IBM monitor         |
+| `blueprint` | `#38bdf8` | Cyan drafting screen      |
 
-Two-tone dithers cover most backgrounds and interface pieces. Components that need more steps take a `palette` prop: a list of colours from paper to ink, such as your `--chart-1` to `--chart-5` tokens. [Palettes](/docs/engine/palettes) shows how a palette ramp is dithered.
+```tsx
+<AsciiShader field={FIELD} colorMode="mono" phosphor="p3" fx={CRT_FX} />
+```
+
+Phosphors are fixed colours, so check them in light mode: on a white page, amber and green need a dark `--ascii-paper` behind them, such as `background="paper"` on a `bg-neutral-950` box.
+
+## Duotone ramps and palettes
+
+`colorMode="duotone"` maps each glyph's tone onto a colour ramp, from dark to bright. The engine ships ten ramps: `mainframe`, `sodium`, `heliograph`, `infrared`, `outrun`, `orchid`, `glacier`, `ember`, `toxic` and `vapor`.
+
+`colorMode="palette"` uses colours you pass, paper first and then the inks from faint to strong. Theme tokens keep it in step with light and dark mode:
+
+```tsx
+<AsciiShader
+  field={FIELD}
+  colorMode="palette"
+  palette={["--ascii-paper", "--chart-5", "--chart-3", "--chart-1"]}
+/>
+```
+
+`truecolor` gives each glyph the colour of its source (an image, a video, or a `colorField` you write), and `ansi16` snaps that colour to the 16 colours of a terminal, using the `vga` or `xterm` table. [Colour modes](/docs/engine/color-modes) shows all five side by side.
+
+## Light and dark
+
+Dark mode comes from the `.dark` class on `<html>`, as in shadcn. The engine watches that class and the `--ascii-*` variables and redraws when they change, so a theme toggle never needs a reload.
+
+Glyphs are thin, so they need more contrast than a filled shape. Keep at least 4.5:1 between `--ascii-ink` and `--ascii-paper`, the same as body text. In light mode, sparse charsets (`standard`, `dots`, `braille`) can look faint; a denser charset or a larger `--ascii-cell` brings them back. In dark mode, `--ascii-glow` adds bloom around bright glyphs; keep it lower in light mode, where bloom washes out.
+
+## Text over glyphs
+
+When a heading sits over an animated background, fade the background's tone toward 0 behind the text, or give the text its own `bg-background/80` panel. Real text stays HTML on top; the canvas underneath is `aria-hidden`.

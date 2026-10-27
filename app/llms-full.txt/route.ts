@@ -1,5 +1,6 @@
 import { getRegistryOrigin, SITE } from "@/constants/site";
 import { agentStartHere } from "@/lib/agent-discovery/agent-guide";
+import { APP_PAGE_SLUGS, pageMarkdown } from "@/lib/agent-discovery/site-pages";
 import { getAllPagesFromFolder } from "@/lib/page-tree";
 import { getLLMText, isExamplePage, source } from "@/lib/source";
 
@@ -9,8 +10,8 @@ type DocsPage = ReturnType<typeof source.getPages>[number];
 
 /**
  * Agents are often handed this file whole, so it reads in the order they
- * need: getting started, then the engine, then the examples. The sidebar
- * keeps its own order for people.
+ * need: getting started, then the engine, then the examples, then the Studio
+ * and scenes gallery pages. The sidebar keeps its own order for people.
  */
 const readingOrder = (page: DocsPage) => {
   const [section = ""] = page.slugs;
@@ -49,13 +50,18 @@ export const GET = async () => {
     pages.map((page) => getLLMText(page, "bundle"))
   );
 
+  // The origin install commands use, so a preview's reading links and
+  // install commands point at the same deployment.
+  const origin = getRegistryOrigin();
+  const appPages = APP_PAGE_SLUGS.map((slug) => pageMarkdown(slug, origin));
+
   return new Response(
     [
       `# ${SITE.NAME}: full documentation\n\n> ${SITE.DESCRIPTION.LONG}`,
-      // The origin install commands use, so a preview's reading links and
-      // install commands point at the same deployment.
-      agentStartHere(getRegistryOrigin()),
+      agentStartHere(origin),
       ...scanned,
-    ].join("\n\n")
+      ...appPages.filter((page) => page !== null),
+    ].join("\n\n"),
+    { headers: { "Content-Type": "text/plain; charset=utf-8" } }
   );
 };

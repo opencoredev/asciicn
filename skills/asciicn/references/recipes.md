@@ -1,92 +1,54 @@
 # Recipes
 
-Complete components that work as written. Adapt them: change the field, the props, the colours. Imports assume the `@/lib/ascii` alias.
+Complete components to adapt. Each one is a starting point: change the field, the charset and the props to fit what the user asked for. Imports use `@/lib/ascii`; use the project's alias.
 
-## A shader background with props
+## A shader background
 
-The shape every dithered background follows: typed props become uniforms, the field is a constant, and the fallback resembles the dither.
+A slow, theme-coloured field with the engine's look props passed through, so the user (or a Studio) can switch charset and colours, and a `handle` for export.
 
 ```tsx
 "use client";
 
-import { cssColor, DEFAULT_PALETTE } from "@/lib/ascii";
+import type { AsciiSceneProps } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
-const FIELD = `
+const FIELD = /* glsl */ `
 float field(vec2 uv, vec2 res, float t) {
-  float aspect = res.x / res.y;
-  vec2 p = vec2(uv.x * aspect, uv.y);
-  vec2 focus = vec2(driftFocus.x * aspect, 1.0 - driftFocus.y);
-  float light = exp(-dot(p - focus, p - focus) * driftTightness);
-  float clouds = fbm(p * driftScale + vec2(t * 0.03, -t * 0.015));
-  return driftIntensity * light * mix(0.55, 1.15, clouds);
-}
-`;
+  vec2 p = vec2(uv.x * res.x / res.y, uv.y);
+  float drift = fbm(p * 1.6 + vec2(t * 0.03, t * 0.01));
+  float bands = 0.5 + 0.5 * sin((p.y + drift * 0.8) * 9.0 - t * 0.2);
+  float tone = smoothstep(0.15, 0.95, bands * drift * 1.6) * smoothstep(0.0, 0.25, uv.y);
+  return tone * tideIntensity;
+}`;
 
-export type DriftGlowProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
-  /** Where the light sits, from the top left, 0 to 1. Default [0.5, 0]. */
-  focus?: readonly [number, number];
-  /** Peak tone, 0 to 1. Default 0.8. */
+export interface TideBackgroundProps extends AsciiSceneProps {
+  /** How strong the pattern is, 0 to 1. Default 0.9. */
   intensity?: number;
-  /** Cloud size; bigger numbers make smaller clouds. Default 2.5. */
-  scale?: number;
-  /** How tightly the light gathers. Default 3. */
-  tightness?: number;
-};
+}
 
-export const DriftGlow = ({
-  focus = [0.5, 0],
-  intensity = 0.8,
-  scale = 2.5,
-  tightness = 3,
-  palette = DEFAULT_PALETTE,
-  matrix = "bayer8",
+export const TideBackground = ({
+  intensity = 0.9,
+  charset = "braille",
+  colorMode = "mono",
+  stillTime = 6,
   ...props
-}: DriftGlowProps) => (
+}: TideBackgroundProps) => (
   <AsciiShader
-    {...props}
     field={FIELD}
-    palette={palette}
-    matrix={matrix}
-    stillTime={6}
-    uniforms={{
-      driftFocus: focus,
-      driftIntensity: intensity,
-      driftScale: scale,
-      driftTightness: tightness,
-    }}
-    fallback={
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: cssColor(palette[0]),
-          backgroundImage: `radial-gradient(ellipse at ${focus[0] * 100}% ${focus[1] * 100}%, color-mix(in oklch, ${cssColor(palette.at(-1) ?? palette[1])} 45%, transparent), transparent 70%)`,
-        }}
-      />
-    }
+    uniforms={{ tideIntensity: intensity }}
+    charset={charset}
+    colorMode={colorMode}
+    stillTime={stillTime}
+    {...props}
   />
 );
 ```
 
-Use it:
-
-```tsx
-<section className="relative isolate overflow-hidden rounded-3xl border">
-  <DriftGlow
-    className="absolute inset-0 -z-10"
-    palette={["--ascii-paper", "blue"]}
-  />
-  <div className="px-8 py-28 text-center">…</div>
-</section>
-```
+Every uniform you pass must be read in the field, or the compiler drops it and the engine warns.
 
 ## A hero that clears its headline
 
-A full-bleed field behind a headline, with a rounded box cleared around the text block. The page measures the text and passes its box to the field, so the clearing fits the copy at every width, and a phone gets the same margin as a desktop. Swap the contour lines for any field: the clearing is the `d`, `dist` and `clear` lines of `field`.
+Measure the text block and clear a rounded box around it, so the headline sits on clean ground at every width.
 
 ```tsx
 "use client";
@@ -95,390 +57,459 @@ import { useEffect, useRef, useState } from "react";
 
 import { AsciiShader } from "@/lib/ascii/shader";
 
-const FIELD = `
-float heroHeight(vec2 p) {
-  return 0.5 + 0.35 * snoise(p * 0.9) + 0.15 * snoise(p * 2.1);
-}
-
-float heroContour(float h, float hx, float hy, float count, float width) {
-  float offset = abs(fract(h * count + 0.5) - 0.5);
-  float perCell = max(length(vec2(hx - h, hy - h)) * count, 1e-4);
-  float line = 1.0 - smoothstep(width * 0.5 - 0.5, width * 0.5 + 0.5, offset / perCell);
-  return line * (1.0 - smoothstep(0.06, 0.1, offset));
+const FIELD = /* glsl */ `
+float heroBox(vec2 p, vec4 box, float radius) {
+  vec2 centre = box.xy + box.zw * 0.5;
+  vec2 d = abs(p - centre) - box.zw * 0.5 + radius;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;
 }
 
 float field(vec2 uv, vec2 res, float t) {
-  vec2 p = vec2(uv.x * res.x / res.y, uv.y) * heroScale + vec2(t * 0.012, t * 0.005);
-  float step1 = heroScale / res.y;
-  float h = heroHeight(p);
-  float lines = heroContour(h, heroHeight(p + vec2(step1, 0.0)), heroHeight(p + vec2(0.0, step1)), 9.0, 1.5);
+  float aspect = res.x / res.y;
+  vec2 p = vec2(uv.x * aspect, uv.y);
+  float rings = 0.5 + 0.5 * sin(length(p - vec2(aspect * 0.8, 0.2)) * 28.0 - t * 0.6);
+  float glyphs = smoothstep(0.35, 1.0, rings) * (0.4 + 0.6 * fbm(p * 2.0 + t * 0.02));
+  // heroText is the text block in the same square units, y up.
+  vec4 box = vec4(heroText.x * aspect, heroText.y, heroText.z * aspect, heroText.w);
+  float clear = smoothstep(0.0, 0.08, heroBox(p, box, 0.04));
+  return glyphs * clear;
+}`;
 
-  // Distance in cells from the rounded box around the text: 0 inside, ink
-  // returns over heroFeather cells outside it.
-  vec2 d = abs((uv - heroBox.xy) * res) - heroBox.zw * res + heroRadius;
-  float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - heroRadius;
-  float clear = smoothstep(0.0, heroFeather, dist);
-  // Thin out towards the bottom edge so the next section starts clean.
-  return 0.85 * lines * clear * smoothstep(0.0, 0.3, uv.y);
-}
-`;
+export const Hero = () => {
+  const section = useRef<HTMLElement>(null);
+  const text = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<[number, number, number, number]>([
+    0, 0, 0, 0,
+  ]);
 
-type Box = readonly [number, number, number, number];
-
-/**
- * The text block's box inside the section, as the field reads it: centre
- * in uv (0 to 1, y up) and half width and height as a fraction of the
- * section, padded by `pad` CSS pixels.
- */
-const useClearBox = (
-  section: React.RefObject<HTMLElement | null>,
-  text: React.RefObject<HTMLElement | null>,
-  pad = 24
-): Box => {
-  const [box, setBox] = useState<Box>([0.5, 0.5, 0, 0]);
   useEffect(() => {
-    const host = section.current;
-    const block = text.current;
-    if (!(host && block)) {
-      return;
-    }
     const measure = () => {
-      const s = host.getBoundingClientRect();
-      const r = block.getBoundingClientRect();
-      if (s.width === 0 || s.height === 0) {
+      const outer = section.current?.getBoundingClientRect();
+      const inner = text.current?.getBoundingClientRect();
+      if (!(outer && inner && outer.width && outer.height)) {
         return;
       }
+      // uv space: x and width over the section width, y up from the bottom.
       setBox([
-        (r.left - s.left + r.width / 2) / s.width,
-        1 - (r.top - s.top + r.height / 2) / s.height,
-        (r.width / 2 + pad) / s.width,
-        (r.height / 2 + pad) / s.height,
+        (inner.left - outer.left) / outer.width,
+        (outer.bottom - inner.bottom) / outer.height,
+        inner.width / outer.width,
+        inner.height / outer.height,
       ]);
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(host);
-    observer.observe(block);
+    if (section.current) {
+      observer.observe(section.current);
+    }
     return () => observer.disconnect();
-  }, [section, text, pad]);
-  return box;
-};
+  }, []);
 
-export const ContourHero = ({ children }: { children: React.ReactNode }) => {
-  const section = useRef<HTMLElement>(null);
-  const text = useRef<HTMLDivElement>(null);
-  const box = useClearBox(section, text);
   return (
-    <section
-      ref={section}
-      className="relative isolate flex min-h-[640px] items-center overflow-hidden"
-    >
+    <section ref={section} className="relative isolate overflow-hidden">
       <AsciiShader
-        className="absolute inset-0 -z-10"
         field={FIELD}
-        palette={["--ascii-paper", "--ascii-ink"]}
-        stillTime={8}
-        uniforms={{
-          heroBox: box,
-          heroFeather: 10,
-          heroRadius: 8,
-          heroScale: 1.5,
-        }}
-        fallback={<div className="absolute inset-0 bg-ascii-paper" />}
+        uniforms={{ heroText: box }}
+        charset="standard"
+        className="absolute inset-0 -z-10"
       />
-      <div ref={text} className="mx-auto w-fit max-w-2xl px-6 text-center">
-        {children}
+      <div
+        ref={text}
+        className="relative mx-auto max-w-2xl px-6 py-32 text-center"
+      >
+        <h1 className="text-5xl font-semibold tracking-tight">
+          Ship logs you can read
+        </h1>
+        <p className="text-muted-foreground mt-4 text-lg">
+          One sentence about the product.
+        </p>
       </div>
     </section>
   );
 };
 ```
 
-- Measure the element that holds the text, sized to it (`w-fit`), not a full-width wrapper, or the box clears the whole row.
-- `pad` is CSS pixels of quiet ground around the text; `heroFeather` is how many cells the ink takes to return. 24px and 10 cells read as a deliberate margin, not a hole.
-- Every value is relative to the section, so cell size and device pixel ratio don't matter.
-- More than one block to clear (a headline and a screenshot): pass a second box uniform and multiply the two `smoothstep`s.
+## A spinning object on the CPU
 
-## Many hues: a spectrum of lines
-
-Wavy lines with a dithered glow, each carrying a rainbow that runs along it and drifts. `field` draws only the shape; `colorField` colours the dots. A helper in the field string finds the nearest line, and both functions call it. See [fields.md](fields.md#colour) for the colour building blocks.
+A torus shaded with a light, drawn into an `AsciiGrid` through `mapTones`. The same pattern draws any 3D mesh, heightmap or simulation: compute a tone per sample, then map.
 
 ```tsx
 "use client";
 
-import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
+import { useRef } from "react";
 
-// Shared by both functions: the nearest line to this cell, as
-// (distance in line widths, line index).
-const LINES = `
-vec2 spectrumNearest(vec2 uv, vec2 res, float t) {
-  float x = uv.x * res.x / res.y;
-  vec2 best = vec2(1e4, 0.0);
-  for (int i = 0; i < 9; i++) {
-    if (float(i) >= spectrumLines) break;
-    float k = float(i);
-    float base = 0.18 + 0.64 * k / max(spectrumLines - 1.0, 1.0);
-    float y = base
-      + 0.035 * sin(x * 2.4 + t * 0.5 + k * 0.9)
-      + 0.015 * sin(x * 5.3 - t * 0.35 + k * 1.7);
-    float d = abs(uv.y - y) * res.y / spectrumWidth;
-    if (d < best.x) best = vec2(d, k);
-  }
-  return best;
-}
-`;
+import {
+  AsciiGrid,
+  createToneField,
+  mapTones,
+  resolveCharset,
+} from "@/lib/ascii";
+import type { AsciiGridDrawContext, CharsetName, ToneField } from "@/lib/ascii";
 
-// Where the dots go: a thin core and a soft glow around each line.
-const FIELD = `${LINES}
-float field(vec2 uv, vec2 res, float t) {
-  float d = spectrumNearest(uv, res, t).x;
-  return exp(-d * d) + 0.35 * exp(-d * 0.6);
-}
-`;
-
-// What colour they are: a rainbow that runs along each line and drifts,
-// shifted a little per line. Mixing in the theme's ink keeps it readable
-// on white as well as black.
-const COLOR_FIELD = `
-vec3 colorField(vec2 uv, vec2 res, float t) {
-  float k = spectrumNearest(uv, res, t).y;
-  vec3 hue = spectrum(uv.x * 0.75 + k * 0.06 - t * 0.03);
-  return mix(hue, paletteColor(0.0).rgb, 0.2);
-}
-`;
-
-type SpectrumLinesProps = Omit<
-  AsciiShaderProps,
-  "field" | "colorField" | "uniforms"
-> & {
-  /** How many lines, from 1 to 9. */
-  lines?: number;
-  /** Line thickness in cells; the glow spreads a few times wider. */
-  width?: number;
-};
-
-export const SpectrumLines = ({
-  lines = 7,
-  width = 1.2,
-  palette = ["--background", "--foreground"],
-  ...props
-}: SpectrumLinesProps) => (
-  <AsciiShader
-    {...props}
-    field={FIELD}
-    colorField={COLOR_FIELD}
-    palette={palette}
-    stillTime={3}
-    uniforms={{ spectrumLines: lines, spectrumWidth: width }}
-  />
-);
-```
-
-Use it like any background: `<SpectrumLines className="absolute inset-0" />` inside a positioned parent, with content in a sibling above it. To change the colouring, edit only `colorField`: `spectrum(k / spectrumLines)` gives one solid hue per line, `paletteColor(uv.x).rgb` runs through the theme's colours. To bend the lines into another shape (converging on a point, wrapping a ring), change `y` in the helper and keep the rest.
-
-## An SVG chart fill
-
-Static, server-renderable, sharp. The track uses a sparse fill and the data a dense ramp.
-
-```tsx
-import { FillPattern } from "@/lib/ascii";
-import type { AsciiColor } from "@/lib/ascii";
-
-export type AsciiBarsProps = {
-  values: readonly number[];
-  label: string;
-  color?: AsciiColor;
-  /** Unique on the page; used for the pattern ids. */
-  id: string;
-};
-
-const WIDTH = 240;
-const HEIGHT = 96;
-
-export const AsciiBars = ({
-  values,
-  label,
-  color = "ink",
-  id,
-}: AsciiBarsProps) => {
-  const max = Math.max(1, ...values);
-  const step = WIDTH / values.length;
-  return (
-    <svg
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className="h-24 w-full"
-      role="img"
-      aria-label={label}
-    >
-      <defs>
-        <FillPattern
-          id={`${id}-bar`}
-          fill="gradient"
-          color={color}
-          ramp={{ edge: "bottom", at: HEIGHT, length: HEIGHT }}
-        />
-        <FillPattern id={`${id}-track`} fill="dotted" color="grey" />
-      </defs>
-      {values.map((value, index) => {
-        const height = (value / max) * HEIGHT;
-        const x = index * step + 2;
-        return (
-          <g key={x}>
-            <rect
-              x={x}
-              y={0}
-              width={step - 4}
-              height={HEIGHT}
-              fill={`url(#${id}-track)`}
-              opacity={0.5}
-            />
-            <rect
-              x={x}
-              y={HEIGHT - height}
-              width={step - 4}
-              height={height}
-              fill={`url(#${id}-bar)`}
-            />
-          </g>
-        );
-      })}
-    </svg>
-  );
-};
-```
-
-The bar's ramp is anchored to the bottom of the chart (`at: HEIGHT`), so every bar is densest at its base and taller bars thin out towards their tops. To make each bar densest at its own top instead, give each one its own pattern: `<pattern id={`${id}-b${index}`} href={`#${id}-bar`} y={top} />` after a ramp with `edge: "top", at: 0`.
-
-## A DOM progress bar
-
-```tsx
-import { fillStyle } from "@/lib/ascii";
-import type { AsciiColor } from "@/lib/ascii";
-
-export const AsciiProgress = ({
-  value,
-  label,
-  color = "ink",
-}: {
-  value: number;
-  label: string;
-  color?: AsciiColor;
-}) => {
-  const percent = Math.round(Math.min(1, Math.max(0, value)) * 100);
-  return (
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuenow={percent}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      className="relative h-3 overflow-hidden rounded-sm"
-    >
-      <div
-        className="absolute inset-0 opacity-40"
-        style={fillStyle("dotted", { color: "grey" })}
-      />
-      <div
-        className="absolute inset-y-0 left-0 transition-[width] duration-500 motion-reduce:transition-none"
-        style={{
-          width: `${percent}%`,
-          ...fillStyle("gradient", {
-            color,
-            edge: "right",
-            length: 48,
-            to: 0.25,
-          }),
-        }}
-      />
-    </div>
-  );
-};
-```
-
-## A dithered photo
-
-```tsx
-"use client";
-
-import { useEffect, useRef } from "react";
-
-import { ditherImage, useAsciiColors } from "@/lib/ascii";
-
-/** Draws `src` at one pixel per cell, dithered to the theme's paper and ink. */
-export const DitheredPhoto = ({
-  src,
-  alt,
-  cell = 3,
-}: {
-  src: string;
-  alt: string;
+export interface SpinningTorusProps {
+  /** Glyph set. Default `"standard"`. */
+  charset?: CharsetName;
+  /** Cell height in CSS px. Default `--ascii-cell`. */
   cell?: number;
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const colors = useAsciiColors(canvasRef); // [ink, paper]
+  className?: string;
+}
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context || !colors) {
-      return;
+export const SpinningTorus = ({
+  charset = "standard",
+  cell,
+  className,
+}: SpinningTorusProps) => {
+  const fieldRef = useRef<ToneField | null>(null);
+  const depthRef = useRef(new Float32Array(0));
+
+  const draw = ({
+    frame,
+    columns,
+    rows,
+    time,
+    metrics,
+  }: AsciiGridDrawContext) => {
+    const set = resolveCharset(charset);
+    const [gx, gy] = set.grid;
+    let field = fieldRef.current;
+    if (!field || field.width !== columns * gx || field.height !== rows * gy) {
+      field = createToneField(columns, rows, set);
+      fieldRef.current = field;
+      depthRef.current = new Float32Array(field.tones.length);
     }
-    const [ink, paper] = colors;
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => {
-      const width = Math.round(canvas.clientWidth / cell);
-      const height = Math.round((width * image.height) / image.width);
-      canvas.width = width;
-      canvas.height = height;
-      context.drawImage(image, 0, 0, width, height);
-      const dithered = ditherImage(context.getImageData(0, 0, width, height), {
-        method: "atkinson",
-        palette: [paper, ink],
-      });
-      context.putImageData(dithered, 0, 0);
-    };
-    image.src = src;
-  }, [src, cell, colors]);
+    field.tones.fill(0);
+    const depth = depthRef.current;
+    depth.fill(0);
+    const a = time * 0.7;
+    const b = time * 0.4;
+    // Sample aspect: cells are metrics.width wide and metrics.height tall.
+    const aspect =
+      (field.width * metrics.width) /
+      gx /
+      ((field.height * metrics.height) / gy);
+    for (let theta = 0; theta < 6.283; theta += 0.04) {
+      for (let phi = 0; phi < 6.283; phi += 0.015) {
+        const circle = 2 + Math.cos(theta);
+        const x0 = circle * Math.cos(phi);
+        const y0 = Math.sin(theta);
+        const z0 = circle * Math.sin(phi);
+        const y = y0 * Math.cos(a) - z0 * Math.sin(a);
+        const z1 = y0 * Math.sin(a) + z0 * Math.cos(a);
+        const x = x0 * Math.cos(b) - z1 * Math.sin(b);
+        const z = 6 + x0 * Math.sin(b) + z1 * Math.cos(b);
+        const inv = 1 / z;
+        const u = 0.5 + (x * inv * 1.4) / aspect;
+        const v = 0.5 - y * inv * 1.4;
+        const sx = Math.floor(u * field.width);
+        const sy = Math.floor(v * field.height);
+        if (sx < 0 || sy < 0 || sx >= field.width || sy >= field.height) {
+          continue;
+        }
+        const i = sy * field.width + sx;
+        if (inv > (depth[i] ?? 0)) {
+          depth[i] = inv;
+          const nx = Math.cos(theta) * Math.cos(phi);
+          const ny = Math.sin(theta);
+          const light = Math.max(0, nx * 0.5 + ny * 0.7 + 0.3);
+          field.tones[i] = 0.15 + 0.85 * light;
+        }
+      }
+    }
+    mapTones(field, columns, rows, { charset: set }, frame);
+  };
 
   return (
-    <canvas
-      ref={canvasRef}
+    <AsciiGrid draw={draw} cell={cell} stillTime={1.2} className={className} />
+  );
+};
+```
+
+## A Braille line chart
+
+Two dots across and four down per glyph give a line chart four times sharper than one glyph per point. Draw the line with `brailleChar`, and keep the numbers in HTML.
+
+```tsx
+"use client";
+
+import { AsciiGrid, BRAILLE_DOT_BITS, brailleChar } from "@/lib/ascii";
+import type { AsciiGridDrawContext } from "@/lib/ascii";
+
+export interface BrailleLineChartProps {
+  /** Values in any range; the chart scales to min and max. */
+  data: readonly number[];
+  /** Text equivalent for screen readers, such as "Requests per minute, last hour: 120 to 340". */
+  label: string;
+  className?: string;
+}
+
+export const BrailleLineChart = ({
+  data,
+  label,
+  className,
+}: BrailleLineChartProps) => {
+  const draw = ({ frame, columns, rows }: AsciiGridDrawContext) => {
+    const width = columns * 2;
+    const height = rows * 4;
+    const masks = new Uint8Array(columns * rows);
+    const min = Math.min(...data);
+    const span = Math.max(...data) - min || 1;
+    const yAt = (x: number) => {
+      const t = (x / (width - 1)) * (data.length - 1);
+      const i = Math.floor(t);
+      const value =
+        (data[i] ?? 0) +
+        ((data[i + 1] ?? data[i] ?? 0) - (data[i] ?? 0)) * (t - i);
+      return Math.round((1 - (value - min) / span) * (height - 1));
+    };
+    for (let x = 0; x < width; x += 1) {
+      const y0 = yAt(x);
+      const y1 = x + 1 < width ? yAt(x + 1) : y0;
+      // Fill the vertical gap so steep segments stay connected.
+      for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y += 1) {
+        const cell = Math.floor(y / 4) * columns + Math.floor(x / 2);
+        masks[cell] =
+          (masks[cell] ?? 0) | (BRAILLE_DOT_BITS[y % 4]?.[x % 2] ?? 0);
+      }
+    }
+    masks.forEach((mask, i) => {
+      if (mask) {
+        frame.put(i % columns, Math.floor(i / columns), brailleChar(mask));
+      }
+    });
+  };
+
+  return (
+    <AsciiGrid
+      draw={draw}
+      animate={false}
       role="img"
-      aria-label={alt}
-      className="w-full [image-rendering:pixelated]"
+      aria-hidden={false}
+      aria-label={label}
+      className={className}
     />
   );
 };
 ```
 
-Each pixel takes the nearest palette colour, so the order of the palette doesn't matter: with dark paper and light ink, dark pixels land on paper. For a negative, invert the pixels before dithering (`255 - value` on each of the red, green and blue bytes).
+## A bar meter
 
-## A CSS-only band
+Eighth blocks give a progress bar eight steps per cell. This one is plain DOM text, so it renders on the server and reads in a screen reader.
 
 ```tsx
-import { toCSS } from "@/lib/ascii/export";
+import { eighthsBar } from "@/lib/ascii";
 
-const BANDS = [0.5, 0.25, 0.125, 0.0625] as const;
-const css = BANDS.map((level, index) =>
-  toCSS({
-    level,
-    cell: 4,
-    ink: "--ascii-ink",
-    mode: "mask",
-    selector: `.fade-band-${index}`,
-  })
-).join("\n");
-
-export const AsciiFadeBand = () => (
-  <div aria-hidden="true" className="flex h-24 flex-col">
-    <style>{css}</style>
-    {BANDS.map((level, index) => (
-      <div key={level} className={`fade-band-${index} flex-1`} />
-    ))}
+export const UsageMeter = ({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) => (
+  <div className="font-mono text-sm">
+    <div className="flex justify-between">
+      <span>{label}</span>
+      <span>{Math.round(value * 100)}%</span>
+    </div>
+    <div
+      role="meter"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(value * 100)}
+      className="bg-muted/40 text-ascii-ink whitespace-pre leading-none"
+    >
+      {eighthsBar(value, 32)}
+    </div>
   </div>
 );
 ```
 
-No JavaScript runs for it in the browser; the rules are plain CSS masks that follow the theme.
+## A terminal pane
+
+Box-drawing frame, a typed line and a blinking cursor, in a phosphor colour. Wrap it in `dark` so it stays a dark screen on a light page.
+
+```tsx
+"use client";
+
+import { AsciiGrid, BOX, PHOSPHORS } from "@/lib/ascii";
+import type { AsciiGridDrawContext } from "@/lib/ascii";
+
+const LINES = [
+  "$ deploy --prod",
+  "building...      done in 4.2s",
+  "uploading...     12 files",
+  "live at https://example.com",
+];
+
+const draw = ({ frame, columns, rows, time }: AsciiGridDrawContext) => {
+  const box = BOX.rounded;
+  frame.write(0, 0, box.tl + box.h.repeat(columns - 2) + box.tr);
+  for (let y = 1; y < rows - 1; y += 1) {
+    frame.put(0, y, box.v);
+    frame.put(columns - 1, y, box.v);
+  }
+  frame.write(0, rows - 1, box.bl + box.h.repeat(columns - 2) + box.br);
+  // Type one character every 40ms, line by line.
+  let budget = Math.floor(time * 25);
+  LINES.forEach((line, i) => {
+    const shown = line.slice(0, Math.max(0, budget));
+    budget -= line.length;
+    frame.write(2, 1 + i, shown);
+    if (budget < 0 && budget > -line.length - 1 && time % 1 < 0.5) {
+      frame.put(2 + shown.length, 1 + i, "█");
+    }
+  });
+};
+
+export const DeployTerminal = () => (
+  <div className="dark relative h-40 rounded-lg bg-neutral-950">
+    <AsciiGrid
+      draw={draw}
+      ink={PHOSPHORS.p1.ink}
+      stillTime={10}
+      className="absolute inset-0"
+    />
+  </div>
+);
+```
+
+Each phosphor in `PHOSPHORS` has an `ink` and the near-black `paper` of its glass; pass `paper={PHOSPHORS.p1.paper}` to paint the glass instead of the wrapper.
+
+## An image as ASCII
+
+Sample an image into a tone field each frame (or once, for a still), then map it. The same code takes a `<video>` or a webcam `MediaStream`.
+
+```tsx
+"use client";
+
+import { useRef } from "react";
+
+import {
+  AsciiGrid,
+  autoLevels,
+  mapTones,
+  sampleToField,
+  useMediaElement,
+} from "@/lib/ascii";
+import type {
+  AsciiGridDrawContext,
+  CharsetName,
+  ColorMode,
+  ToneField,
+} from "@/lib/ascii";
+
+export interface AsciiPhotoProps {
+  src: string;
+  /** What the photo shows, for screen readers. */
+  alt: string;
+  /** Default `"standard"`. */
+  charset?: CharsetName;
+  /** Default `"truecolor"`. */
+  colorMode?: ColorMode;
+  className?: string;
+}
+
+export const AsciiPhoto = ({
+  src,
+  alt,
+  charset = "standard",
+  colorMode = "truecolor",
+  className,
+}: AsciiPhotoProps) => {
+  const { element } = useMediaElement(src);
+  const fieldRef = useRef<ToneField | undefined>(undefined);
+
+  const draw = ({ frame, columns, rows, metrics }: AsciiGridDrawContext) => {
+    if (!element) {
+      return;
+    }
+    const field = sampleToField(element, {
+      aspect: (columns * metrics.width) / (rows * metrics.height),
+      charset,
+      columns,
+      fit: "cover",
+      into: fieldRef.current,
+      rows,
+    });
+    fieldRef.current = field;
+    autoLevels(field);
+    mapTones(
+      field,
+      columns,
+      rows,
+      { charset, colorMode, grade: { contrast: 1.2 } },
+      frame
+    );
+  };
+
+  return (
+    <AsciiGrid
+      draw={draw}
+      colored={colorMode !== "mono"}
+      animate={false}
+      role="img"
+      aria-hidden={false}
+      aria-label={alt}
+      className={className}
+    />
+  );
+};
+```
+
+`useMediaElement(source)` takes a URL, a `Blob` (a file the user picked) or a `MediaStream`, and returns `{ element, kind, error }`; show a message when `error` is set. `into` reuses the field between frames, and `aspect` tells the sampler the box's real shape so the image isn't stretched. For video, leave `animate` on so each frame resamples; for a webcam, pass the stream from `navigator.mediaDevices.getUserMedia({ video: true })`, set `mirror: true`, and stop its tracks on unmount. Frames never leave the browser.
+
+## A scene with colour, CRT and the pointer
+
+Combine a `field`, a `colorField`, CRT effects and pointer parallax into a full animated piece. This is how the scenes in the registry are built; read one (`components/asciicn/scenes/*.tsx`) for a larger example.
+
+```tsx
+"use client";
+
+import { CRT_FX } from "@/lib/ascii";
+import type { AsciiSceneProps } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+
+const SHARED = /* glsl */ `
+float duneHeight(vec2 p, float t) {
+  return 0.35 + 0.12 * snoise(vec2(p.x * 1.4 + t * 0.05, 3.0)) + 0.05 * snoise(vec2(p.x * 5.0, t * 0.1));
+}`;
+
+const FIELD = /* glsl */ `${SHARED}
+float field(vec2 uv, vec2 res, float t) {
+  vec2 p = vec2(uv.x * res.x / res.y, uv.y);
+  p.x += (u_pointer.x - 0.5) * 0.15 * u_pointer.z;     // parallax
+  float h = duneHeight(p, t);
+  float ground = smoothstep(h + 1.5 / res.y, h, p.y) * (0.45 + 0.5 * (h - p.y + 0.3));
+  vec2 sun = vec2(res.x / res.y * 0.7, 0.62);
+  float glow = exp(-dot(p - sun, p - sun) * 30.0);
+  return max(ground, glow);
+}`;
+
+const COLOR_FIELD = /* glsl */ `${SHARED}
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  vec2 p = vec2(uv.x * res.x / res.y, uv.y);
+  float sky = smoothstep(0.2, 1.0, uv.y);
+  vec3 sand = toSrgb(oklch(0.62, 0.11, 0.9));
+  vec3 dusk = toSrgb(oklch(0.55, 0.16, 5.2));
+  return p.y < duneHeight(p, t) ? sand : mix(sand, dusk, sky);
+}`;
+
+export const DuneScene = ({
+  charset = "dense",
+  fx = CRT_FX,
+  stillTime = 4,
+  ...props
+}: AsciiSceneProps) => (
+  <AsciiShader
+    field={FIELD}
+    colorField={COLOR_FIELD}
+    charset={charset}
+    fx={fx}
+    stillTime={stillTime}
+    interaction="none"
+    {...props}
+  />
+);
+```
+
+`SHARED` appears word for word in both strings, so the engine compiles it once.

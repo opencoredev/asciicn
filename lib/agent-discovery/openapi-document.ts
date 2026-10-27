@@ -12,11 +12,11 @@ type Schema = Record<string, unknown>;
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 
-const DESCRIPTION = `Read-only HTTP surfaces for the ${SITE.NAME} documentation site, its shadcn/ui component registry and its agent skill. No authentication.
+const DESCRIPTION = `Read-only HTTP surfaces for ${SITE.NAME}, an ASCII art engine for React: the documentation site, its shadcn/ui component registry (engine, components and animated scenes) and its agent skill. No authentication, no writes, no webhooks, so pagination and idempotency keys don't apply.
 
 Versioning: JSON endpoints are versioned in the URL path (\`/api/v1/\`). Clients may also send the optional \`${API_VERSION_HEADER}\` header; the only version is \`${API_VERSION}\`, and any other value is rejected with a 400 \`unsupported_api_version\` problem. Breaking changes ship under a new path version (\`/api/v2/\`), never in place. Unversioned paths such as \`${ROUTES.API_STATUS}\` are aliases of the current version.
 
-Deprecation: a deprecated endpoint sends a \`Deprecation\` header (RFC 9745) and a \`Sunset\` header (RFC 8594) with the removal date, at least 90 days before it is removed, plus a \`Link\` header with \`rel="deprecation"\` pointing at the replacement.
+Deprecation policy: a deprecated endpoint is marked \`deprecated: true\` here and sends a \`Deprecation\` header (RFC 9745) plus a \`Link\` header with \`rel="successor-version"\` naming its replacement. Once a removal date is set, it also sends a \`Sunset\` header (RFC 8594) at least 90 days before removal. \`${ROUTES.API_STATUS}\` is deprecated in favour of \`${ROUTES.API_STATUS_V1}\` and has no removal date.
 
 Errors: every JSON error is an RFC 9457 problem (\`application/problem+json\`) with \`type\`, \`title\`, \`status\`, \`detail\`, \`code\`, \`message\` and \`resolution\`. See the ProblemDetails schema for every code.
 
@@ -39,8 +39,10 @@ const RATE_LIMIT_RESPONSE_HEADERS = {
 const ERROR_RESPONSES = {
   "400": { $ref: "#/components/responses/BadRequest" },
   "404": { $ref: "#/components/responses/NotFound" },
+  "405": { $ref: "#/components/responses/MethodNotAllowed" },
   "429": { $ref: "#/components/responses/TooManyRequests" },
   "500": { $ref: "#/components/responses/InternalError" },
+  default: { $ref: "#/components/responses/Problem" },
 };
 
 const operation = ({
@@ -52,6 +54,7 @@ const operation = ({
   okDescription,
   tag,
   parameters = [],
+  deprecated = false,
 }: {
   id: string;
   summary: string;
@@ -61,7 +64,9 @@ const operation = ({
   okDescription: string;
   tag: string;
   parameters?: Schema[];
+  deprecated?: boolean;
 }) => ({
+  ...(deprecated && { deprecated: true }),
   description,
   operationId: id,
   parameters: [...parameters, VERSION_PARAMETER],
@@ -82,8 +87,9 @@ const PLAIN_TEXT = { description: "Plain text", type: "string" } as const;
 
 const statusOperation = (id: string, alias: boolean) =>
   operation({
+    deprecated: alias,
     description: alias
-      ? `Unversioned alias of ${ROUTES.API_STATUS_V1}, with the same response. New clients should call the versioned path.`
+      ? `Deprecated unversioned alias of ${ROUTES.API_STATUS_V1}, with the same body. Responses carry a Deprecation header and a successor-version Link. New clients should call the versioned path.`
       : "Reports that the site and its API are up. Pass verbose=true to include the server time.",
     id,
     mediaType: "application/json",
@@ -134,11 +140,29 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           },
           description: "Unexpected server error",
         },
+        MethodNotAllowed: {
+          content: {
+            "application/problem+json": { schema: ref("ProblemDetails") },
+          },
+          description: "The HTTP method is not supported on this path",
+          headers: {
+            Allow: {
+              description: "The methods this path supports.",
+              schema: { type: "string" },
+            },
+          },
+        },
         NotFound: {
           content: {
             "application/problem+json": { schema: ref("ProblemDetails") },
           },
           description: "Nothing at this path",
+        },
+        Problem: {
+          content: {
+            "application/problem+json": { schema: ref("ProblemDetails") },
+          },
+          description: "Any other error, as an RFC 9457 problem",
         },
         TooManyRequests: {
           content: {
@@ -330,7 +354,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.REGISTRY]: {
         get: operation({
           description:
-            "Every item in the asciicn shadcn/ui registry: the engine, the agent skill and each example component.",
+            "Every item in the asciicn shadcn/ui registry: the engine (ascii-core, ascii-shader, ascii-export, ascii-tokens), the agent skill, the animated scenes and each component.",
           id: "getRegistry",
           mediaType: "application/json",
           okDescription: "The registry manifest",
@@ -349,7 +373,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           parameters: [
             {
               description:
-                "Item name from the registry manifest, such as ascii-core or asciicn-skill.",
+                "Item name from the registry manifest, such as ascii-core, ascii-shader, black-hole-scene or asciicn-skill.",
               in: "path",
               name: "name",
               required: true,
@@ -376,7 +400,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
       [ROUTES.AGENT_SKILL]: {
         get: operation({
           description:
-            "The asciicn agent skill: how to build any dither on the engine and place it on a page.",
+            "The asciicn agent skill: how to build any ASCII effect on the engine, pick a charset and colour mode, and place it on a page.",
           id: "getAgentSkill",
           mediaType: "text/markdown",
           okDescription: "SKILL.md",
@@ -429,6 +453,30 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           okDescription: "The OpenAPI document",
           schema: ref("OpenApiDocument"),
           summary: "Get the OpenAPI description",
+          tag: "Discovery",
+        }),
+      },
+      "/scenes.md": {
+        get: operation({
+          description:
+            "The scenes gallery as Markdown: every animated ASCII scene with its install command. /scenes returns the same body for Accept: text/markdown.",
+          id: "getScenesMarkdown",
+          mediaType: "text/markdown",
+          okDescription: "Scenes gallery Markdown",
+          schema: MARKDOWN,
+          summary: "Get the scenes gallery as Markdown",
+          tag: "Discovery",
+        }),
+      },
+      "/studio.md": {
+        get: operation({
+          description:
+            "The ASCII Studio page as Markdown: its controls and exports, in words. /studio returns the same body for Accept: text/markdown.",
+          id: "getStudioMarkdown",
+          mediaType: "text/markdown",
+          okDescription: "Studio page Markdown",
+          schema: MARKDOWN,
+          summary: "Get the Studio page as Markdown",
           tag: "Discovery",
         }),
       },

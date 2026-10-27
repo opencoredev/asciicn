@@ -5,13 +5,13 @@ import type { NextFetchEvent, NextRequest } from "next/server";
 import { ROUTES } from "@/constants/routes";
 import { markdownNotFound } from "@/lib/agent-discovery/markdown-404";
 import { problemResponse } from "@/lib/agent-discovery/problem";
+import { isMarkdownPageSlug } from "@/lib/agent-discovery/site-pages";
 import {
   API_VERSION,
   API_VERSION_HEADER,
 } from "@/lib/agent-discovery/status-api";
 import { capture, serverEventFor } from "@/lib/analytics/server-capture";
 import { docsContentRoute, homeContentRoute } from "@/lib/docs";
-import { isTrustPageSlug } from "@/lib/trust-pages";
 
 const { rewrite: rewriteDocs } = rewritePath(
   `${ROUTES.DOCS}{/*path}`,
@@ -61,10 +61,13 @@ const isRateLimited = (pathname: string) =>
   pathname === ROUTES.OPENAPI ||
   RATE_LIMITED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-/** `/about` or `/about.md` to the trust page's slug, if it is one. */
-const trustSlug = (pathname: string) => {
+/**
+ * `/studio`, `/scenes`, `/about` (or the same with `.md`) to the page's slug,
+ * if it is one of the app pages with a Markdown twin.
+ */
+const pageSlug = (pathname: string) => {
   const slug = pathname.slice(1).replace(/\.md$/, "");
-  return isTrustPageSlug(slug) ? slug : undefined;
+  return isMarkdownPageSlug(slug) ? slug : undefined;
 };
 
 // Every operation in /openapi.json takes X-API-Version, so every documented
@@ -97,7 +100,10 @@ const route = (request: NextRequest): NextResponse | Response => {
     (request.method === "GET" || request.method === "HEAD") &&
     isMarkdownPreferred(request);
 
-  if (pathname === ROUTES.HOME && markdown) {
+  if (
+    (pathname === ROUTES.HOME && markdown) ||
+    pathname === `${ROUTES.HOME}index.md`
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = homeContentRoute;
     return NextResponse.rewrite(url);
@@ -108,7 +114,7 @@ const route = (request: NextRequest): NextResponse | Response => {
     return NextResponse.rewrite(new URL(result, request.nextUrl));
   }
 
-  const slug = trustSlug(pathname);
+  const slug = pageSlug(pathname);
   if (slug && (markdown || pathname.endsWith(".md"))) {
     return NextResponse.rewrite(
       new URL(`${ROUTES.LLMS_MD}/pages/${slug}`, request.nextUrl)

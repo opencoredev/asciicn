@@ -1,4 +1,8 @@
-import { POSTHOG_HOST, POSTHOG_KEY } from "@/lib/analytics/config";
+import {
+  POSTHOG_ENABLED,
+  POSTHOG_HOST,
+  POSTHOG_KEY,
+} from "@/lib/analytics/config";
 import backgrounds1 from "@/registry/backgrounds-1.json";
 import backgrounds2 from "@/registry/backgrounds-2.json";
 import base from "@/registry/base.json";
@@ -149,6 +153,9 @@ export const capture = async (
   event: ServerEvent,
   request: { url: string; headers: Headers }
 ): Promise<void> => {
+  if (!POSTHOG_ENABLED) {
+    return;
+  }
   const userAgent = request.headers.get("user-agent") ?? "";
   const url = new URL(request.url);
   try {

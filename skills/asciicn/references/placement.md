@@ -1,46 +1,45 @@
-# Putting a dither on a page
+# Putting an ASCII effect on a page
 
 ## Layering
 
-A `AsciiShader` fills its nearest positioned ancestor. Content goes in a sibling, above it:
+`AsciiShader` and `AsciiGrid` fill their nearest positioned ancestor. Content goes in a sibling, above:
 
 ```tsx
 <section className="relative isolate overflow-hidden">
-  <TopoBackground className="absolute inset-0 -z-10" />
+  <RainBackground className="absolute inset-0 -z-10" />
   <div className="relative mx-auto max-w-3xl px-6 py-32">…</div>
 </section>
 ```
 
-- `isolate` on the section keeps `-z-10` inside it, so the dither never slips behind the page background.
-- The section needs height from its content or a `min-h-*`. The shader takes the size it is given; zero height draws nothing.
+- `isolate` on the section keeps `-z-10` inside it, so the effect never slips behind the page background.
+- The section needs height from its content or a `min-h-*`. A renderer takes the size it is given; zero height draws nothing.
 - Round corners and borders go on the section with `overflow-hidden`, so the canvas is clipped to them.
-- The shader ignores the pointer (`pointer-events-none`), so links and buttons above it stay clickable.
+- Renderers ignore the pointer unless `interactive` or `interaction` is set, so links and buttons above stay clickable. An interactive background still sits under content: give the content `pointer-events-none` on empty areas only if the effect should react there.
 
 ## Landing pages
 
-Read [landing-pages.md](landing-pages.md) first: it covers what the page is about and how it is composed. These are the placements.
+Read [landing-pages.md](landing-pages.md) first. These are the placements.
 
-- **Hero:** a full-bleed background behind the headline. Clear the area under the text (tone 0 for lines and sparse patterns, 0.2 or less for soft fills) and let the dither peak towards the edges or a corner. Fade it out at the bottom with `smoothstep` on `uv.y` so the next section starts clean.
-- **Clearing space for text:** measure the text block and clear a rounded box around it, with the box passed to the field as a uniform. [recipes.md](recipes.md#a-hero-that-clears-its-headline) has the complete component. Measured this way the clearing fits the copy on a wide desktop and on a phone alike; an ellipse in `uv` is too big on one and too small on the other, and clips the corners of a text block.
-- **Section break:** a band 80 to 160px tall between sections, a dithered gradient from ink at one edge to paper at the other.
-- **Feature card:** a small shader or a `fillStyle("gradient")` layer behind a card's top half, under the icon and title.
-- **Dark plate:** a hero that is always dark wraps the section in `className="dark"` so `--ascii-ink` and `--ascii-paper` take the dark values there, whatever the site theme.
-- **Behind a big number or headline:** a glow centred on the text. Real text stays HTML on top; never draw text into the field.
+- **Hero:** a full-bleed effect behind the headline. Clear the area under the text (tone near 0) and let the effect peak toward the edges or a corner. Fade it out at the bottom with `smoothstep` on `uv.y` so the next section starts clean.
+- **Clearing space for text:** measure the text block and pass its box to the field as a uniform. [recipes.md](recipes.md#a-hero-that-clears-its-headline) has the component. An ellipse in `uv` is too big on desktop and too small on a phone.
+- **Section break:** a band 6 to 12 rows tall: a glyph gradient, a row of box-drawing characters, or a slow wave in Braille.
+- **Feature card:** a small `AsciiGrid` or shader behind the top half of a card, under the icon and title.
+- **Terminal pane:** a `rounded-lg border bg-black` box with an `AsciiGrid` or a `<pre>`, wrapped in `className="dark"` so the tokens take their dark values.
+- **Behind a big number or headline:** a glow or a rotating object centred behind the text. Real text stays HTML on top; never draw the headline into the field.
 
 ## Dashboards
 
-- **Cards and tiles:** charts, meters and gauges are usually static SVG with `FillPattern`. They render on the server, cost nothing after paint and stay sharp. Use a shader in a card only for an ambient glow or a live status surface.
-- **Data first:** a meter or chart needs a readable label and value as HTML text, and an accessible name on the SVG (`role="img"` plus `aria-label` with the value, or `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax`).
-- **Track and fill:** draw the empty part of a meter or bar with a sparse fill (`level` 0.0625 to 0.125, or `fill="dotted"`) and the value with a dense one, so the empty track is still visible.
-- **Many on one page:** prefer SVG and CSS fills. At most 8 shaders hold a WebGL context at once. A shader scrolling onto the screen takes the context of one that has scrolled away; if more than 8 are on screen together, the extras show their fallback until one frees up.
-- **Colour meaning:** status colours from the palette (`"green"`, `"orange"`, `"red"`) map to good, warning and critical. Pair colour with a label or icon so it never carries meaning alone.
+- **Charts and meters:** draw them in an `AsciiGrid` (Braille lines, `EIGHTHS_UP` bars, `blocks` heat) or as DOM text in a `<pre>`. Keep the value and the label as HTML text beside or over the chart.
+- **Accessible names:** a chart canvas gets `role="img"` and an `aria-label` with the data in words, or a visually hidden table. A meter gets `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
+- **Many on one page:** at most 8 `AsciiShader` instances hold a WebGL context at once; others show their fallback until one scrolls away. Use `AsciiGrid` (Canvas2D) or DOM text for grids of small pieces.
+- **Colour meaning:** status colours from the palette (`"green"`, `"orange"`, `"red"`) map to good, warning and critical. Pair colour with a glyph or label so it never carries meaning alone (`█` up, `▒` degraded, `·` no data).
 
 ## Sizing cells
 
-`--ascii-cell` sets the grain for the whole page (3px by default). Override it on a wrapper for one section (`style={{ "--ascii-cell": "4px" }}`, typed as `React.CSSProperties & Record<"--ascii-cell", string>`), or pass `cell` to one component. 2 to 3px reads as texture, 4 to 6px as a deliberate pixel look, 8px and up as pixel art.
+`--ascii-cell` sets the glyph height for the whole page (12px by default). Override it on a wrapper for one section, or pass `cell` to one component. 10 to 12px reads as texture, 14 to 18px as deliberate ASCII art, 20px and up as large letters. Cells always snap to whole device pixels; don't scale a renderer with CSS `transform: scale()`, which blurs the glyphs.
 
 ## Next.js and server components
 
-- Files that use `AsciiShader`, `useAsciiColors`, `useFrameLoop` or a canvas start with `"use client"`. A server page imports and renders them like any component.
-- `FillPattern`, `AsciiPattern`, `fillStyle`, `asciiMaskStyle`, `toCSS` and `toSVG` run on the server.
-- Inside a client component, generate SVG pattern ids with `useId()`. In a server component, derive them from a prop or a fixed name that is unique on the page.
+- Files that use `AsciiShader`, `AsciiGrid`, `useAsciiColors`, `useFrameLoop` or a canvas start with `"use client"`. A server page imports and renders them like any component.
+- `AsciiPre`, `frameToText`, `mapTones` and the charset helpers run on the server too.
+- Webcam and file input stay in the browser: read them with `useMediaElement` in a client component and never upload them.

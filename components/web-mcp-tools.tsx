@@ -22,6 +22,10 @@ interface ModelContextApi {
   ) => (() => void) | undefined;
 }
 
+const STUDIO_PATH = ROUTES.STUDIO;
+// The app pages outside /docs an agent can be sent to.
+const APP_PAGES = [ROUTES.STUDIO, ROUTES.SCENES] as const;
+
 const getPath = (input: unknown, fallback: string): string => {
   if (
     typeof input === "object" &&
@@ -81,6 +85,28 @@ export const WebMcpTools = () => {
         type: "object",
       },
       name: `${SITE.NAME}_open_docs`,
+    });
+
+    register({
+      description: `Open the ${SITE.NAME} ASCII Studio (/studio), where a scene or component can be restyled and exported, or the gallery of animated ASCII scenes (/scenes).`,
+      execute: (input) => {
+        const path = getPath(input, STUDIO_PATH);
+        const target = APP_PAGES.find((page) => page === path) ?? STUDIO_PATH;
+        window.location.assign(target);
+
+        return Promise.resolve({ ok: true, path: target });
+      },
+      inputSchema: {
+        properties: {
+          path: {
+            description: "Which page to open",
+            enum: [...APP_PAGES],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      name: `${SITE.NAME}_open_page`,
     });
 
     register({

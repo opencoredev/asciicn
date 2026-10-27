@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 
 import { ROUTES } from "@/constants/routes";
 import { SITE } from "@/constants/site";
+import { isMarkdownPageSlug } from "@/lib/agent-discovery/site-pages";
+import { homeContentRoute } from "@/lib/docs";
 
 interface CreatePageMetadataOptions {
   description?: string;
-  /** Markdown mirror for pages outside /docs, which get `<path>.md` already. */
+  /**
+   * Markdown mirror for a page the proxy doesn't know. Docs pages, the home
+   * page, /studio, /scenes and the trust pages get theirs automatically.
+   */
   markdownPath?: string;
   noIndex?: boolean;
   ogDescription?: string;
@@ -16,6 +21,17 @@ interface CreatePageMetadataOptions {
   path: string;
   title: string;
 }
+
+/** The `.md` twin the proxy serves for `canonical`, if it has one. */
+const defaultMarkdownPath = (canonical: string): string | undefined => {
+  if (canonical === ROUTES.HOME) {
+    return homeContentRoute;
+  }
+  if (canonical === ROUTES.DOCS || canonical.startsWith(`${ROUTES.DOCS}/`)) {
+    return `${canonical}.md`;
+  }
+  return isMarkdownPageSlug(canonical.slice(1)) ? `${canonical}.md` : undefined;
+};
 
 export const createPageMetadata = ({
   description,
@@ -32,10 +48,7 @@ export const createPageMetadata = ({
   const canonical = path.startsWith(ROUTES.HOME)
     ? path
     : `${ROUTES.HOME}${path}`;
-  const markdownAlternate =
-    canonical === ROUTES.DOCS || canonical.startsWith(`${ROUTES.DOCS}/`)
-      ? `${canonical}.md`
-      : markdownPath;
+  const markdownAlternate = markdownPath ?? defaultMarkdownPath(canonical);
   const resolvedOgImage =
     ogImage ?? `${ROUTES.OG}${canonical === ROUTES.HOME ? "" : canonical}`;
   const resolvedTitle = ogTitle ?? title;
@@ -87,6 +100,9 @@ export const createPageMetadata = ({
 export const baseMetadata: Metadata = {
   alternates: {
     canonical: ROUTES.HOME,
+    types: {
+      "text/markdown": homeContentRoute,
+    },
   },
   appleWebApp: {
     capable: true,
@@ -147,15 +163,10 @@ export const baseMetadata: Metadata = {
     title: SITE.NAME,
     type: "website",
     url: SITE.URL,
-    videos: [
-      {
-        height: 1260,
-        secureUrl: SITE.OG_VIDEO,
-        type: "video/mp4",
-        url: SITE.OG_VIDEO,
-        width: 2400,
-      },
-    ],
+  },
+  // Picks the default view on is-agentic.com reports; it doesn't change the score.
+  other: {
+    "is-agentic-site-type": "content",
   },
   publisher: SITE.AUTHOR.NAME,
   title: {

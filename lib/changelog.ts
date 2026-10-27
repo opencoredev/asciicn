@@ -1,49 +1,32 @@
-import fs from "node:fs";
-import path from "node:path";
+import { ROUTES } from "@/constants/routes";
 
-import { DOCS_DIR } from "@/lib/docs";
-import { source } from "@/lib/source";
-
-export interface ChangelogPageData {
-  title: string;
-  description?: string;
+/**
+ * Release notes for the RSS feed. Newest first. Each entry links to the page
+ * a reader should open to see what changed.
+ */
+export interface ChangelogEntry {
+  /** Stable id, used as the feed item's guid. */
+  readonly id: string;
+  readonly title: string;
+  /** One or two plain sentences on what shipped. */
+  readonly description: string;
+  /** ISO date, YYYY-MM-DD. */
+  readonly date: string;
+  /** Site path the entry links to. */
+  readonly path: string;
 }
 
-export type ChangelogPage = ReturnType<typeof source.getPages>[number] & {
-  date: Date | null;
-};
+export const CHANGELOG = [
+  {
+    date: "2026-10-27",
+    description:
+      "asciicn launches: a WebGL2 and Canvas2D ASCII engine with ten charsets (classic, dense, ANSI blocks, quadrants, Braille, CP437, PETSCII, katakana, halftone and Sobel edges), five colour modes, CRT effects and export to .txt, .ans, .svg, .png and .webm. It ships with about 80 shadcn registry components, 12 animated scenes, the ASCII Studio and an agent skill.",
+    id: "launch",
+    path: ROUTES.DOCS,
+    title: "asciicn 1.0",
+  },
+] as const satisfies readonly ChangelogEntry[];
 
-export const getDateFromFile = (slugs: string[]) => {
-  const filePath = path.join(
-    process.cwd(),
-    DOCS_DIR,
-    ...slugs.slice(0, -1),
-    `${slugs.at(-1)}.mdx`
-  );
-
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const match = content.match(/^date:\s*(.+)$/m);
-    if (match?.[1]) {
-      return new Date(match[1].trim());
-    }
-  } catch {
-    // File missing or invalid frontmatter.
-  }
-
-  return null;
-};
-
-export const getChangelogPages = () =>
-  source
-    .getPages()
-    .filter((page) => page.slugs[0] === "changelog" && page.slugs.length > 1)
-    .map((page) => ({
-      ...page,
-      date: getDateFromFile(page.slugs),
-    }))
-    .toSorted((a, b) => {
-      const dateA = a.date?.getTime() ?? 0;
-      const dateB = b.date?.getTime() ?? 0;
-      return dateB - dateA;
-    });
+/** Entries sorted newest first, whatever order they were written in. */
+export const getChangelogEntries = (): readonly ChangelogEntry[] =>
+  [...CHANGELOG].toSorted((a, b) => b.date.localeCompare(a.date));

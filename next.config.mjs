@@ -29,6 +29,8 @@ const nextConfig = {
       `<${ROUTES.DOCS}>; rel="service-doc"`,
       `<${LINK.SHADCN_MCP_DOCS}>; rel="service-doc"; title="shadcn MCP server"`,
       `<${ROUTES.AGENT_SKILLS_INDEX}>; rel="describedby"`,
+      `<${ROUTES.LLMS}>; rel="describedby"; type="text/plain"`,
+      `<${ROUTES.LLMS_MD}/content.md>; rel="alternate"; type="text/markdown"`,
     ].join(", ");
 
     return [
@@ -67,49 +69,6 @@ const nextConfig = {
         destination: `${ROUTES.DOCS}/:path*.md`,
         permanent: true,
         source: `${ROUTES.DOCS}/:path*.mdx`,
-      },
-      {
-        destination: ROUTES.AGENT_SKILL,
-        permanent: true,
-        source: "/.well-known/agent-skills/site-skill.md",
-      },
-      // Round 3: the agent skill became the centre of the docs. Its page
-      // later split between the introduction and installation.
-      {
-        destination: ROUTES.DOCS_ASK_YOUR_AGENT,
-        permanent: true,
-        source: `${ROUTES.DOCS}/ai-agents`,
-      },
-      {
-        destination: ROUTES.DOCS_ASK_YOUR_AGENT,
-        permanent: true,
-        source: `${ROUTES.DOCS}/build-with-agents`,
-      },
-      {
-        destination: ROUTES.DOCS_EXAMPLES,
-        permanent: true,
-        source: `${ROUTES.DOCS}/catalog`,
-      },
-      {
-        destination: ROUTES.DOCS_EXAMPLES,
-        permanent: true,
-        source: `${ROUTES.DOCS}/usage`,
-      },
-      // Concepts became Engine; the Tools group was folded into it.
-      {
-        destination: `${ROUTES.DOCS}/engine/:path*`,
-        permanent: true,
-        source: `${ROUTES.DOCS}/concepts/:path*`,
-      },
-      {
-        destination: `${ROUTES.DOCS}/engine/export`,
-        permanent: true,
-        source: `${ROUTES.DOCS}/tools/export`,
-      },
-      {
-        destination: `${ROUTES.DOCS}/engine/export`,
-        permanent: true,
-        source: `${ROUTES.DOCS}/tools/:path*`,
       },
     ];
   },

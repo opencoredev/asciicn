@@ -46,7 +46,7 @@ export const OPENCORE_SITES = [
     url: "https://gradients.sh",
   },
   {
-    description: "Dither effects for your app",
+    description: "ASCII art engine for React",
     name: "asciicn",
     url: "https://asciicn.dev",
   },

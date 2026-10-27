@@ -44,7 +44,7 @@ const SETTLE_OVERRIDES_MS: Readonly<Record<string, number>> = {
   "text/dissolve-text": 700,
 };
 
-// One flat colour means a blank stage or a fallback; a two-tone dither is fine.
+// One flat colour means a blank stage or a fallback; two-tone glyph art is fine.
 const MIN_COLOURS = 2;
 
 const FALLBACK_COUNT = `document.querySelectorAll('[data-catalog-capture] [class~="group/ascii"][data-state="fallback"]').length`;
@@ -86,7 +86,7 @@ const closeBrowser = () => {
   }
 };
 
-// Keeps lossless when the dither's few flat colours make it smaller, and
+// Keeps lossless when glyph art's few flat colours make it smaller, and
 // prints the colour count so blank captures can be caught.
 const ENCODE = `
 import io, sys
@@ -115,7 +115,7 @@ const capture = async (target: Target, theme: string, scratch: string) => {
     SETTLE_OVERRIDES_MS[`${target.group}/${target.slug}`] ?? SETTLE_MS
   );
 
-  // A shader without a frame shows its flat fallback instead of the dither.
+  // A shader without a frame shows its flat fallback instead of the glyphs.
   const fallbacks = Number(browser("eval", FALLBACK_COUNT).trim());
   if (fallbacks > 0) {
     throw new Error(`${url} (${theme}) shows ${fallbacks} shader fallback(s)`);

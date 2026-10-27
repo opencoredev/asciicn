@@ -1,6 +1,7 @@
 import { posthog } from "posthog-js";
 
 import {
+  POSTHOG_ENABLED,
   POSTHOG_KEY,
   POSTHOG_PROXY_PATH,
   POSTHOG_UI_HOST,
@@ -8,18 +9,21 @@ import {
 import type { EventProperties } from "@/lib/events";
 import { trackEvent } from "@/lib/events";
 
-posthog.init(POSTHOG_KEY, {
-  api_host: POSTHOG_PROXY_PATH,
-  autocapture: true,
-  capture_pageleave: true,
-  // The first load and every App Router navigation (history change).
-  capture_pageview: "history_change",
-  capture_performance: { web_vitals: true },
-  // The privacy page promises no session recording.
-  disable_session_recording: true,
-  person_profiles: "always",
-  ui_host: POSTHOG_UI_HOST,
-});
+// No project key, no PostHog: a fork or local run sends nothing anywhere.
+if (POSTHOG_ENABLED) {
+  posthog.init(POSTHOG_KEY, {
+    api_host: POSTHOG_PROXY_PATH,
+    autocapture: true,
+    capture_pageleave: true,
+    // The first load and every App Router navigation (history change).
+    capture_pageview: "history_change",
+    capture_performance: { web_vitals: true },
+    // The privacy page promises no session recording.
+    disable_session_recording: true,
+    person_profiles: "always",
+    ui_host: POSTHOG_UI_HOST,
+  });
+}
 
 // Server-rendered links can't take an onClick, so they declare their event
 // in data attributes instead: data-track="github_link_clicked" plus

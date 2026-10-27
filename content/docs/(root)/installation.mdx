@@ -1,13 +1,13 @@
 ---
 title: Installation
-description: Add the asciicn engine and agent skill to a shadcn project, or install a single example.
+description: Add the asciicn engine and agent skill to a shadcn project, or install a single component or scene.
 ---
 
-asciicn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill; after that you ask your agent for dithers, or install examples one by one.
+asciicn installs with the shadcn CLI, like any other registry. One command adds the engine and the agent skill. After that you ask your agent for ASCII effects, or install components and scenes one at a time.
 
 ## Quick start with your agent
 
-Paste this prompt into Claude Code, Codex, Cursor or any other coding agent. It installs the engine and the skill, reads the docs and builds the dither you ask for. It's the same prompt the home page copies.
+Paste this prompt into Claude Code, Codex, Cursor or any other coding agent. It installs the engine and the skill, reads the docs and builds the effect you ask for. The home page copies the same prompt.
 
 <AgentPrompt name="quick-start" />
 
@@ -15,7 +15,7 @@ The rest of this page does the same steps by hand.
 
 ## Before you start
 
-You need a project that already uses shadcn/ui, with a `components.json` file, Tailwind CSS v4 and React 19. If you don't have one yet, follow the [shadcn installation guide](https://ui.shadcn.com/docs/installation) first.
+You need a project that already uses shadcn/ui, with a `components.json` file, Tailwind CSS v4 and React 19. If you don't have one yet, follow the [shadcn installation guide](https://ui.shadcn.com/docs/installation) first. The GPU renderer needs WebGL2, which every current browser has; components show a static fallback where it's missing.
 
 ## Add the skill with the skills CLI
 
@@ -23,7 +23,7 @@ The [skills CLI](https://skills.sh) installs the skill into Claude Code, Codex, 
 
 <CommandBox tool="skills" className="mt-6" />
 
-It asks which agents to install for, then writes the skill and its references into each agent's skills folder, such as `.claude/skills/asciicn/` and `.agents/skills/asciicn/`. Add `-g` to install it for every project on your machine. The skill adds the engine to your project the first time your agent builds a dither.
+It asks which agents to install for, then writes the skill and its references into each agent's skills folder, such as `.claude/skills/asciicn/` and `.agents/skills/asciicn/`. Add `-g` to install it for every project on your machine. The skill adds the engine to your project the first time your agent builds something with it.
 
 ## Or add the engine and the skill with shadcn
 
@@ -31,15 +31,13 @@ It asks which agents to install for, then writes the skill and its references in
 
 ### Run the add command
 
-```bash
-npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
-```
+<InstallBlock name="asciicn-skill" />
 
 This writes:
 
-- `lib/ascii/`, the engine (`ascii-core`) and its export functions (`ascii-export`).
-- `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, the agent skill. Claude Code reads `.claude/skills`; Codex, Cursor and other agents that follow the [Agent Skills](https://agentskills.io) layout read `.agents/skills`.
-- The `--dither-*` CSS variables, in the CSS file named in your `components.json`.
+- `lib/ascii/`: the CPU engine (`ascii-core`), the WebGL2 glyph renderer (`ascii-shader`) and the export functions (`ascii-export`).
+- `.agents/skills/asciicn/` and `.claude/skills/asciicn/`: the agent skill. Claude Code reads `.claude/skills`; Codex, Cursor and other agents that follow the [Agent Skills](https://agentskills.io) layout read `.agents/skills`.
+- The `--ascii-*` CSS variables (`ascii-tokens`), in the CSS file named in your `components.json`.
 
 Commit the skill folders with the rest of your code, so everyone on the project, and every agent, gets the same skill.
 
@@ -51,19 +49,20 @@ The CLI adds the variables for light and dark mode, and colour utilities to the 
 @theme inline {
   --color-ascii-ink: var(--ascii-ink);
   --color-ascii-paper: var(--ascii-paper);
-  /* and one per named colour: --color-dither-blue, --color-dither-green, … */
+  /* and one per named colour: --color-ascii-blue, --color-ascii-green, … */
 }
 
 @layer base {
   :root {
     --ascii-ink: var(--primary);
     --ascii-paper: var(--background);
-    --ascii-cell: 3px;
+    --ascii-cell: 12px;
+    --ascii-glow: 0.35;
   }
   .dark {
     --ascii-ink: var(--primary);
     --ascii-paper: var(--background);
-    --ascii-cell: 3px;
+    --ascii-glow: 0.9;
   }
 }
 ```
@@ -72,62 +71,56 @@ Because the variables point at your theme tokens, there is nothing extra to set 
 
 </Steps>
 
-Then ask your agent for a dither. The [introduction](/docs#ask-your-agent-for-a-dither) has example requests and explains what the agent does with them.
+Then ask your agent for an effect. The [introduction](/docs#ask-your-agent-for-any-ascii-effect) has example requests and explains what the agent does with them.
 
 ## What's in the skill
 
-| File                          | What it covers                                                                                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SKILL.md`                    | The four steps the agent follows, and the rules for every dither                                                                                         |
-| `references/engine-api.md`    | Every engine export: `AsciiShader`, `FillPattern`, `fillStyle`, colours, motion hooks, `ditherImage` and export                                          |
-| `references/fields.md`        | How to write a GLSL field, with building blocks for gradients, noise, contour lines, rings, arcs and shading                                             |
-| `references/recipes.md`       | Complete components to adapt: a shader background, a hero that clears its headline, an SVG chart fill, a progress bar, a dithered photo, a CSS-only band |
-| `references/landing-pages.md` | Designing the page around the dither: start from the product, one memorable hero, true copy, the tells to avoid                                          |
-| `references/placement.md`     | Putting a dither on a landing page or dashboard: layering, sizing, server and client components                                                          |
-| `references/theme.md`         | Tokens, named colours, palettes, light and dark mode                                                                                                     |
-| `references/quality.md`       | The checks: looks, contrast, reduced motion, accessibility, performance                                                                                  |
-| `references/examples.md`      | Every example component, with its install command and docs link                                                                                          |
+| File                          | What it covers                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `SKILL.md`                    | The four steps the agent follows, how to choose a technique, and the rules for every effect                        |
+| `references/engine-api.md`    | The engine's exports: `AsciiShader`, `AsciiGrid`, `mapTones`, charsets, palettes, metrics, motion hooks and export |
+| `references/fields.md`        | Writing a GLSL field: the `uv`/`res`/`t` contract, sub-sampled charsets, uniforms, pointer and audio input         |
+| `references/charsets.md`      | Choosing a charset and a colour mode for a picture, custom ramps, phosphors and duotone ramps                      |
+| `references/recipes.md`       | Complete components to adapt: a shader background, a CPU grid, a chart, a terminal pane, an image, a scene         |
+| `references/landing-pages.md` | Designing the page around the effect: start from the product, one memorable hero, true copy, the tells to avoid    |
+| `references/placement.md`     | Layering, sizing, server and client components, text over glyphs                                                   |
+| `references/theme.md`         | The `--ascii-*` tokens, named colours, palettes, light and dark mode                                               |
+| `references/export.md`        | Saving frames as text, ANSI, SVG and PNG, and recording WebM                                                       |
+| `references/quality.md`       | The checks: crisp glyphs, contrast, reduced motion, accessibility, performance                                     |
+| `references/examples.md`      | Every component and scene, with its install command and docs link                                                  |
 
 The skill matches the engine it installs with and points your agent at the files in your project, so it never has to guess at an API.
 
 ## Install the skill for every project
 
-`shadcn add` writes the skill into the current project only. To make it available in every project on your machine, run the skills CLI with `-g`. Without the CLI, download the files into your user skills folder:
+`shadcn add` writes the skill into the current project only. To make it available in every project on your machine, run the skills CLI with `-g`. Without the CLI, download the archive into your user skills folder:
 
 ```bash
-SKILL=https://asciicn.dev/.well-known/agent-skills/asciicn
 for dir in ~/.claude/skills/asciicn ~/.agents/skills/asciicn; do
-  mkdir -p "$dir/references"
-  curl -fsSL "$SKILL/SKILL.md" -o "$dir/SKILL.md"
-  for ref in engine-api examples fields landing-pages placement quality recipes theme; do
-    curl -fsSL "$SKILL/references/$ref.md" -o "$dir/references/$ref.md"
-  done
+  mkdir -p "$dir"
+  curl -fsSL https://asciicn.dev/.well-known/agent-skills/asciicn.tar.gz | tar -xz -C "$dir"
 done
 ```
 
 The skill tells the agent to install the engine into a project the first time it needs it.
 
-## Install the engine or one example
+## Install the engine, a component or a scene
 
-Without the skill, install the engine on its own:
+Without the skill, install the engine on its own. `ascii-core` is the CPU side (charsets, `AsciiGrid`, `mapTones`); add `ascii-shader` for the WebGL2 renderer:
 
-```bash
-npx shadcn@latest add https://asciicn.dev/r/ascii-core.json
-```
+<InstallBlock name="ascii-shader" />
 
-Or install any example. Each one brings the engine with it on its first install:
+Or install any component or scene. Each one brings the parts of the engine it uses on its first install:
 
-```bash
-npx shadcn@latest add https://asciicn.dev/r/ascii-gradient.json
-```
+<InstallBlock name="black-hole-scene" />
 
 ## Update the engine
 
-The engine is plain source in your project, so it doesn't update on its own. Newer docs can use features your copy lacks: if TypeScript says a prop such as `colorField` doesn't exist on `AsciiShader`, delete `lib/ascii` and add the engine again:
+The engine is plain source in your project, so it doesn't update on its own. Newer docs can use features your copy lacks: if TypeScript says a prop doesn't exist on `AsciiShader` or `AsciiGrid`, delete `lib/ascii` and add the engine again:
 
 ```bash
 rm -rf lib/ascii
-npx shadcn@latest add https://asciicn.dev/r/ascii-core.json https://asciicn.dev/r/ascii-export.json
+npx shadcn@latest add https://asciicn.dev/r/ascii-core.json https://asciicn.dev/r/ascii-shader.json https://asciicn.dev/r/ascii-export.json
 ```
 
 If the CLI asks whether to overwrite `lib/utils.ts`, answer no. Avoid `--overwrite`, which replaces that file too. If you edited any file in `lib/ascii`, copy your changes out first.
@@ -148,6 +141,7 @@ Then install with the `@asciicn` prefix:
 
 ```bash
 npx shadcn@latest add @asciicn/asciicn-skill
+npx shadcn@latest add @asciicn/black-hole-scene
 ```
 
 See the shadcn docs on [namespaced registries](https://ui.shadcn.com/docs/registry/namespace) for more options, including authentication.
@@ -157,12 +151,13 @@ See the shadcn docs on [namespaced registries](https://ui.shadcn.com/docs/regist
 The skill is the main way in. The site also publishes plain-text surfaces for agents that browse:
 
 - [`/llms.txt`](/llms.txt) lists every docs page with a one-line description and a Markdown link, and [`/llms-full.txt`](/llms-full.txt) is the whole documentation as one file.
-- Add `.md` to any docs URL for its Markdown, for example [`/docs/installation.md`](/docs/installation.md), or send an `Accept: text/markdown` header. Every page also has a **Copy page** menu.
+- Add `.md` to any docs URL for its Markdown, for example [`/docs/installation.md`](/docs/installation.md), or send an `Accept: text/markdown` header. The home page, [`/studio`](/studio.md) and [`/scenes`](/scenes.md) answer Markdown requests too.
 - The registry index is at [`/r/registry.json`](/r/registry.json), and each item at `/r/<name>.json`. The [shadcn MCP server](https://ui.shadcn.com/docs/mcp) can browse and install from it once you have [added the `@asciicn` namespace](#use-a-namespace).
-- [`/.well-known/api-catalog`](/.well-known/api-catalog) links every machine-readable surface (RFC 9727), [`/openapi.json`](/openapi.json) describes the read-only endpoints, and [`/api/status`](/api/status) returns `{"status":"ok"}`. The home page sends these as `Link` headers too.
+- [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json) lists the skill archive with its SHA-256 digest, [`/.well-known/api-catalog`](/.well-known/api-catalog) links every machine-readable surface (RFC 9727), [`/openapi.json`](/openapi.json) describes the read-only endpoints, and [`/api/v1/status`](/api/v1/status) returns `{"status":"ok"}`. The home page sends these as `Link` headers too.
 
 ## Next steps
 
-- [Ask your agent for a dither](/docs#ask-your-agent-for-a-dither) with the skill installed.
-- Browse the [catalog](/docs/examples) for a component to install as it is.
-- [Write your own dither](/docs/engine/write-your-own) by hand, step by step.
+- [Ask your agent for any ASCII effect](/docs#ask-your-agent-for-any-ascii-effect) with the skill installed.
+- Browse the [catalog](/docs/examples) or the [scenes](/scenes) for something to install as it is.
+- Try a look in the [Studio](/studio) and export the JSX.
+- [Write your own](/docs/engine/write-your-own) field, step by step.
