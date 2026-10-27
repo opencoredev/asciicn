@@ -1,0 +1,262 @@
+---
+title: "Falling Sand Hourglass"
+description: "Grains of sand pouring through an hourglass that turns itself over; the pointer tilts the glass and the sand follows."
+---
+
+import HourglassSceneDemo from "@/examples/hourglass-scene-demo";
+import { controls as sceneControls } from "@/examples/hourglass-scene-controls";
+import HourglassSceneBraille from "@/examples/hourglass-scene-braille";
+import HourglassScenePhosphor from "@/examples/hourglass-scene-phosphor";
+
+<ComponentPreview
+  src="examples/hourglass-scene-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={sceneControls}
+>
+  <HourglassSceneDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="hourglass-scene" />
+
+## Usage
+
+```tsx
+import { HourglassScene } from "@/components/asciicn/scenes/hourglass-scene";
+
+export function Timer() {
+  return (
+    <div className="relative h-[520px] overflow-hidden rounded-lg">
+      <HourglassScene duration={30} className="absolute inset-0" />
+    </div>
+  );
+}
+```
+
+The sand is a falling-sand automaton. Every grain is one cell of a square grid sized to the charset's sample grid, so Braille draws one grain per dot and the dense ramp draws two grains per glyph. Each step a grain falls toward gravity, slides down a diagonal when it lands on another grain, and sometimes slips off an edge. That is enough for the sand to hold a slope, so it leaves a crater in the top bulb and a cone in the bottom one. Grains speed up as they fall, so the stream under the neck thins out.
+
+The grid lives in the glass's own frame. When the top bulb is empty, the glass waits a second and turns over in 2.4 seconds. The sand doesn't get copied or flipped. Gravity just turns inside the glass, so you can watch the grains slide around the bulb as it rotates. The neck lets through a fixed number of grains per step, so one pour takes about `duration` seconds on any grid.
+
+Each grain keeps a colour from its layer, and layers are laid down in the order they pour. The bands bend into a funnel above the neck and stack up in the cone below. Every turn reverses the order.
+
+Move the pointer left or right to tilt the glass up to `tilt` degrees, and the sand slides with it. Press to shake it: the glass rattles and grains jump loose for a moment, which levels the piles.
+
+## Examples
+
+### One grain per dot
+
+Braille samples 2x4 dots per glyph, so every dot you see is one grain. This one uses the `brass` finish and four lighter layers, and empties in 14 seconds.
+
+<ComponentPreview
+  src="examples/hourglass-scene-braille.tsx"
+  size="lg"
+  align="stretch"
+>
+  <HourglassSceneBraille />
+</ComponentPreview>
+
+### Green phosphor
+
+Mono with the `p1` phosphor draws the whole glass in one green ink, with brightness picking the shade. The classic charset, scanlines and a less full glass give it a terminal look.
+
+<ComponentPreview
+  src="examples/hourglass-scene-phosphor.tsx"
+  size="lg"
+  align="stretch"
+>
+  <HourglassScenePhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "duration",
+      type: "number",
+      default: "20",
+      description:
+        "Seconds for the top bulb to empty, from 4 to 120. After that the glass waits about a second and turns over.",
+    },
+    {
+      name: "fill",
+      type: "number",
+      default: "0.6",
+      description: "How full one bulb is, from 0.15 to 0.85.",
+    },
+    {
+      name: "sand",
+      type: "string[]",
+      default:
+        '["#f2d39a", "#e0a95c", "#c97c45", "#f6e7c8", "#d9b26f", "#b0653a"]',
+      description:
+        "Layer colours as #rrggbb, in pouring order. Up to 7 are used, and each repeats twice through the glass.",
+    },
+    {
+      name: "finish",
+      type: '"walnut" | "brass" | "ebony"',
+      default: '"walnut"',
+      description:
+        "What the caps and posts are made of. Every finish has a metal ring where the glass meets the cap.",
+    },
+    {
+      name: "tilt",
+      type: "number",
+      default: "18",
+      description:
+        "How far the pointer tilts the glass, in degrees, from 0 to 40. 0 keeps it upright.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dense"',
+      description:
+        "Which glyphs draw the scene. Braille and quadrants show single grains; ramps shade two grains per glyph.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .:oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "truecolor draws warm sand, cool glass and wood on a dark backdrop. mono and palette shade one ink; duotone maps brightness to the ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass. Without it, mono follows --ascii-ink and --ascii-paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"sodium" in duotone mode',
+      description:
+        "In duotone mode, the colour ramp from dark to light. Its darkest stop becomes the paper.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation, applied before glyphs and colours are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how sharp a change in tone draws - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"blue-noise" for braille and quadrants, else "none"',
+      description:
+        "Ordered dithering between glyph levels and dots. Grains always light their dot; it shades the glass and wood.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "{ bloom: 0.25 }",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1. Pass {} to turn it off.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description:
+        "Time multiplier for every motion: the pour, the flip and the shake.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description:
+        "Frame rate cap. The sand steps at its own fixed rate either way.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "Passed to the grid. The still frame always shows the glass mid-pour.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Pointer tilt and press to shake.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle for export: the current frame as text, ANSI, SVG or PNG, and the canvas for video.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description:
+        "Size and place it. The scene fills its box, so give the box a height.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is `aria-hidden`; it is decoration.
+- The first frame is built mid-pour: about 35% of the sand is already in the bottom cone, and a moment of simulation fills the stream. Under `prefers-reduced-motion` and with `animate={false}` the scene draws that frame and stops.
+- The sand steps at a fixed rate tied to the glass's size in cells, up to eight steps a frame, so it falls at the same pace on any grid and frame rate.
+- The sand grid is sized from the box and the charset. A resize or a charset change builds a new grid at the same point in the pour, so the glass carries on rather than starting over.
+- Upright, the glass fills about 92% of the box's height, or less in a narrow box. While it turns it scales down to fit, so you always see the whole glass.
+- The simulation holds at most about 34,000 cells. If the box is very large, grains grow past one dot each instead of the grid growing.
