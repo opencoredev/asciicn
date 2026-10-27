@@ -1,0 +1,234 @@
+---
+title: "Silicon Bloom"
+description: "A circuit board that grows itself: copper traces vine out of chip pins and electrons race along them, and the pointer powers new branches."
+---
+
+import CircuitBloomSceneDemo from "@/examples/circuit-bloom-scene-demo";
+import { controls as sceneControls } from "@/examples/circuit-bloom-scene-controls";
+import CircuitBloomSceneSchematic from "@/examples/circuit-bloom-scene-schematic";
+import CircuitBloomSceneHero from "@/examples/circuit-bloom-scene-hero";
+
+<ComponentPreview
+  src="examples/circuit-bloom-scene-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={sceneControls}
+>
+  <CircuitBloomSceneDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="circuit-bloom-scene" />
+
+## Usage
+
+```tsx
+import { CircuitBloomScene } from "@/components/asciicn/scenes/circuit-bloom-scene";
+
+export function BoardBackdrop() {
+  return (
+    <div className="relative h-[520px] overflow-hidden rounded-lg">
+      <CircuitBloomScene className="absolute inset-0" />
+    </div>
+  );
+}
+```
+
+The board starts with a few chips, each a heavy box-drawn package with pins on every side and a silkscreen label such as `U3 DSP`. Copper traces grow out of free pins one cell at a time. A trace runs straight, then turns through a 45° chamfer or a hard 90° corner, steers away from other copper, and sometimes tees off a branch. When it runs out of room or length it ends in a via (`○`) or a pad (`□`).
+
+Electrons race along finished traces as bright pulses with fading tails, and the via they reach flares. Every few seconds one chip powers up: its traces brighten, fire more pulses and cast a cyan glow on the board around them. Traces dim with age and later retract from the tip, which frees their pins for new growth. Every 14 to 26 seconds the oldest chip retracts all its copper and lifts off, and a new one lands somewhere else.
+
+Hover to power the chips near the pointer. Traces grow from the nearest free pins toward it, and the finished trace closest to it sprouts a branch in its direction. Click to drop a new chip under the pointer. Any copper in its footprint is cleared.
+
+The `charset` prop sets the board's grain and glow: Braille dot haze by default, block shades with `blocks`, slashes with `edge`. `standard` also switches traces, chips and vias to plain ASCII (`-|+/\`, `o`, `#`), so the whole frame is 7-bit text.
+
+## Examples
+
+### Schematic in your theme
+
+Mono without a phosphor follows `--ascii-ink` and `--ascii-paper`, so the board draws in your site's colours in light and dark mode. With `standard`, the frame is plain ASCII, ready to export as text.
+
+<ComponentPreview
+  src="examples/circuit-bloom-scene-schematic.tsx"
+  size="lg"
+  align="stretch"
+>
+  <CircuitBloomSceneSchematic />
+</ComponentPreview>
+
+### Behind a headline
+
+A navy board with the `dots` grain and extra traffic. Lower `density` leaves open board for your copy, and a fixed `seed` keeps the layout the same on every visit.
+
+<ComponentPreview
+  src="examples/circuit-bloom-scene-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <CircuitBloomSceneHero />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "growth",
+      type: "number",
+      default: "1",
+      description:
+        "How fast traces grow, from 0 to 3. At 0 the board stops growing, but pulses still run.",
+    },
+    {
+      name: "traffic",
+      type: "number",
+      default: "1",
+      description:
+        "How many electrons race along finished traces, from 0 to 3.",
+    },
+    {
+      name: "density",
+      type: "number",
+      default: "1",
+      description:
+        "How many chips share the board, from 0.25 to 3 times the usual count for its size. Changing it grows a new board.",
+    },
+    {
+      name: "board",
+      type: '"green" | "navy"',
+      default: '"green"',
+      description:
+        "The solder mask colour in truecolor. Copper, pulses and silkscreen keep their colours on both.",
+    },
+    {
+      name: "seed",
+      type: "number",
+      default: "7",
+      description:
+        "Layout seed. The same seed on the same grid grows the same board.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description:
+        "Sets the grain of the bare board and the glow around live copper. standard also swaps every trace, chip and via for plain ASCII.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .:oO", for the board grain and glow. Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "truecolor draws copper, cyan pulses and white silkscreen on the mask colour. mono and palette shade one ink by brightness; duotone maps brightness to the ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass. Without it, mono follows --ascii-ink and --ascii-paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"mainframe" in duotone',
+      description:
+        "In duotone mode, the colour ramp from dark to light. Its darkest stop becomes the paper.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation, applied to every colour.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "{ bloom: 0.35, vignette: 0.2 }",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1. Pass {} to turn it off.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Time multiplier for growth, pulses and power-ups.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "How many extra seconds the board grows before the still frame when animate is false or the visitor prefers reduced motion.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer input. Hovering powers nearby chips and grows traces toward the pointer; a click drops a new chip.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle for export: the current frame as text, ANSI, SVG or PNG, and the canvas for video.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description:
+        "Size and place it. The scene fills its box, so give the box a height.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is `aria-hidden`; it is decoration.
+- The board grows for 24 seconds before the first frame, so a still frame or a fresh resize already shows routed copper. Under `prefers-reduced-motion` and with `animate={false}` it draws that frame and stops.
+- Glyphs are written straight into the frame, so `invert`, `threshold`, `edgeThreshold` and `dither` have no effect.
+- All board state lives in typed arrays sized once per grid, and colours come from a lookup table built when the look changes, so a frame allocates nothing. A 200 by 60 grid draws in well under 8 ms.
+- A resize, a new `density` or a new `seed` grows a new board. Switching `charset` or colours keeps the current one.
