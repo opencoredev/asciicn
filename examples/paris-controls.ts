@@ -4,7 +4,7 @@ import { select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the Paris main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "standard",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -26,36 +26,24 @@ export const intensity = slider({
   step: 0.05,
 });
 
-export const sparkle = slider({
-  default: 0.3,
-  id: "sparkle",
-  label: "Sparkle",
-  max: 1,
-  min: 0,
-  step: 0.05,
-});
-
-export const clouds = slider({
-  default: 0.5,
-  id: "clouds",
-  label: "Clouds",
-  max: 1,
-  min: 0,
-  step: 0.05,
-});
-
 export const beacon = toggle({
   default: true,
   id: "beacon",
   label: "Beacon",
 });
 
+export const boat = toggle({
+  default: true,
+  id: "boat",
+  label: "Boat",
+});
+
 export const cell = slider({
-  default: 12,
+  default: 8,
   id: "cell",
   label: "Cell",
-  max: 20,
-  min: 8,
+  max: 16,
+  min: 6,
   step: 1,
   unit: "px",
 });
@@ -71,9 +59,8 @@ export const controls = [
   charset,
   colorMode,
   intensity,
-  sparkle,
-  clouds,
   beacon,
+  boat,
   cell,
   animate,
 ];

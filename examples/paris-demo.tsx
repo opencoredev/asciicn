@@ -10,9 +10,8 @@ export default function ParisDemo() {
       charset={usePreviewValue(knobs.charset)}
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
-      sparkle={usePreviewValue(knobs.sparkle)}
-      clouds={usePreviewValue(knobs.clouds)}
       beacon={usePreviewValue(knobs.beacon)}
+      boat={usePreviewValue(knobs.boat)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
