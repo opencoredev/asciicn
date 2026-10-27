@@ -120,6 +120,20 @@ export const mapOptions = (look: Look): MapOptions => ({
 
 const quote = (value: string) => JSON.stringify(value);
 
+// A JSX string attribute has no escapes: a quote ends it and `&` starts an
+// entity. Backslashes and control characters are spelled out for clarity.
+const NEEDS_EXPRESSION = /["&\\\p{Cc}\u2028\u2029]/u;
+
+/**
+ * `name="value"` when the value can sit in a JSX string as is, otherwise
+ * `name={"value"}` with the value as an escaped JS string, so ramps, seeds,
+ * URLs and colours the user typed always export as valid TSX.
+ */
+export const stringAttribute = (name: string, value: string): string =>
+  NEEDS_EXPRESSION.test(value)
+    ? `${name}={${quote(value)}}`
+    : `${name}="${value}"`;
+
 const number = (value: number) => String(Math.round(value * 100) / 100);
 
 /**
@@ -128,11 +142,11 @@ const number = (value: number) => String(Math.round(value * 100) / 100);
  */
 const inkAttribute = (ink: MonoInk, media: boolean) => {
   if (isPhosphor(ink)) {
-    return `phosphor=${quote(ink)}`;
+    return stringAttribute("phosphor", ink);
   }
   return media
     ? `style={{ "--ascii-ink": ${quote(ink)} } as React.CSSProperties}`
-    : `ink=${quote(ink)}`;
+    : stringAttribute("ink", ink);
 };
 
 export const snippetAttributes = (
@@ -153,21 +167,21 @@ export const snippetAttributes = (
     look[key] !== defaults[key];
 
   if (look.charset === "custom") {
-    attributes.push(`chars=${quote(look.chars)}`);
+    attributes.push(stringAttribute("chars", look.chars));
   } else {
-    attributes.push(`charset=${quote(look.charset)}`);
+    attributes.push(stringAttribute("charset", look.charset));
   }
   // Always spelled out: component defaults differ, and these two decide
   // most of the look.
-  attributes.push(`colorMode=${quote(engineColorMode(look))}`);
+  attributes.push(stringAttribute("colorMode", engineColorMode(look)));
   if (look.colorMode === "mono" && look.ink !== "theme") {
     attributes.push(inkAttribute(look.ink, media));
   }
   if (look.colorMode === "duotone") {
-    attributes.push(`ramp=${quote(look.ramp)}`);
+    attributes.push(stringAttribute("ramp", look.ramp));
   }
   if (look.colorMode === "ansi16" && look.ansi !== "vga") {
-    attributes.push(`ansi=${quote(look.ansi)}`);
+    attributes.push(stringAttribute("ansi", look.ansi));
   }
   if (changed("cell")) {
     attributes.push(`cell={${look.cell}}`);
@@ -179,7 +193,7 @@ export const snippetAttributes = (
     attributes.push(`grade={{ ${grade.join(", ")} }}`);
   }
   if (changed("dither")) {
-    attributes.push(`dither=${quote(look.dither)}`);
+    attributes.push(stringAttribute("dither", look.dither));
   }
   if (look.invert) {
     attributes.push("invert");
@@ -200,7 +214,7 @@ export const snippetAttributes = (
     return attributes;
   }
   if (changed("interaction")) {
-    attributes.push(`interaction=${quote(look.interaction)}`);
+    attributes.push(stringAttribute("interaction", look.interaction));
   }
   if (changed("speed")) {
     attributes.push(`speed={${number(look.speed)}}`);

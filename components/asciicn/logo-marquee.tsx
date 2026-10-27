@@ -8,6 +8,8 @@ import {
   frameLines,
   mapTones,
   resolveCharset,
+  useDocumentVisible,
+  useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type { AsciiColor, CharsetName } from "@/lib/ascii";
@@ -300,8 +302,14 @@ export const LogoMarquee = ({
 }: LogoMarqueeProps) => {
   const viewRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<Animation | null>(null);
   const reduced = usePrefersReducedMotion();
   const moving = variant === "marquee" && !reduced && speed > 0;
+  // The marquee only runs while it can be seen: on screen in a visible tab.
+  const inView = useInView(viewRef);
+  const tabVisible = useDocumentVisible();
+  const shown = inView && tabVisible;
+  const shownRef = useRef(shown);
   const look = { chars, charset, color, rows };
   // One copy's width in cells: every logo plus the gap after it.
   const copyCells = logos.reduce(
@@ -324,9 +332,13 @@ export const LogoMarquee = ({
       easing: "linear",
       iterations: Number.POSITIVE_INFINITY,
     });
+    animationRef.current = animation;
+    if (!shownRef.current) {
+      animation.pause();
+    }
     const pause = () => animation.pause();
     const play = () => {
-      if (!view.matches(":hover, :focus-within")) {
+      if (shownRef.current && !view.matches(":hover, :focus-within")) {
         animation.play();
       }
     };
@@ -336,12 +348,28 @@ export const LogoMarquee = ({
     view.addEventListener("focusout", play);
     return () => {
       animation.cancel();
+      animationRef.current = null;
       view.removeEventListener("pointerenter", pause);
       view.removeEventListener("pointerleave", play);
       view.removeEventListener("focusin", pause);
       view.removeEventListener("focusout", play);
     };
   }, [copyCells, direction, moving, speed]);
+
+  // Runs after the effect above, so a new animation picks up the state too.
+  useEffect(() => {
+    shownRef.current = shown;
+    const animation = animationRef.current;
+    const view = viewRef.current;
+    if (!animation || !view) {
+      return;
+    }
+    if (shown && !view.matches(":hover, :focus-within")) {
+      animation.play();
+    } else {
+      animation.pause();
+    }
+  }, [shown]);
 
   const text: CSSProperties = {
     fontFamily: "var(--ascii-font, monospace)",
@@ -359,6 +387,9 @@ export const LogoMarquee = ({
   if (!moving) {
     return (
       <div
+        // Same node as the moving root, so the in-view observer keeps
+        // watching it if reduced motion is switched off later.
+        ref={viewRef}
         className={cn("w-full select-none", className)}
         style={{ ...text, ...style }}
         {...props}

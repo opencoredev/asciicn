@@ -366,7 +366,7 @@ const Comet = ({ layout, color }: { layout: Layout; color: AsciiColor }) => {
     }
   };
   // Still frame under reduced motion: the comet rests mid-track.
-  useFrameLoop(draw, { fps: 30, stillTime: SWEEP_SECONDS / 2 });
+  useFrameLoop(draw, { fps: 30, stillTime: SWEEP_SECONDS / 2, target: ref });
   return (
     <span
       ref={ref}

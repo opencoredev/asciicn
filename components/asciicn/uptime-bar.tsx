@@ -232,7 +232,13 @@ export const UptimeBar = ({
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const [tip, setTip] = useState<Tip | null>(null);
   const active = tip?.visible === true ? tip.index : null;
-  const [focusIndex, setFocusIndex] = useState(days.length - 1);
+  const [savedFocus, setFocusIndex] = useState<number | null>(null);
+  // Derived each render so the roving tab stop survives `days` changing
+  // length: a saved index that no longer exists falls back to the last day.
+  const focusIndex =
+    savedFocus !== null && savedFocus < days.length
+      ? savedFocus
+      : days.length - 1;
   const lines = Math.max(1, Math.round(rows));
 
   const palette = { ...DEFAULT_COLORS, ...colors };

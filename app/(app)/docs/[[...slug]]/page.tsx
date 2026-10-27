@@ -17,7 +17,8 @@ import { Icon } from "@/components/icon";
 import { PageTransition } from "@/components/page-transition";
 import { badgeVariants } from "@/components/ui/badge";
 import { ROUTES } from "@/constants/routes";
-import { formatTitleFromSlug } from "@/lib/docs";
+import { getCatalog } from "@/lib/catalog";
+import { EXAMPLES_FOLDER_ID, formatTitleFromSlug } from "@/lib/docs";
 import { getPageImage, getPageMarkdownUrl, source } from "@/lib/source";
 import { absoluteUrl } from "@/lib/utils";
 import { mdxComponents } from "@/mdx-components";
@@ -52,12 +53,37 @@ export const generateMetadata = async (props: {
   });
 };
 
+/** A crumb links to `path`, or is plain text when there is nothing to open. */
+interface Crumb {
+  name: string;
+  path: string | null;
+}
+
+/**
+ * Where a group crumb points. Groups have no page of their own, so a
+ * catalog group links to its heading on the catalog page and any other
+ * group (the engine guide) stays plain text.
+ */
+const groupPath = (slugs: string[]): string | null => {
+  const page = source.getPage(slugs);
+  if (page) {
+    return page.url;
+  }
+  const [group] = slugs;
+  const inCatalog =
+    slugs.length === 1 &&
+    getCatalog().some((category) => category.id === group);
+  return inCatalog
+    ? `${ROUTES.DOCS}/${EXAMPLES_FOLDER_ID}#catalog-${group}`
+    : null;
+};
+
 const buildBreadcrumbs = (
   slugs: string[],
   pageTitle: string,
   pageUrl: string
 ) => {
-  const items: { name: string; path: string }[] = [{ name: "Home", path: "/" }];
+  const items: Crumb[] = [{ name: "Home", path: "/" }];
 
   if (slugs.length === 0) {
     items.push({ name: pageTitle, path: pageUrl });
@@ -66,10 +92,11 @@ const buildBreadcrumbs = (
 
   items.push({ name: "Docs", path: ROUTES.DOCS });
 
-  let currentPath = ROUTES.DOCS;
   for (let i = 0; i < slugs.length - 1; i += 1) {
-    currentPath += `/${slugs[i]}`;
-    items.push({ name: formatTitleFromSlug(slugs[i]), path: currentPath });
+    items.push({
+      name: formatTitleFromSlug(slugs[i]),
+      path: groupPath(slugs.slice(0, i + 1)),
+    });
   }
 
   items.push({ name: pageTitle, path: pageUrl });
@@ -136,7 +163,11 @@ const Page = async (props: { params: Promise<{ slug?: string[] }> }) => {
 
   return (
     <>
-      <BreadcrumbJsonLd items={breadcrumbs} />
+      <BreadcrumbJsonLd
+        items={breadcrumbs.flatMap(({ name, path }) =>
+          path === null ? [] : [{ name, path }]
+        )}
+      />
 
       <DocsKeyboardShortcuts
         previous={neighbours.previous ? neighbours.previous.url : null}
@@ -158,15 +189,19 @@ const Page = async (props: { params: Promise<{ slug?: string[] }> }) => {
                 >
                   {breadcrumbs.slice(1, -1).map((crumb) => (
                     <span
-                      key={crumb.path}
+                      key={crumb.name}
                       className="flex items-center gap-1.5"
                     >
-                      <Link
-                        href={crumb.path}
-                        className="hover:text-foreground lowercase transition-colors duration-150"
-                      >
-                        {crumb.name}
-                      </Link>
+                      {crumb.path === null ? (
+                        <span className="lowercase">{crumb.name}</span>
+                      ) : (
+                        <Link
+                          href={crumb.path}
+                          className="hover:text-foreground lowercase transition-colors duration-150"
+                        >
+                          {crumb.name}
+                        </Link>
+                      )}
                       <span aria-hidden className="text-faint">
                         /
                       </span>

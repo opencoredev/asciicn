@@ -7,7 +7,9 @@ import {
   monoColors,
   snippetAttributes,
   sourceDefaults,
+  stringAttribute,
 } from "@/components/studio/look";
+import type { MediaSourceId } from "@/components/studio/source-ids";
 import type { StudioSource } from "@/components/studio/sources";
 import { IMAGE_PRESETS } from "@/components/studio/state";
 import type { Look, MediaSettings } from "@/components/studio/state";
@@ -37,24 +39,53 @@ const WEIGHT_CLASSES: Readonly<Record<number, string>> = {
 const textAttributes = (look: Look, media: MediaSettings): string[] => {
   const attributes = [
     look.charset === "custom"
-      ? `chars=${JSON.stringify(look.chars)}`
-      : `charset=${JSON.stringify(look.charset)}`,
+      ? stringAttribute("chars", look.chars)
+      : stringAttribute("charset", look.charset),
   ];
   if (look.colorMode === "duotone") {
-    attributes.push(`colorMode="duotone"`, `ramp=${JSON.stringify(look.ramp)}`);
+    attributes.push(`colorMode="duotone"`, stringAttribute("ramp", look.ramp));
   }
   const mono = look.colorMode === "mono" ? monoColors(look.ink) : null;
   if (mono) {
-    attributes.push(`color=${JSON.stringify(mono.ink)}`);
+    attributes.push(stringAttribute("color", mono.ink));
   }
   if (look.dither !== "none") {
-    attributes.push(`dither=${JSON.stringify(look.dither)}`);
+    attributes.push(stringAttribute("dither", look.dither));
   }
   attributes.push(
     `cell={${look.cell}}`,
-    `className="font-${media.font} ${WEIGHT_CLASSES[media.weight] ?? "font-bold"}"`
+    stringAttribute(
+      "className",
+      `font-${media.font} ${WEIGHT_CLASSES[media.weight] ?? "font-bold"}`
+    )
   );
   return attributes;
+};
+
+/**
+ * The defaults `AsciiImage` and `AsciiVideo` really use (see their prop
+ * destructuring), which differ from the Studio's: the Studio previews media
+ * at cell 9 with auto levels on, so the snippet has to spell those out.
+ */
+const MEDIA_COMPONENT_DEFAULTS = {
+  image: { autoLevels: true, cell: 10 },
+  video: { autoLevels: false, cell: 10 },
+  webcam: { autoLevels: false, cell: 10 },
+} as const satisfies Record<
+  Exclude<MediaSourceId, "text">,
+  { autoLevels: boolean; cell: number }
+>;
+
+type MediaComponentId = keyof typeof MEDIA_COMPONENT_DEFAULTS;
+
+const isMediaComponent = (id: string): id is MediaComponentId =>
+  Object.hasOwn(MEDIA_COMPONENT_DEFAULTS, id);
+
+const levelsAttribute = (id: MediaComponentId, levels: boolean) => {
+  if (levels === MEDIA_COMPONENT_DEFAULTS[id].autoLevels) {
+    return [];
+  }
+  return [levels ? "autoLevels" : "autoLevels={false}"];
 };
 
 /** Media sources need the thing they sample. Uploads get a placeholder path. */
@@ -67,19 +98,25 @@ const mediaAttributes = (
     case "image": {
       const preset = IMAGE_PRESETS.find((item) => item.id === media.image);
       return [
-        `src=${JSON.stringify(uploaded || !preset ? "/your-image.jpg" : preset.src)}`,
+        stringAttribute(
+          "src",
+          uploaded || !preset ? "/your-image.jpg" : preset.src
+        ),
         `alt="Describe the image"`,
-        ...(media.levels ? [] : ["autoLevels={false}"]),
+        ...levelsAttribute("image", media.levels),
       ];
     }
     case "video": {
       return [
-        `src=${JSON.stringify(uploaded || media.video === "" ? "/your-video.mp4" : media.video)}`,
-        ...(media.levels ? [] : ["autoLevels={false}"]),
+        stringAttribute(
+          "src",
+          uploaded || media.video === "" ? "/your-video.mp4" : media.video
+        ),
+        ...levelsAttribute("video", media.levels),
       ];
     }
     case "webcam": {
-      return ["webcam"];
+      return ["webcam", ...levelsAttribute("webcam", media.levels)];
     }
     default: {
       return [];
@@ -126,12 +163,19 @@ export const jsxSnippet = (
   }
   const seeded =
     source.kind === "field" && source.seeded && media.seed !== ""
-      ? [`seed=${JSON.stringify(media.seed)}`]
+      ? [stringAttribute("seed", media.seed)]
       : [];
+  // Compare the cell with the component's own default, not the Studio's.
+  const defaults = isMediaComponent(source.id)
+    ? {
+        ...sourceDefaults(source),
+        cell: MEDIA_COMPONENT_DEFAULTS[source.id].cell,
+      }
+    : sourceDefaults(source);
   const attributes = [
     ...mediaAttributes(source, media, { uploaded }),
     ...seeded,
-    ...snippetAttributes(look, sourceDefaults(source), {
+    ...snippetAttributes(look, defaults, {
       media: source.kind === "media",
     }),
     `className="h-96 w-full"`,

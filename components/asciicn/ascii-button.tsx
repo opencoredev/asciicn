@@ -1,7 +1,13 @@
 "use client";
 
 import { Slot } from "radix-ui";
-import { cloneElement, isValidElement, useEffect, useState } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   ComponentProps,
   CSSProperties,
@@ -9,7 +15,14 @@ import type {
   ReactNode,
 } from "react";
 
-import { BOX, cssColor, SPINNERS, usePrefersReducedMotion } from "@/lib/ascii";
+import {
+  BOX,
+  cssColor,
+  SPINNERS,
+  useDocumentVisible,
+  useInView,
+  usePrefersReducedMotion,
+} from "@/lib/ascii";
 import type { AsciiColor, BoxStyle, SpinnerName } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
@@ -109,13 +122,20 @@ const Frame = ({ glyphs }: { glyphs: FrameGlyphs }) => {
   );
 };
 
-/** Steps through a spinner's frames; holds the first under reduced motion. */
+/**
+ * Steps through a spinner's frames; holds the first under reduced motion
+ * and pauses offscreen or in a hidden tab.
+ */
 const Spinner = ({ name }: { name: SpinnerName }) => {
   const frames = SPINNERS[name];
+  const ref = useRef<HTMLSpanElement>(null);
   const reduced = usePrefersReducedMotion();
+  const visible = useDocumentVisible();
+  const inView = useInView(ref);
+  const running = !reduced && visible && inView;
   const [step, setStep] = useState(0);
   useEffect(() => {
-    if (reduced) {
+    if (!running) {
       return;
     }
     const timer = window.setInterval(
@@ -123,8 +143,8 @@ const Spinner = ({ name }: { name: SpinnerName }) => {
       80
     );
     return () => window.clearInterval(timer);
-  }, [reduced, frames.length]);
-  return <>{frames[step] ?? frames[0]}</>;
+  }, [running, frames.length]);
+  return <span ref={ref}>{frames[step] ?? frames[0]}</span>;
 };
 
 interface OwnProps {
@@ -225,11 +245,20 @@ export const AsciiButton = ({
     style: { ...vars, ...style },
   };
 
-  if (asChild && isValidElement<{ children?: ReactNode }>(children)) {
+  if (
+    asChild &&
+    isValidElement<{ children?: ReactNode; onClick?: unknown }>(children)
+  ) {
     // The child (a link) becomes the root; its own content becomes the label.
+    // Slot runs the child's onClick before ours, so while loading the
+    // child's handler is dropped and only the preventDefault above runs.
     return (
       <Slot.Root {...rootProps}>
-        {cloneElement(children, undefined, layers(children.props.children))}
+        {cloneElement(
+          children,
+          loading ? { onClick: undefined } : undefined,
+          layers(children.props.children)
+        )}
       </Slot.Root>
     );
   }
