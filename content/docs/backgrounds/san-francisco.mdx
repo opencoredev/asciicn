@@ -1,0 +1,267 @@
+---
+title: "San Francisco"
+description: "The Golden Gate Bridge on a foggy morning: orange towers, fog rolling through the strait and under the deck, the city and the Transamerica Pyramid behind, and sailboats on the bay."
+---
+
+import SanFranciscoDemo from "@/examples/san-francisco-demo";
+import { controls as demoControls } from "@/examples/san-francisco-controls";
+import SanFranciscoHero from "@/examples/san-francisco-hero";
+import SanFranciscoPhosphor from "@/examples/san-francisco-phosphor";
+
+<ComponentPreview
+  src="examples/san-francisco-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <SanFranciscoDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="san-francisco" />
+
+## Usage
+
+```tsx
+import { SanFrancisco } from "@/components/asciicn/san-francisco";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <SanFrancisco intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The view is from the bay on a grey morning. The Golden Gate Bridge spans the strait: two orange towers with stepped portals between their legs, the main cables sagging between them, a suspender hanging every few columns and a deep truss under the deck. A red light blinks on each tower and cars cross with their lights on. A fog bank rolls in from the ocean side, thickest over the Marin headlands on the left, and pours under the deck while the tower tops stay clear. Behind the south end the city climbs its hills, with the Transamerica Pyramid among the downtown towers and Coit Tower on its hill. Sailboats cross the bay and gulls drift overhead.
+
+The towers move apart as the box gets wider, so a phone screen still shows both of them. With `interactive` on, the default, the layers slide apart as the pointer moves: the water and boats move most, the sky least.
+
+It draws in `standard` glyphs by default. The fog uses light glyphs and the steel uses the densest ones, so the bridge reads in every colour mode. In `truecolor` mode, also the default, the bridge is International Orange over pale blue-grey fog. On a light paper the fog and houses are darkened so they still show. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `ember` or `glacier`.
+
+`fog` sets how much of the bridge is buried. At 0 the strait is clear; at 1 the bank covers the deck and climbs the headlands. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.55}` keeps the bridge recognisable but quiet, so the headline at the top reads first.
+
+<ComponentPreview
+  src="examples/san-francisco-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <SanFranciscoHero />
+</ComponentPreview>
+
+### Amber terminal
+
+`phosphor="p3"` draws the scene in amber on dark glass. The `dense` charset, `fog={0.9}` and a CRT finish from `fx` make it look like a weather camera on an old monitor.
+
+<ComponentPreview
+  src="examples/san-francisco-phosphor.tsx"
+  size="lg"
+  align="stretch"
+>
+  <SanFranciscoPhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
+    },
+    {
+      name: "fog",
+      type: "number",
+      default: "0.6",
+      description:
+        "How thick the fog bank is, from 0 (a clear strait) to 1 (the deck buried).",
+    },
+    {
+      name: "sails",
+      type: "number",
+      default: "0.6",
+      description: "How many sailboats are out on the bay, from 0 (none) to 1.",
+    },
+    {
+      name: "traffic",
+      type: "number",
+      default: "0.5",
+      description: "How many cars cross the bridge, from 0 (none) to 1.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description:
+        "The surface behind the glyphs. Ignored when a phosphor brings its own glass.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor", or "mono" with a phosphor',
+      description:
+        "How glyphs are coloured. truecolor keeps the scene's own colours; mono uses the ink or phosphor; duotone runs the tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass that replace the ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer parallax between the layers. false holds the view still and turns interaction off.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description:
+        "What the pointer does to the glyphs, on top of the parallax.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast everything moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "9",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a morning fog gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows a CSS gradient in the scene's colours.
+- The whole scene is drawn on the GPU in one pass. The fog costs the most per sample, and `braille` samples eight times per cell. See [Performance](/docs/engine/performance).
