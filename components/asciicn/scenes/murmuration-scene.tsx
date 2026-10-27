@@ -602,8 +602,9 @@ const createSky = ({
       const dx = x - sun.x;
       const dy = (y - sun.y) * 1.3;
       const glow = Math.exp(-(dx * dx + dy * dy) / 0.03);
+      // Dark-ink skies stay well below the flock's density, so birds read.
       const sky = darkInk
-        ? (0.03 + 0.4 * (1 - depth) ** 1.5) * (1 - 0.9 * glow)
+        ? (0.015 + 0.16 * (1 - depth) ** 2) * (1 - 0.9 * glow)
         : 0.04 + 0.2 * depth ** 2 + 0.18 * glow;
       // A ramp draws a glyph for any tone at all, so its sky is a sparse
       // scatter of one light glyph rather than a gradient of many.
