@@ -1,0 +1,256 @@
+---
+title: "Rio de Janeiro"
+description: "Sugarloaf and Corcovado in the late afternoon over Copacabana, with cable cars, breaking surf, the wave-mosaic promenade and frigatebirds."
+---
+
+import RioDemo from "@/examples/rio-demo";
+import { controls as demoControls } from "@/examples/rio-controls";
+import RioHeadline from "@/examples/rio-headline";
+import RioPhosphor from "@/examples/rio-phosphor";
+
+<ComponentPreview
+  src="examples/rio-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <RioDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="rio" />
+
+## Usage
+
+```tsx
+import { Rio } from "@/components/asciicn/rio";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Rio intensity={0.7} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The Sugarloaf rises from the bay as a granite dome, gold on the side that faces the low sun, with Morro da Urca in front of it. Two cable cars go back and forth: one from the shore to the top of Urca, one from Urca to the summit. Behind them the forested range climbs to Corcovado, where the statue stands with its arms open. Below, the sun lays a path of glitter on the water, rollers break in white lines on the curve of Copacabana, and the promenade's black and white wave mosaic runs along the bottom. Frigatebirds glide overhead and a couple of sailboats cross the bay.
+
+On wide boxes the mountains sit right of centre, so a headline fits on the left. On tall boxes the peaks move toward the middle and draw a little smaller. Moving the pointer slides the near layers further than the far ones.
+
+It draws in `standard` glyphs by default. `braille` gives the finest detail, `blocks` and `dense` solid shapes, and `edge` an outline drawing. In `truecolor`, the default, it paints its own greens, warm stone and sea blue on a deep evening blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+## Examples
+
+### Behind a headline
+
+`colorMode="duotone"` with the `sodium` ramp turns the scene golden, and `intensity={0.6}` thins the glyphs so white text on the left reads first.
+
+<ComponentPreview src="examples/rio-headline.tsx" size="lg" align="stretch">
+  <RioHeadline />
+</ComponentPreview>
+
+### On a green monitor
+
+`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset, an 11px cell and `fx` scanlines, bloom and vignette finish the look, and `surf={0.9}` brings in bigger rollers.
+
+<ComponentPreview src="examples/rio-phosphor.tsx">
+  <RioPhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the city draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "surf",
+      type: "number",
+      default: "0.6",
+      description:
+        "How big the surf runs on the beach, from 0 (flat water) to 1 (wide bands of rollers).",
+    },
+    {
+      name: "birds",
+      type: "number",
+      default: "5",
+      description: "How many frigatebirds glide over the bay, from 0 to 8.",
+    },
+    {
+      name: "cableCar",
+      type: "boolean",
+      default: "true",
+      description: "The two Sugarloaf cable cars and their cables.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep evening blue; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "false turns off the parallax and any pointer interaction.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
+- The whole city is one shader pass on the GPU. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
