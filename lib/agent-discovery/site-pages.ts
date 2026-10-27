@@ -51,7 +51,7 @@ The Studio is an interactive editor for the asciicn engine. Every control in it 
 
 ## Sources
 
-- **GPU backgrounds:** \`silk\`, \`nebula\`, \`plasma\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
+- **GPU fields:** \`nebula\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
 - **The ${CITIES.length} city backgrounds** from the [backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md).
 - **Media:** a sample image, a video URL, your webcam, or text you type, sampled on the CPU into glyphs. Files and camera frames stay in the browser and never enter the URL.
 
@@ -114,7 +114,7 @@ export const Hero = () => (
 );
 \`\`\`
 
-More backgrounds (aurora, plasma, waves, starfield and others) are in the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md). To build one that isn't here, install the agent skill (\`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\`) and read [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
+Shader fields (nebula, prism, ionize, squall, satin) and 3D scenes are in the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md). To build one that isn't here, install the agent skill (\`npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json\`) and read [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
 `;
 
 /** The Markdown for an app or trust page, or `null` for any other slug. */

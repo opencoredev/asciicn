@@ -7,10 +7,10 @@ The charset decides what the picture is made of; the colour mode decides how it 
 | Id          | Samples per cell | Glyphs                                 | Use it for                                                                   | Avoid it for                                 |
 | ----------- | ---------------- | -------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------- |
 | `standard`  | 1x1              | ` .:-=+*#%@`                           | Photos, portraits, classic ASCII art, anything people should read as "ASCII" | Fine lines (too coarse)                      |
-| `dense`     | 1x1              | 70 glyphs, `.` to `$`                  | Smooth gradients, faces, fog and smoke                                       | Small cells under 10px (glyphs turn to mush) |
-| `blocks`    | 1x1              | ` ░▒▓█`                                | Bold fills, bars, heatmaps, ANSI art, light-mode backgrounds                 | Detail                                       |
+| `dense`     | 1x1              | 70 glyphs, `.` to `$`                  | Smooth gradients, faces, fog and clouds                                      | Small cells under 10px (glyphs turn to mush) |
+| `blocks`    | 1x1              | ` ░▒▓█`                                | Bold fills, bars, ANSI art, light-mode backgrounds                           | Detail                                       |
 | `quadrants` | 2x2              | ` ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█`                     | Solid shapes at twice the resolution: logos, pixel art, maps, terrain        | Soft gradients                               |
-| `braille`   | 2x4              | `⠁` to `⣿`                             | Line charts, wireframes, contours, orbits, starfields, fine 3D               | Large filled areas (looks grey)              |
+| `braille`   | 2x4              | `⠁` to `⣿`                             | Waveforms, wireframes, contour lines, orbits, night skies, fine 3D           | Large filled areas (looks grey)              |
 | `cp437`     | 1x1              | `·•○◘♠♣♥♦▲▼☺☻░▒▓█`                     | DOS, BBS and retro-PC moods                                                  | Corporate UI                                 |
 | `petscii`   | 1x1              | `╱╲─│╭╮●◆▄▌█`                          | Commodore 64 moods, playful retro                                            | Photos                                       |
 | `katakana`  | 1x1              | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits                | Signage, glyph streams                                                       | Anything that should read as calm            |
@@ -24,14 +24,14 @@ Rules of thumb:
 - Braille and quadrants only show detail when the field has detail at sample scale. A soft glow in Braille looks like grey static; use `dots` or `standard` for soft things.
 - On a light background, sparse charsets (`standard`, `dots`, `braille`) look faint. Prefer `blocks`, a larger `cell`, or `invert` for dark-on-light art.
 - `edge` needs contrast in the field. It is best on images and on fields with clear shapes.
-- Mixing charsets on one page is fine when each part has its own role: Braille for a chart, blocks for a progress bar, standard for a hero image.
+- Mixing charsets on one page is fine when each part has its own role: Braille for a waveform, blocks for a progress bar, standard for a hero image.
 
 ## Colour modes
 
 | Mode        | How a glyph is coloured                                                        | Use it for                                                |
 | ----------- | ------------------------------------------------------------------------------ | --------------------------------------------------------- |
 | `mono`      | Every glyph in `--ascii-ink`, or a `phosphor`                                  | Most UI, terminals, anything that should follow the theme |
-| `palette`   | The tone picks a colour from `palette` (paper, then inks from faint to strong) | Theme-coloured backgrounds with depth, charts with series |
+| `palette`   | The tone picks a colour from `palette` (paper, then inks from faint to strong) | Theme-coloured backgrounds with depth, one hue per line   |
 | `duotone`   | The tone picks a colour on a `ramp`, dark to bright                            | Moody backgrounds, heat, night skies                      |
 | `truecolor` | The source colour per glyph: a `colorField`, an image, a video                 | Photos, video, sunsets, neon, anything with real colour   |
 | `ansi16`    | The source colour snapped to 16 terminal colours (`ansi="vga"` or `"xterm"`)   | ANSI art, terminal screenshots, `.ans` export             |
@@ -52,11 +52,11 @@ Duotone ramps: `mainframe`, `sodium`, `heliograph`, `infrared`, `outrun`, `orchi
 | ------------------------------------- | --------------------- | --------------------------------------- |
 | A terminal or CRT panel               | `standard` + text     | `mono` with `p1` or `p3`, `fx={CRT_FX}` |
 | A photo turned to ASCII               | `standard` or `dense` | `truecolor`, or `mono` for print        |
-| A line chart or sparkline             | `braille`             | `mono` or `palette` per series          |
-| A heatmap or bar chart                | `blocks`              | `palette`                               |
+| A waveform or a line of values        | `braille`             | `mono` or `palette` per line            |
+| A density grid or level bars          | `blocks`              | `palette`                               |
 | A logo in ASCII                       | `quadrants`           | `mono`                                  |
-| A starfield, orbit or wireframe globe | `braille`             | `mono` or `duotone`                     |
-| Fire, plasma, a sunset                | `dense` or `blocks`   | `truecolor` with a `colorField`         |
+| A night sky, orbit or wireframe globe | `braille`             | `mono` or `duotone`                     |
+| Fire, a nebula, a sunset              | `dense` or `blocks`   | `truecolor` with a `colorField`         |
 | A blueprint or technical drawing      | `edge`                | `mono` with `blueprint`                 |
 | Newsprint or a halftone portrait      | `dots`                | `mono`, `invert` on light pages         |
 | Retro game or BBS screen              | `cp437` or `petscii`  | `ansi16`                                |

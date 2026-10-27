@@ -44,7 +44,7 @@ With few glyphs, a smooth gradient breaks into bands. Set `dither` to a matrix s
 | A full-bleed animated field, written in GLSL     | `AsciiShader`              | WebGL2 and a glyph atlas    |
 | Anything computed in JavaScript: 3D, sims, media | `AsciiGrid`                | Canvas2D and the same atlas |
 | Static art, banners, server-rendered fallbacks   | `AsciiPre`                 | Real text in a `<pre>`      |
-| Chart fills, buttons, progress bars              | `fillStyle`, `FillPattern` | CSS masks and SVG patterns  |
+| Glyph-filled buttons, bars and panels            | `fillStyle`, `FillPattern` | CSS masks and SVG patterns  |
 
 `AsciiShader` runs your `field` function on the GPU for every sample, every frame. It is the fastest option by far and suits backgrounds and scenes. [Write your own field](/docs/engine/write-your-own) walks through one.
 
@@ -84,7 +84,7 @@ It also takes a plain string: `<AsciiPre frame={"+--+\n|hi|\n+--+"} />`.
 
 ## Glyph fills
 
-Charts and interface pieces fill shapes with tiled glyphs instead of flat colour. `fillStyle` returns inline styles that mask any element to a glyph texture. `FillPattern` and `AsciiPattern` are SVG `<pattern>`s for chart shapes. All of them render on the server and follow the theme through CSS variables.
+Interface pieces fill shapes with tiled glyphs instead of flat colour. `fillStyle` returns inline styles that mask any element to a glyph texture. `FillPattern` and `AsciiPattern` are SVG `<pattern>`s for filling SVG shapes. All of them render on the server and follow the theme through CSS variables.
 
 <ComponentPreview src="examples/engine-fills.tsx">
   <EngineFills />
@@ -94,7 +94,7 @@ Charts and interface pieces fill shapes with tiled glyphs instead of flat colour
 | --------- | ---------- | -------------------------------------------- |
 | `shade`   | `█▓▒░·`    | The classic ANSI gradient, densest at `edge` |
 | `ascii`   | `#*+=-:.`  | The same ramp in ASCII                       |
-| `braille` | `⣿` to `⠂` | Fine dots, good for line and area charts     |
+| `braille` | `⣿` to `⠂` | Fine dots, a light texture for large fills   |
 | `blocks`  | `█▛▚▘`     | Chunky quadrant steps                        |
 | `dots`    | `●•·`      | Halftone                                     |
 | `hatch`   | `╱`        | Unbroken diagonal lines                      |
@@ -121,4 +121,4 @@ Ramp textures fade from `from` at the `edge` to `to` over `length` cells, or tak
 
 <InstallBlock name="ascii-core" />
 
-Components pull in what they need as registry dependencies, so adding any component installs the engine with it. Components that only draw text, charts or interface pieces never ship WebGL code.
+Components pull in what they need as registry dependencies, so adding any component installs the engine with it. Components that only draw text or interface pieces never ship WebGL code.

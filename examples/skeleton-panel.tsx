@@ -1,11 +1,11 @@
 import { Skeleton } from "@/components/asciicn/skeleton";
 
-const TILES = ["Revenue", "Active users", "Churn"] as const;
+const TILES = ["Build", "Tests", "Deploy"] as const;
 
-export default function SkeletonDashboard() {
+export default function SkeletonPanel() {
   return (
     <div aria-busy="true" className="flex w-full max-w-xl flex-col gap-3">
-      <span className="sr-only">Loading dashboard</span>
+      <span className="sr-only">Loading the pipeline</span>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {TILES.map((title) => (
           <div
@@ -20,9 +20,7 @@ export default function SkeletonDashboard() {
         ))}
       </div>
       <div className="bg-background flex flex-col gap-4 rounded-lg border p-4">
-        <span className="text-muted-foreground text-xs">
-          Requests, last 30 days
-        </span>
+        <span className="text-muted-foreground text-xs">Build log</span>
         <Skeleton color="ink" chars="·•●" rows={10} />
       </div>
     </div>

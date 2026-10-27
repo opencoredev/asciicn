@@ -5,7 +5,7 @@ description: "Loading placeholders for text, blocks and avatars made of shade gl
 
 import SkeletonDemo from "@/examples/skeleton-demo";
 import { controls as skeletonControls } from "@/examples/skeleton-controls";
-import SkeletonDashboard from "@/examples/skeleton-dashboard";
+import SkeletonPanel from "@/examples/skeleton-panel";
 import SkeletonTable from "@/examples/skeleton-table";
 
 <ComponentPreview src="examples/skeleton-demo.tsx" controls={skeletonControls}>
@@ -38,12 +38,12 @@ While it waits, a band of `▒▓▒` sweeps from left to right. The band's posi
 
 ## Examples
 
-### Dashboard
+### Cards and a panel
 
-Stat tiles keep their real labels while the numbers load, and a chart area sweeps in `·•●`.
+Each card keeps its real label while its value loads. The wide panel below uses `chars="·•●"`, so it sweeps in dots instead of shades.
 
-<ComponentPreview src="examples/skeleton-dashboard.tsx" size="lg">
-  <SkeletonDashboard />
+<ComponentPreview src="examples/skeleton-panel.tsx" size="lg">
+  <SkeletonPanel />
 </ComponentPreview>
 
 ### Table

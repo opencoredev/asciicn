@@ -16,21 +16,21 @@ If there is no product to read about, ask the user what the page is for. If nobo
 
 ## 2. Find the effect in the subject
 
-The hero effect should be something only this product would show. Take it from the product's own world and render it in glyphs, as a field, a CPU grid, an image or a chart:
+The hero effect should be something only this product would show. Take it from the product's own world and render it in glyphs, as a field, a CPU grid, an image or a Braille trace:
 
 | The product is about             | An ASCII effect drawn from it                                               |
 | -------------------------------- | --------------------------------------------------------------------------- |
 | Maps, outdoors, travel           | Braille contour lines of real-looking terrain, a route over them            |
-| Audio, music, voice              | A waveform or spectrum, ridgelines stacked like a spectrogram               |
+| Audio, music, voice              | A waveform or spectrum, lines stacked like a spectrogram                    |
 | Money, trading, analytics        | A price line or volume ridges, a dense band where activity is               |
 | Infrastructure, uptime, networks | Packets along paths, a grid of hosts, a pulse at the incident               |
 | Weather, climate, energy         | Isobars, a radar sweep, heat rising off a surface                           |
 | Sleep, health, calm              | A slow breathing ring, a tide line, a night sky                             |
 | Food, drink, physical goods      | The product photo itself as ASCII (`sampleToField`), steam rising in glyphs |
-| Space, science, research         | An eclipse, a starfield, orbits, a particle trace                           |
+| Space, science, research         | A night sky, orbits, a particle trace, a slow nebula                        |
 | A developer tool or API          | The product's real output in a terminal pane: its CLI, its logs, its data   |
 
-A soft glow or plasma fits almost any product, which is why it says nothing about this one. Use one only as a supporting layer.
+A soft glow or drifting noise fits almost any product, which is why it says nothing about this one. Use one only as a supporting layer.
 
 ## 3. Compose the page
 
@@ -40,14 +40,14 @@ Spend the boldness in one place: the hero effect. Keep everything else quiet and
 
 - **Full-bleed field.** The effect fills the hero and the headline sits on cleared ground (see [recipes.md](recipes.md#a-hero-that-clears-its-headline)).
 - **The product shot.** A real product photo or screenshot converted to ASCII, large, with the headline beside or above it. It can resolve into the photo on hover.
-- **One big number or object.** A glyph gauge, a rotating ASCII object or a Braille ring behind a real figure the product has, with the label in HTML.
+- **One big number or object.** A rotating ASCII object or a Braille ring behind a real figure the product has, with the label in HTML.
 - **A live demo.** A terminal pane that runs the product's real command, or an effect that responds to one control, so the page shows what the product does.
 
 **Build the rest from the content.** A section exists because the product has something to say there, not because landing pages have one.
 
 - Show, don't list. One wide section that shows a feature working beats three cards that name three features.
 - Vary the rhythm: a wide section, then a narrow one; text left, then right. Avoid rows of identical cards.
-- Use at most two or three ASCII effects on the page, each tied to content: the hero, a chart of real data, an ASCII product photo, one section break.
+- Use at most two or three ASCII effects on the page, each tied to content: the hero, a trace of real data, an ASCII product photo, one section break.
 - One accent colour at most. The glyph ink carries the page's colour; buttons and text stay in the theme. A phosphor colour is an accent too.
 - Typography carries the personality. One family is fine. Set a clear scale with weight and size, sentence case throughout.
 - Keep vertical rhythm even (about `py-24` to `py-32` between sections on desktop, `py-16` on a phone) and line lengths under 80 characters.

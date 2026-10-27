@@ -2,12 +2,17 @@
   "title": "Terminal & UI",
   "description": "Terminal-grade interface pieces: frames, buttons, loaders and status, in real text.",
   "pages": [
+    "terminal-window",
     "ascii-button",
+    "ascii-badge",
     "ascii-card",
     "ascii-box",
+    "ascii-tabs",
     "divider",
     "progress-bar",
     "loader",
+    "status-dot",
+    "kbd-shortcut",
     "skeleton",
     "empty-state"
   ]

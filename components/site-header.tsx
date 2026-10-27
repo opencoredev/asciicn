@@ -21,7 +21,13 @@ const navItems = [
   {
     href: ROUTES.DOCS_EXAMPLES,
     label: "Components",
-    match: ["/docs/charts", "/docs/interface", "/docs/text", "/docs/images"],
+    match: [
+      "/docs/scenes",
+      "/docs/fields",
+      "/docs/images",
+      "/docs/text",
+      "/docs/interface",
+    ],
   },
   {
     href: ROUTES.BACKGROUNDS,

@@ -134,7 +134,7 @@ Reuse the field across frames: create it once per size (keep it in a ref and rec
 
 - `CHARSETS`, `CHARSET_NAMES`, `resolveCharset(charset, chars?)` returns `{ id, label, kind, glyphs, grid }`. `kind` is `"ramp"`, `"braille"`, `"quadrants"` or `"edge"`; `grid` is the samples per cell (`[2, 4]` for Braille).
 - `rampChar(charset, tone)`: the glyph for a tone on a ramp charset.
-- `brailleChar(mask)` with `BRAILLE_DOT_BITS[row][col]` (row 0..3, col 0..1): build a Braille glyph dot by dot, for line charts and plots.
+- `brailleChar(mask)` with `BRAILLE_DOT_BITS[row][col]` (row 0..3, col 0..1): build a Braille glyph dot by dot, for traces, waveforms and plots.
 - `quadrantChar(mask)`, `QUADRANT_GLYPHS`; `edgeChar(gx, gy)` (y down) picks `-`, `/`, `|` or `\`.
 - `EIGHTHS_UP` (` ▁▂▃▄▅▆▇█`) and `EIGHTHS_RIGHT` (` ▏▎▍▌▋▊▉█`): bars with eighth-cell precision. `eighthsBar(value, width)` returns a horizontal bar string for `value` in [0, 1].
 - `SHADES` (` ░▒▓█`), `BOX` (`ascii`, `light`, `heavy`, `double`, `rounded`, each with `tl tr bl br h v x`), `SPINNERS`.
@@ -146,7 +146,7 @@ Reuse the field across frames: create it once per size (keep it in a ref and rec
 - `PHOSPHORS`, `RAMPS`, `ANSI16.vga`, `ANSI16.xterm`, `sampleRamp(stops, t)`, `hexToRgb`, `rgbToHex`, `nearestIndex(rgb, palette)` (OKLab distance), `luma`, `gradeTone`, `gradeRgb`.
 - `cssColor(name)`: `"green"` to `var(--ascii-color-green, …)`, `"--chart-1"` to `var(--chart-1)`.
 - `useAsciiColors(ref, names?)`: resolves token names (default paper and ink) to concrete RGBA on the client and re-renders when the theme changes. Returns `null` until mounted. `resolveColor(css)`, `subscribeToTheme(callback)` for non-React code.
-- `seriesColor(i)`, `SERIES_COLORS`: the named colours in chart order.
+- `seriesColor(color, i)`, `SERIES_COLORS`: `color` if set, otherwise the i-th named colour in a fixed order, for telling several lines apart.
 
 ## Cell metrics
 

@@ -49,7 +49,7 @@ export const SITE = {
     URL: "https://github.com/leoisadev1",
   },
   DESCRIPTION: {
-    LONG: "ASCII art for React apps, drawn with real glyphs. asciicn is a WebGL2 and Canvas2D engine with ten charsets (classic, dense, ANSI blocks, quadrants, Braille, CP437, PETSCII, katakana, halftone and Sobel edges), five colour modes and CRT effects, plus a skill that teaches your coding agent to build on it. Around 80 shadcn components, ten animated city backgrounds and an ASCII Studio show what it draws. Export any frame as text, ANSI, SVG, PNG or WebM.",
+    LONG: "ASCII art for React apps, drawn with real glyphs. asciicn is a WebGL2 and Canvas2D engine with ten charsets (classic, dense, ANSI blocks, quadrants, Braille, CP437, PETSCII, katakana, halftone and Sobel edges), five colour modes and CRT effects, plus a skill that teaches your coding agent to build on it. About 50 shadcn components, among them ten animated city skylines, real-time 3D scenes and terminal UI, and an ASCII Studio show what it draws. Export any frame as text, ANSI, SVG, PNG or WebM.",
     SHORT: "ASCII art engine and components for React",
   },
   KEYWORDS: [

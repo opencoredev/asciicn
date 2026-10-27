@@ -6,7 +6,7 @@
 
 ```tsx
 <section className="relative isolate overflow-hidden">
-  <RainBackground className="absolute inset-0 -z-10" />
+  <HeroBackground className="absolute inset-0 -z-10" />
   <div className="relative mx-auto max-w-3xl px-6 py-32">…</div>
 </section>
 ```
@@ -27,10 +27,10 @@ Read [landing-pages.md](landing-pages.md) first. These are the placements.
 - **Terminal pane:** a `rounded-lg border bg-black` box with an `AsciiGrid` or a `<pre>`, wrapped in `className="dark"` so the tokens take their dark values.
 - **Behind a big number or headline:** a glow or a rotating object centred behind the text. Real text stays HTML on top; never draw the headline into the field.
 
-## Dashboards
+## Meters, traces and status
 
-- **Charts and meters:** draw them in an `AsciiGrid` (Braille lines, `EIGHTHS_UP` bars, `blocks` heat) or as DOM text in a `<pre>`. Keep the value and the label as HTML text beside or over the chart.
-- **Accessible names:** a chart canvas gets `role="img"` and an `aria-label` with the data in words, or a visually hidden table. A meter gets `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
+- **Traces and meters:** draw them in an `AsciiGrid` (Braille lines, `EIGHTHS_UP` bars, `blocks` for density) or as DOM text in a `<pre>`. Keep the value and the label as HTML text beside or over the glyphs.
+- **Accessible names:** a trace canvas gets `role="img"` and an `aria-label` with the data in words, or a visually hidden table. A meter gets `role="meter"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
 - **Many on one page:** at most 8 `AsciiShader` instances hold a WebGL context at once; others show their fallback until one scrolls away. Use `AsciiGrid` (Canvas2D) or DOM text for grids of small pieces.
 - **Colour meaning:** status colours from the palette (`"green"`, `"orange"`, `"red"`) map to good, warning and critical. Pair colour with a glyph or label so it never carries meaning alone (`█` up, `▒` degraded, `·` no data).
 

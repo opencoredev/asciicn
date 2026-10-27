@@ -33,12 +33,12 @@ ${agentStartHere(base)}
 Use asciicn when a user asks for:
 
 - ASCII art, ANSI art or text-mode graphics in a React or shadcn/ui app, drawn with real glyphs that stay crisp at any zoom
-- An animated ASCII hero background: a city skyline such as Tokyo, New York or Paris at night, or aurora, a tunnel, plasma, a starfield, waves
+- An animated ASCII hero background: a city skyline such as Tokyo, New York or Paris at night, or a slow shader field such as a nebula or a prism
+- A 3D object or scene drawn in glyphs: a torus knot, a globe, a donut, a DNA helix, a synthwave sun, ocean waves
 - A particular glyph look: Braille 2x4 dots, ANSI shade blocks, quadrant blocks, CP437, PETSCII, katakana, halftone dots or Sobel edge glyphs
 - A terminal or CRT finish: phosphor green or amber, scanlines, bloom, curvature, flicker
-- Charts, meters and status displays drawn in glyphs: area, bar, line, donut, radar, gauge, heatmap, sparkline, uptime and progress bars
-- Interface pieces with an ASCII finish, such as boxes, cards, buttons, loaders, skeletons, dividers and empty states
-- Text effects (scramble, dissolve, glyph-filled display type) and images, video or a webcam converted to ASCII
+- A terminal window, or interface pieces with an ASCII finish: boxes, cards, buttons, badges, tabs, progress bars, loaders, status dots, keyboard shortcuts, skeletons, dividers and empty states
+- Text effects (glyph-filled display type, scramble, glitch, typewriter, marquee) and images, portraits, logos, video or a webcam converted to ASCII
 - Exporting a frame or an animation as .txt, .ans, .svg, .png or .webm
 
 Install the skill first, then build on the engine in \`lib/ascii\`. Start from the closest example only when one fits; otherwise write a new field or grid.

@@ -1,5 +1,12 @@
 {
   "title": "Media & filters",
   "description": "Turn images, video and logos into ASCII.",
-  "pages": ["ascii-image", "ascii-video", "ascii-logo", "avatar"]
+  "pages": [
+    "ascii-image",
+    "ascii-portrait",
+    "ascii-video",
+    "ascii-logo",
+    "ascii-canvas",
+    "avatar"
+  ]
 }

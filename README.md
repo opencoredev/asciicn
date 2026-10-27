@@ -11,7 +11,7 @@
 ╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝╚═╝ ╚═════╝╚═╝  ╚═══╝
 ```
 
-asciicn draws pictures with real glyphs in React. It is a WebGL2 and Canvas2D ASCII engine, about 80 shadcn registry components and ten animated city backgrounds built on it, an ASCII Studio for tuning a look, and an agent skill that teaches Claude Code, Codex, Cursor and other agents to build new effects on the same engine.
+asciicn draws pictures with real glyphs in React. It is a WebGL2 and Canvas2D ASCII engine, about 50 shadcn registry components built on it (ten of them animated city backgrounds), an ASCII Studio for tuning a look, and an agent skill that teaches Claude Code, Codex, Cursor and other agents to build new effects on the same engine.
 
 Everything installs with the shadcn CLI as plain source you own.
 
@@ -34,7 +34,7 @@ This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and
 
 ```bash
 npx shadcn@latest add https://asciicn.dev/r/tokyo.json
-npx shadcn@latest add @asciicn/plasma
+npx shadcn@latest add @asciicn/torus-knot
 ```
 
 ## Usage
@@ -70,19 +70,21 @@ export const Clouds = () => (
 );
 ```
 
-For grids you compute in JavaScript (3D, simulations, charts, terminal panes), draw into `AsciiGrid` from `@/lib/ascii` and turn tones into glyphs with `mapTones`.
+For grids you compute in JavaScript (3D meshes, simulations, terminal panes), draw into `AsciiGrid` from `@/lib/ascii` and turn tones into glyphs with `mapTones`.
 
 ## What's in the registry
 
-| Group            | Items                                                                                                                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Engine           | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                                                     |
-| Cities           | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                                                                              |
-| Backgrounds      | aurora, beams, contours, eclipse, halftone, horizon, mesh gradient, metaballs, noise field, plasma, retro grid, ridgelines, ripples, silk, smoke, starfield, tunnel, waves, nebula, prism, ionize, squall, satin |
-| Images and video | ascii-image, ascii-video, image-compare, scroll-reveal-image, ascii-logo, ascii-globe, world-land, ascii-donut, ascii-orb                                                                                        |
-| Charts           | cartesian-chart, area-chart, bar-chart, line-chart, sparkline, heatmap, donut-chart, radar-chart, gauge, uptime-bar, dot-map                                                                                     |
-| Text             | ascii-text, scramble-text, dissolve-text, ascii-number                                                                                                                                                           |
-| Interface        | ascii-button, ascii-card, ascii-box, ascii-fade, ascii-glow, avatar, divider, empty-state, loader, logo-marquee, not-found, progress-bar, skeleton, stat-card                                                    |
+| Group             | Items                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine            | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                  |
+| City skylines     | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                           |
+| 3D & scenes       | torus-knot, ascii-globe, ascii-donut, dna-helix, cyber-skull, synthwave-sun, retro-computer, server-rack, mountain-dusk, ocean-waves                          |
+| Shaders & fields  | nebula, prism, ionize, squall, satin                                                                                                                          |
+| Media & filters   | ascii-image, ascii-portrait, ascii-video, ascii-logo, ascii-canvas, avatar                                                                                    |
+| Text & typography | ascii-text, scramble-text, glitch-text, typewriter-text, ascii-marquee                                                                                        |
+| Terminal & UI     | terminal-window, ascii-button, ascii-badge, ascii-card, ascii-box, ascii-tabs, divider, progress-bar, loader, status-dot, kbd-shortcut, skeleton, empty-state |
+
+A few helpers install only as dependencies of the items above: `seed-field` for the shader fields, `world-land` for `ascii-globe`, and `ascii-glow` for `ascii-card`.
 
 The full, current list is at [`/r/registry.json`](https://asciicn.dev/r/registry.json) and in the [catalog](https://asciicn.dev/docs/examples).
 

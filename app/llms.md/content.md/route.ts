@@ -21,7 +21,7 @@ ${agentStartHere(base)}
 ## What's on the home page
 
 - A hero over an animated ASCII city background, with links to the docs and a quick-start prompt to paste into a coding agent.
-- A wall of live examples from the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md): backgrounds, charts, text, images and interface pieces.
+- A wall of live examples from the [catalog](${base}${ROUTES.DOCS_EXAMPLES}.md): 3D scenes, terminal and UI pieces, text effects, media filters and shader fields.
 - Requests you might give your agent, each shown over the ASCII effect it asks for.
 - What's inside: the engine (\`lib/ascii\`: a WebGL2 glyph shader and Canvas2D grids), the agent skill, and every example group.
 - The one command that installs the skill, and the files it adds.

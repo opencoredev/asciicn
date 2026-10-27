@@ -13,7 +13,7 @@ const PARTS = [
     title: "The engine",
   },
   {
-    body: "A SKILL.md with references that teaches Claude Code, Codex, Cursor, Gemini and other coding agents to use the engine. It walks the agent through picking a technique, writing a field, placing the effect on a landing page or dashboard, colouring it from your theme, and checking it in a browser in light and dark mode at desktop and phone widths.",
+    body: "A SKILL.md with references that teaches Claude Code, Codex, Cursor, Gemini and other coding agents to use the engine. It walks the agent through picking a technique, writing a field, placing the effect on a landing page or in an app, colouring it from your theme, and checking it in a browser in light and dark mode at desktop and phone widths.",
     title: "The agent skill",
   },
 ] as const;

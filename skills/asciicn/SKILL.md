@@ -1,6 +1,6 @@
 ---
 name: asciicn
-description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, an ASCII background, hero, city skyline, chart, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
+description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana, halftone glyphs, a terminal or CRT look, an ASCII background, hero, city skyline, 3D object, terminal window, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
 ---
 
 # asciicn
@@ -9,8 +9,8 @@ asciicn is an ASCII engine. It draws pictures with real glyphs: a tone from 0 (e
 
 The engine has two renderers that share one set of look props:
 
-- **`AsciiShader`** (`@/lib/ascii/shader`, registry item `ascii-shader`): WebGL2. You write a GLSL `field` that returns a tone per sample; the GPU picks glyphs from a glyph atlas. For anything that moves or varies per cell: backgrounds, cities, glows, noise, tunnels, rain.
-- **`AsciiGrid`** (`@/lib/ascii`, registry item `ascii-core`): Canvas2D. You write a `draw` function that fills a frame of glyphs on the CPU, directly or through `mapTones`. For things you compute in JavaScript: 3D meshes, simulations, charts, terminal panes, sampled images and video, text layouts.
+- **`AsciiShader`** (`@/lib/ascii/shader`, registry item `ascii-shader`): WebGL2. You write a GLSL `field` that returns a tone per sample; the GPU picks glyphs from a glyph atlas. For anything that moves or varies per cell: backgrounds, city skylines, glows, noise, fog, water.
+- **`AsciiGrid`** (`@/lib/ascii`, registry item `ascii-core`): Canvas2D. You write a `draw` function that fills a frame of glyphs on the CPU, directly or through `mapTones`. For things you compute in JavaScript: 3D meshes, simulations, terminal panes, sampled images and video, text layouts.
 
 ## 1. Set up the engine
 
@@ -34,18 +34,18 @@ Done when `lib/ascii/index.ts`, `lib/ascii/grid.tsx` and `lib/ascii/shader.tsx` 
 
 ## 2. Pick the technique
 
-| The user wants                                                                                       | Use                                                                   | Read                                                     |
-| ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
-| A surface whose tone varies per cell or moves: gradients, noise, plasma, waves, tunnels, rain, glows | `AsciiShader` with a GLSL `field`                                     | [fields.md](references/fields.md)                        |
-| Many hues at once: a rainbow, a sunset, a hue per shape                                              | `AsciiShader` with a `field` and a `colorField`, `truecolor` mode     | [fields.md](references/fields.md#colour)                 |
-| Something you compute in JavaScript: a 3D mesh, particles, a simulation, a game of life              | `AsciiGrid` + `createToneField` + `mapTones`                          | [engine-api.md](references/engine-api.md#asciigrid)      |
-| A chart, meter, gauge, progress or uptime bar                                                        | `AsciiGrid` writing glyphs (`eighthsBar`, Braille, `BOX`) or DOM text | [recipes.md](references/recipes.md#a-braille-line-chart) |
-| A terminal pane, boxed panel, status line or log                                                     | `AsciiGrid` with `frame.write` and `BOX`, or a `<pre>`                | [recipes.md](references/recipes.md#a-terminal-pane)      |
-| A photo, logo, video or webcam as ASCII                                                              | `sampleToField` into `mapTones` on an `AsciiGrid`                     | [recipes.md](references/recipes.md#an-image-as-ascii)    |
-| Static ASCII art that must render on the server or in an email                                       | `AsciiPre` (a `<pre>` of a frame), or plain text in a `<pre>`         | [engine-api.md](references/engine-api.md#static-art)     |
-| A file: `.txt`, `.ans`, `.svg`, `.png`, `.webm`                                                      | `ascii-export`                                                        | [export.md](references/export.md)                        |
+| The user wants                                                                              | Use                                                                   | Read                                                  |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- |
+| A surface whose tone varies per cell or moves: gradients, noise, fog, water, nebulae, glows | `AsciiShader` with a GLSL `field`                                     | [fields.md](references/fields.md)                     |
+| Many hues at once: a rainbow, a sunset, a hue per shape                                     | `AsciiShader` with a `field` and a `colorField`, `truecolor` mode     | [fields.md](references/fields.md#colour)              |
+| Something you compute in JavaScript: a 3D mesh, particles, a simulation, a game of life     | `AsciiGrid` + `createToneField` + `mapTones`                          | [engine-api.md](references/engine-api.md#asciigrid)   |
+| A waveform, a line of values, a meter or a progress bar                                     | `AsciiGrid` writing glyphs (`eighthsBar`, Braille, `BOX`) or DOM text | [recipes.md](references/recipes.md#a-braille-trace)   |
+| A terminal pane, boxed panel, status line or log                                            | `AsciiGrid` with `frame.write` and `BOX`, or a `<pre>`                | [recipes.md](references/recipes.md#a-terminal-pane)   |
+| A photo, logo, video or webcam as ASCII                                                     | `sampleToField` into `mapTones` on an `AsciiGrid`                     | [recipes.md](references/recipes.md#an-image-as-ascii) |
+| Static ASCII art that must render on the server or in an email                              | `AsciiPre` (a `<pre>` of a frame), or plain text in a `<pre>`         | [engine-api.md](references/engine-api.md#static-art)  |
+| A file: `.txt`, `.ans`, `.svg`, `.png`, `.webm`                                             | `ascii-export`                                                        | [export.md](references/export.md)                     |
 
-Then choose a charset and a colour mode for the picture with [charsets.md](references/charsets.md). The charset is the biggest single decision: Braille for fine lines and charts, blocks or quadrants for solid shapes, `standard` or `dense` for photos, katakana for rain, `edge` for outlines.
+Then choose a charset and a colour mode for the picture with [charsets.md](references/charsets.md). The charset is the biggest single decision: Braille for fine lines and wireframes, blocks or quadrants for solid shapes, `standard` or `dense` for photos, katakana for signage, `edge` for outlines.
 
 The examples in [examples.md](references/examples.md) (written when the skill is installed; if it's missing, read {{SITE_URL}}/.well-known/agent-skills/asciicn/references/examples.md) are references. If the user asked for exactly one of them, install it. If not, write your own: read the closest example's source for its field or draw function, then build what the user described. Never swap the request for an example that is merely nearby, and never guess at an example's props; read its docs page or source.
 

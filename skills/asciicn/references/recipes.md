@@ -224,9 +224,9 @@ export const SpinningTorus = ({
 };
 ```
 
-## A Braille line chart
+## A Braille trace
 
-Two dots across and four down per glyph give a line chart four times sharper than one glyph per point. Draw the line with `brailleChar`, and keep the numbers in HTML.
+A line through a list of values: a waveform, a CPU trace in a terminal pane, the height profile of a route. Two dots across and four down per glyph make the line four times sharper than one glyph per point. Draw it with `brailleChar`, and keep the numbers in HTML.
 
 ```tsx
 "use client";
@@ -234,19 +234,15 @@ Two dots across and four down per glyph give a line chart four times sharper tha
 import { AsciiGrid, BRAILLE_DOT_BITS, brailleChar } from "@/lib/ascii";
 import type { AsciiGridDrawContext } from "@/lib/ascii";
 
-export interface BrailleLineChartProps {
-  /** Values in any range; the chart scales to min and max. */
+export interface BrailleTraceProps {
+  /** Values in any range; the trace scales to min and max. */
   data: readonly number[];
   /** Text equivalent for screen readers, such as "Requests per minute, last hour: 120 to 340". */
   label: string;
   className?: string;
 }
 
-export const BrailleLineChart = ({
-  data,
-  label,
-  className,
-}: BrailleLineChartProps) => {
+export const BrailleTrace = ({ data, label, className }: BrailleTraceProps) => {
   const draw = ({ frame, columns, rows }: AsciiGridDrawContext) => {
     const width = columns * 2;
     const height = rows * 4;

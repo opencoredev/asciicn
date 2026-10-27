@@ -37,7 +37,7 @@ Prefer names and variables. They follow light and dark mode and a site palette s
 />
 ```
 
-Two entries (paper, ink) cover most effects. Three to five give depth: the faint ink colours sparse glyphs, the strong ink colours dense ones. For charts, give each series its own colour with `seriesColor(i)` or the palette names.
+Two entries (paper, ink) cover most effects. Three to five give depth: the faint ink colours sparse glyphs, the strong ink colours dense ones. For several lines or labels, give each its own colour with `seriesColor(undefined, i)` or the palette names.
 
 ## Light and dark
 

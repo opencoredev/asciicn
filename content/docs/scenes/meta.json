@@ -1,5 +1,16 @@
 {
   "title": "3D & scenes",
   "description": "Real-time 3D objects and animated scenes drawn in glyphs.",
-  "pages": ["ascii-globe", "ascii-donut"]
+  "pages": [
+    "torus-knot",
+    "ascii-globe",
+    "ascii-donut",
+    "dna-helix",
+    "cyber-skull",
+    "synthwave-sun",
+    "retro-computer",
+    "server-rack",
+    "mountain-dusk",
+    "ocean-waves"
+  ]
 }

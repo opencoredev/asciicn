@@ -1,5 +1,11 @@
 {
   "title": "Text & typography",
-  "description": "Display type drawn, scrambled, dissolved or counted in glyphs.",
-  "pages": ["ascii-text", "scramble-text"]
+  "description": "Display type set in glyphs: banners, scrambles, glitches, typewriters and tickers.",
+  "pages": [
+    "ascii-text",
+    "scramble-text",
+    "glitch-text",
+    "typewriter-text",
+    "ascii-marquee"
+  ]
 }

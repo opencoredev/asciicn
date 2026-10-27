@@ -37,7 +37,7 @@ Fields are GLSL ES 1.00 (the field pass runs on WebGL2, but in the 1.00 dialect)
 - Every literal used as a float needs a decimal point: `2.0`, not `2`. `int` and `float` never mix without a cast: `float(i)`.
 - Loops need constant bounds: `for (int i = 0; i < 5; i++)`. Break early with `if (float(i) >= count) break;` when the count is a uniform.
 - No arrays in uniforms. Pass up to four numbers per uniform (`vec4`) and use several uniforms.
-- Write helpers above `field` in the same string, prefixed with your component's name (`topoHeight`, `rainColumn`) so they never collide.
+- Write helpers above `field` in the same string, prefixed with your component's name (`topoHeight`, `waveCrest`) so they never collide.
 - Reserved: uniforms starting with `u_`, helpers starting with `ascii_`, and the names `field`, `colorField`, `main`, `hash21`, `snoise`, `fbm`, `spectrum`, `paletteColor`, `oklch`, `toSrgb`, `aces`.
 - GLSL ES 1.00 keeps words it never uses, and none compile as names: `input`, `output`, `half`, `fixed`, `long`, `short`, `double`, `unsigned`, `public`, `static`, `extern`, `external`, `class`, `union`, `enum`, `typedef`, `template`, `goto`, `inline`, `noinline`, `volatile`, `cast`, `sizeof`, `this`, `packed`, `default`, `switch`, `interface`, `namespace`, `using`, `asm`, `flat`, `superp`, and types such as `hvec2`, `dvec3`, `fvec4` or `sampler3D`. Names starting with `gl_` or `webgl_`, or containing `__`, are reserved too. Built-in names (`dot`, `step`, `mix`, `length`, `distance`, `noise`) can't be variables either. Prefixed names avoid all of them.
 - A broken field logs a compile error with the line, and the component shows its fallback. Read the console, fix the GLSL, reload.
@@ -141,7 +141,7 @@ float topoLine(float h, float hx, float hy, float count, float width) {
 // return topoLine(h, hx, hy, 12.0, 1.5);
 ```
 
-Use a smooth height for contours (one or two low-frequency `snoise` layers); raw high-frequency `fbm` breaks lines into dots.
+Use a smooth height for contour lines (one or two low-frequency `snoise` layers); raw high-frequency `fbm` breaks lines into dots.
 
 ### Shapes and shading
 
@@ -155,15 +155,15 @@ float rim = disc * smoothstep(r * 0.6, r, length(c));                       // d
 
 For a sphere or a 3D look, compute a normal and a light (`max(dot(n, light), 0.0)`) and return the lambert term. Glyph ramps read shading very well; that is what ASCII art is good at.
 
-### Rain and columns
+### Columns
 
-Per-column motion uses the glyph grid, not the sample grid. Step in whole cells: `floor(uv.x * columns)`, where `columns` is `res.x` divided by the charset's samples per cell across (1 for ramps). Pass `columns` as a uniform when the charset can change, or keep rain on a ramp charset such as `katakana`.
+Per-column motion uses the glyph grid, not the sample grid. Step in whole cells: `floor(uv.x * columns)`, where `columns` is `res.x` divided by the charset's samples per cell across (1 for ramps). Pass `columns` as a uniform when the charset can change, or keep per-column effects on a ramp charset such as `katakana`.
 
 ## Motion
 
 - Drift by adding `t * speed` to coordinates: speeds of 0.01 to 0.08 units per second read as calm.
 - Pulse with `1.0 + 0.05 * sin(t * 0.4)`.
-- Avoid `hash21` of anything with `t` in it: every glyph changes every frame and the effect flickers. For glyphs that change on purpose (rain heads, glitches), quantise time first: `hash21(vec2(column, floor(t * 8.0)))`.
+- Avoid `hash21` of anything with `t` in it: every glyph changes every frame and the effect flickers. For glyphs that change on purpose (falling glyphs, glitches), quantise time first: `hash21(vec2(column, floor(t * 8.0)))`.
 - `stillTime` sets the frame shown under reduced motion. Pick one where the composition looks finished.
 
 ## Colour
