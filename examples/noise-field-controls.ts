@@ -1,35 +1,48 @@
-import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES, CHARSET_NAMES, COLOR_MODES } from "@/lib/ascii";
+import {
+  color,
+  segmented,
+  select,
+  slider,
+  toggle,
+} from "@/lib/preview-controls";
 
 // Knobs for the noise field main demo, shared by the page and the demo.
 
-export const tint = color({
-  default: "ink",
-  id: "color",
-  label: "Colour",
-  options: ASCII_COLOR_NAMES,
+export const charset = select({
+  default: "standard",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
 });
 
-export const peak = color({
+export const colorMode = select({
+  default: "palette",
+  id: "colorMode",
+  label: "Colour mode",
+  options: COLOR_MODES,
+});
+
+export const ink = color({
   default: "ink",
-  id: "peak",
-  label: "Peak colour",
+  id: "ink",
+  label: "Ink",
   options: ASCII_COLOR_NAMES,
 });
 
 export const variant = segmented({
   default: "smoke",
   id: "variant",
-  label: "Style",
+  label: "Variant",
   options: ["smoke", "ridges", "contours", "marble"],
 });
 
 export const scale = slider({
-  default: 1.3,
+  default: 0.8,
   id: "scale",
   label: "Scale",
-  max: 6,
-  min: 0.5,
+  max: 4,
+  min: 0.4,
   step: 0.1,
 });
 
@@ -43,7 +56,7 @@ export const warp = slider({
 });
 
 export const detail = slider({
-  default: 4,
+  default: 3,
   id: "detail",
   label: "Detail",
   max: 6,
@@ -52,97 +65,36 @@ export const detail = slider({
 });
 
 export const contrast = slider({
-  default: 1.2,
+  default: 1.5,
   id: "contrast",
   label: "Contrast",
   max: 3,
-  min: 0.4,
+  min: 0.5,
   step: 0.1,
-});
-
-export const coverage = slider({
-  default: 0,
-  id: "coverage",
-  label: "Coverage",
-  max: 0.4,
-  min: -0.4,
-  step: 0.02,
-});
-
-export const intensity = slider({
-  default: 0.9,
-  id: "intensity",
-  label: "Intensity",
-  max: 1,
-  min: 0.1,
-  step: 0.05,
-});
-
-export const bands = slider({
-  default: 8,
-  id: "bands",
-  label: "Bands",
-  max: 24,
-  min: 2,
-  step: 1,
-});
-
-export const angle = slider({
-  default: 90,
-  id: "angle",
-  label: "Flow angle",
-  max: 360,
-  min: 0,
-  step: 15,
-  unit: "°",
-});
-
-export const flow = slider({
-  default: 1,
-  id: "flow",
-  label: "Flow speed",
-  max: 4,
-  min: 0,
-  step: 0.25,
 });
 
 export const mask = segmented({
   default: "none",
   id: "mask",
   label: "Mask",
-  options: ["none", "top", "bottom", "center", "edges"],
+  options: ["none", "center", "top", "bottom", "edges"],
 });
 
-export const maskSize = slider({
-  default: 0.5,
-  id: "maskSize",
-  label: "Mask size",
-  max: 1,
-  min: 0,
-  step: 0.05,
-});
-
-export const matrix = segmented({
-  default: "bayer8",
-  id: "matrix",
-  label: "Matrix",
-  options: ["bayer4", "bayer8", "blue-noise"],
+export const interaction = segmented({
+  default: "none",
+  id: "interaction",
+  label: "Pointer",
+  options: ["none", "repel", "ripple", "trail"],
 });
 
 export const cell = slider({
-  default: 3,
+  default: 12,
   id: "cell",
   label: "Cell",
-  max: 6,
-  min: 1,
+  max: 20,
+  min: 8,
   step: 1,
   unit: "px",
-});
-
-export const invert = toggle({
-  default: false,
-  id: "invert",
-  label: "Invert",
 });
 
 export const animate = toggle({
@@ -153,22 +105,16 @@ export const animate = toggle({
 
 /** Display order of the tray. */
 export const controls = [
-  tint,
-  peak,
+  charset,
+  colorMode,
+  ink,
   variant,
   scale,
   warp,
   detail,
   contrast,
-  coverage,
-  intensity,
-  bands,
-  angle,
-  flow,
   mask,
-  maskSize,
-  matrix,
+  interaction,
   cell,
-  invert,
   animate,
 ];

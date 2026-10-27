@@ -6,7 +6,8 @@ export default function MeshGradientSignup() {
       <MeshGradient
         blobs={3}
         size={0.75}
-        cell={5}
+        cell={14}
+        contrast={0.5}
         speed={0.6}
         className="absolute inset-0 -z-10"
       />

@@ -1,19 +1,19 @@
 ---
 title: "Halftone"
-description: "A print halftone: round dots on a rotated screen that swell and shrink with a source, in one ink or up to three overlapping like CMYK."
+description: "A print halftone built from glyphs: round dots on a rotated screen that grow with a noise, radial or linear source, in one ink or up to three."
 ---
 
 import HalftoneDemo from "@/examples/halftone-demo";
-import { controls as halftoneControls } from "@/examples/halftone-controls";
+import { controls as demoControls } from "@/examples/halftone-controls";
+import HalftonePrint from "@/examples/halftone-print";
 import HalftoneSpotlight from "@/examples/halftone-spotlight";
 import HalftoneCard from "@/examples/halftone-card";
-import HalftonePrint from "@/examples/halftone-print";
 
 <ComponentPreview
   src="examples/halftone-demo.tsx"
   size="full"
   align="stretch"
-  controls={halftoneControls}
+  controls={demoControls}
 >
   <HalftoneDemo />
 </ComponentPreview>
@@ -30,22 +30,32 @@ import { Halftone } from "@/components/asciicn/halftone";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <Halftone color="blue" className="absolute inset-0 -z-10" />
+      <Halftone className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-Each square of a rotated screen holds one round dot, sized by the source at its centre, the way a printing screen works. Dot edges are dithered at the screen's own device pixels, so dots stay round and grow smoothly from a speck to touching their neighbours. The screen slides slowly along its angle (`drift`), so dots swell and shrink as they cross the source.
+Each dot sits on a screen turned by `angle`, `pitch` glyph rows apart, and takes one value from the source at its centre, as in print. Its radius grows with that value. The screen slides slowly along its angle, so dots swell and shrink as they cross the source.
 
-Pass `channels` instead of `color` for two or three inks. Each gets its own screen, turned 30° from the last, and overlapping dots mix their colours. With blue, pink and orange you get the rosettes of a CMYK print.
+The `braille` charset is the default, so each dot is a crisp disc built from 2×4 sub-dots. With `dots`, each one comes out as a cluster of glyphs, `●` in the middle and `·` round the edge, and `blocks` gives square, poster-like dots. With `pitch` below 1.5 every glyph becomes its own dot and the screen angle no longer applies.
+
+`source` picks what drives the dot size: `"noise"` for drifting clouds, `"radial"` for a spot that fades out from `center`, or `"linear"` for a ramp towards `direction`. Pass `channels` with two or three inks for separate screens, each turned 30° from the last. In `truecolor` mode, the default, each channel keeps its own ink and overlapping dots blend.
 
 ## Examples
 
-### Spotlight behind a headline
+### Three-ink print
 
-`source="radial"` grows the dots towards `center`. With the centre below the bottom edge, a `radius` under 1 and a transparent background, the dots swell up from the bottom of the section and run out before the text.
+Three `channels` at 15°, 45° and 75° on a pitch of 4 rows. Where the screens cross, the inks blend.
+
+<ComponentPreview src="examples/halftone-print.tsx" size="lg" align="stretch">
+  <HalftonePrint />
+</ComponentPreview>
+
+### Spotlight from below
+
+A `radial` source centred below the box with a short `radius` lights only the bottom edge. The `dots` charset draws each dot as a cluster of `●` and `•`, and `background="transparent"` lets the page show between them.
 
 <ComponentPreview
   src="examples/halftone-spotlight.tsx"
@@ -55,20 +65,12 @@ Pass `channels` instead of `color` for two or three inks. Each gets its own scre
   <HalftoneSpotlight />
 </ComponentPreview>
 
-### Duotone ramp in a card
+### Corner of a card
 
-`source="linear"` grows the dots towards `direction`. Two channels at a shallow 15° screen, held still, and faded in from the left with a CSS mask.
+A `linear` source with two channels fills one side of a stat card, masked into the card with CSS. `animate={false}` holds it still.
 
 <ComponentPreview src="examples/halftone-card.tsx">
   <HalftoneCard />
-</ComponentPreview>
-
-### Three-ink print
-
-A coarse 16px screen in three inks behind an editorial block.
-
-<ComponentPreview src="examples/halftone-print.tsx" size="full" align="stretch">
-  <HalftonePrint />
 </ComponentPreview>
 
 ## Props
@@ -76,91 +78,194 @@ A coarse 16px screen in three inks behind an editorial block.
 <PropsTable
   rows={[
     {
-      name: "color",
+      name: "ink",
       type: "AsciiColor",
-      default: '"ink"',
+      default: '"--ascii-ink"',
       description:
-        'Colour of the dots: a palette name such as "blue", a CSS variable name, or any CSS colour.',
+        "Colour of the dots. Use channels instead for two or three inks.",
     },
     {
       name: "channels",
-      type: "[AsciiColor, AsciiColor, AsciiColor?]",
+      type: "[AsciiColor, AsciiColor] | [AsciiColor, AsciiColor, AsciiColor]",
       default: "–",
       description:
-        "Two or three inks on separate screens, 30° apart. Overlaps mix. Use instead of color.",
+        "Two or three inks, each on its own screen turned 30° from the last. Overlaps blend in truecolor mode.",
     },
     {
-      name: "background",
+      name: "paper",
       type: "AsciiColor",
       default: '"--ascii-paper"',
-      description:
-        'Colour behind the dots. "transparent" lays the screen over the content underneath.',
+      description: "Colour behind the dots.",
     },
     {
       name: "source",
       type: '"noise" | "radial" | "linear"',
       default: '"noise"',
-      description:
-        "What sizes the dots: soft drifting clouds, distance from a point, or a ramp.",
+      description: "What sets the dot size.",
     },
     {
       name: "center",
-      type: "[x: number, y: number]",
+      type: "[number, number]",
       default: "[0.5, 0.5]",
       description:
-        "Radial only. Where the dots are largest, as fractions of the box from the top left.",
+        "Radial source: where the dots are largest, from the top left.",
     },
     {
       name: "radius",
       type: "number",
       default: "1",
       description:
-        "Radial only. Where the dots run out. 1 reaches the farthest corner.",
+        "Radial source: where the dots run out. 1 reaches the farthest corner.",
     },
     {
       name: "direction",
       type: "number",
       default: "0",
       description:
-        "Linear only. Direction the dots grow towards, in degrees as in CSS.",
+        "Linear source: the direction the dots grow towards, in degrees as in CSS.",
     },
     {
-      name: "size",
+      name: "pitch",
       type: "number",
-      default: "10",
-      description: "Distance between dot centres in CSS pixels.",
+      default: "3",
+      description:
+        "Distance between dot centres, in glyph rows. Below 1.5 every glyph is its own dot.",
     },
     {
       name: "angle",
       type: "number",
       default: "45",
-      description: "Screen angle in degrees. Each extra channel adds 30°.",
-    },
-    {
-      name: "intensity",
-      type: "number",
-      default: "0.9",
-      description:
-        "Size of the largest dot, 0 to 1. At 1 the biggest dots just touch.",
+      description: "Screen angle in degrees. Extra channels add 30° each.",
     },
     {
       name: "scale",
       type: "number",
       default: "1",
-      description: "Noise only. Size of the clouds.",
+      description: "Noise source: size of the clouds.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "0.95",
+      description:
+        "Size of the largest dot, from 0 to 1. At 1 the biggest dots just touch.",
     },
     {
       name: "drift",
       type: "number",
       default: "1",
       description:
-        "How fast the screen slides along its angle. 0 holds the screen still.",
+        "How fast the screen slides along its angle. 0 holds it still.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor keeps each channel's ink and blends overlaps; mono uses ink; palette maps tone to paper and the inks.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the source moves.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -170,24 +275,37 @@ A coarse 16px screen in three inks behind an editorial block.
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
-      name: "cell",
+      name: "fps",
       type: "number",
-      default: "one device pixel",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
       description:
-        "Size of one rendered pixel in CSS pixels. Larger cells give blockier dots.",
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
     },
     {
       name: "className",
       type: "string",
       default: "–",
-      description: "Size and position. The halftone fills this box.",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
 
 ## Notes
 
-- The halftone is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS dot screen in the same inks.
-- Overlap colours are mixed with CSS `color-mix` in oklch, so they follow the theme along with the inks.
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows rotated CSS dot screens in the same inks.
+- Each extra channel samples the source again, so three channels cost about three times one. See [Performance](/docs/engine/performance).

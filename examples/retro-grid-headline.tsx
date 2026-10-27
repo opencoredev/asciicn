@@ -6,6 +6,7 @@ export default function RetroGridHeadline() {
       <RetroGrid
         horizon={0.5}
         sun={0}
+        charset="edge"
         speed={0.5}
         className="absolute inset-0 -z-10"
       />

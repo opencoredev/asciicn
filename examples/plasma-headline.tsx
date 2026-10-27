@@ -13,8 +13,8 @@ export default function PlasmaHeadline() {
         Ship the weird idea
       </h3>
       <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        Capped at 30% intensity, the plasma never gets bright enough to fight
-        the text.
+        Capped at 30% intensity, the glyphs stay light enough that the headline
+        wins.
       </p>
     </section>
   );

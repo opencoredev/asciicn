@@ -1,9 +1,14 @@
 "use client";
 
 import { cssColor } from "@/lib/ascii";
-import type { AsciiColor, AsciiPalette } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiPalette,
+  AsciiSceneProps,
+  Interaction,
+  PhosphorName,
+} from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 /** Where the field fades out so text on top stays clean. */
 export type NoiseFieldMask = "none" | "center" | "top" | "bottom" | "edges";
@@ -14,25 +19,28 @@ export type NoiseFieldMask = "none" | "center" | "top" | "bottom" | "edges";
  */
 export type NoiseFieldVariant = "smoke" | "ridges" | "contours" | "marble";
 
-export type NoiseFieldProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
-  /** The ink of the texture. Default `"--ascii-ink"`. */
-  color?: AsciiColor;
-  /** A third colour for the brightest peaks. Default: none, so two tones. */
+export interface NoiseFieldProps extends AsciiSceneProps {
+  /** The glyph colour. Default `"--ascii-ink"`. */
+  ink?: AsciiColor;
+  /**
+   * A second colour. In `palette` mode it takes the brightest peaks; in
+   * `truecolor` mode the warp swirls between `ink` and it, like marbled
+   * paper. Default: none, so one colour.
+   */
   highlight?: AsciiColor;
-  /** The paper behind. Default `"--ascii-paper"`. */
-  background?: AsciiColor;
+  /** The paper behind the glyphs. Default `"--ascii-paper"`. */
+  paper?: AsciiColor;
+  /** Every colour at once: paper, then the glyph colours. Wins over `ink`, `highlight` and `paper`. */
+  palette?: AsciiPalette;
   /** The shape of the texture. Default `"smoke"`. */
   variant?: NoiseFieldVariant;
-  /** Size of the features. Higher values give smaller, busier noise. Default 1.3. */
+  /** Size of the features. Higher values give smaller, busier noise. Default 0.8. */
   scale?: number;
   /** How far the noise folds back on itself, 0 (plain fbm) to 4. Default 1.7. */
   warp?: number;
-  /** Octaves of noise, 1 (blobs) to 6 (fine grain on top). Default 4. */
+  /** Octaves of noise, 1 (blobs) to 6 (fine grain on top). Default 3. */
   detail?: number;
-  /** Contrast of the texture. 1 is soft; 2 and up give hard-edged islands. Default 1.2. */
+  /** Contrast of the texture. 1 is soft; 2 and up give hard-edged islands. Default 1.5. */
   contrast?: number;
   /** Shifts how much of the box is inked, -0.5 (sparse) to 0.5 (dense). Default 0. */
   coverage?: number;
@@ -44,13 +52,13 @@ export type NoiseFieldProps = Omit<
   angle?: number;
   /** How fast it drifts along `angle`, 0 to 4. Default 1. */
   flow?: number;
-  /** Swap paper and ink. Default `false`. */
-  invert?: boolean;
   /** Fade the field out where text sits. Default `"none"`. */
   mask?: NoiseFieldMask;
   /** How much of the box the mask clears, 0 to 1. Default 0.5. */
   maskSize?: number;
-};
+  /** What the pointer does to the glyphs. `interactive={false}` turns it off. Default `"none"`. */
+  interaction?: Interaction;
+}
 
 const MASKS = {
   bottom: 3,
@@ -68,9 +76,9 @@ const VARIANTS = {
 } as const satisfies Record<NoiseFieldVariant, number>;
 
 const FIELD = `
-const mat2 NF_ROTATE = mat2(0.8, -0.6, 0.6, 0.8);
+const mat2 NOISE_FIELD_ROTATE = mat2(0.8, -0.6, 0.6, 0.8);
 
-float nf_fbm(vec2 p, float octaves) {
+float noiseFieldFbm(vec2 p, float octaves) {
   float sum = 0.0;
   float amp = 0.5;
   float norm = 0.0;
@@ -80,85 +88,95 @@ float nf_fbm(vec2 p, float octaves) {
     }
     sum += amp * snoise(p);
     norm += amp;
-    p = NF_ROTATE * p * 2.02 + vec2(11.3, 4.7);
+    p = NOISE_FIELD_ROTATE * p * 2.02 + vec2(11.3, 4.7);
     amp *= 0.5;
   }
   return clamp(0.5 + 0.5 * sum / norm, 0.0, 1.0);
 }
 
-float nf_ridges(vec2 p) {
+float noiseFieldRidges(vec2 p) {
   float sum = 0.0;
   float amp = 0.5;
   float norm = 0.0;
   for (int i = 0; i < 6; i++) {
-    if (float(i) >= noiseDetail) {
+    if (float(i) >= noiseFieldDetail) {
       break;
     }
     float r = 1.0 - abs(snoise(p));
     sum += amp * r * r;
     norm += amp;
-    p = NF_ROTATE * p * 2.02 + vec2(11.3, 4.7);
+    p = NOISE_FIELD_ROTATE * p * 2.02 + vec2(11.3, 4.7);
     amp *= 0.5;
   }
   return sum / norm;
 }
 
-float field(vec2 uv, vec2 res, float t) {
+// The texture tone (x) and the first warp channel (y), which the colour
+// field uses to swirl between the two inks.
+vec2 noiseFieldSample(vec2 uv, vec2 res, float t) {
   float aspect = res.x / res.y;
-  vec2 p = vec2(uv.x * aspect, uv.y) * noiseScale;
-  vec2 drift = vec2(cos(noiseAngle), sin(noiseAngle)) * t * 0.05 * noiseFlow;
+  vec2 p = vec2(uv.x * aspect, uv.y) * noiseFieldScale;
+  vec2 drift = vec2(cos(noiseFieldAngle), sin(noiseFieldAngle)) * t * 0.05 * noiseFieldFlow;
   vec2 q = vec2(
-    nf_fbm(p + vec2(0.0, t * 0.02) - drift, noiseDetail),
-    nf_fbm(p + vec2(5.2, 1.3) - vec2(t * 0.015, 0.0) - drift * 0.8, noiseDetail)
+    noiseFieldFbm(p + vec2(0.0, t * 0.02) - drift, noiseFieldDetail),
+    noiseFieldFbm(p + vec2(5.2, 1.3) - vec2(t * 0.015, 0.0) - drift * 0.8, noiseFieldDetail)
   );
-  vec2 w = p + noiseWarp * q - drift * 0.6;
+  vec2 w = p + noiseFieldWarp * q - drift * 0.6;
 
   float n;
-  if (noiseVariant > 2.5) {
-    float s = sin(dot(w, vec2(0.35, 1.0)) * noiseBands * 2.4 + nf_fbm(w * 0.7, noiseDetail) * 2.5);
+  if (noiseFieldVariant > 2.5) {
+    float s = sin(dot(w, vec2(0.35, 1.0)) * noiseFieldBands * 2.4 + noiseFieldFbm(w * 0.7, noiseFieldDetail) * 2.5);
     n = pow(0.5 + 0.5 * s, 1.6);
-  } else if (noiseVariant > 1.5) {
+  } else if (noiseFieldVariant > 1.5) {
     // Lines need a smooth height, so the finest octaves stay out of it.
-    float h = nf_fbm(p * 0.6 + noiseWarp * 0.3 * q - drift * 0.6, min(noiseDetail, 2.0));
-    float d = abs(fract(h * noiseBands) - 0.5);
+    float h = noiseFieldFbm(p * 0.6 + noiseFieldWarp * 0.3 * q - drift * 0.6, min(noiseFieldDetail, 2.0));
+    float d = abs(fract(h * noiseFieldBands) - 0.5);
     n = max(smoothstep(0.38, 0.47, d), h * h * 0.2);
-  } else if (noiseVariant > 0.5) {
-    n = pow(nf_ridges(w), 1.4);
+  } else if (noiseFieldVariant > 0.5) {
+    n = pow(noiseFieldRidges(w), 1.4);
   } else {
-    n = nf_fbm(w, noiseDetail);
+    n = noiseFieldFbm(w, noiseFieldDetail);
   }
 
-  if (noiseVariant < 1.5 || noiseVariant > 2.5) {
+  if (noiseFieldVariant < 1.5 || noiseFieldVariant > 2.5) {
     // Smoke keeps a gentle slope so the folds stay a gradient, not plateaus.
-    float slope = noiseVariant < 0.5 ? 1.0 : 1.5;
-    n = clamp((n - 0.5 + noiseCoverage) * noiseContrast * slope + 0.5, 0.0, 1.0);
+    float slope = noiseFieldVariant < 0.5 ? 1.0 : 1.5;
+    n = clamp((n - 0.5 + noiseFieldCoverage) * noiseFieldContrast * slope + 0.5, 0.0, 1.0);
     n = n * n * (3.0 - 2.0 * n);
   } else {
-    n = clamp(n + noiseCoverage, 0.0, 1.0);
+    n = clamp(n + noiseFieldCoverage, 0.0, 1.0);
   }
-  if (noiseVariant < 0.5) {
-    n = pow(n, 2.8);
-  }
-  if (noiseInvert > 0.5) {
-    n = 1.0 - n;
+  if (noiseFieldVariant < 0.5) {
+    n = pow(n, 1.8);
   }
 
   float keep = 1.0;
-  float size = noiseMaskSize;
-  if (noiseMask > 3.5) {
+  float size = noiseFieldMaskSize;
+  if (noiseFieldMask > 3.5) {
     vec2 d = vec2((uv.x - 0.5) * 0.85, (uv.y - 0.5) * 1.7);
     float r = 0.2 + 0.45 * (1.0 - size);
     keep = 1.0 - smoothstep(r, r + 0.4, length(d));
-  } else if (noiseMask > 2.5) {
+  } else if (noiseFieldMask > 2.5) {
     keep = smoothstep(size * 0.8, size * 0.8 + 0.55, uv.y);
-  } else if (noiseMask > 1.5) {
+  } else if (noiseFieldMask > 1.5) {
     keep = smoothstep(size * 0.8, size * 0.8 + 0.55, 1.0 - uv.y);
-  } else if (noiseMask > 0.5) {
+  } else if (noiseFieldMask > 0.5) {
     vec2 d = vec2((uv.x - 0.5) * 0.85, (uv.y - 0.5) * 1.7);
     float r = 0.36 * size;
     keep = smoothstep(r, r + 0.44, length(d));
   }
-  return n * keep * noiseIntensity;
+  return vec2(n * keep * noiseFieldIntensity, q.x);
+}
+
+float field(vec2 uv, vec2 res, float t) {
+  return noiseFieldSample(uv, res, t).x;
+}
+`;
+
+const COLOR_FIELD = `
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  float swirl = noiseFieldSample(uv, res, t).y;
+  return paletteColor(smoothstep(0.3, 0.7, swirl)).rgb;
 }
 `;
 
@@ -170,66 +188,124 @@ const FALLBACK_MASKS = {
   top: "linear-gradient(to bottom, transparent 5%, black 60%)",
 } as const satisfies Record<NoiseFieldMask, string>;
 
+/** A phosphor brings its own ink and glass, so ours only apply without one. */
+const ownColors = (
+  phosphor: PhosphorName | undefined,
+  ink: AsciiColor,
+  paper: AsciiColor
+) => (phosphor === undefined ? { ink, paper } : {});
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-/**
- * A slow, folding noise texture drawn as a dither, for a quiet surface
- * behind content. `variant` changes its shape, `mask` clears the area
- * where your text sits. Decorative and full-bleed: size it with
- * `className`, usually `absolute inset-0`. Set `color`, `highlight` and
- * `background`, or pass `palette` (paper to brightest) to take over.
- */
-export const NoiseField = ({
-  color = "--ascii-ink",
-  highlight,
-  background = "--ascii-paper",
+/** The texture props, as the shader's uniforms. */
+type NoiseFieldShape = Pick<
+  NoiseFieldProps,
+  | "variant"
+  | "scale"
+  | "warp"
+  | "detail"
+  | "contrast"
+  | "coverage"
+  | "intensity"
+  | "bands"
+  | "angle"
+  | "flow"
+  | "mask"
+  | "maskSize"
+>;
+
+const noiseFieldUniforms = ({
   variant = "smoke",
-  scale = 1.3,
+  scale = 0.8,
   warp = 1.7,
-  detail = 4,
-  contrast = 1.2,
+  detail = 3,
+  contrast = 1.5,
   coverage = 0,
   intensity = 0.9,
   bands = 8,
   angle = 90,
   flow = 1,
-  invert = false,
   mask = "none",
   maskSize = 0.5,
+}: NoiseFieldShape) => ({
+  noiseFieldAngle: (angle * Math.PI) / 180,
+  noiseFieldBands: clamp(bands, 1, 48),
+  noiseFieldContrast: Math.max(0, contrast),
+  noiseFieldCoverage: clamp(coverage, -1, 1),
+  noiseFieldDetail: clamp(Math.round(detail), 1, 6),
+  noiseFieldFlow: Math.max(0, flow),
+  noiseFieldIntensity: clamp(intensity, 0, 1),
+  noiseFieldMask: MASKS[mask],
+  noiseFieldMaskSize: clamp(maskSize, 0, 1),
+  noiseFieldScale: Math.max(0.1, scale),
+  noiseFieldVariant: VARIANTS[variant],
+  noiseFieldWarp: Math.max(0, warp),
+});
+
+/**
+ * A slow, folding noise texture drawn in glyphs, for a quiet surface
+ * behind content. `variant` changes its shape, `mask` clears the area
+ * where your text sits. Decorative and full-bleed: size it with
+ * `className`, usually `absolute inset-0`.
+ */
+export const NoiseField = ({
+  ink = "--ascii-ink",
+  highlight,
+  paper = "--ascii-paper",
   palette,
-  matrix = "bayer8",
+  variant,
+  scale,
+  warp,
+  detail,
+  contrast,
+  coverage,
+  intensity,
+  bands,
+  angle,
+  flow,
+  mask = "none",
+  maskSize,
+  charset = "standard",
+  colorMode = "palette",
+  cell = 12,
+  interaction = "none",
+  interactive = true,
+  phosphor,
   ...props
 }: NoiseFieldProps) => {
   const colors: AsciiPalette =
     palette ??
-    (highlight === undefined
-      ? [background, color]
-      : [background, color, highlight]);
-  const ink = cssColor(colors[1]);
+    (highlight === undefined ? [paper, ink] : [paper, ink, highlight]);
+  const fallbackInk = cssColor(colors[1]);
   const fallbackMask = FALLBACK_MASKS[mask];
 
   return (
     <AsciiShader
       {...props}
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      phosphor={phosphor}
+      {...ownColors(phosphor, colors[1], colors[0])}
+      interaction={interactive ? interaction : "none"}
       field={FIELD}
+      colorField={COLOR_FIELD}
       palette={colors}
-      matrix={matrix}
-      uniforms={{
-        noiseAngle: (angle * Math.PI) / 180,
-        noiseBands: clamp(bands, 1, 48),
-        noiseContrast: Math.max(0, contrast),
-        noiseCoverage: clamp(coverage, -1, 1),
-        noiseDetail: clamp(Math.round(detail), 1, 6),
-        noiseFlow: Math.max(0, flow),
-        noiseIntensity: clamp(intensity, 0, 1),
-        noiseInvert: invert ? 1 : 0,
-        noiseMask: MASKS[mask],
-        noiseMaskSize: clamp(maskSize, 0, 1),
-        noiseScale: Math.max(0.1, scale),
-        noiseVariant: VARIANTS[variant],
-        noiseWarp: Math.max(0, warp),
-      }}
+      uniforms={noiseFieldUniforms({
+        angle,
+        bands,
+        contrast,
+        coverage,
+        detail,
+        flow,
+        intensity,
+        mask,
+        maskSize,
+        scale,
+        variant,
+        warp,
+      })}
       fallback={
         <div
           className="absolute inset-0"
@@ -239,7 +315,7 @@ export const NoiseField = ({
             className="absolute inset-0 opacity-25"
             style={{
               WebkitMaskImage: fallbackMask,
-              backgroundImage: `radial-gradient(circle at 25% 30%, ${ink}, transparent 45%), radial-gradient(circle at 75% 70%, ${ink}, transparent 40%)`,
+              backgroundImage: `radial-gradient(circle at 25% 30%, ${fallbackInk}, transparent 45%), radial-gradient(circle at 75% 70%, ${fallbackInk}, transparent 40%)`,
               maskImage: fallbackMask,
             }}
           />

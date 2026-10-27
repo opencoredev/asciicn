@@ -2,7 +2,7 @@ import { Ridgelines } from "@/components/asciicn/ridgelines";
 
 export default function RidgelinesSignal() {
   return (
-    <div className="bg-background border-border relative flex w-full max-w-sm [--ascii-paper:var(--background)] flex-col gap-4 rounded-2xl border p-5">
+    <div className="bg-background border-border relative flex w-full max-w-sm flex-col gap-4 rounded-2xl border p-5">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">PSR B1919+21</span>
         <span className="text-muted-foreground font-mono text-xs tabular-nums">
@@ -13,7 +13,7 @@ export default function RidgelinesSignal() {
         <Ridgelines
           lines={24}
           spread={0.35}
-          cell={2}
+          cell={8}
           className="absolute inset-0"
         />
       </div>

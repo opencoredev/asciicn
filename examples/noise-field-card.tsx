@@ -2,12 +2,14 @@ import { NoiseField } from "@/components/asciicn/noise-field";
 
 export default function NoiseFieldCard() {
   return (
-    <div className="bg-background border-border relative isolate flex w-full max-w-sm [--ascii-paper:var(--background)] flex-col gap-6 overflow-hidden rounded-2xl border p-5">
+    <div className="bg-background border-border relative isolate flex w-full max-w-sm flex-col gap-6 overflow-hidden rounded-2xl border p-5">
       <NoiseField
-        scale={5}
-        intensity={0.45}
+        scale={4}
+        intensity={0.55}
         mask="top"
-        cell={2}
+        charset="standard"
+        cell={10}
+        background="transparent"
         className="absolute inset-0 -z-10"
       />
       <div className="flex items-center justify-between text-sm">

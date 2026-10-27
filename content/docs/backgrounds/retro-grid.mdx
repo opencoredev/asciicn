@@ -1,18 +1,18 @@
 ---
 title: "Retro grid"
-description: "A perspective grid floor scrolling towards a horizon under a striped, glowing sun, drawn as a dither."
+description: "A perspective grid floor drawn in glyphs, scrolling towards a horizon under a slit sun, as on an eighties record sleeve."
 ---
 
 import RetroGridDemo from "@/examples/retro-grid-demo";
-import { controls as retroGridControls } from "@/examples/retro-grid-controls";
-import RetroGridSunset from "@/examples/retro-grid-sunset";
+import { controls as demoControls } from "@/examples/retro-grid-controls";
 import RetroGridHeadline from "@/examples/retro-grid-headline";
+import RetroGridSunset from "@/examples/retro-grid-sunset";
 
 <ComponentPreview
   src="examples/retro-grid-demo.tsx"
   size="full"
   align="stretch"
-  controls={retroGridControls}
+  controls={demoControls}
 >
   <RetroGridDemo />
 </ComponentPreview>
@@ -36,25 +36,17 @@ export function Hero() {
 }
 ```
 
-The floor is a grid seen from a low camera, scrolling slowly towards you. Lines stay about one cell wide at every depth and fade out where they would crowd closer than a few cells, so the horizon doesn't break into moiré. The sun sits half sunk behind the horizon, with slits through its lower half that thicken towards the ground and drift down. Grid squares keep their size against the box height, so a phone shows fewer columns, not thinner ones.
+The floor is a grid seen from a low camera, rolling towards you, with a haze at the horizon and the sun's reflection in the middle. Lines stay about one glyph thick at any depth, and where they crowd together near the horizon they fade out instead of turning into moiré. Above it, the sun sits on the horizon with `slits` cut through its lower half.
+
+The `braille` charset is the default: every grid line is a single trail of dots, so the floor stays sharp all the way to the horizon. With `edge` the floor lines come out as `-` across and `/`, `|` and `\` along, each following the perspective, while the sun keeps a fill of ramp glyphs. `blocks` draws the floor as solid bars.
+
+In `truecolor` mode, the default, the grid takes `ink` and the sun runs from `sunsetColor` at the bottom to `sunColor` at the top.
 
 ## Examples
 
-### Sunset
+### Press start
 
-Four warm colours, from a deep violet paper through magenta to a pale gold sun. A bigger `sun` and `cell={4}` give it the chunky look of an old game.
-
-<ComponentPreview
-  src="examples/retro-grid-sunset.tsx"
-  size="full"
-  align="stretch"
->
-  <RetroGridSunset />
-</ComponentPreview>
-
-### Without the sun
-
-`sun={0}` leaves only the glow along the horizon, which clears the sky for a headline.
+`sun={0}` clears the sky for a headline while the floor keeps rolling below. `charset="edge"` draws the floor in slope glyphs.
 
 <ComponentPreview
   src="examples/retro-grid-headline.tsx"
@@ -64,10 +56,53 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
   <RetroGridHeadline />
 </ComponentPreview>
 
+### Sunset
+
+A full `palette` of violet, magenta, coral and gold, with a bigger sun and more `columns`.
+
+<ComponentPreview
+  src="examples/retro-grid-sunset.tsx"
+  size="lg"
+  align="stretch"
+>
+  <RetroGridSunset />
+</ComponentPreview>
+
 ## Props
 
 <PropsTable
   rows={[
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The grid lines and the haze.",
+    },
+    {
+      name: "sunColor",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "The top of the sun, in truecolor mode.",
+    },
+    {
+      name: "sunsetColor",
+      type: "AsciiColor",
+      default: '"pink"',
+      description: "The bottom of the sun and its glow, in truecolor mode.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The sky and the floor.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, ink, sunsetColor, sunColor]",
+      description:
+        "Every colour at once: paper, grid, sunset, then sun. Wins over the colour props.",
+    },
     {
       name: "horizon",
       type: "number",
@@ -83,34 +118,125 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
     {
       name: "columns",
       type: "number",
-      default: "12",
+      default: "10",
       description:
-        "How many squares across the front of the floor in a 16:10 box. Narrower boxes show fewer.",
+        "Grid squares across the front of the floor in a 16:10 box. Narrower boxes show fewer.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "Paper, two tints of --ascii-ink, then --ascii-ink",
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "slits",
+      type: "number",
+      default: "4",
+      description: "Slits cut through the lower half of the sun, from 0 to 8.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor uses ink for the grid and a gradient for the sun; palette maps tone to the palette; mono uses ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the floor scrolls and the sun's slits drift.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -120,10 +246,30 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "3",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
-      description: "Size and position. The scene fills this box.",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
@@ -131,5 +277,6 @@ Four warm colours, from a deep violet paper through magenta to a pale gold sun. 
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a horizon line, a soft sun and a fade in CSS.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS horizon line, floor tint and sun.
+- Floor samples read the grid three times to keep lines one glyph wide. See [Performance](/docs/engine/performance).

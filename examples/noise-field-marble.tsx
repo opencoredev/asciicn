@@ -5,8 +5,9 @@ export default function NoiseFieldMarble() {
     <section className="relative isolate flex size-full flex-col justify-end gap-2 p-8 sm:p-10">
       <NoiseField
         variant="marble"
-        color="blue"
-        highlight="--foreground"
+        ink="blue"
+        highlight="pink"
+        colorMode="truecolor"
         bands={5}
         warp={2.4}
         intensity={0.85}

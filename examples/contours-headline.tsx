@@ -8,11 +8,8 @@ export default function ContoursHeadline() {
         index={0}
         relief={0}
         speed={0.6}
-        palette={[
-          "--ascii-paper",
-          "color-mix(in oklch, var(--ascii-ink) 20%, var(--ascii-paper))",
-          "color-mix(in oklch, var(--ascii-ink) 38%, var(--ascii-paper))",
-        ]}
+        lineColor="color-mix(in oklch, var(--ascii-ink) 22%, var(--ascii-paper))"
+        ink="color-mix(in oklch, var(--ascii-ink) 40%, var(--ascii-paper))"
         className="absolute inset-0 -z-10"
       />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance">

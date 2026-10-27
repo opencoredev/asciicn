@@ -7,7 +7,9 @@ export default function RidgelinesRange() {
       spread={1}
       amplitude={0.7}
       shade={0.4}
-      palette={["--ascii-paper", "--chart-5", "--chart-1"]}
+      charset="quadrants"
+      colorMode="truecolor"
+      farColor="blue"
       className="absolute inset-0"
     />
   );

@@ -1,18 +1,18 @@
 ---
 title: "Horizon"
-description: "A planet's horizon seen from space, with a lit rim, a drifting aurora glow and fixed stars. The landing page hero, with props."
+description: "A planet's horizon seen from space, drawn in glyphs: a lit rim, an aurora glow that drifts along it, and a scatter of stars."
 ---
 
 import HorizonDemo from "@/examples/horizon-demo";
-import { controls as horizonControls } from "@/examples/horizon-controls";
-import HorizonSunrise from "@/examples/horizon-sunrise";
+import { controls as demoControls } from "@/examples/horizon-controls";
 import HorizonHeadline from "@/examples/horizon-headline";
+import HorizonSunrise from "@/examples/horizon-sunrise";
 
 <ComponentPreview
   src="examples/horizon-demo.tsx"
   size="full"
   align="stretch"
-  controls={horizonControls}
+  controls={demoControls}
 >
   <HorizonDemo />
 </ComponentPreview>
@@ -36,34 +36,60 @@ export function Hero() {
 }
 ```
 
-This is the scene behind the asciicn landing page. The planet is a circle whose top touches `horizon`; `curve` sets how small and round it looks. Above the rim, domain-warped noise forms aurora curtains that slide slowly along the horizon. The sky and planet use `skyColor`, and the glow, rim and stars use `glowColor`.
+The planet is a dark arc whose top sits at `horizon`, measured up from the bottom. `curve` sets how round it is, from almost flat to a small globe. Above it, a glow drifts sideways, broken into curtains by `aurora`, and stars scatter across the sky, thinning out near the glow.
+
+The `standard` charset is the default, with the rim drawn in the densest glyphs. `dense` softens the glow, and `braille` turns the stars into single dots.
+
+In `truecolor` mode, the default, the rim and the low glow take `ink` and the glow cools to `hazeColor` as it rises.
 
 ## Examples
 
-### Sunrise
+### Under a headline
 
-A flatter planet, higher in the frame, with a smooth band instead of curtains and an explicit amber glow.
-
-<ComponentPreview
-  src="examples/horizon-sunrise.tsx"
-  size="full"
-  align="stretch"
->
-  <HorizonSunrise />
-</ComponentPreview>
-
-### Small planet under a headline
-
-A low, strongly curved horizon leaves most of the frame as sky, with more stars.
+A low, round planet leaves the top of the box for text. More `stars` fill the empty sky.
 
 <ComponentPreview src="examples/horizon-headline.tsx" size="lg" align="stretch">
   <HorizonHeadline />
+</ComponentPreview>
+
+### Sunrise
+
+A flat horizon, a warm `ink` and pink `hazeColor`, with `aurora` turned down to a smooth band, read as first light. `dense` glyphs keep the band soft.
+
+<ComponentPreview src="examples/horizon-sunrise.tsx" size="lg" align="stretch">
+  <HorizonSunrise />
 </ComponentPreview>
 
 ## Props
 
 <PropsTable
   rows={[
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The lit rim, the glow just above it and the stars.",
+    },
+    {
+      name: "hazeColor",
+      type: "AsciiColor",
+      default: '"blue"',
+      description:
+        "The high glow where it fades into space, in truecolor and palette modes.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The sky and the planet.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, hazeColor, ink]",
+      description:
+        "Every colour at once: sky, haze, then rim. Wins over ink, hazeColor and paper.",
+    },
     {
       name: "horizon",
       type: "number",
@@ -89,44 +115,123 @@ A low, strongly curved horizon leaves most of the frame as sky, with more stars.
       type: "number",
       default: "1",
       description:
-        "How much the glow breaks into curtains, from 0 (a smooth band) to 1.",
+        "How much the glow ripples into curtains, from 0 (a smooth band) to 1.",
     },
     {
       name: "stars",
       type: "number",
       default: "1",
-      description: "How many stars, from 0 to 3. They never move.",
+      description: "How many stars, from 0 to 3.",
     },
     {
-      name: "glowColor",
-      type: "AsciiColor",
-      default: '"--ascii-ink"',
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
       description:
-        'Colour of the glow, rim and stars: a palette name such as "orange", a CSS variable name, or any CSS colour.',
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
     },
     {
-      name: "skyColor",
-      type: "AsciiColor",
-      default: '"--ascii-paper"',
-      description: "Colour of the sky and the planet.",
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor runs from ink at the rim to hazeColor higher up; mono uses ink; palette maps tone to the palette.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the aurora drifts.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -136,17 +241,37 @@ A low, strongly curved horizon leaves most of the frame as sky, with more stars.
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "14",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
-      description: "Size and position. The scene fills this box.",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
 
 ## Notes
 
-- The scene is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a soft CSS glow over a dark arc.
-- Stars thin out near the horizon, so the glow always has a clean edge.
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS glow over a dark arc.
+- It costs one GPU pass per frame at 30 fps. See [Performance](/docs/engine/performance).

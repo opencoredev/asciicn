@@ -2,21 +2,22 @@
 
 import { RetroGrid } from "@/components/asciicn/retro-grid";
 import { usePreviewValue } from "@/components/preview-controls";
-import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/retro-grid-controls";
 
 export default function RetroGridDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const horizon = usePreviewValue(knobs.horizon);
-  const sun = usePreviewValue(knobs.sun);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <RetroGrid
-      palette={["--ascii-paper", toward(tint, 30), toward(tint, 65), tint]}
-      horizon={horizon}
-      sun={sun}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
+      sunColor={usePreviewValue(knobs.sunColor)}
+      horizon={usePreviewValue(knobs.horizon)}
+      sun={usePreviewValue(knobs.sun)}
+      columns={usePreviewValue(knobs.columns)}
+      slits={usePreviewValue(knobs.slits)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

@@ -1,46 +1,57 @@
 "use client";
 
 import { cssColor } from "@/lib/ascii";
-import type { AsciiPalette } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiPalette,
+  AsciiSceneProps,
+  Interaction,
+  PhosphorName,
+} from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
-export type MeshGradientProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
+export interface MeshGradientProps extends AsciiSceneProps {
+  /** The paper behind the glyphs. Default `"--ascii-paper"`. Ignored when `palette` is set. */
+  paper?: AsciiColor;
+  /**
+   * The blob colours. In `truecolor` mode blob `i` takes colour `i`, and
+   * where blobs meet their colours blend. Default `["ink", "purple",
+   * "pink", "orange", "blue"]`.
+   */
+  colors?: readonly [AsciiColor, ...AsciiColor[]];
+  /** Paper first, then the blob colours. Wins over `paper` and `colors`. */
+  palette?: AsciiPalette;
   /** How many colour blobs drift across the box, 3 to 5. Default 4. */
-  blobs?: 3 | 4 | 5;
+  blobs?: number;
   /** Size of each blob, as a share of the box height. Default 0.6. */
   size?: number;
-  /**
-   * Paper first, then one colour per blob. Blob `i` takes colour `i + 1`,
-   * so pass `blobs + 1` colours for one colour each; where blobs meet,
-   * the colours between them show. Default: paper through four tints of
-   * `--ascii-ink`.
-   */
-  palette?: AsciiPalette;
-};
+  /** How far slow noise bends the blobs, 0 to 1. Default 0.35. */
+  warp?: number;
+  /** How much the glyph density follows the blobs, 0 (an even fill) to 1 (dense cores, sparse gaps). Default 0.7. */
+  contrast?: number;
+  /** What the pointer does to the glyphs. `interactive={false}` turns it off. Default `"none"`. */
+  interaction?: Interaction;
+}
 
-const tint = (amount: number, base = "var(--ascii-paper)") =>
-  `color-mix(in oklch, var(--ascii-ink) ${amount}%, ${base})`;
+const MESH_COLORS = [
+  "ink",
+  "purple",
+  "pink",
+  "orange",
+  "blue",
+] as const satisfies readonly AsciiColor[];
 
-const MESH_PALETTE = [
-  "--ascii-paper",
-  tint(28),
-  `color-mix(in oklch, var(--ascii-ink) 45%, oklch(0.6 0.22 318))`,
-  "--ascii-ink",
-  tint(58, "var(--foreground)"),
-] as const satisfies AsciiPalette;
-
+// meshBlend returns the glyph density and the blended position on the
+// palette ramp, so tone shows the blobs' shape and colour their mix.
 const FIELD = `
-float field(vec2 uv, vec2 res, float t) {
+vec2 meshBlend(vec2 uv, vec2 res, float t) {
   float aspect = res.x / res.y;
   vec2 p = vec2(uv.x * aspect, uv.y);
   vec2 warp = vec2(fbm(p * 1.1 + vec2(t * 0.02, 0.0)), fbm(p * 1.1 + vec2(7.3, -t * 0.02)));
-  p += (warp - 0.5) * 0.35;
-  float weights = 0.32;
-  float tones = 0.0;
+  p += (warp - 0.5) * 0.7 * meshWarp;
+  float weights = 0.0;
+  float strongest = 0.0;
+  float hue = 0.0;
   for (int i = 0; i < 5; i++) {
     float fi = float(i);
     if (fi < meshCount) {
@@ -53,12 +64,37 @@ float field(vec2 uv, vec2 res, float t) {
       float d = length(p - c) / meshSize;
       float w = exp(-d * d * 2.2);
       weights += w;
-      tones += w * (fi + 1.0) / meshCount;
+      strongest = max(strongest, w);
+      hue += w * fi / max(meshCount - 1.0, 1.0);
     }
   }
-  return tones / weights;
+  // Density follows the nearest blob, not the sum, so each core reaches
+  // the densest glyph and the seams between blobs open up to light ones.
+  float density = smoothstep(0.04, 0.95, strongest);
+  float tone = mix(0.55, density, meshContrast) * 0.96;
+  return vec2(clamp(tone, 0.0, 1.0), hue / max(weights, 1e-4));
+}
+
+float field(vec2 uv, vec2 res, float t) {
+  return meshBlend(uv, res, t).x;
 }
 `;
+
+const COLOR_FIELD = `
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  return paletteColor(meshBlend(uv, res, t).y).rgb;
+}
+`;
+
+/** A phosphor brings its own ink and glass, so ours only apply without one. */
+const ownColors = (
+  phosphor: PhosphorName | undefined,
+  ink: AsciiColor,
+  paper: AsciiColor
+) => (phosphor === undefined ? { ink, paper } : {});
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
 /** The blobs as blurred CSS radial gradients, shown without WebGL. */
 const fallbackImage = (palette: AsciiPalette, blobs: number) => {
@@ -79,32 +115,59 @@ const fallbackImage = (palette: AsciiPalette, blobs: number) => {
 };
 
 /**
- * Three to five colour blobs that drift and melt into each other, drawn
- * as a dither. Decorative and full-bleed: size it with `className`,
- * usually `absolute inset-0`.
+ * Three to five colour blobs drawn in glyphs that drift and melt into each
+ * other: density follows the blobs, colour blends where they meet.
+ * Decorative and full-bleed: size it with `className`, usually
+ * `absolute inset-0`.
  */
 export const MeshGradient = ({
+  paper = "--ascii-paper",
+  colors = MESH_COLORS,
+  palette,
   blobs = 4,
   size = 0.6,
-  palette = MESH_PALETTE,
-  matrix = "blue-noise",
+  warp = 0.35,
+  contrast = 0.7,
+  charset = "dots",
+  colorMode = "truecolor",
+  cell = 12,
+  interaction = "none",
+  interactive = true,
+  phosphor,
   ...props
 }: MeshGradientProps) => {
-  const count = Math.min(5, Math.max(3, Math.round(blobs)));
+  const count = clamp(Math.round(blobs), 3, 5);
+  const [first, ...rest] = colors;
+  const ramp: AsciiPalette = palette ?? [
+    paper,
+    first,
+    ...rest.slice(0, count - 1),
+  ];
 
   return (
     <AsciiShader
       {...props}
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      phosphor={phosphor}
+      {...ownColors(phosphor, ramp[1], ramp[0])}
+      interaction={interactive ? interaction : "none"}
       field={FIELD}
-      palette={palette}
-      matrix={matrix}
-      uniforms={{ meshCount: count, meshSize: Math.max(0.05, size) }}
+      colorField={COLOR_FIELD}
+      palette={ramp}
+      uniforms={{
+        meshContrast: clamp(contrast, 0, 1),
+        meshCount: count,
+        meshSize: Math.max(0.05, size),
+        meshWarp: clamp(warp, 0, 1),
+      }}
       fallback={
         <div
           className="absolute inset-0 opacity-70"
           style={{
-            backgroundColor: cssColor(palette[0]),
-            backgroundImage: fallbackImage(palette, count),
+            backgroundColor: cssColor(ramp[0]),
+            backgroundImage: fallbackImage(ramp, count),
           }}
         />
       }

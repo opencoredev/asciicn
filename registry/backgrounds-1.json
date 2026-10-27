@@ -3,7 +3,7 @@
     "name": "aurora",
     "type": "registry:component",
     "title": "Aurora",
-    "description": "Curtains of light that fold, sway and shimmer, drawn as a dither, with props for colours, curtains, rays, tilt, drift and masks.",
+    "description": "Curtains of light drawn in Braille glyphs, each with a bright folded edge and rays that fade up into a second colour.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -20,7 +20,7 @@
     "name": "beams",
     "type": "registry:component",
     "title": "Beams",
-    "description": "God rays from a point or an edge that sweep slowly and fade with distance.",
+    "description": "Shafts of light drawn in glyphs, from a point or an edge, that sweep slowly and fade with distance.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -37,7 +37,7 @@
     "name": "contours",
     "type": "registry:component",
     "title": "Contours",
-    "description": "A topographic map: contour lines over slowly drifting hills, with heavier index lines and a light hillshade.",
+    "description": "A topographic map drawn in glyphs: contour lines over slowly drifting hills, with heavier index lines and a light hillshade.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -54,7 +54,7 @@
     "name": "eclipse",
     "type": "registry:component",
     "title": "Eclipse",
-    "description": "A dark disc with a glowing rim and a soft corona that breathes slowly.",
+    "description": "An eclipse drawn in glyphs: a dark disc with a hot rim and a corona of streamers that breathes slowly.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -71,7 +71,7 @@
     "name": "halftone",
     "type": "registry:component",
     "title": "Halftone",
-    "description": "Print-style round dots on a rotated grid that grow with a noise, radial or linear source.",
+    "description": "A print halftone built from glyphs: round dots on a rotated screen that grow with a noise, radial or linear source, in one ink or up to three.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -88,7 +88,7 @@
     "name": "horizon",
     "type": "registry:component",
     "title": "Horizon",
-    "description": "A planet's horizon from space: a lit rim, a drifting aurora glow and fixed stars.",
+    "description": "A planet's horizon seen from space, drawn in glyphs: a lit rim, an aurora glow that drifts along it, and a scatter of stars.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -105,7 +105,7 @@
     "name": "mesh-gradient",
     "type": "registry:component",
     "title": "Mesh gradient",
-    "description": "Three to five colour blobs that drift and blend, drawn as a dither.",
+    "description": "Three to five colour blobs drawn in glyphs that drift and melt into each other: density follows the blobs, colour blends where they meet.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -122,7 +122,7 @@
     "name": "metaballs",
     "type": "registry:component",
     "title": "Metaballs",
-    "description": "Soft blobs that drift, merge and split like a lava lamp, as shaded shapes or rings of contour lines.",
+    "description": "Soft blobs drawn in glyphs that drift, merge and split like a lava lamp, solid with a bright rim or ringed with contour lines.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -139,7 +139,7 @@
     "name": "noise-field",
     "type": "registry:component",
     "title": "Noise field",
-    "description": "A slow, folding noise texture in four styles (smoke, ridges, contours, marble), with a sized mask that clears space for text.",
+    "description": "A slow, folding noise texture drawn in glyphs, as smoke, ridges, contour lines or marble, with a mask that clears space for text.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -156,7 +156,7 @@
     "name": "plasma",
     "type": "registry:component",
     "title": "Plasma",
-    "description": "Classic plasma: overlapping sine waves that flow into each other, dithered in two colours or a palette.",
+    "description": "Classic demoscene plasma drawn in glyphs: overlapping sine waves that flow into each other while the colour cycles through a palette.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -173,7 +173,7 @@
     "name": "retro-grid",
     "type": "registry:component",
     "title": "Retro grid",
-    "description": "A perspective grid floor scrolling towards a horizon under a striped, glowing sun.",
+    "description": "A perspective grid floor drawn in glyphs, scrolling towards a horizon under a slit sun, as on an eighties record sleeve.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -190,7 +190,7 @@
     "name": "ridgelines",
     "type": "registry:component",
     "title": "Ridgelines",
-    "description": "Stacked ridge lines like a pulsar plot, each hiding the ones behind it, with peaks that shift slowly.",
+    "description": "Stacked ridge lines drawn in glyphs, like a pulsar plot: each line hides the ones behind it and the peaks shift slowly.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

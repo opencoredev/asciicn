@@ -5,7 +5,7 @@ export default function HalftonePrint() {
     <section className="relative isolate flex size-full items-end overflow-hidden p-6 sm:p-10">
       <Halftone
         channels={["blue", "pink", "orange"]}
-        size={16}
+        pitch={4}
         angle={15}
         scale={0.7}
         className="absolute inset-0 -z-10"
@@ -18,8 +18,8 @@ export default function HalftonePrint() {
           Three inks, one press, no plates to clean
         </h3>
         <p className="text-muted-foreground text-sm text-pretty">
-          Cyan, magenta and yellow screens at 15°, 45° and 75°. Where the dots
-          cross, the colours mix.
+          Three screens at 15°, 45° and 75°, each dot a cluster of glyphs. Where
+          the dots cross, the colours mix.
         </p>
       </div>
     </section>

@@ -7,21 +7,20 @@ import * as knobs from "@/examples/aurora-controls";
 export default function AuroraDemo() {
   return (
     <Aurora
-      color={usePreviewValue(knobs.tint)}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
       tipColor={usePreviewValue(knobs.tip)}
       curtains={usePreviewValue(knobs.curtains)}
       height={usePreviewValue(knobs.height)}
-      spread={usePreviewValue(knobs.spread)}
       sway={usePreviewValue(knobs.sway)}
-      turbulence={usePreviewValue(knobs.turbulence)}
       rays={usePreviewValue(knobs.rays)}
       length={usePreviewValue(knobs.length)}
       glow={usePreviewValue(knobs.glow)}
       tilt={usePreviewValue(knobs.tilt)}
-      drift={usePreviewValue(knobs.drift)}
       direction={usePreviewValue(knobs.direction)}
       mask={usePreviewValue(knobs.mask)}
-      matrix={usePreviewValue(knobs.matrix)}
+      interaction={usePreviewValue(knobs.interaction)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

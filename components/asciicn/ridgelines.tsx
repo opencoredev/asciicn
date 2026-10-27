@@ -1,14 +1,24 @@
 "use client";
 
 import { cssColor } from "@/lib/ascii";
-import type { AsciiPalette } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiPalette,
+  AsciiSceneProps,
+  Interaction,
+  PhosphorName,
+} from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
-export type RidgelinesProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
+export interface RidgelinesProps extends AsciiSceneProps {
+  /** The front lines. Default `"--ascii-ink"`. */
+  ink?: AsciiColor;
+  /** The back lines, in `truecolor` and `palette` modes. Default: `ink`. */
+  farColor?: AsciiColor;
+  /** The paper each line hides the ones behind with. Default `"--ascii-paper"`. */
+  paper?: AsciiColor;
+  /** Every colour at once: paper, back, then front. Wins over the colour props. */
+  palette?: AsciiPalette;
   /** How many lines, 6 to 64. Default 32. */
   lines?: number;
   /** Height of the peaks. 1 is the default; 2 is twice as tall. Default 1. */
@@ -17,11 +27,13 @@ export type RidgelinesProps = Omit<
   spread?: number;
   /** Faint tone under the raised peaks, 0 to 0.5. 0 keeps only the lines. Default 0.25. */
   shade?: number;
-};
+  /** What the pointer does to the glyphs. `interactive={false}` turns it off. Default `"none"`. */
+  interaction?: Interaction;
+}
 
 const FIELD = `
 // Height of line fi at x, in line spacings: flat at the ends, peaked in the middle.
-float ridgeHeight(float x, float fi, float t, float k) {
+float ridgelinesHeight(float x, float fi, float t, float k) {
   float centred = (x - 0.5) / ridgeSpread;
   float envelope = exp(-centred * centred * 5.5);
   float n1 = snoise(vec2(x * 7.0 * k + fi * 0.37, fi * 0.61 + t * 0.05));
@@ -36,7 +48,7 @@ float field(vec2 uv, vec2 res, float t) {
   // Lines sit between 10% and 86% of the height, front line at the bottom.
   float top = 0.86;
   float bottom = 0.1;
-  // Keep at least 4.5 cells between lines, so a short box draws fewer of them.
+  // Keep at least 4.5 sample rows between lines, so a short box draws fewer of them.
   float count = min(ridgeLines, floor((top - bottom) * res.y / 4.5) + 1.0);
   float spacing = (top - bottom) / max(count - 1.0, 1.0);
   // Peaks keep their shape in narrow boxes instead of crowding together.
@@ -59,7 +71,7 @@ float field(vec2 uv, vec2 res, float t) {
       tone = 0.0;
       continue;
     }
-    float h = ridgeHeight(uv.x, fi, t, freq);
+    float h = ridgelinesHeight(uv.x, fi, t, freq);
     float y = base + h * spacing;
     // Under the line, its fill hides the lines behind. Raised peaks get a faint
     // shade that fades downwards, so the ridges read as solid.
@@ -69,19 +81,34 @@ float field(vec2 uv, vec2 res, float t) {
       tone = shade;
       continue;
     }
-    float yNext = base + ridgeHeight(uv.x + cellX, fi, t, freq) * spacing;
-    // Distance to the curve in cells, corrected for its slope so steep peaks keep their width.
+    float yNext = base + ridgelinesHeight(uv.x + cellX, fi, t, freq) * spacing;
+    // Distance to the curve in sample rows, corrected for its slope so steep peaks keep their width.
     float slope = (yNext - y) * res.y;
     float d = abs(uv.y - y) * res.y / sqrt(1.0 + slope * slope);
     if (uv.y < y) {
       tone = shade;
     }
-    // A hard edge keeps each line one crisp cell wide instead of two dithered rows.
+    // A hard edge keeps each line one sample wide: one row of Braille dots,
+    // or one glyph in a ramp charset.
     tone = max(tone, step(d, 0.5));
   }
   return tone;
 }
 `;
+
+// Back lines (near the top) take the far colour, front lines the ink.
+const COLOR_FIELD = `
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  return paletteColor(1.0 - smoothstep(0.1, 0.86, uv.y)).rgb;
+}
+`;
+
+/** A phosphor brings its own ink and glass, so ours only apply without one. */
+const ownColors = (
+  phosphor: PhosphorName | undefined,
+  ink: AsciiColor,
+  paper: AsciiColor
+) => (phosphor === undefined ? { ink, paper } : {});
 
 /** A few thin CSS lines across the box, shown without WebGL. */
 const fallbackImage = (palette: AsciiPalette) => {
@@ -90,38 +117,58 @@ const fallbackImage = (palette: AsciiPalette) => {
 };
 
 /**
- * Stacked ridge lines like a pulsar plot, each hiding the ones behind it,
- * drawn as a dither. The peaks shift slowly. Decorative and full-bleed:
+ * Stacked ridge lines drawn in glyphs, like a pulsar plot: each line hides
+ * the ones behind it and the peaks shift slowly. Decorative and full-bleed:
  * size it with `className`, usually `absolute inset-0`.
  */
 export const Ridgelines = ({
+  ink = "--ascii-ink",
+  farColor,
+  paper = "--ascii-paper",
+  palette,
   lines = 32,
   amplitude = 1,
   spread = 0.5,
   shade = 0.25,
-  palette = ["--ascii-paper", "--ascii-ink"],
+  charset = "braille",
+  colorMode = "palette",
+  cell = 12,
+  interaction = "none",
+  interactive = true,
+  phosphor,
   stillTime = 8,
   ...props
-}: RidgelinesProps) => (
-  <AsciiShader
-    {...props}
-    field={FIELD}
-    palette={palette}
-    stillTime={stillTime}
-    uniforms={{
-      ridgeAmplitude: Math.max(0, amplitude),
-      ridgeLines: Math.min(64, Math.max(6, Math.round(lines))),
-      ridgeShade: Math.min(0.5, Math.max(0, shade)),
-      ridgeSpread: Math.min(1, Math.max(0.1, spread)),
-    }}
-    fallback={
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: cssColor(palette[0]),
-          backgroundImage: fallbackImage(palette),
-        }}
-      />
-    }
-  />
-);
+}: RidgelinesProps) => {
+  const colors = palette ?? [paper, farColor ?? ink, ink];
+
+  return (
+    <AsciiShader
+      {...props}
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      phosphor={phosphor}
+      {...ownColors(phosphor, colors.at(-1) ?? ink, colors[0])}
+      interaction={interactive ? interaction : "none"}
+      field={FIELD}
+      colorField={COLOR_FIELD}
+      palette={colors}
+      stillTime={stillTime}
+      uniforms={{
+        ridgeAmplitude: Math.max(0, amplitude),
+        ridgeLines: Math.min(64, Math.max(6, Math.round(lines))),
+        ridgeShade: Math.min(0.5, Math.max(0, shade)),
+        ridgeSpread: Math.min(1, Math.max(0.1, spread)),
+      }}
+      fallback={
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundColor: cssColor(colors[0]),
+            backgroundImage: fallbackImage(colors),
+          }}
+        />
+      }
+    />
+  );
+};

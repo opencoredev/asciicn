@@ -1,28 +1,46 @@
 "use client";
 
 import { cssColor } from "@/lib/ascii";
-import type { AsciiPalette } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiPalette,
+  AsciiSceneProps,
+  Interaction,
+  PhosphorName,
+} from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
-export type PlasmaProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
+export interface PlasmaProps extends AsciiSceneProps {
+  /** The paper behind the glyphs. Default `"--ascii-paper"`. Ignored when `palette` is set. */
+  paper?: AsciiColor;
+  /**
+   * The colours the waves cycle through, in order. In `truecolor` mode the
+   * hue follows the wave phase; in `palette` mode the glyph tone picks
+   * them. Default `["purple", "ink", "orange"]`.
+   */
+  colors?: readonly [AsciiColor, ...AsciiColor[]];
+  /** Paper first, then the wave colours. Wins over `paper` and `colors`. */
+  palette?: AsciiPalette;
   /** Size of the blobs. Higher values pack more of them in. Default 1. */
   scale?: number;
   /** How far slow noise bends the interference pattern, 0 to 1. Default 0.3. */
   warp?: number;
-  /** How many times the colours cycle across one wave. Default 1.5. */
+  /** How many times the tones cycle across one wave. Default 2. */
   bands?: number;
+  /** How hard each band's edge is, 0 (a smooth swell) to 1 (a sharp crest). Default 0.5. */
+  crest?: number;
   /** The brightest tone, 0 to 1. Lower it to sit text on top. Default 1. */
   intensity?: number;
-};
+  /** What the pointer does to the glyphs. `interactive={false}` turns it off. Default `"none"`. */
+  interaction?: Interaction;
+}
 
+// plasmaWave returns the tone and the wave phase, so the colour field can
+// cycle hue at a different rate from the glyph density.
 const FIELD = `
-float field(vec2 uv, vec2 res, float t) {
+vec2 plasmaWave(vec2 uv, vec2 res, float t) {
   float aspect = res.x / res.y;
-  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5) * 4.2 * plasmaScale;
+  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5) * 7.5 * plasmaScale;
 
   // A slow noise warp keeps the classic sine pattern from looking mechanical.
   vec2 warp = vec2(
@@ -37,18 +55,45 @@ float field(vec2 uv, vec2 res, float t) {
   vec2 orbit = vec2(sin(t * 0.13) * 1.6, cos(t * 0.11) * 1.2);
   v += sin(length(p - orbit) * 1.4 - t * 0.29);
 
-  float tone = 0.5 + 0.5 * sin(v * 0.785398 * plasmaBands);
-  // Bias towards paper so the darks open up and only the crests reach ink.
-  tone = pow(smoothstep(0.05, 1.0, tone), 1.7);
-  return tone * plasmaIntensity;
+  float wave = 0.5 + 0.5 * sin(v * 0.785398 * plasmaBands);
+  // Crests sharpen the top of each band so the densest glyphs gather in
+  // clear ridges, with open troughs between them.
+  float lo = mix(0.0, 0.25, plasmaCrest);
+  float tone = smoothstep(lo, 1.0, wave);
+  tone = pow(tone, mix(1.1, 2.2, plasmaCrest));
+  return vec2(tone * plasmaIntensity, v);
+}
+
+float field(vec2 uv, vec2 res, float t) {
+  return plasmaWave(uv, res, t).x;
 }
 `;
 
-const DEFAULT_PLASMA_PALETTE: AsciiPalette = [
-  "--ascii-paper",
-  "--chart-5",
-  "--ascii-ink",
-];
+// A triangle wave over the phase walks the palette forward and back, so
+// neighbouring bands always share a colour edge.
+const COLOR_FIELD = `
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  float v = plasmaWave(uv, res, t).y;
+  float phase = fract(v * 0.125 + t * 0.02);
+  return paletteColor(abs(phase * 2.0 - 1.0)).rgb;
+}
+`;
+
+const PLASMA_COLORS = [
+  "purple",
+  "ink",
+  "orange",
+] as const satisfies readonly AsciiColor[];
+
+/** A phosphor brings its own ink and glass, so ours only apply without one. */
+const ownColors = (
+  phosphor: PhosphorName | undefined,
+  ink: AsciiColor,
+  paper: AsciiColor
+) => (phosphor === undefined ? { ink, paper } : {});
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
 /** Soft overlapping blobs in the palette's colours, shown without WebGL. */
 const fallbackImage = (palette: AsciiPalette, intensity: number) => {
@@ -64,35 +109,58 @@ const fallbackImage = (palette: AsciiPalette, intensity: number) => {
 };
 
 /**
- * Classic plasma: overlapping sine waves that flow into each other, drawn as
- * a dither. Works in two colours or a whole palette. Decorative and
- * full-bleed: size it with `className`, usually `absolute inset-0`.
+ * Classic demoscene plasma drawn in glyphs: overlapping sine waves that
+ * flow into each other while the colour cycles through a palette.
+ * Decorative and full-bleed: size it with `className`, usually
+ * `absolute inset-0`.
  */
 export const Plasma = ({
+  paper = "--ascii-paper",
+  colors = PLASMA_COLORS,
+  palette,
   scale = 1,
   warp = 0.3,
-  bands = 1.5,
+  bands = 2,
+  crest = 0.5,
   intensity = 1,
-  palette = DEFAULT_PLASMA_PALETTE,
+  charset = "standard",
+  colorMode = "truecolor",
+  cell = 12,
+  interaction = "none",
+  interactive = true,
+  phosphor,
   stillTime = 9,
   ...props
-}: PlasmaProps) => (
-  <AsciiShader
-    {...props}
-    field={FIELD}
-    palette={palette}
-    stillTime={stillTime}
-    uniforms={{
-      plasmaBands: Math.max(0.1, bands),
-      plasmaIntensity: Math.min(1, Math.max(0, intensity)),
-      plasmaScale: Math.max(0.05, scale),
-      plasmaWarp: Math.max(0, warp),
-    }}
-    fallback={
-      <div
-        className="absolute inset-0"
-        style={{ backgroundImage: fallbackImage(palette, intensity) }}
-      />
-    }
-  />
-);
+}: PlasmaProps) => {
+  const [first, ...rest] = colors;
+  const ramp: AsciiPalette = palette ?? [paper, first, ...rest];
+
+  return (
+    <AsciiShader
+      {...props}
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      phosphor={phosphor}
+      {...ownColors(phosphor, ramp.at(-1) ?? first, ramp[0])}
+      interaction={interactive ? interaction : "none"}
+      field={FIELD}
+      colorField={COLOR_FIELD}
+      palette={ramp}
+      stillTime={stillTime}
+      uniforms={{
+        plasmaBands: Math.max(0.1, bands),
+        plasmaCrest: clamp(crest, 0, 1),
+        plasmaIntensity: clamp(intensity, 0, 1),
+        plasmaScale: Math.max(0.05, scale),
+        plasmaWarp: Math.max(0, warp),
+      }}
+      fallback={
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: fallbackImage(ramp, intensity) }}
+        />
+      }
+    />
+  );
+};

@@ -7,7 +7,9 @@ export default function HalftoneSpotlight() {
         source="radial"
         center={[0.5, 1.2]}
         radius={0.62}
-        color="orange"
+        ink="orange"
+        charset="dots"
+        pitch={2}
         background="transparent"
         className="absolute inset-0 -z-10"
       />

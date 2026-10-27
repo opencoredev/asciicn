@@ -6,7 +6,7 @@ export default function RetroGridSunset() {
       horizon={0.46}
       sun={0.5}
       columns={14}
-      cell={4}
+      cell={10}
       palette={[
         "oklch(0.18 0.05 300)",
         "oklch(0.4 0.17 330)",

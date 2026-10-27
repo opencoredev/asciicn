@@ -9,15 +9,16 @@ export default function BeamsHeadline() {
         spread={50}
         rays={7}
         reach={0.8}
-        palette={["--ascii-paper", "--chart-5", "--chart-1", "--chart-3"]}
+        charset="dense"
+        farColor="purple"
         className="absolute inset-0 -z-10"
       />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance">
         Now on stage
       </h3>
       <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        A spotlight from just above the frame, fading out before it reaches the
-        text.
+        A spotlight from just above the frame, cooling to purple and fading out
+        before it reaches the text.
       </p>
     </section>
   );

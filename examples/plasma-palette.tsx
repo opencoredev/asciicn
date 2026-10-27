@@ -1,17 +1,14 @@
 import { Plasma } from "@/components/asciicn/plasma";
 
+// Duotone mode reads the tone through a named ramp instead of the palette.
 export default function PlasmaPalette() {
   return (
     <Plasma
-      palette={[
-        "--background",
-        "--chart-5",
-        "--chart-4",
-        "--chart-1",
-        "--chart-3",
-      ]}
+      colorMode="duotone"
+      ramp="outrun"
+      charset="dense"
       bands={1.6}
-      matrix="blue-noise"
+      crest={0.3}
       className="absolute inset-0"
     />
   );

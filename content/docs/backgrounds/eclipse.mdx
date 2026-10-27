@@ -1,10 +1,10 @@
 ---
 title: "Eclipse"
-description: "A dark disc with a glowing rim and a soft corona that breathes slowly, for launch pages and event heroes."
+description: "An eclipse drawn in glyphs: a dark disc with a hot rim and a corona of streamers that breathes slowly."
 ---
 
 import EclipseDemo from "@/examples/eclipse-demo";
-import { controls as eclipseControls } from "@/examples/eclipse-controls";
+import { controls as demoControls } from "@/examples/eclipse-controls";
 import EclipseHeadline from "@/examples/eclipse-headline";
 import EclipseAmber from "@/examples/eclipse-amber";
 
@@ -12,7 +12,7 @@ import EclipseAmber from "@/examples/eclipse-amber";
   src="examples/eclipse-demo.tsx"
   size="full"
   align="stretch"
-  controls={eclipseControls}
+  controls={demoControls}
 >
   <EclipseDemo />
 </ComponentPreview>
@@ -36,23 +36,27 @@ export function Hero() {
 }
 ```
 
-A disc in `skyColor` sits in front of a light in `rimColor`. A thin rim hugs the edge and is brightest on the `light` side, like the crescent of a real eclipse. Around it, a halo fades outwards with slow variations in strength, and the whole glow breathes on a slow ten-second cycle.
+The disc is the paper colour, so it reads as a hole in the glyphs. A thin rim runs round it, brightest on the side `light` points to, and the corona reaches out by `corona`, broken into spokes by `streamers`. `pulse` lets the whole glow breathe.
+
+It uses the `standard` charset by default, so the corona falls off from `@` at the rim through `#`, `+` and `:` to `.` at its edge. `dense` gives a finer, busier halo, and `braille` shows the streamers as sharp spikes of dots.
+
+In `truecolor` mode, the default, the rim takes `rimColor`, which runs hotter than the corona by default, and the corona takes `ink`. In `mono` mode everything takes `ink` or a `phosphor`.
 
 ## Examples
 
 ### Beside a headline
 
-The disc sits in the top right with a short corona, lit from the lower left, and the text sits in the clear space below it. This layout holds from phone to desktop widths.
+Moving `center` to the upper right leaves room for text on the left. `light` at 225° turns the hottest part of the rim towards the copy below it.
 
 <ComponentPreview src="examples/eclipse-headline.tsx" size="lg" align="stretch">
   <EclipseHeadline />
 </ComponentPreview>
 
-### Amber on warm black
+### Amber terminal
 
-Explicit colours instead of theme tokens, a smaller disc, a wider corona and the full `pulse`. The 8×8 matrix gives a finer texture.
+`phosphor="p3"` in `mono` mode, the `cp437` charset and full `streamers` give a long, ragged corona, with an `fx` bloom on top.
 
-<ComponentPreview src="examples/eclipse-amber.tsx" size="full" align="stretch">
+<ComponentPreview src="examples/eclipse-amber.tsx" size="lg" align="stretch">
   <EclipseAmber />
 </ComponentPreview>
 
@@ -61,8 +65,33 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
 <PropsTable
   rows={[
     {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The corona.",
+    },
+    {
+      name: "rimColor",
+      type: "AsciiColor",
+      default: "ink mixed halfway to the text colour",
+      description: "The thin rim, in truecolor and palette modes.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The sky and the disc.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, ink, rimColor]",
+      description:
+        "Every colour at once: sky, corona, then rim. Wins over ink, rimColor and paper.",
+    },
+    {
       name: "center",
-      type: "[x: number, y: number]",
+      type: "[number, number]",
       default: "[0.5, 0.5]",
       description:
         "Centre of the disc, as fractions of the box from the top left.",
@@ -76,15 +105,21 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
     {
       name: "corona",
       type: "number",
-      default: "0.5",
-      description: "How far the halo reaches past the rim, from 0 to 1.",
+      default: "0.55",
+      description: "How far the corona reaches past the rim, from 0 to 1.",
+    },
+    {
+      name: "streamers",
+      type: "number",
+      default: "0.6",
+      description: "Spokes in the corona, from 0 (a smooth halo) to 1.",
     },
     {
       name: "light",
       type: "number",
       default: "315",
       description:
-        "Where the rim is brightest, in degrees as in CSS: 0 is the top.",
+        "Where the rim is brightest, in degrees as in CSS. 0 is the top.",
     },
     {
       name: "pulse",
@@ -93,35 +128,114 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
       description: "How much the glow breathes, from 0 (steady) to 1.",
     },
     {
-      name: "rimColor",
-      type: "AsciiColor",
-      default: '"--ascii-ink"',
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
       description:
-        'Colour of the rim and halo: a palette name such as "orange", a CSS variable name, or any CSS colour.',
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
     },
     {
-      name: "skyColor",
-      type: "AsciiColor",
-      default: '"--ascii-paper"',
-      description: "Colour of the sky and the disc.",
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor uses rimColor on the rim and ink in the corona; mono uses ink; palette maps tone to the palette.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the halo shifts and breathes.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -131,17 +245,37 @@ Explicit colours instead of theme tokens, a smaller disc, a wider corona and the
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "5",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
-      description: "Size and position. The eclipse fills this box.",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
 
 ## Notes
 
-- The eclipse is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS disc and ring.
-- The disc is the sky colour, so on a light theme it reads as a pale disc with a coloured ring. Pass a dark `skyColor` for a dark disc on any theme.
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS disc inside a soft ring.
+- Samples inside the disc return early, so a large disc costs less. See [Performance](/docs/engine/performance).

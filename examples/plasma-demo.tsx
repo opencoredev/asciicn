@@ -2,21 +2,21 @@
 
 import { Plasma } from "@/components/asciicn/plasma";
 import { usePreviewValue } from "@/components/preview-controls";
-import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/plasma-controls";
 
 export default function PlasmaDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const scale = usePreviewValue(knobs.scale);
-  const warp = usePreviewValue(knobs.warp);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <Plasma
-      palette={["--ascii-paper", toward(tint, 45), tint]}
-      scale={scale}
-      warp={warp}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      scale={usePreviewValue(knobs.scale)}
+      warp={usePreviewValue(knobs.warp)}
+      bands={usePreviewValue(knobs.bands)}
+      crest={usePreviewValue(knobs.crest)}
+      intensity={usePreviewValue(knobs.intensity)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

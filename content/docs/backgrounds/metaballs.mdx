@@ -1,18 +1,18 @@
 ---
 title: "Metaballs"
-description: "Soft blobs that drift, merge and split like a lava lamp, drawn as a dither."
+description: "Soft blobs drawn in glyphs that drift, merge and split like a lava lamp, solid with a bright rim or ringed with contour lines."
 ---
 
 import MetaballsDemo from "@/examples/metaballs-demo";
-import { controls as metaballsControls } from "@/examples/metaballs-controls";
-import MetaballsRings from "@/examples/metaballs-rings";
+import { controls as demoControls } from "@/examples/metaballs-controls";
 import MetaballsLamp from "@/examples/metaballs-lamp";
+import MetaballsRings from "@/examples/metaballs-rings";
 
 <ComponentPreview
   src="examples/metaballs-demo.tsx"
   size="full"
   align="stretch"
-  controls={metaballsControls}
+  controls={demoControls}
 >
   <MetaballsDemo />
 </ComponentPreview>
@@ -36,24 +36,30 @@ export function Hero() {
 }
 ```
 
-Each blob rises and sinks on its own slow loop. Where two come close, their edges reach for each other and join, then pull apart again. Every blob is densest at its core and has a soft halo around its edge.
+Each blob rises and sinks on its own slow loop. Where two come close their fields add up and they flow into one shape, then pull apart again. In a tall box the blobs are sized by the width, so they still fit.
+
+`variant="solid"`, the default, fills each blob densest at its core and draws a bright rim along the edge, with a faint halo outside. `variant="rings"` draws contour lines around the blobs instead, which ripple outwards over time.
+
+The `blocks` charset is the default: the rim is a line of `█` and each blob shades inwards from `▒` to `█`, with a `░` halo outside. `standard` shades with `+`, `#` and `@`, `quadrants` and `braille` draw flat, smooth-edged shapes, and `braille` suits the rings.
+
+In `truecolor` mode each blob takes the next entry of `colors`, and merging blobs blend. In `palette` mode, the default, the glyphs take `colors` by tone.
 
 ## Examples
 
-### Contour rings
-
-`variant="rings"` draws contour lines around the blobs instead of filling them. The rings merge and split with the blobs.
-
-<ComponentPreview src="examples/metaballs-rings.tsx" size="lg" align="stretch">
-  <MetaballsRings />
-</ComponentPreview>
-
 ### Lava lamp
 
-Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow box the blobs are sized by its width.
+Three warm `colors` in `truecolor` mode, so the wax blends as blobs merge. The tall, rounded box sizes the blobs by its width.
 
 <ComponentPreview src="examples/metaballs-lamp.tsx">
   <MetaballsLamp />
+</ComponentPreview>
+
+### Rings
+
+`variant="rings"` with the `braille` charset draws fine contour lines that ring each blob.
+
+<ComponentPreview src="examples/metaballs-rings.tsx" size="lg" align="stretch">
+  <MetaballsRings />
 </ComponentPreview>
 
 ## Props
@@ -61,11 +67,31 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
 <PropsTable
   rows={[
     {
+      name: "colors",
+      type: "[AsciiColor, ...AsciiColor[]]",
+      default: '["ink"]',
+      description:
+        "Blob colours, handed out in turn. Merging blobs blend in truecolor mode.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The paper behind the glyphs. Ignored when palette is set.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, ...colors]",
+      description:
+        "Paper first, then the blob colours. Wins over paper and colors.",
+    },
+    {
       name: "variant",
       type: '"solid" | "rings"',
       default: '"solid"',
       description:
-        "Shaded blobs with a soft halo, or contour lines around them.",
+        "Solid blobs with a bright rim, or rings of contour lines around them.",
     },
     {
       name: "count",
@@ -77,27 +103,111 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
       name: "size",
       type: "number",
       default: "1",
-      description:
-        "Size of the blobs. In a tall box they are sized by the width.",
+      description: "Size of the blobs.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: '["--ascii-paper", "--ascii-ink"]',
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description: "Which glyphs draw the tones. See Charsets.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"palette"',
+      description:
+        "How glyphs are coloured. palette maps tone to the colours; truecolor gives each blob its own; mono uses one ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
@@ -113,6 +223,26 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "20",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
@@ -124,6 +254,6 @@ Five blobs in warm colours, sped up a little, in a tall rounded box. In a narrow
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows soft CSS blobs in the same colours.
-- It costs one small draw per frame at 30 fps, at one pixel per dither cell. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows soft CSS blobs in the first colour.
+- Each sample adds up every blob, so more `count` costs more. `rings` samples three times to find the line width. See [Performance](/docs/engine/performance).

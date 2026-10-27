@@ -1,7 +1,34 @@
-import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES, CHARSET_NAMES, COLOR_MODES } from "@/lib/ascii";
+import {
+  color,
+  segmented,
+  select,
+  slider,
+  toggle,
+} from "@/lib/preview-controls";
 
-// Knobs for the halftone's main demo, shared by the page and the demo.
+// Knobs for the halftone main demo, shared by the page and the demo.
+
+export const charset = select({
+  default: "braille",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
+});
+
+export const colorMode = select({
+  default: "truecolor",
+  id: "colorMode",
+  label: "Colour mode",
+  options: COLOR_MODES,
+});
+
+export const ink = color({
+  default: "ink",
+  id: "ink",
+  label: "Ink",
+  options: ASCII_COLOR_NAMES,
+});
 
 export const source = segmented({
   default: "noise",
@@ -10,28 +37,13 @@ export const source = segmented({
   options: ["noise", "radial", "linear"],
 });
 
-export const inks = segmented({
-  default: "one",
-  id: "inks",
-  label: "Inks",
-  options: ["one", "two", "three"],
-});
-
-export const ink = color({
-  default: "blue",
-  id: "color",
-  label: "Ink",
-  options: ASCII_COLOR_NAMES,
-});
-
-export const size = slider({
-  default: 10,
-  id: "size",
-  label: "Size",
-  max: 24,
-  min: 5,
-  step: 1,
-  unit: "px",
+export const pitch = slider({
+  default: 3,
+  id: "pitch",
+  label: "Pitch",
+  max: 6,
+  min: 1,
+  step: 0.5,
 });
 
 export const angle = slider({
@@ -41,13 +53,13 @@ export const angle = slider({
   max: 90,
   min: 0,
   step: 5,
-  unit: "°",
+  unit: "\u00B0",
 });
 
 export const intensity = slider({
-  default: 0.9,
+  default: 0.95,
   id: "intensity",
-  label: "Intensity",
+  label: "Dot size",
   max: 1,
   min: 0.3,
   step: 0.05,
@@ -57,9 +69,26 @@ export const drift = slider({
   default: 1,
   id: "drift",
   label: "Drift",
-  max: 4,
+  max: 3,
   min: 0,
-  step: 0.5,
+  step: 0.25,
+});
+
+export const interaction = segmented({
+  default: "none",
+  id: "interaction",
+  label: "Pointer",
+  options: ["none", "repel", "ripple", "trail"],
+});
+
+export const cell = slider({
+  default: 12,
+  id: "cell",
+  label: "Cell",
+  max: 20,
+  min: 8,
+  step: 1,
+  unit: "px",
 });
 
 export const animate = toggle({
@@ -70,12 +99,15 @@ export const animate = toggle({
 
 /** Display order of the tray. */
 export const controls = [
-  source,
-  inks,
+  charset,
+  colorMode,
   ink,
-  size,
+  source,
+  pitch,
   angle,
   intensity,
   drift,
+  interaction,
+  cell,
   animate,
 ];

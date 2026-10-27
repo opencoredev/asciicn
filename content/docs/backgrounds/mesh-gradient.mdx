@@ -1,18 +1,18 @@
 ---
 title: "Mesh gradient"
-description: "Three to five colour blobs that drift and melt into each other, drawn as a dither, for heroes and sign-up screens."
+description: "Three to five colour blobs drawn in glyphs that drift and melt into each other: density follows the blobs, colour blends where they meet."
 ---
 
 import MeshGradientDemo from "@/examples/mesh-gradient-demo";
-import { controls as meshGradientControls } from "@/examples/mesh-gradient-controls";
-import MeshGradientSunset from "@/examples/mesh-gradient-sunset";
+import { controls as demoControls } from "@/examples/mesh-gradient-controls";
 import MeshGradientSignup from "@/examples/mesh-gradient-signup";
+import MeshGradientSunset from "@/examples/mesh-gradient-sunset";
 
 <ComponentPreview
   src="examples/mesh-gradient-demo.tsx"
   size="full"
   align="stretch"
-  controls={meshGradientControls}
+  controls={demoControls}
 >
   <MeshGradientDemo />
 </ComponentPreview>
@@ -36,25 +36,17 @@ export function Hero() {
 }
 ```
 
-Each blob drifts on its own slow orbit. Where two meet, their colours blend through the palette before the dither, so the seams read as soft gradients instead of edges. The default palette uses tints of your theme's `--ascii-ink` with a touch of violet.
+Each blob drifts on its own slow loop, and a soft noise warp bends their edges. Two things come out of them: how dense the glyphs are, highest in the cores, and which colour they take, blended between the blobs that overlap there. `contrast` sets how much the density follows the blobs; at 0 the glyphs are even and only the colour moves.
+
+The `dots` charset is the default: the cores fill with `●` and the seams thin out to `·`, like coloured ink on newsprint. `standard` gives a typed look, and `blocks` fills the cores with `█`.
+
+Colour carries this piece, so `truecolor` is the default. Blob `i` takes `colors[i]`. In `palette` mode the colours are read by density instead, and in `mono` mode only the glyph density moves.
 
 ## Examples
 
-### Five blobs, warm palette
+### Behind a sign-up form
 
-`palette` starts with paper and then takes one colour per blob. Pass `blobs + 1` colours to give each blob its own; the order sets which colours sit next to each other where blobs meet. Blue noise, the default, keeps the grain even across so many tones.
-
-<ComponentPreview
-  src="examples/mesh-gradient-sunset.tsx"
-  size="lg"
-  align="stretch"
->
-  <MeshGradientSunset />
-</ComponentPreview>
-
-### Behind a form
-
-Three large blobs, bigger cells and a slower `speed` make a calm backdrop. The form sits on a translucent panel so the colour shows around it without hurting the text.
+Three large, slow blobs and a lower `contrast` give the form a calm, even ground. Bigger cells keep the glyphs from competing with the inputs.
 
 <ComponentPreview
   src="examples/mesh-gradient-signup.tsx"
@@ -64,15 +56,47 @@ Three large blobs, bigger cells and a slower `speed` make a calm backdrop. The f
   <MeshGradientSignup />
 </ComponentPreview>
 
+### Sunset
+
+Five warm `colors` from violet to gold, in `dense` glyphs on 10px cells.
+
+<ComponentPreview
+  src="examples/mesh-gradient-sunset.tsx"
+  size="lg"
+  align="stretch"
+>
+  <MeshGradientSunset />
+</ComponentPreview>
+
 ## Props
 
 <PropsTable
   rows={[
     {
+      name: "colors",
+      type: "[AsciiColor, ...AsciiColor[]]",
+      default: '["ink", "purple", "pink", "orange", "blue"]',
+      description:
+        "The blob colours. Blob i takes colour i, and colours blend where blobs meet.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The paper behind the glyphs. Ignored when palette is set.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, ...colors]",
+      description:
+        "Paper first, then the blob colours. Wins over paper and colors.",
+    },
+    {
       name: "blobs",
-      type: "3 | 4 | 5",
+      type: "number",
       default: "4",
-      description: "How many colour blobs drift across the box.",
+      description: "How many blobs, from 3 to 5.",
     },
     {
       name: "size",
@@ -81,23 +105,121 @@ Three large blobs, bigger cells and a slower `speed` make a calm backdrop. The f
       description: "Size of each blob as a share of the box height.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "Paper, then four tints of --ascii-ink",
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "warp",
+      type: "number",
+      default: "0.35",
+      description: "How far slow noise bends the blobs, from 0 to 1.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"blue-noise"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "contrast",
+      type: "number",
+      default: "0.7",
+      description:
+        "How much glyph density follows the blobs, from 0 (even) to 1 (dense cores, sparse gaps).",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor blends the blob colours; palette reads them by density; mono uses one ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
@@ -113,6 +235,26 @@ Three large blobs, bigger cells and a slower `speed` make a calm backdrop. The f
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
@@ -124,6 +266,6 @@ Three large blobs, bigger cells and a slower `speed` make a calm backdrop. The f
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS approximation in the same colours.
-- It costs one small draw per frame at 30 fps, at one pixel per dither cell. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows blurred CSS gradients in the blob colours.
+- It costs one GPU pass per frame at 30 fps. See [Performance](/docs/engine/performance).

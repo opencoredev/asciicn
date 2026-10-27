@@ -1,18 +1,18 @@
 ---
 title: "Contours"
-description: "A topographic map drawn as a dither: contour lines over slowly drifting hills, with heavier index lines and a light hillshade."
+description: "A topographic map drawn in glyphs: contour lines over slowly drifting hills, with heavier index lines and a light hillshade."
 ---
 
 import ContoursDemo from "@/examples/contours-demo";
-import { controls as contoursControls } from "@/examples/contours-controls";
-import ContoursSurvey from "@/examples/contours-survey";
+import { controls as demoControls } from "@/examples/contours-controls";
 import ContoursHeadline from "@/examples/contours-headline";
+import ContoursSurvey from "@/examples/contours-survey";
 
 <ComponentPreview
   src="examples/contours-demo.tsx"
   size="full"
   align="stretch"
-  controls={contoursControls}
+  controls={demoControls}
 >
   <ContoursDemo />
 </ComponentPreview>
@@ -28,7 +28,7 @@ import { Contours } from "@/components/asciicn/contours";
 
 export function Section() {
   return (
-    <section className="relative isolate min-h-[480px]">
+    <section className="relative isolate min-h-[420px]">
       <Contours className="absolute inset-0 -z-10" />
       <h2>Your heading</h2>
     </section>
@@ -36,25 +36,17 @@ export function Section() {
 }
 ```
 
-Contour lines trace even steps of height across a field of low hills. Every fifth line is drawn heavier, as on a survey map, and slopes facing away from a light in the top left pick up a light stipple. The hills drift and slowly change shape. They keep their size in pixels, so a narrow box shows a smaller piece of the same map rather than a squashed one.
+The hills are smooth noise that drifts slowly. `lines` sets how many contour lines run from the lowest ground to the highest, and every `index`th line is drawn heavier, as on a survey map. `relief` shades the slopes that face away from a light in the top left, so the hills read between the lines.
+
+The `braille` charset is the default: each glyph holds 2×4 dots, so a line one sample wide is a single trail of dots and index lines, drawn wider, come out as a double trail. `weight` sets the line width in samples. Ramp charsets such as `standard` draw ordinary lines at mid tone and index lines in the densest glyphs, like a heavier pen; give them a `weight` of 2 or more so the lines stay unbroken.
+
+In `palette` mode, the default, ordinary lines take `lineColor` and index lines take `ink`. In `truecolor` mode the colour follows height instead, from `lineColor` in the valleys to `ink` on the peaks.
 
 ## Examples
 
-### Survey map
+### Quiet behind a headline
 
-More `lines`, a smaller `scale` and a little more `relief` in green and brown give an old ordnance survey sheet. `cell={2}` keeps the lines fine.
-
-<ComponentPreview
-  src="examples/contours-survey.tsx"
-  size="full"
-  align="stretch"
->
-  <ContoursSurvey />
-</ComponentPreview>
-
-### Behind a headline
-
-Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the ink so the lines never reach full contrast.
+Fewer lines, no index lines and no relief keep it calm. Two soft tints of the ink as `lineColor` and `ink` leave the text the strongest thing on the page.
 
 <ComponentPreview
   src="examples/contours-headline.tsx"
@@ -64,14 +56,47 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
   <ContoursHeadline />
 </ComponentPreview>
 
+### Survey sheet
+
+`truecolor` tints by height: a green `lineColor` in the valleys, a brown `ink` on the peaks and parchment `paper` give the colours of a printed map.
+
+<ComponentPreview src="examples/contours-survey.tsx" size="lg" align="stretch">
+  <ContoursSurvey />
+</ComponentPreview>
+
 ## Props
 
 <PropsTable
   rows={[
     {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The index lines, and the high ground in truecolor mode.",
+    },
+    {
+      name: "lineColor",
+      type: "AsciiColor",
+      default: "ink at 45% over paper",
+      description: "The ordinary lines, and the low ground in truecolor mode.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The map behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, lineColor, ink]",
+      description:
+        "Every colour at once: paper, then low to high. Wins over ink, lineColor and paper.",
+    },
+    {
       name: "lines",
       type: "number",
-      default: "14",
+      default: "12",
       description:
         "How many contour lines from the lowest ground to the highest, from 4 to 32.",
     },
@@ -91,34 +116,125 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
     {
       name: "relief",
       type: "number",
-      default: "0.5",
+      default: "0.4",
       description:
         "How strongly slopes facing away from the light are shaded, from 0 to 1.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "Paper, a tint of --ascii-ink, then --ascii-ink",
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "weight",
+      type: "number",
+      default: "1.2",
+      description: "Line width in samples, from 0.6 (hairline) to 3.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"palette"',
+      description:
+        "How glyphs are coloured. palette uses lineColor and ink by line weight; truecolor tints by height; mono uses ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the hills drift.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -128,10 +244,30 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
       default: "–",
-      description: "Size and position. The map fills this box.",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
@@ -139,5 +275,6 @@ Set `index` and `relief` to 0 for plain lines, and pass two soft tints of the in
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows faint CSS rings.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows faint CSS rings in the same colours.
+- Each sample reads the terrain three times to measure its slope. It stays one GPU pass per frame. See [Performance](/docs/engine/performance).

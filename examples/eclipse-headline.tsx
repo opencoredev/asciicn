@@ -16,7 +16,7 @@ export default function EclipseHeadline() {
         </h3>
         <p className="text-muted-foreground text-sm text-pretty">
           The disc sits high on the right and is lit from the lower left, so the
-          brightest edge of the rim faces the text below it.
+          hottest part of the rim faces the text below it.
         </p>
       </div>
     </section>

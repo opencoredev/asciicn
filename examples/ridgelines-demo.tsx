@@ -5,17 +5,19 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ridgelines-controls";
 
 export default function RidgelinesDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const lines = usePreviewValue(knobs.lines);
-  const amplitude = usePreviewValue(knobs.amplitude);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <Ridgelines
-      palette={["--ascii-paper", tint]}
-      lines={lines}
-      amplitude={amplitude}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
+      farColor={usePreviewValue(knobs.far)}
+      lines={usePreviewValue(knobs.lines)}
+      amplitude={usePreviewValue(knobs.amplitude)}
+      spread={usePreviewValue(knobs.spread)}
+      shade={usePreviewValue(knobs.shade)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

@@ -1,20 +1,19 @@
 ---
 title: "Aurora"
-description: "Curtains of light that fold, sway and shimmer, drawn as a dither, with knobs for colour, rays, tilt and drift."
+description: "Curtains of light drawn in Braille glyphs, each with a bright folded edge and rays that fade up into a second colour."
 ---
 
 import AuroraDemo from "@/examples/aurora-demo";
-import { controls as auroraControls } from "@/examples/aurora-controls";
+import { controls as demoControls } from "@/examples/aurora-controls";
 import AuroraHero from "@/examples/aurora-hero";
 import AuroraBorealis from "@/examples/aurora-borealis";
-import AuroraCta from "@/examples/aurora-cta";
-import AuroraBanner from "@/examples/aurora-banner";
+import AuroraTerminal from "@/examples/aurora-terminal";
 
 <ComponentPreview
   src="examples/aurora-demo.tsx"
   size="full"
   align="stretch"
-  controls={auroraControls}
+  controls={demoControls}
 >
   <AuroraDemo />
 </ComponentPreview>
@@ -40,17 +39,15 @@ export function Hero() {
 
 Each curtain has a bright lower edge that folds slowly, with rays that fade as they rise. Further curtains hang higher and dimmer. `height` sets where the lowest edge hangs, so you can keep the area under it clear for text.
 
-The props group into three jobs:
+It draws in `braille` by default: each glyph holds a 2×4 grid of dots, so the edges stay thin and the rays read as fine needles. Switch `charset` to `standard` or `dense` for a coarser, typed look, or to `blocks` for solid bands.
 
-- Shape: `curtains`, `height`, `spread`, `sway`, `turbulence`, `rays`, `length`.
-- Light and colour: `color` for the edges, `tipColor` for the tops of the rays, `background`, `glow`, `intensity`, `shimmer`. Pass `palette` to set every tone yourself.
-- Placement and motion: `tilt`, `scale`, `drift`, `direction`, `mask`, plus the engine's `speed`, `cell` and `matrix`.
+In `truecolor` mode, the default, colour follows height: `ink` at the bright edge, `tipColor` where the rays fade out. In `mono` mode every glyph takes `ink` (or a `phosphor`), and in `duotone` mode the tone runs through a `ramp`.
 
 ## Examples
 
 ### Above a headline
 
-Raising `height` lifts the curtains off the lower third, where the headline sits on clean paper. A `tipColor` of `"blue"` shifts the tops of the rays to a second, cooler hue, and `mask="edges"` fades the sides.
+Raising `height` lifts the curtains off the lower third, where the headline sits on clean paper. A `tipColor` of `"blue"` cools the tops of the rays, and `mask="edges"` fades the sides.
 
 <ComponentPreview src="examples/aurora-hero.tsx" size="lg" align="stretch">
   <AuroraHero />
@@ -58,26 +55,18 @@ Raising `height` lifts the curtains off the lower third, where the headline sits
 
 ### Northern lights
 
-Your own colours turn it into the real thing: green edges, violet tips and a night-sky `background`. Four curtains, longer rays, a slight `tilt` and a little `drift` give it depth.
+Your own colours make it a night sky: green edges, violet tips and a deep blue `paper`. Four curtains, longer rays, a slight `tilt` and some `drift` add depth.
 
 <ComponentPreview src="examples/aurora-borealis.tsx" size="lg" align="stretch">
   <AuroraBorealis />
 </ComponentPreview>
 
-### Hanging over a call to action
+### On a green phosphor monitor
 
-`direction="down"` flips the curtains so the rays fall from the top and the button sits on clear paper below. Few broad `rays` and 4px cells give it a coarser, poster-like grain.
+`colorMode="mono"` with `phosphor="p1"` draws every glyph in one CRT green on near-black glass. The `standard` charset and `fx` scanlines, bloom and vignette finish the look.
 
-<ComponentPreview src="examples/aurora-cta.tsx" size="lg" align="stretch">
-  <AuroraCta />
-</ComponentPreview>
-
-### Still, in a banner
-
-With `animate={false}` it draws one frame. `stillTime` picks which moment, so you can choose a shape you like.
-
-<ComponentPreview src="examples/aurora-banner.tsx">
-  <AuroraBanner />
+<ComponentPreview src="examples/aurora-terminal.tsx">
+  <AuroraTerminal />
 </ComponentPreview>
 
 ## Props
@@ -85,23 +74,31 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
 <PropsTable
   rows={[
     {
-      name: "color",
+      name: "ink",
       type: "AsciiColor",
       default: '"--ascii-ink"',
-      description: "The bright lower edge of each curtain.",
+      description:
+        "The bright lower edge of each curtain. A palette name, a CSS variable name or any CSS colour.",
     },
     {
       name: "tipColor",
       type: "AsciiColor",
-      default: "color",
+      default: '"purple"',
       description:
-        "The faint tops of the rays. Set a second colour for a two-tone sky.",
+        "The tops of the rays, in truecolor and palette modes. Set it to the same colour as ink for one colour.",
     },
     {
-      name: "background",
+      name: "paper",
       type: "AsciiColor",
       default: '"--ascii-paper"',
-      description: "The sky behind.",
+      description: "The sky behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "[paper, tipColor, ink]",
+      description:
+        "Every colour at once: paper first, then the ray colours from tip to edge. Wins over ink, tipColor and paper.",
     },
     {
       name: "curtains",
@@ -151,7 +148,7 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
     {
       name: "glow",
       type: "number",
-      default: "0.9",
+      default: "1",
       description: "Brightness of the line along each edge, from 0 to 2.",
     },
     {
@@ -197,30 +194,108 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
       description: "Fades it to paper where your text sits.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "Built from the colour props",
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
       description:
-        "Takes over the colours: paper first, brightest last. Palette names, CSS variable names or any CSS colour.",
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer8"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor shades from ink at the edge to tipColor at the tips; mono uses ink; palette maps tone to the palette.",
     },
     {
-      name: "levels",
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
       type: "number",
-      default: "All the matrix can draw",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
       description:
-        "Tones the field snaps to before dithering. Low values give hard steps.",
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"blue-noise"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
@@ -236,16 +311,29 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
       name: "stillTime",
       type: "number",
-      default: "0",
+      default: "6",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
     {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
-      default: "\u2013",
+      default: "–",
       description: "Size and position. The background fills this box.",
     },
   ]}
@@ -254,6 +342,6 @@ With `animate={false}` it draws one frame. `stillTime` picks which moment, so yo
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS approximation in the same colours.
-- It costs one small draw per frame at 30 fps, at one pixel per dither cell. More `curtains` cost a little more per pixel. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a CSS glow along the edge in the same colours.
+- Glyphs are drawn on the GPU in one pass. More `curtains` cost a little more per sample, and `braille` samples eight times per cell. See [Performance](/docs/engine/performance).
