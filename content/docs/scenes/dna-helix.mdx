@@ -1,0 +1,153 @@
+---
+title: "DNA helix"
+description: "A rotating double helix in glyphs, with lit backbones that pass in front of each other and base-pair rungs coloured by base."
+---
+
+import DnaHelixDemo from "@/examples/dna-helix-demo";
+import DnaHelixFeature from "@/examples/dna-helix-feature";
+import DnaHelixTerminal from "@/examples/dna-helix-terminal";
+import { controls as dnaHelixControls } from "@/examples/dna-helix-controls";
+
+<ComponentPreview
+  src="examples/dna-helix-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={dnaHelixControls}
+>
+  <DnaHelixDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="dna-helix" />
+
+## Usage
+
+```tsx
+import { DnaHelix } from "@/components/asciicn/dna-helix";
+
+export function Hero() {
+  return <DnaHelix className="h-96 w-64" />;
+}
+```
+
+The two backbones and every rung are built from lit spheres, drawn into a depth buffer one sample at a time. Where a strand swings behind the other, or a rung passes behind a backbone, the nearer surface wins, so the helix stays readable at any angle and in any charset. Braille samples each cell 2×4 times, which gives the finest strands.
+
+The strands sit less than half a turn apart, as in real DNA, which opens a wide groove and a narrow one. Each rung is one base pair: A with T, or G with C. In truecolor each half takes its own base's colour, with a hairline gap in the middle where the pair bonds. The far side of the helix fades towards the paper, and the whole molecule slides slowly along its axis.
+
+Drag sideways to spin it. When it stands upright, drag up or down to tilt it. Let go mid-drag and it keeps spinning, then settles back to its own pace. With keyboard focus, the arrow keys spin and tilt it.
+
+## Examples
+
+### Beside a headline
+
+Upright in a narrow column on a transparent background, so it sits on the page instead of in a box.
+
+<ComponentPreview src="examples/dna-helix-feature.tsx" size="lg">
+  <DnaHelixFeature />
+</ComponentPreview>
+
+### Your own sequence
+
+`sequence` repeats any string of A, C, G and T along one strand, and the other strand pairs with it. Here it is GATTACA in the classic charset, with its own `baseColors`.
+
+<ComponentPreview src="examples/dna-helix-terminal.tsx" size="lg">
+  <DnaHelixTerminal />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"braille"`, plus `fx` for a CRT finish.
+
+<PropsTable
+  rows={[
+    {
+      name: "speed",
+      type: "number",
+      default: "0.6",
+      description:
+        "Spin around the helix axis, in radians per second. Negative spins the other way.",
+    },
+    {
+      name: "twist",
+      type: "number",
+      default: "1",
+      description:
+        "How tightly the strands wind. 1 is the shape of B-DNA, one turn every 3.4 radii; 2 winds twice as tight.",
+    },
+    {
+      name: "rungs",
+      type: "number",
+      default: "10",
+      description: "Base pairs per turn, 4 to 20.",
+    },
+    {
+      name: "scroll",
+      type: "number",
+      default: "1",
+      description:
+        "Base pairs per second that slide along the axis. 0 holds the helix in place.",
+    },
+    {
+      name: "orientation",
+      type: '"vertical" | "horizontal"',
+      default: '"vertical"',
+      description: "Which way the helix axis runs across the box.",
+    },
+    {
+      name: "sequence",
+      type: "string",
+      default: "A fixed mixed sequence",
+      description:
+        "Bases read along one strand and repeated. Letters other than A, C, G and T are skipped.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "Backbone colour in truecolor.",
+    },
+    {
+      name: "baseColors",
+      type: 'Partial<Record<"A" | "C" | "G" | "T", AsciiColor>>',
+      default: '{ A: "green", T: "pink", G: "orange", C: "blue" }',
+      description: "Rung colours by base in truecolor.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Drag or use the arrow keys to spin and tilt it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is announced as an image. Pass `aria-label` to describe what it stands for on your page.
+- Under reduced motion it draws one still frame and stays put.
+- It draws at up to 60 fps on the CPU and pauses offscreen and in hidden tabs. The cost grows with the number of samples, so a smaller box or a larger `cell` is cheaper.
+- On a touch screen, vertical swipes scroll the page. Sideways swipes spin the helix.

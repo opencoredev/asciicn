@@ -1,0 +1,155 @@
+---
+title: "Cyber skull"
+description: "A rotating low-poly skull in glyphs, lit to tones with edge-glyph wireframe, a hinged jaw, glowing eyes and a scan band."
+---
+
+import CyberSkullDemo from "@/examples/cyber-skull-demo";
+import CyberSkullInfrared from "@/examples/cyber-skull-infrared";
+import CyberSkullPanic from "@/examples/cyber-skull-panic";
+import { controls as cyberSkullControls } from "@/examples/cyber-skull-controls";
+
+<ComponentPreview
+  src="examples/cyber-skull-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={cyberSkullControls}
+>
+  <CyberSkullDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="cyber-skull" />
+
+## Usage
+
+```tsx
+import { CyberSkull } from "@/components/asciicn/cyber-skull";
+
+export function NotFound() {
+  return <CyberSkull className="aspect-square w-80" />;
+}
+```
+
+The skull is a mesh of about 3,200 triangles built in code when the component first draws. The cranium is a shell with sunken eye sockets, a nasal opening, a brow ridge, cheekbones and temples. An upper jaw holds one row of teeth, and a hinged mandible holds the other. Every face goes through a depth buffer, so the jaw, the teeth and the far side of the head hide behind whatever is in front of them from any angle.
+
+`shading` picks what you see. `solid` lights the faces to glyph tones, with the inside of the sockets in shadow and a rim light in `accent`. `wire` draws only the edges the camera can see, as `- / | \` glyphs, plus the outline. `both` lights the faces and draws the sockets, the nose, the jaw and the teeth over them. In Braille and quadrants the edges are drawn as lit dots instead of edge glyphs, so they stay as fine as the rest of the picture.
+
+`surface="faceted"` gives each face one tone, so the low-poly mesh shows. `smooth` blends the light across faces for a rounder bone.
+
+Drag sideways to turn it and up or down to nod it. Let go mid-drag and it coasts, then settles back to its own spin. With keyboard focus, the arrow keys turn it.
+
+## Examples
+
+### Wireframe on an error page
+
+`shading="wire"` in Braille with a red accent and the jaw held shut.
+
+<ComponentPreview src="examples/cyber-skull-panic.tsx" size="lg">
+  <CyberSkullPanic />
+</ComponentPreview>
+
+### Smooth bone in duotone
+
+`surface="smooth"` and `shading="solid"` in the dense charset, coloured by the `infrared` ramp, without the eye glow.
+
+<ComponentPreview src="examples/cyber-skull-infrared.tsx" size="lg">
+  <CyberSkullInfrared />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"standard"`, plus `fx` for a CRT finish.
+
+<PropsTable
+  rows={[
+    {
+      name: "shading",
+      type: '"solid" | "wire" | "both"',
+      default: '"both"',
+      description:
+        "Lit faces, visible edges only, or lit faces with the main edges drawn over them.",
+    },
+    {
+      name: "surface",
+      type: '"faceted" | "smooth"',
+      default: '"faceted"',
+      description: "One tone per face, or light blended across faces.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "0.5",
+      description:
+        "Turn around the vertical axis, in radians per second. Negative turns the other way.",
+    },
+    {
+      name: "jaw",
+      type: "boolean",
+      default: "true",
+      description: "Open and close the jaw in short bursts.",
+    },
+    {
+      name: "scan",
+      type: "boolean",
+      default: "true",
+      description:
+        'A bright band that sweeps down the bone. Not drawn with `shading="wire"`.',
+    },
+    {
+      name: "eyes",
+      type: "boolean",
+      default: "true",
+      description: "A pulsing glow deep in each eye socket.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "Bone colour in truecolor.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"blue"',
+      description:
+        "Edges, rim light, scan band and eyes in truecolor and the other colour modes.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Drag or use the arrow keys to turn it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is announced as an image. Pass `aria-label` to describe what it stands for on your page.
+- Under reduced motion it draws one still frame, with the jaw shut, and stays put.
+- It draws at up to 60 fps on the CPU and pauses offscreen and in hidden tabs. The mesh is built once and shared by every skull on the page.
+- On a touch screen, vertical swipes scroll the page. Sideways swipes turn the skull.

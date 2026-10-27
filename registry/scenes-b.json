@@ -1,0 +1,30 @@
+[
+  {
+    "name": "dna-helix",
+    "type": "registry:component",
+    "title": "DNA helix",
+    "description": "A rotating double helix in glyphs, with lit backbones that pass in front of each other and base-pair rungs coloured by base.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/dna-helix.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/dna-helix.tsx"
+      }
+    ]
+  },
+  {
+    "name": "cyber-skull",
+    "type": "registry:component",
+    "title": "Cyber skull",
+    "description": "A rotating low-poly skull in glyphs, lit to tones with edge-glyph wireframe, a hinged jaw, glowing eyes and a scan band.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/cyber-skull.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/cyber-skull.tsx"
+      }
+    ]
+  }
+]
