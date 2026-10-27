@@ -1,110 +1,124 @@
 ---
-title: "Dither engine"
-description: "How ascii-core, the engine behind every asciicn dither, turns a tone into dots: threshold matrices, levels, error diffusion, and the three ways to draw."
+title: "ASCII engine"
+description: "How the asciicn engine turns a field of tones into real glyphs, the two renderers that draw them, and the registry items you install."
 ---
 
-import ConceptMatrices from "@/examples/concept-matrices";
-import ConceptLevels from "@/examples/concept-levels";
-import ConceptDiffusion from "@/examples/concept-diffusion";
+import EnginePipeline from "@/examples/engine-pipeline";
+import EngineFills from "@/examples/engine-fills";
+import EnginePre from "@/examples/engine-pre";
+import { controls as pipelineControls } from "@/examples/engine-pipeline-controls";
 
-`ascii-core` is the dither engine. It installs into `lib/ascii` as plain source, with the [agent skill](/docs/installation) or the first time you add an example, and every dither on this site is built on it. Import it to build your own:
+Every asciicn component draws characters. A picture becomes a grid of glyph cells, each cell gets a tone between 0 (empty) and 1 (densest ink), and the engine picks the glyph that matches that tone. It installs into `lib/ascii` as plain source you own.
+
+<ComponentPreview
+  src="examples/engine-pipeline.tsx"
+  size="lg"
+  align="stretch"
+  controls={pipelineControls}
+>
+  <EnginePipeline />
+</ComponentPreview>
 
 ```tsx
-import { asciiMaskStyle, ditherImage } from "@/lib/ascii";
+import { AsciiGrid, mapTones } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
+import { toSvg } from "@/lib/ascii/export";
 ```
 
-It draws dithers three ways. Pick by what you're making:
+## From tones to glyphs
 
-| You want                           | Use                              | Drawn with        |
-| ---------------------------------- | -------------------------------- | ----------------- |
-| An animated or full-bleed surface  | `AsciiShader`                    | WebGL             |
-| A static fill for a shape or block | `AsciiPattern`, `asciiMaskStyle` | SVG or a CSS mask |
-| A dithered photo or logo           | `ditherImage`                    | The CPU, once     |
+Drawing a frame takes three steps, and every renderer follows them in the same order:
 
-## From tone to dots
+1. **Sample.** The box is split into glyph cells, about twice as tall as they are wide. Each cell holds one sample, or a small grid of them for [sub-cell charsets](/docs/engine/charsets#sub-cell-charsets): 2×2 for quadrants, 2×4 for Braille. Each sample gets a tone and, optionally, a colour.
+2. **Map.** Tones are graded (contrast, brightness, gamma), optionally inverted, then turned into glyphs. A ramp such as `" .:-=+*#%@"` picks the level nearest the tone. Braille and quadrants light one dot per sample above `threshold`. The `edge` charset runs a Sobel filter and draws `- / | \` along strong edges.
+3. **Paint.** Each glyph is drawn in its cell, coloured by the [colour mode](/docs/engine/color-modes): one ink, the source colour, the nearest ANSI colour, or a ramp read by tone.
 
-A dither starts from a tone between 0 and 1 for each cell: 0 is paper, 1 is ink. A threshold matrix gives every cell in a small repeating tile its own threshold. Where the tone is above the cell's threshold, the cell is inked. A tone of 0.25 inks a quarter of the cells, spread evenly across the tile.
+`mapTones` in `lib/ascii/frame.ts` is the reference for step 2. The GPU shader implements the same rules in GLSL, so a frame read back from the GPU and one mapped on the CPU agree glyph for glyph.
 
-The matrix decides how those cells are spread. Each one below draws the same left-to-right ramp:
+With few glyphs, a smooth gradient breaks into bands. Set `dither` to a matrix such as `"bayer4"` and a tone between two glyphs picks the denser one in a share of the cells that matches how far along it is. Turn on **Dither levels** in the demo to see the bands soften.
 
-<ComponentPreview src="examples/concept-matrices.tsx">
-  <ConceptMatrices />
-</ComponentPreview>
+## Two renderers
 
-- `bayer2`, `bayer4` and `bayer8` are ordered Bayer matrices of 2, 4 and 8 cells square. Bigger tiles draw more distinct tones, with a regular crosshatch that reads as deliberate and printed.
-- `blue-noise` is a 64×64 tile with no visible grid. It looks closest to film grain, and suits large soft surfaces where a crosshatch would distract.
+| You want                                         | Use                        | Drawn with                  |
+| ------------------------------------------------ | -------------------------- | --------------------------- |
+| A full-bleed animated field, written in GLSL     | `AsciiShader`              | WebGL2 and a glyph atlas    |
+| Anything computed in JavaScript: 3D, sims, media | `AsciiGrid`                | Canvas2D and the same atlas |
+| Static art, banners, server-rendered fallbacks   | `AsciiPre`                 | Real text in a `<pre>`      |
+| Chart fills, buttons, progress bars              | `fillStyle`, `FillPattern` | CSS masks and SVG patterns  |
 
-`bayer4` is the default everywhere. Every matrix is ordered, so the same tone always gives the same dots. That keeps animated dithers calm: a cell only changes when its tone crosses its threshold.
+`AsciiShader` runs your `field` function on the GPU for every sample, every frame. It is the fastest option by far and suits backgrounds and scenes. [Write your own field](/docs/engine/write-your-own) walks through one.
 
-## Levels
+`AsciiGrid` calls a `draw(context)` function you write in TypeScript. You fill `context.frame` with glyphs, by hand (`frame.write`, `frame.put`) or by building a tone field and calling `mapTones`. It paints at device resolution, pauses offscreen and follows the theme. Painting copies each glyph out of the shared glyph atlas and tints the whole frame in one pass, so a truecolor frame with thousands of distinct colours costs the same as a one-colour frame.
 
-Before dithering, the tone snaps to a fixed number of `levels`. By default that's every tone the matrix can draw, 17 for `bayer4`. Fewer levels give visible bands, a posterised look that works well for bold backgrounds:
-
-<ComponentPreview src="examples/concept-levels.tsx">
-  <ConceptLevels />
-</ComponentPreview>
-
-## Error diffusion for images
-
-Photos and logos look best with error diffusion. Each pixel is rounded to the nearest colour, and the rounding error is passed on to the pixels not yet visited. `ditherImage` supports `floyd-steinberg`, `atkinson` and `sierra-lite` alongside the ordered matrices:
-
-<ComponentPreview src="examples/concept-diffusion.tsx">
-  <ConceptDiffusion />
-</ComponentPreview>
-
-`ditherImage` never changes its input. It returns a new `ImageData` you can draw with `putImageData`, and it has no DOM dependency beyond `ImageData`, so it runs in a Web Worker too. Error diffusion depends on every earlier pixel, so a small change to the input can move dots everywhere. Keep it for still images and use a matrix for anything that moves.
-
-```ts
-const dithered = ditherImage(context.getImageData(0, 0, width, height), {
-  method: "atkinson",
-  palette: [
-    [0.05, 0.05, 0.1],
-    [0.55, 0.6, 1],
-  ],
-});
-context.putImageData(dithered, 0, 0);
-```
-
-## Writing a field
-
-`AsciiShader` runs a GLSL function you write, called the field. [Write your own dither](/docs/engine/write-your-own) builds one step by step; this is the short version. It receives the cell's position and returns its tone; the core does the rest: resizing, quantising, the palette, motion and cleanup.
+Both renderers draw blocks, shades, quadrants, Braille, dots and box lines from the same geometry in `lib/ascii/glyphs.ts`, snapped to whole device pixels. They never depend on which glyphs your font covers, and neighbouring blocks meet without seams. Letters, digits and katakana come from `--ascii-font`.
 
 ```tsx
-const FIELD = `
-float field(vec2 uv, vec2 res, float t) {
-  // uv: cell centre in [0, 1], y up. res: size in cells. t: seconds.
-  float glow = 1.0 - distance(uv, glowCentre);
-  return clamp(glow + 0.2 * (fbm(uv * 3.0 + t * 0.05) - 0.5), 0.0, 1.0);
-}
-`;
-
-<AsciiShader
-  field={FIELD}
-  uniforms={{ glowCentre: [0.5, 0.2] }}
-  className="absolute inset-0"
-/>;
+<AsciiGrid
+  className="h-64"
+  colored
+  draw={({ frame, columns, rows, time }) => {
+    for (let x = 0; x < columns; x += 1) {
+      const y = Math.round(rows / 2 + Math.sin(x * 0.2 + time) * (rows / 3));
+      frame.put(x, y, "█", [51, 255, 102]);
+    }
+  }}
+/>
 ```
 
-Values in `uniforms` are declared for you: a number becomes a `float`, and a tuple of 2, 3 or 4 numbers a `vec2`, `vec3` or `vec4`. Changing a value only updates the uniform; changing the field's source recompiles it.
+## Text without a canvas
 
-The core gives every field three helpers: `hash21(vec2)` for stable per-cell randomness in [0, 1), `snoise(vec2)` for simplex noise in [-1, 1], and `fbm(vec2)` for four octaves of it in [0, 1]. Names starting with `u_` belong to the core's own uniforms, so your uniforms can't use them.
+`AsciiPre` renders a frame as real text, with one `<span>` per colour run. It needs no JavaScript in the browser, so it works in server components, emails and RSS. Readers can select and copy it.
 
-A second, optional function, `colorField`, sets the colour of the dots independently of their density, for rainbows and a colour per shape. [Palettes](/docs/engine/palettes#any-number-of-hues) shows it, with the `spectrum` and `paletteColor` helpers it can use.
-
-## Static fills
-
-Charts and small surfaces don't need a canvas. `AsciiPattern` is an SVG `<pattern>` you reference from any shape, and `asciiMaskStyle` masks any element to one tone:
+<ComponentPreview src="examples/engine-pre.tsx">
+  <EnginePre />
+</ComponentPreview>
 
 ```tsx
-<svg>
-  <defs>
-    <AsciiPattern id="half" level={0.5} />
-  </defs>
-  <rect width={80} height={40} fill="url(#half)" />
-</svg>
+const frame = new MutableFrame(38, 7, { color: true });
+frame.write(2, 2, eighthsBar(0.62, 22), [51, 255, 102]);
 
-<div className="bg-ascii-ink h-8" style={asciiMaskStyle(0.25)} />
+<AsciiPre frame={frame} cell={16} />;
 ```
 
-Both render on the server, follow the theme through CSS variables, and cost nothing after the first paint.
+It also takes a plain string: `<AsciiPre frame={"+--+\n|hi|\n+--+"} />`.
+
+## Glyph fills
+
+Charts and interface pieces fill shapes with tiled glyphs instead of flat colour. `fillStyle` returns inline styles that mask any element to a glyph texture. `FillPattern` and `AsciiPattern` are SVG `<pattern>`s for chart shapes. All of them render on the server and follow the theme through CSS variables.
+
+<ComponentPreview src="examples/engine-fills.tsx">
+  <EngineFills />
+</ComponentPreview>
+
+| Texture   | Glyphs     | Looks like                                   |
+| --------- | ---------- | -------------------------------------------- |
+| `shade`   | `█▓▒░·`    | The classic ANSI gradient, densest at `edge` |
+| `ascii`   | `#*+=-:.`  | The same ramp in ASCII                       |
+| `braille` | `⣿` to `⠂` | Fine dots, good for line and area charts     |
+| `blocks`  | `█▛▚▘`     | Chunky quadrant steps                        |
+| `dots`    | `●•·`      | Halftone                                     |
+| `hatch`   | `╱`        | Unbroken diagonal lines                      |
+| `solid`   | none       | Flat colour                                  |
+
+```tsx
+<div className="h-24" style={fillStyle("braille", { color: "green", edge: "left" })} />
+
+<div className="h-6" style={{ background: "var(--ascii-ink)", ...asciiMaskStyle(0.5) }} />
+```
+
+Ramp textures fade from `from` at the `edge` to `to` over `length` cells, or take a `level` for one even density. The older names `gradient`, `dotted` and `hatched` still work and draw `shade`, an even field of `dots`, and `hatch`. Glyphs in fills are drawn from geometry, because CSS masks can't load your web font. A custom ramp passed as `chars` with letters falls back to the system monospace font.
+
+`BloomBox`, `BloomGroup` and `bloomFilter` add a phosphor glow in the fill's colour. Its strength follows `--ascii-glow`, so glows can be strong in dark mode and faint in light mode.
+
+## Registry items
+
+| Item           | Contains                                                                                                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ascii-core`   | Charsets, colour modes, frames and `mapTones`, cell metrics, glyph geometry and atlas, `AsciiGrid`, `AsciiPre`, `CrtOverlay`, media sampling, glyph fills, theme and motion hooks |
+| `ascii-shader` | `AsciiShader`, the WebGL2 renderer                                                                                                                                                |
+| `ascii-export` | `.txt`, `.ans`, `.svg`, `.png` and video export                                                                                                                                   |
+| `ascii-tokens` | The `--ascii-*` CSS variables                                                                                                                                                     |
+
+<InstallBlock name="ascii-core" />
+
+Components pull in what they need as registry dependencies, so adding any component installs the engine with it. Components that only draw text, charts or interface pieces never ship WebGL code.

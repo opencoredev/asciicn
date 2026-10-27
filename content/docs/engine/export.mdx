@@ -1,19 +1,15 @@
 ---
 title: "Export"
-description: "Turn any dither into a PNG, a compact SVG or a CSS rule from your own code, with ascii-export."
+description: "Save any ASCII frame as plain text, ANSI escape art, vector SVG, high-DPI PNG or video, with ascii-export."
 ---
 
-import ExportTile from "@/examples/export-tile";
+import EngineExport from "@/examples/engine-export";
 
-`ascii-export` turns a dither into files. It takes the `ImageData` from `ditherImage`, one pixel per cell, or a grid of palette indices you worked out yourself, and returns a PNG, an SVG or a CSS rule. Use it to bake a dither into a static asset, to ship a background with no JavaScript, or to give your users a download button.
+`ascii-export` turns frames into files. Every renderer fills a `handle` ref you pass it, and the handle gives you the current frame, its colours and its cell size: everything the exporters need. Try each button on the live scene below.
 
-## Which format
-
-| Format | Use it for                                               |
-| ------ | -------------------------------------------------------- |
-| PNG    | Photos and diffusion dithers. Pixel-exact at any scale.  |
-| SVG    | Ordered dithers and flat art. Sharp at any size.         |
-| CSS    | Backgrounds in a stylesheet: the whole image, or a tile. |
+<ComponentPreview src="examples/engine-export.tsx" size="lg" align="stretch">
+  <EngineExport />
+</ComponentPreview>
 
 ## Installation
 
@@ -22,181 +18,125 @@ import ExportTile from "@/examples/export-tile";
 ## Usage
 
 ```tsx
-import { ditherImage } from "@/lib/ascii";
-import { download, toCSS, toPNG, toSVG } from "@/lib/ascii/export";
+import { useRef } from "react";
+import type { AsciiHandle } from "@/lib/ascii";
+import {
+  downloadBlob,
+  downloadText,
+  toAnsi,
+  toPng,
+  toSvg,
+  toText,
+} from "@/lib/ascii/export";
 
-const dither = ditherImage(pixels, {
-  method: "atkinson",
-  palette: [
-    [0.04, 0.04, 0.05],
-    [0.95, 0.94, 0.91],
-  ],
+const handle = useRef<AsciiHandle | null>(null);
+
+<AsciiImage src="/portrait.jpg" handle={handle} />;
+
+const save = async () => {
+  const live = handle.current;
+  const frame = live?.capture();
+  if (!(live && frame)) return;
+
+  downloadText(toText(frame, { trimEnd: true }), "portrait.txt");
+  downloadText(toAnsi(frame), "portrait.ans");
+  downloadText(
+    toSvg(frame, {
+      ink: live.colors().ink,
+      metrics: live.metrics() ?? undefined,
+    }),
+    "portrait.svg",
+    "image/svg+xml"
+  );
+  downloadBlob(await toPng(live, { scale: 3 }), "portrait.png");
+};
+```
+
+`capture()` returns `null` until the renderer has drawn its first frame. `toText`, `toAnsi` and `toSvg` are pure string builders: they run in scripts, on the server and in tests. The PNG, video and file helpers need a browser.
+
+## Which format
+
+| Format | Function                         | Use it for                                                        |
+| ------ | -------------------------------- | ----------------------------------------------------------------- |
+| Text   | `toText`                         | READMEs, code comments, terminals, anywhere colour doesn't matter |
+| ANSI   | `toAnsi`                         | Colour art for terminals: `cat art.ans`, MOTDs, CLI banners       |
+| SVG    | `toSvg`                          | Sharp at any size, editable in Figma, small for mono frames       |
+| PNG    | `toPng`                          | Social images and anywhere SVG text isn't supported               |
+| Video  | `createRecorder`, `recordCanvas` | Loops of animated scenes for posts and docs                       |
+
+## Text
+
+`toText(frame, { trimEnd })` joins rows with `\n`. `trimEnd: true` drops trailing spaces from every line, which keeps files small and editors quiet.
+
+## ANSI
+
+`toAnsi` writes SGR escape codes before each run of same-coloured glyphs and a reset at the end of every line, so a terminal that cuts a line short never bleeds colour into your prompt. The output ends with `\x1b[0m`.
+
+```ts
+toAnsi(frame); // 24-bit colour: \x1b[38;2;r;g;bm
+toAnsi(frame, { mode: "ansi16", ansi: "vga" }); // classic codes 30-37 and 90-97
+toAnsi(frame, { ink: "#33ff66", paper: "#020a04", background: true });
+```
+
+| Option       | Default        | Meaning                                                   |
+| ------------ | -------------- | --------------------------------------------------------- |
+| `mode`       | `"truecolor"`  | `truecolor` or `ansi16`                                   |
+| `ansi`       | `"vga"`        | `ansi16` table: `vga` or `xterm`                          |
+| `ink`        | terminal's own | Colour of glyphs without their own, `#rrggbb` or bytes    |
+| `paper`      | none           | Background colour, used with `background`                 |
+| `background` | `false`        | Paint `paper` behind every cell                           |
+| `trimEnd`    | `false`        | Drop trailing spaces (ignored when painting a background) |
+
+## SVG
+
+`toSvg` writes one `<text>` per row, a `<tspan>` per colour run, and a `textLength` on every row. `textLength` pins each row to exact columns, so the art lines up even when the viewer substitutes a font with a different advance. Blocks, shades, Braille, quadrants, dots and box lines are written as vector paths instead of text, one path per colour, using the same geometry the renderers draw. They join without seams and need no font. Pass `shapes: false` to keep them as text.
+
+```ts
+const svg = toSvg(frame, {
+  metrics: handle.current?.metrics() ?? undefined, // cell width and height; default 6×12
+  ink: "#e4e4e7",
+  paper: "#09090b", // or null for transparent
+  font: "JetBrains Mono, monospace",
 });
-
-// A full-size PNG: every cell becomes a crisp 4 × 4 block.
-download({ data: await toPNG(dither, { scale: 4 }), filename: "dither.png" });
-
-// An SVG drawn in cells, 4px each.
-const svg = toSVG(dither, { cell: 4 });
-
-// A CSS rule with the dither as a covering background.
-const css = toCSS({ kind: "image", image: dither, selector: ".hero" });
 ```
 
-`toSVG` and `toCSS` with a tile return strings and run anywhere, including on the server. `toPNG`, `download` and the PNG form of `toCSS` need a browser, because they draw to a canvas.
+Colours here must be real CSS colours, not variables, because the file leaves the page. `handle.colors()` returns the renderer's resolved ink and paper.
 
-## Examples
+## PNG
 
-### A fade in pure CSS
+`toPng` takes a canvas, a handle or a frame:
 
-The default kind of `toCSS` repeats one matrix tile at a coverage `level` from 0 to 1. In `mask` mode it paints the element with `ink` and masks it to the dither, so the ink can be a CSS variable that follows your theme. Four bands at falling levels make the stepped fade at the bottom of this card. The rules are built on the server; the page runs no script for them.
+- **A handle without `scale`** saves the live canvas as it is, including any CRT effects.
+- **A handle with `scale`** re-renders the captured frame at that many device pixels per CSS pixel, in the handle's colours and font. `scale: 3` gives a crisp image for social cards.
+- **A frame** is re-rendered at `scale` (default 2) with the `ink`, `paper`, `cell` and `font` you pass.
 
-<ComponentPreview src="examples/export-tile.tsx">
-  <ExportTile />
-</ComponentPreview>
+`renderFrame(frame, options)` returns the canvas itself if you want to draw on it first. Images are capped at 16,384 pixels on their longest side.
+
+## Video
+
+`createRecorder(canvas)` gives you `start()` and `stop()` for a record button. `stop()` resolves with the video. `recordCanvas(canvas, { durationMs })` records for a fixed time.
 
 ```ts
-toCSS({ level: 0.25, cell: 4, ink: "--ascii-ink", mode: "mask" });
+const recorder = createRecorder(handle.current.canvas, {
+  fps: 60,
+  onProgress: (ms) => setElapsed(ms),
+});
+recorder.start();
+// later
+const video = await recorder.stop();
+downloadBlob(video, `scene.${videoExtension(video.type)}`);
 ```
 
-```css
-.dither {
-  background-color: var(--ascii-ink);
-  -webkit-mask: url("data:image/svg+xml,…") 0 0 / 16px 16px repeat;
-  mask: url("data:image/svg+xml,…") 0 0 / 16px 16px repeat;
-}
-```
+The recorder picks the first type the browser supports: VP9 WebM, VP8 WebM, then MP4 (Safari). `pickVideoType()` tells you which. The default bitrate of 8 Mbps keeps small glyphs sharp. Keep the renderer animating while it records: a paused canvas records a still, and renderers pause when scrolled offscreen.
 
-In the default `background` mode the ink is baked into the tile and `paper` fills the gaps. An SVG inside a data URI can't read CSS variables, so pass a literal colour for `ink` in that mode.
+## Files and clipboard
 
-### Indexed bitmaps
+| Helper                                | Does                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `downloadBlob(blob, filename)`        | Saves a blob through a temporary link                            |
+| `downloadText(text, filename, mime?)` | Saves text, UTF-8 plain text by default                          |
+| `copyText(text)`                      | Copies to the clipboard; resolves `false` if the browser refuses |
 
-If you work out the dither yourself, pass `toSVG` one palette index per cell instead of pixels. Any index without a colour is left transparent.
+## Static art without exporting
 
-```ts
-const svg = toSVG(
-  { width: 64, height: 32, indices },
-  { cell: 3, palette: ["#0a0a0b", "#3d6bff", "#dfe7ff"] }
-);
-```
-
-## API
-
-### toPNG
-
-```ts
-toPNG(
-  source: HTMLCanvasElement | PixelBuffer,
-  options?: { scale?: number }
-): Promise<Blob>
-```
-
-Encodes a canvas or pixels as a PNG. `scale` is a whole-number upscale with no smoothing, so pass the cell size to turn one pixel per cell into a full-size image.
-
-### toSVG
-
-```ts
-toSVG(
-  source: PixelBuffer | IndexedBitmap,
-  options?: {
-    cell?: number;
-    palette?: AsciiColor[];
-    background?: boolean;
-  }
-): string
-```
-
-An SVG in cell units, scaled to `cell` pixels per cell (default 1). The most used colour becomes one background rectangle unless `background` is `false`. Rows of same-coloured cells become short relative strokes and taller blocks become rectangles, at most two `<path>`s per colour, so a 400 × 225 ordered dither is about 150 KB before gzip. `palette` colours an `IndexedBitmap` by index.
-
-### toCSS
-
-```ts
-toCSS(options: CSSOptions): string
-```
-
-Returns one CSS rule. The default `tile` kind repeats one matrix tile; the `image` kind embeds a whole dither.
-
-<PropsTable
-  rows={[
-    {
-      name: "level",
-      type: "number",
-      description: "Tile kind. Share of cells inked, 0 to 1.",
-      required: true,
-    },
-    {
-      name: "matrix",
-      type: "DitherMatrix",
-      default: '"bayer4"',
-      description: "Tile kind. The threshold pattern.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "3",
-      description: "Tile kind. Cell size in CSS pixels.",
-    },
-    {
-      name: "ink",
-      type: "AsciiColor",
-      default: '"#3b82f6"',
-      description:
-        "Tile kind. Use a literal colour in background mode; any colour in mask mode.",
-    },
-    {
-      name: "paper",
-      type: "AsciiColor",
-      default: '"transparent"',
-      description: "Tile kind, background mode. The colour behind the ink.",
-    },
-    {
-      name: "mode",
-      type: '"background" | "mask"',
-      default: '"background"',
-      description:
-        "Tile kind. Bake the ink into the tile, or mask the element.",
-    },
-    {
-      name: "kind",
-      type: '"tile" | "image"',
-      default: '"tile"',
-      description: '"image" embeds a whole dither as a covering background.',
-    },
-    {
-      name: "image",
-      type: "PixelBuffer",
-      description: "Image kind. The dither, one pixel per cell.",
-      required: true,
-    },
-    {
-      name: "format",
-      type: '"png" | "svg"',
-      default: '"png"',
-      description: "Image kind. PNG needs a browser; SVG is a pure string.",
-    },
-    {
-      name: "selector",
-      type: "string",
-      default: '".dither"',
-      description: "The rule's selector.",
-    },
-  ]}
-/>
-
-### download
-
-```ts
-download(options: {
-  data: Blob | string;
-  filename: string;
-  type?: string;
-}): void
-```
-
-Saves a Blob or a string through the browser's download flow. Strings are saved with `type`, default `text/plain`. `svgDataUrl(svg)` is exported too: it wraps an SVG string in a CSS `url()`.
-
-## Notes
-
-- PNG and SVG exports match pixel for pixel at their own size. Shown smaller than one pixel per cell, an SVG drops cells in stripes, as any cell-based vector does; use PNG for thumbnails.
-- PNG exports are capped at 16,384 pixels on the longest side, the most every current browser can draw. A larger `scale` is reduced to fit.
-- The functions never change their input.
+If the art never changes, skip the export step: build a frame with `MutableFrame` or `mapTones` and render it with [`AsciiPre`](/docs/engine/ascii-engine#text-without-a-canvas). It is real text on the server, so search engines and screen readers can read it, and readers can copy it straight from the page.

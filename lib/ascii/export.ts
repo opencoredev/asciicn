@@ -1,461 +1,573 @@
-import type { PixelBuffer } from "@/lib/ascii/diffuse";
-import { getThresholdMap } from "@/lib/ascii/matrices";
-import type { DitherMatrix } from "@/lib/ascii/matrices";
-import { asciiPath } from "@/lib/ascii/pattern";
-import { cssColor } from "@/lib/ascii/tokens";
-import type { AsciiColor } from "@/lib/ascii/tokens";
+import type { AsciiFrame, AsciiHandle } from "@/lib/ascii/frame";
+import { frameToText } from "@/lib/ascii/frame";
+import { glyphShape, isGeometricGlyph, shapePath } from "@/lib/ascii/glyphs";
+import { DEFAULT_CELL, DEFAULT_FONT, measureCell } from "@/lib/ascii/measure";
+import type { CellMetrics } from "@/lib/ascii/measure";
+import { paintFrame } from "@/lib/ascii/paint";
+import {
+  ANSI16,
+  ansiBackground,
+  ansiForeground,
+  hexToRgb,
+  nearestIndex,
+  rgbToHex,
+} from "@/lib/ascii/palettes";
+import type { Ansi16Name, Rgb8 } from "@/lib/ascii/palettes";
 
 /**
- * ascii-export: turn a dither into files. PNG through a canvas, SVG with
- * runs of same-coloured cells merged into rectangles, and CSS that tiles or
- * fills with a data-URI SVG. `toSVG` and `toCSS` are pure string builders
- * and run anywhere; `toPNG` and `download` need a browser.
+ * ascii-export: save any ASCII frame as a file. Plain text, ANSI escape
+ * art for terminals, vector SVG, high-DPI PNG and video recorded from the
+ * live canvas. `toText`, `toAnsi` and `toSvg` are pure string builders
+ * and run anywhere (scripts, servers, tests); the rest need a browser.
+ *
+ * Every renderer's `handle` ref (`AsciiHandle`) gives you a frame with
+ * `capture()`, the colours in use with `colors()` and the cell size with
+ * `metrics()`, which is everything these functions need.
  */
 
+// ---------------------------------------------------------------- text
+
+export interface TextOptions {
+  /** Drop trailing spaces from every line. Default `false`. */
+  trimEnd?: boolean;
+}
+
+/** The frame as plain text, one line per row. */
+export const toText = (
+  frame: AsciiFrame,
+  { trimEnd = false }: TextOptions = {}
+): string => frameToText(frame, { trimEnd });
+
+// ---------------------------------------------------------------- ansi
+
+/** A colour for export: `#rrggbb` or bytes. */
+export type ExportColor = string | Rgb8;
+
+const toRgb = (color: ExportColor): Rgb8 =>
+  typeof color === "string" ? hexToRgb(color) : color;
+
+export interface AnsiOptions {
+  /** `truecolor` writes 24-bit SGR colours; `ansi16` snaps to the 16 ANSI colours. Default `"truecolor"`. */
+  mode?: "truecolor" | "ansi16";
+  /** `ansi16`: the table to snap to. Default `"vga"`. */
+  ansi?: Ansi16Name;
+  /** Colour of glyphs without their own. Default: the terminal's own foreground. */
+  ink?: ExportColor;
+  /** Background colour, used with `background`. */
+  paper?: ExportColor;
+  /** Paint `paper` behind every cell. Default `false` (the terminal's background shows). */
+  background?: boolean;
+  /** Drop trailing spaces from every line. Default `false`. */
+  trimEnd?: boolean;
+}
+
+const ESC = "\u001B[";
+export const ANSI_RESET = `${ESC}0m`;
+
+/** SGR codes for one export: foreground per colour, the ink and the background. */
+const ansiCodes = ({
+  mode = "truecolor",
+  ansi = "vga",
+  ink,
+  paper,
+  background = false,
+}: AnsiOptions) => {
+  const table: readonly Rgb8[] = ANSI16[ansi];
+  const foreground = (rgb: Rgb8) =>
+    mode === "ansi16"
+      ? `${ESC}${ansiForeground(nearestIndex(rgb, table))}m`
+      : `${ESC}38;2;${Math.round(rgb[0])};${Math.round(rgb[1])};${Math.round(rgb[2])}m`;
+  let backgroundCode = "";
+  if (background && paper !== undefined) {
+    const rgb = toRgb(paper);
+    backgroundCode =
+      mode === "ansi16"
+        ? `${ESC}${ansiBackground(nearestIndex(rgb, table))}m`
+        : `${ESC}48;2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
+  }
+  const inkCode = ink === undefined ? `${ESC}39m` : foreground(toRgb(ink));
+  return { backgroundCode, foreground, inkCode };
+};
+
 /**
- * A dither as palette indices, one per cell, row by row. `-1` (or any index
- * without a colour) leaves the cell transparent.
+ * The frame as ANSI escape art: SGR colour codes before each run of
+ * same-coloured glyphs, a reset at the end of every line (so a cut-off
+ * line never bleeds colour into the shell) and at the very end. `cat` the
+ * result in any modern terminal.
  */
-export interface IndexedBitmap {
+export const toAnsi = (
+  frame: AsciiFrame,
+  options: AnsiOptions = {}
+): string => {
+  const { backgroundCode, foreground, inkCode } = ansiCodes(options);
+  const trim = options.trimEnd === true && backgroundCode === "";
+  const { columns, rows, glyphs, colors } = frame;
+  const codeAt = (index: number) => {
+    const at = index * 4;
+    return colors && (colors[at + 3] ?? 0) > 0
+      ? foreground([colors[at] ?? 0, colors[at + 1] ?? 0, colors[at + 2] ?? 0])
+      : inkCode;
+  };
+  const lines: string[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    let end = columns;
+    if (trim) {
+      while (end > 0 && glyphs[row * columns + end - 1] === " ") {
+        end -= 1;
+      }
+    }
+    let line = backgroundCode;
+    let current = "";
+    for (let column = 0; column < end; column += 1) {
+      const index = row * columns + column;
+      const glyph = glyphs[index] ?? " ";
+      // Spaces keep the current colour: they show no ink.
+      const code = glyph === " " ? current : codeAt(index);
+      if (code !== current) {
+        line += code;
+        current = code;
+      }
+      line += glyph;
+    }
+    lines.push(line === "" ? line : `${line}${ANSI_RESET}`);
+  }
+  return `${lines.join("\n")}${ANSI_RESET}`;
+};
+
+// ---------------------------------------------------------------- svg
+
+export interface SvgOptions {
+  /** Cell size. Default: a 12px cell in the default font (from `metrics`, when a handle gives you one). */
+  metrics?: Pick<CellMetrics, "width" | "height"> &
+    Partial<Pick<CellMetrics, "fontSize">>;
+  /** Colour of glyphs without their own, any CSS colour. Default `#000`. */
+  ink?: string;
+  /** Background colour, or `null` for transparent. Default `null`. */
+  paper?: string | null;
+  /** Font family for text glyphs. Default: the engine's monospace stack. */
+  font?: string;
+  /**
+   * Draw blocks, shades, Braille, box lines and dots as vector shapes (the
+   * same geometry the renderers use) instead of text, so they join without
+   * seams and need no font. Default `true`.
+   */
+  shapes?: boolean;
+}
+
+const escapeXml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+const round = (value: number) => Math.round(value * 100) / 100;
+
+const cellColor = (frame: AsciiFrame, index: number): string | null => {
+  const { colors } = frame;
+  if (!colors) {
+    return null;
+  }
+  const at = index * 4;
+  const alpha = colors[at + 3] ?? 0;
+  if (alpha === 0) {
+    return null;
+  }
+  const hex = rgbToHex([
+    colors[at] ?? 0,
+    colors[at + 1] ?? 0,
+    colors[at + 2] ?? 0,
+  ]);
+  return alpha === 255
+    ? hex
+    : `${hex}${Math.round(alpha).toString(16).padStart(2, "0")}`;
+};
+
+interface SvgCell {
   readonly width: number;
   readonly height: number;
-  readonly indices: ArrayLike<number>;
+  readonly shapes: boolean;
 }
+
+/** Columns up to the last glyph that is drawn as text. */
+const textEnd = (frame: AsciiFrame, row: number, shapes: boolean): number => {
+  const { columns, glyphs } = frame;
+  let end = columns;
+  while (end > 0) {
+    const glyph = glyphs[row * columns + end - 1] ?? " ";
+    if (glyph !== " " && !(shapes && isGeometricGlyph(glyph))) {
+      break;
+    }
+    end -= 1;
+  }
+  return end;
+};
+
+/**
+ * One row: its text as a `<text>` with a `<tspan>` per colour run (or "" when
+ * it has no text), and its geometric glyphs appended to `paths` by colour.
+ */
+const svgRow = (
+  frame: AsciiFrame,
+  row: number,
+  cell: SvgCell,
+  paths: Map<string, string>
+): string => {
+  const { columns, glyphs } = frame;
+  // Trailing spaces and shapes carry no text; stop before them so textLength stays true.
+  const end = textEnd(frame, row, cell.shapes);
+  let body = "";
+  let run = "";
+  let current: string | null = null;
+  const flush = () => {
+    const text = escapeXml(run);
+    body +=
+      current === null || run === ""
+        ? text
+        : `<tspan fill="${current}">${text}</tspan>`;
+    run = "";
+  };
+  for (let column = 0; column < columns; column += 1) {
+    const index = row * columns + column;
+    const glyph = glyphs[index] ?? " ";
+    const color: string | null =
+      glyph === " " ? current : cellColor(frame, index);
+    const shape = cell.shapes && glyph !== " " ? glyphShape(glyph) : undefined;
+    if (shape) {
+      const key = color ?? "";
+      paths.set(
+        key,
+        (paths.get(key) ?? "") +
+          shapePath(shape, {
+            height: cell.height,
+            width: cell.width,
+            x: column * cell.width,
+            y: row * cell.height,
+          })
+      );
+    }
+    if (column >= end) {
+      continue;
+    }
+    if (color !== current) {
+      flush();
+      current = color;
+    }
+    // A shape leaves a space in the text so later columns stay in place.
+    run += shape ? " " : glyph;
+  }
+  flush();
+  if (body.trim() === "") {
+    return "";
+  }
+  return `<text xml:space="preserve" y="${round((row + 0.5) * cell.height)}" textLength="${round(end * cell.width)}" lengthAdjust="spacing" dominant-baseline="central">${body}</text>`;
+};
+
+/**
+ * The frame as a standalone SVG: one `<text>` per row with `<tspan>`s for
+ * colour runs, `textLength` pinning every row to exact columns whatever
+ * font the viewer has, and geometric glyphs as one path per colour.
+ */
+export const toSvg = (
+  frame: AsciiFrame,
+  {
+    metrics,
+    ink = "#000",
+    paper = null,
+    font = DEFAULT_FONT,
+    shapes = true,
+  }: SvgOptions = {}
+): string => {
+  const cell: SvgCell = {
+    height: metrics?.height ?? DEFAULT_CELL,
+    shapes,
+    width: metrics?.width ?? DEFAULT_CELL / 2,
+  };
+  const fontSize = metrics?.fontSize ?? cell.height / 1.2;
+  const width = round(frame.columns * cell.width);
+  const height = round(frame.rows * cell.height);
+  const paths = new Map<string, string>();
+  const texts: string[] = [];
+  for (let row = 0; row < frame.rows; row += 1) {
+    texts.push(svgRow(frame, row, cell, paths));
+  }
+  const text = texts.join("");
+  const background =
+    paper === null
+      ? ""
+      : `<rect width="100%" height="100%" fill="${escapeXml(paper)}"/>`;
+  const shapeMarkup = [...paths]
+    .map(
+      ([color, d]) =>
+        `<path${color === "" ? "" : ` fill="${color}"`} d="${d}"/>`
+    )
+    .join("");
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    background,
+    `<g fill="${escapeXml(ink)}">`,
+    shapeMarkup,
+    text === ""
+      ? ""
+      : `<g font-family="${escapeXml(font)}" font-size="${round(fontSize)}" style="white-space:pre;font-variant-ligatures:none">${text}</g>`,
+    "</g></svg>",
+  ].join("");
+};
+
+// ---------------------------------------------------------------- png
+
+export interface PngOptions {
+  /**
+   * Device pixels per CSS pixel. For a handle without `scale`, the live
+   * canvas is saved as it is (CRT effects included). With `scale`, or for
+   * a frame, the frame is re-rendered at that density. Default 2 when
+   * re-rendering.
+   */
+  scale?: number;
+  /** Re-render: colour of glyphs without their own. Default: the handle's ink, or `#000`. */
+  ink?: string;
+  /** Re-render: background, or `null` for transparent. Default: the handle's paper. */
+  paper?: string | null;
+  /** Re-render: cell height in CSS pixels. Default: the handle's, or 12. */
+  cell?: number;
+  /** Re-render: font family. Default: the handle's, or the engine's monospace stack. */
+  font?: string;
+}
+
+const isHandle = (
+  value: AsciiHandle | AsciiFrame | HTMLCanvasElement
+): value is AsciiHandle => "capture" in value;
+
+const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+  // oxlint-disable-next-line promise/avoid-new -- wraps a callback API.
+  new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("ascii-export: the canvas could not be encoded"));
+      }
+    }, "image/png");
+  });
 
 // The largest canvas side every current browser accepts.
 const MAX_CANVAS_SIDE = 16_384;
 
-const createCanvas = (width: number, height: number) => {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-};
-
-const toImageData = (image: PixelBuffer) =>
-  new ImageData(new Uint8ClampedArray(image.data), image.width, image.height);
-
-const pixelsToCanvas = (image: PixelBuffer) => {
-  const canvas = createCanvas(image.width, image.height);
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("ascii-export: no 2D canvas context");
-  }
-  context.putImageData(toImageData(image), 0, 0);
-  return canvas;
-};
-
-export interface PNGOptions {
-  /**
-   * Whole-number upscale with hard pixel edges. Pass the cell size to turn
-   * a one-pixel-per-cell dither into a full-size image. Default 1.
-   */
-  scale?: number;
-}
-
-/**
- * Encode a canvas or pixels as a PNG. With `scale` above 1 every pixel
- * becomes a crisp `scale × scale` block (no smoothing).
- */
-export const toPNG = async (
-  source: HTMLCanvasElement | PixelBuffer,
-  { scale = 1 }: PNGOptions = {}
-): Promise<Blob> => {
-  const { width, height } = source;
-  const largest = Math.max(width, height, 1);
-  const factor = Math.max(
-    1,
-    Math.min(Math.round(scale), Math.floor(MAX_CANVAS_SIDE / largest))
+/** Re-render a frame on a fresh canvas at `scale` device pixels per CSS pixel. */
+export const renderFrame = (
+  frame: AsciiFrame,
+  {
+    scale = 2,
+    ink = "#000",
+    paper = null,
+    cell = DEFAULT_CELL,
+    font = DEFAULT_FONT,
+  }: PngOptions = {}
+): HTMLCanvasElement => {
+  const probe = measureCell({ cell, dpr: 1, font });
+  const largest = Math.max(
+    frame.columns * probe.width,
+    frame.rows * probe.height,
+    1
   );
-  const canvas = new OffscreenCanvas(width * factor, height * factor);
+  const dpr = Math.max(0.25, Math.min(scale, MAX_CANVAS_SIDE / largest));
+  const metrics = measureCell({ cell, dpr, font });
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.columns * metrics.deviceWidth;
+  canvas.height = frame.rows * metrics.deviceHeight;
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("ascii-export: no 2D canvas context");
   }
-  context.imageSmoothingEnabled = false;
-  const base =
-    source instanceof HTMLCanvasElement ? source : pixelsToCanvas(source);
-  context.drawImage(base, 0, 0, canvas.width, canvas.height);
-  return await canvas.convertToBlob({ type: "image/png" });
+  paintFrame(context, frame, metrics, { ink, paper });
+  return canvas;
 };
 
-const hex = (value: number) =>
-  Math.round(Math.min(255, Math.max(0, value)))
-    .toString(16)
-    .padStart(2, "0");
-
-const formatOpacity = (opacity: number) =>
-  String(Math.round(opacity * 1000) / 1000);
-
-interface Swatch {
-  fill: string;
-  opacity: number;
-}
-
 /**
- * Reduce either input to one colour index per cell plus the colour list.
- * Pixels with the same RGBA share an index; fully transparent ones get -1.
+ * Encode a PNG: a canvas as it is, a handle's live canvas, or a frame
+ * re-rendered crisp at `scale`.
+ *
+ * ```ts
+ * const blob = await toPng(handle.current, { scale: 3 });
+ * downloadBlob(blob, "scene.png");
+ * ```
  */
-const toCells = (
-  source: PixelBuffer | IndexedBitmap,
-  palette: readonly AsciiColor[] | undefined
-): { cells: Int32Array; swatches: Swatch[] } => {
-  const count = source.width * source.height;
-  const cells = new Int32Array(count);
-
-  if ("indices" in source) {
-    const swatches = (palette ?? []).map((color) => ({
-      fill: cssColor(color),
-      opacity: 1,
-    }));
-    for (let index = 0; index < count; index += 1) {
-      const value = source.indices[index] ?? -1;
-      cells[index] = value >= 0 && value < swatches.length ? value : -1;
-    }
-    return { cells, swatches };
+export const toPng = async (
+  source: AsciiHandle | AsciiFrame | HTMLCanvasElement,
+  options: PngOptions = {}
+): Promise<Blob> => {
+  if (source instanceof HTMLCanvasElement) {
+    return await canvasToBlob(source);
   }
-
-  const lookup = new Map<string, number>();
-  const swatches: Swatch[] = [];
-  const { data } = source;
-  for (let index = 0; index < count; index += 1) {
-    const offset = index * 4;
-    const alpha = data[offset + 3] ?? 0;
-    if (alpha === 0) {
-      cells[index] = -1;
-      continue;
+  if (isHandle(source)) {
+    if (options.scale === undefined && source.canvas) {
+      return await canvasToBlob(source.canvas);
     }
-    const fill = `#${hex(data[offset] ?? 0)}${hex(data[offset + 1] ?? 0)}${hex(data[offset + 2] ?? 0)}`;
-    const key = `${fill}/${alpha}`;
-    let swatch = lookup.get(key);
-    if (swatch === undefined) {
-      swatch = swatches.length;
-      lookup.set(key, swatch);
-      swatches.push({ fill, opacity: alpha / 255 });
+    const frame = source.capture();
+    if (!frame) {
+      throw new Error("ascii-export: the renderer has not drawn a frame yet");
     }
-    cells[index] = swatch;
-  }
-  return { cells, swatches };
-};
-
-/** The most used opaque colour, which becomes one background rectangle. */
-const mostUsed = (cells: Int32Array, swatches: readonly Swatch[]) => {
-  const counts = new Uint32Array(swatches.length);
-  for (const cell of cells) {
-    if (cell >= 0) {
-      counts[cell] = (counts[cell] ?? 0) + 1;
-    }
-  }
-  let best = -1;
-  let bestCount = 0;
-  for (let index = 0; index < counts.length; index += 1) {
-    const value = counts[index] ?? 0;
-    if (value > bestCount && swatches[index]?.opacity === 1) {
-      best = index;
-      bestCount = value;
-    }
-  }
-  return best;
-};
-
-interface Run {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  swatch: number;
-}
-
-/** Joins two path numbers; a minus sign separates them on its own. */
-const pair = (a: number, b: number) => (b < 0 ? `${a}${b}` : `${a} ${b}`);
-
-/**
- * Path data for one colour. Rectangles taller than one cell are filled;
- * one-cell-tall runs, by far the most common in a dither, are drawn as
- * strokes one cell wide along the row's centre line. A stroke run costs
- * `m2 0h3` with relative moves, about a third of a closed rectangle.
- */
-class SwatchPath {
-  fill = "";
-  stroke = "";
-  private penX = 0;
-  private penY = 0;
-
-  add(run: Run) {
-    if (run.height > 1) {
-      this.fill += `M${pair(run.x, run.y)}h${run.width}v${run.height}h${-run.width}z`;
-      return;
-    }
-    const y = run.y + 0.5;
-    this.stroke +=
-      this.stroke === ""
-        ? `M${pair(run.x, y)}h${run.width}`
-        : `m${pair(run.x - this.penX, y - this.penY)}h${run.width}`;
-    this.penX = run.x + run.width;
-    this.penY = y;
-  }
-}
-
-/**
- * Merge cells into runs of one colour along each row; identical runs on
- * the rows below grow downwards into rectangles. Runs close in reading
- * order, so the relative moves between strokes stay short.
- */
-const mergeRuns = ({
-  cells,
-  height,
-  skip,
-  swatchCount,
-  width,
-}: {
-  cells: Int32Array;
-  height: number;
-  skip: number;
-  swatchCount: number;
-  width: number;
-}) => {
-  const paths = Array.from({ length: swatchCount }, () => new SwatchPath());
-  const close = (runs: Iterable<Run>) => {
-    const ordered = [...runs].toSorted((a, b) => a.y - b.y || a.x - b.x);
-    for (const run of ordered) {
-      paths[run.swatch]?.add(run);
-    }
-  };
-
-  let open = new Map<string, Run>();
-  for (let y = 0; y < height; y += 1) {
-    const next = new Map<string, Run>();
-    let x = 0;
-    while (x < width) {
-      const swatch = cells[y * width + x] ?? -1;
-      let end = x + 1;
-      while (end < width && cells[y * width + end] === swatch) {
-        end += 1;
-      }
-      if (swatch >= 0 && swatch !== skip) {
-        const key = `${x}:${end - x}:${swatch}`;
-        const above = open.get(key);
-        if (above) {
-          above.height += 1;
-          open.delete(key);
-          next.set(key, above);
-        } else {
-          next.set(key, { height: 1, swatch, width: end - x, x, y });
-        }
-      }
-      x = end;
-    }
-    close(open.values());
-    open = next;
-  }
-  close(open.values());
-  return paths;
-};
-
-export interface SVGOptions {
-  /** Size of one cell in the SVG's `width` and `height`. Default 1. */
-  cell?: number;
-  /**
-   * Colours for an `IndexedBitmap`, by index. CSS variables work when the
-   * SVG is inlined in a page, not in a standalone file. Ignored for pixels,
-   * which carry their own colours.
-   */
-  palette?: readonly AsciiColor[];
-  /**
-   * Paint the most used colour as one background rectangle instead of
-   * cells. Keeps files small. Default `true`.
-   */
-  background?: boolean;
-}
-
-/**
- * Turn a dither into an SVG document. Coordinates are in cells (the
- * `viewBox`), so the file scales cleanly. Neighbouring cells of one colour
- * merge: one-cell-tall runs become short relative strokes and taller
- * blocks become rectangles, two `<path>`s per colour at most. A 400 × 225
- * ordered dither of a gradient comes to about 150 KB before gzip, and
- * flat artwork to a few kilobytes.
- */
-export const toSVG = (
-  source: PixelBuffer | IndexedBitmap,
-  { cell = 1, palette, background = true }: SVGOptions = {}
-): string => {
-  const { width, height } = source;
-  const { cells, swatches } = toCells(source, palette);
-  const fill = background ? mostUsed(cells, swatches) : -1;
-  const paths = mergeRuns({
-    cells,
-    height,
-    skip: fill,
-    swatchCount: swatches.length,
-    width,
-  });
-
-  const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width * cell}" height="${height * cell}" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges">`,
-  ];
-  const backdrop = swatches[fill];
-  if (backdrop) {
-    parts.push(
-      `<rect width="${width}" height="${height}" fill="${backdrop.fill}"/>`
+    const colors = source.colors();
+    const metrics = source.metrics();
+    return await canvasToBlob(
+      renderFrame(frame, {
+        cell: metrics?.height,
+        font: metrics?.font,
+        ink: colors.ink,
+        paper: colors.paper,
+        ...options,
+      })
     );
   }
-  for (let index = 0; index < swatches.length; index += 1) {
-    const swatch = swatches[index];
-    const path = paths[index];
-    if (!swatch || !path) {
-      continue;
-    }
-    const opacity = swatch.opacity < 1 ? formatOpacity(swatch.opacity) : null;
-    if (path.fill) {
-      const fillOpacity = opacity ? ` fill-opacity="${opacity}"` : "";
-      parts.push(
-        `<path fill="${swatch.fill}"${fillOpacity} d="${path.fill}"/>`
-      );
-    }
-    if (path.stroke) {
-      const strokeOpacity = opacity ? ` stroke-opacity="${opacity}"` : "";
-      parts.push(
-        `<path fill="none" stroke="${swatch.fill}"${strokeOpacity} d="${path.stroke}"/>`
-      );
-    }
-  }
-  parts.push("</svg>");
-  return parts.join("");
+  return await canvasToBlob(renderFrame(source, options));
 };
 
-/** A CSS `url()` holding an SVG, escaped just enough to stay readable. */
-export const svgDataUrl = (svg: string) =>
-  `url("data:image/svg+xml,${svg
-    .replaceAll("%", "%25")
-    .replaceAll('"', "'")
-    .replaceAll("#", "%23")
-    .replaceAll("<", "%3C")
-    .replaceAll(">", "%3E")}")`;
+// ---------------------------------------------------------------- video
 
-interface TileCSSOptions {
-  kind?: "tile";
-  /** Threshold matrix. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /** Share of cells inked, 0 to 1. */
-  level: number;
-  /** Cell size in CSS pixels. Default 3. */
-  cell?: number;
-  /**
-   * Ink colour. With `mode: "background"` it is baked into the SVG, so use
-   * a literal colour (`#3b82f6`, `oklch(…)`), not a CSS variable.
-   * Default `#3b82f6`.
-   */
-  ink?: AsciiColor;
-  /** Colour behind the ink. Any CSS colour, variables included. Default `transparent`. */
-  paper?: AsciiColor;
-  /**
-   * `"background"` bakes the ink into a tiled image. `"mask"` masks the
-   * element instead and paints it with `ink`, so the ink can be a CSS
-   * variable; the paper is then not drawn. Default `"background"`.
-   */
-  mode?: "background" | "mask";
-  /** Selector for the rule. Default `.dither`. */
-  selector?: string;
-  image?: never;
+/** Containers tried in order: VP9 WebM, VP8 WebM, then MP4 (Safari). */
+export const VIDEO_TYPES = [
+  "video/webm;codecs=vp9",
+  "video/webm;codecs=vp8",
+  "video/webm",
+  "video/mp4;codecs=avc1",
+  "video/mp4",
+] as const;
+
+/** The first video type this browser can record, or `undefined`. */
+export const pickVideoType = (preferred?: string): string | undefined => {
+  if (typeof MediaRecorder === "undefined") {
+    return undefined;
+  }
+  const candidates =
+    preferred === undefined ? VIDEO_TYPES : [preferred, ...VIDEO_TYPES];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+};
+
+/** The file extension for a recorded type: `"webm"` or `"mp4"`. */
+export const videoExtension = (mimeType: string): "webm" | "mp4" =>
+  mimeType.startsWith("video/mp4") ? "mp4" : "webm";
+
+export interface RecorderOptions {
+  /** Capture rate. Default 60. */
+  fps?: number;
+  /** Container and codec; falls back through `VIDEO_TYPES`. */
+  mimeType?: string;
+  /** Target bitrate. Default 8 Mbps, which keeps small glyphs sharp. */
+  bitsPerSecond?: number;
+  /** Called about ten times a second while recording with the elapsed milliseconds. */
+  onProgress?: (elapsedMs: number) => void;
 }
 
-interface ImageCSSOptions {
-  kind: "image";
-  /** A finished dither, one pixel per cell, such as `ditherImage` returns. */
-  image: PixelBuffer;
-  /**
-   * How the image is embedded. `"png"` stays small for photos and noisy
-   * dithers but needs a browser; `"svg"` is a pure string, best for flat
-   * shapes and gradients with long runs. Default `"png"`.
-   */
-  format?: "png" | "svg";
-  /** Selector for the rule. Default `.dither`. */
-  selector?: string;
-  level?: never;
-  matrix?: never;
-  mode?: never;
+export interface CanvasRecorder {
+  /** The type being recorded, such as `"video/webm;codecs=vp9"`. */
+  readonly mimeType: string;
+  /** `"inactive"` before start and after stop. */
+  readonly state: RecordingState;
+  start(): void;
+  /** Stop and resolve with the video. */
+  stop(): Promise<Blob>;
 }
-
-export type CSSOptions = TileCSSOptions | ImageCSSOptions;
-
-const rule = (selector: string, declarations: readonly string[]) =>
-  `${selector} {\n${declarations.map((line) => `  ${line};`).join("\n")}\n}\n`;
 
 /**
- * A CSS rule that draws a dither with no JavaScript. The default `tile`
- * kind repeats one matrix tile at `level` coverage, as a background or a
- * mask. The `image` kind embeds a whole dither as a PNG or SVG background
- * that covers the element.
+ * A start/stop recorder for a canvas, for record buttons. Uses
+ * `captureStream` and `MediaRecorder`; throws where neither exists.
  */
-export const toCSS = (options: CSSOptions): string => {
-  const selector = options.selector ?? ".dither";
-  switch (options.kind) {
-    case "image": {
-      const { image, format = "png" } = options;
-      const url =
-        format === "svg"
-          ? svgDataUrl(toSVG(image))
-          : `url("${pixelsToCanvas(image).toDataURL("image/png")}")`;
-      return rule(selector, [
-        `aspect-ratio: ${image.width} / ${image.height}`,
-        `background: ${url} center / cover no-repeat`,
-        "image-rendering: pixelated",
-      ]);
+export const createRecorder = (
+  canvas: HTMLCanvasElement,
+  {
+    fps = 60,
+    mimeType,
+    bitsPerSecond = 8_000_000,
+    onProgress,
+  }: RecorderOptions = {}
+): CanvasRecorder => {
+  const type = pickVideoType(mimeType);
+  if (type === undefined || typeof canvas.captureStream !== "function") {
+    throw new Error("ascii-export: this browser can't record a canvas");
+  }
+  const stream = canvas.captureStream(fps);
+  const recorder = new MediaRecorder(stream, {
+    mimeType: type,
+    videoBitsPerSecond: bitsPerSecond,
+  });
+  const chunks: Blob[] = [];
+  let started = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size > 0) {
+      chunks.push(event.data);
     }
-    case undefined:
-    case "tile": {
-      const {
-        matrix = "bayer4",
-        level,
-        cell = 3,
-        ink = "#3b82f6",
-        paper = "transparent",
-        mode = "background",
-      } = options;
-      const { size } = getThresholdMap(matrix);
-      const tile = size * cell;
-      const clamped = Math.min(1, Math.max(0, level));
-      const fill = mode === "mask" ? "#000" : cssColor(ink);
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tile}" height="${tile}" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><path fill="${fill}" d="${asciiPath(clamped, matrix)}"/></svg>`;
-      const url = svgDataUrl(svg);
-      if (mode === "mask") {
-        return rule(selector, [
-          `background-color: ${cssColor(ink)}`,
-          `-webkit-mask: ${url} 0 0 / ${tile}px ${tile}px repeat`,
-          `mask: ${url} 0 0 / ${tile}px ${tile}px repeat`,
-        ]);
+  });
+  const halt = () => {
+    if (timer !== null) {
+      clearInterval(timer);
+      timer = null;
+    }
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+  };
+  return {
+    mimeType: type,
+    start: () => {
+      if (recorder.state !== "inactive") {
+        return;
       }
-      return rule(selector, [
-        `background-color: ${cssColor(paper)}`,
-        `background-image: ${url}`,
-        `background-size: ${tile}px ${tile}px`,
-      ]);
-    }
-    default: {
-      const exhaustive: never = options;
-      return exhaustive;
-    }
-  }
+      started = performance.now();
+      recorder.start(250);
+      if (onProgress) {
+        timer = setInterval(() => onProgress(performance.now() - started), 100);
+      }
+    },
+    get state() {
+      return recorder.state;
+    },
+    stop: () =>
+      // oxlint-disable-next-line promise/avoid-new -- wraps a callback API.
+      new Promise<Blob>((resolve) => {
+        const finish = () => {
+          halt();
+          resolve(new Blob(chunks, { type }));
+        };
+        if (recorder.state === "inactive") {
+          finish();
+          return;
+        }
+        recorder.addEventListener("stop", finish, { once: true });
+        recorder.stop();
+      }),
+  };
 };
 
 /**
- * Save a Blob or a string as a file through the browser's download flow.
- * Strings are saved with `type` (default `text/plain`).
+ * Record a canvas for `durationMs` and resolve with the video. Keep the
+ * renderer animating while it records: a paused canvas records a still.
+ *
+ * ```ts
+ * const video = await recordCanvas(handle.current.canvas, { durationMs: 4000 });
+ * downloadBlob(video, `scene.${videoExtension(video.type)}`);
+ * ```
  */
-export const download = ({
-  data,
-  filename,
-  type = "text/plain",
-}: {
-  data: Blob | string;
-  filename: string;
-  type?: string;
-}) => {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: `${type};charset=utf-8` })
-      : data;
+export const recordCanvas = async (
+  canvas: HTMLCanvasElement,
+  {
+    durationMs = 4000,
+    ...options
+  }: RecorderOptions & { durationMs?: number } = {}
+): Promise<Blob> => {
+  const recorder = createRecorder(canvas, options);
+  recorder.start();
+  // oxlint-disable-next-line promise/avoid-new -- a timer has no promise form here.
+  await new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+  return await recorder.stop();
+};
+
+// ---------------------------------------------------------------- files
+
+/** Save a blob as a file through a temporary link. */
+export const downloadBlob = (blob: Blob, filename: string): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -464,6 +576,34 @@ export const download = ({
   document.body.append(link);
   link.click();
   link.remove();
-  // Revoking straight away can cancel the download in Safari.
+  // Give the download a moment to start before the URL goes away.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+/** Save text as a file. Default type plain UTF-8 text. */
+export const downloadText = (
+  text: string,
+  filename: string,
+  mime = "text/plain;charset=utf-8"
+): void => downloadBlob(new Blob([text], { type: mime }), filename);
+
+/** Copy text to the clipboard. Resolves `false` when the browser refuses. */
+export const copyText = async (text: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Older browsers and insecure origins: a hidden textarea and execCommand.
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.append(area);
+    area.select();
+    // oxlint-disable-next-line typescript/no-deprecated -- the only fallback where the Clipboard API is missing.
+    const copied = document.execCommand("copy");
+    area.remove();
+    return copied;
+  }
 };

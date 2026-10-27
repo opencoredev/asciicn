@@ -1,51 +1,44 @@
 import type { CSSProperties } from "react";
 
-import { getThresholdMap } from "@/lib/ascii/matrices";
 import type { DitherMatrix } from "@/lib/ascii/matrices";
+import { DEFAULT_CELL, LINE_HEIGHT } from "@/lib/ascii/measure";
+import {
+  CELL_ASPECT,
+  drawTile,
+  levelMaskStyle,
+  levelTile,
+  tileSvg,
+  svgUrl,
+} from "@/lib/ascii/style";
+import type { FillGlyphs, GlyphTile } from "@/lib/ascii/style";
 import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor } from "@/lib/ascii/tokens";
 
 /**
- * Static dithers without a canvas: an SVG `<pattern>` for chart fills and a
- * CSS mask for any element. Both are pure and render on the server.
- * `level` is the share of cells inked, from 0 (none) to 1 (all).
+ * Glyph textures without a canvas: an SVG `<pattern>` for chart fills and
+ * a CSS mask for any element, both tiled from real glyphs on the cell
+ * grid. Pure and render on the server. `level` is the density from 0
+ * (empty cells) to 1 (the ramp's densest glyph in every cell).
  */
-
-const pathCache = new Map<string, string>();
 
 /**
- * One SVG path covering the inked cells of one matrix tile, in cell units.
- * Runs of neighbouring cells in a row merge into one rectangle.
+ * Path data for one tile of `level`, each glyph drawn into a square 1x1
+ * cell. Kept for code written before the glyph kit; prefer `levelTile`
+ * and `drawTile`, which keep the cell's real shape.
  */
-export const asciiPath = (level: number, matrix: DitherMatrix = "bayer4") => {
-  const key = `${matrix}:${level}`;
-  const cached = pathCache.get(key);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const { size, thresholds } = getThresholdMap(matrix);
-  let path = "";
-  for (let y = 0; y < size; y += 1) {
-    let start = -1;
-    for (let x = 0; x <= size; x += 1) {
-      const inked = x < size && level > (thresholds[y * size + x] ?? 1);
-      if (inked && start === -1) {
-        start = x;
-      } else if (!inked && start !== -1) {
-        path += `M${start} ${y}h${x - start}v1h${start - x}z`;
-        start = -1;
-      }
-    }
-  }
-  pathCache.set(key, path);
-  return path;
-};
+export const asciiPath = (
+  level: number,
+  matrix: DitherMatrix = "bayer4",
+  glyphs: FillGlyphs = "shade"
+): string => drawTile(levelTile(level, { glyphs, matrix }), 1, 1).path;
 
 export interface AsciiMaskOptions {
-  /** Threshold matrix. Default `"bayer4"`. */
+  /** Threshold matrix that mixes glyphs between levels. Default `"bayer4"`. */
   matrix?: DitherMatrix;
+  /** The ramp: a variant name or custom glyphs from empty to dense. Default `"shade"`. */
+  glyphs?: FillGlyphs;
   /**
-   * Cell size in CSS pixels. When set, the image has that intrinsic size
+   * Glyph cell height in CSS pixels. When set, the image has its real size
    * and tiles without a `mask-size`. Leave it unset to size the tile
    * yourself, for example with `asciiMaskStyle`.
    */
@@ -53,29 +46,40 @@ export interface AsciiMaskOptions {
 }
 
 /**
- * A CSS `mask-image` value: one matrix tile with the cells below `level`
- * filled. Paint the element with the ink colour and mask it.
+ * A CSS `mask-image` value: one tile of glyphs at `level`. Paint the
+ * element with the ink colour and mask it.
  */
 export const asciiMask = (
   level: number,
-  { matrix = "bayer4", cell }: AsciiMaskOptions = {}
-) => {
-  const { size } = getThresholdMap(matrix);
-  const dimensions =
-    cell === undefined ? "" : ` width="${size * cell}" height="${size * cell}"`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}"${dimensions} shape-rendering="crispEdges"><path d="${asciiPath(level, matrix)}"/></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  { matrix = "bayer4", glyphs = "shade", cell }: AsciiMaskOptions = {}
+): string => {
+  const tile = levelTile(level, { glyphs, matrix });
+  return svgUrl(
+    tileSvg(
+      tile,
+      cell === undefined
+        ? {}
+        : {
+            size: {
+              height: tile.rows * cell,
+              width: tile.columns * cell * CELL_ASPECT,
+            },
+          }
+    )
+  );
 };
 
 export interface AsciiMaskStyleOptions {
-  /** Threshold matrix. Default `"bayer4"`. */
+  /** Threshold matrix that mixes glyphs between levels. Default `"bayer4"`. */
   matrix?: DitherMatrix;
-  /** Cell size: CSS pixels, or any CSS length. Default `var(--ascii-cell)`. */
+  /** The ramp: a variant name or custom glyphs from empty to dense. Default `"shade"`. */
+  glyphs?: FillGlyphs;
+  /** Glyph cell height: CSS pixels, or any CSS length. Default `var(--ascii-cell)`. */
   cell?: number | string;
 }
 
 /**
- * Inline styles that mask an element to one dither level, tiled at the
+ * Inline styles that mask an element to one level of glyphs, tiled at the
  * cell size. Pair with a background colour such as `bg-ascii-ink`.
  *
  * ```tsx
@@ -84,71 +88,115 @@ export interface AsciiMaskStyleOptions {
  */
 export const asciiMaskStyle = (
   level: number,
-  { matrix = "bayer4", cell = "var(--ascii-cell)" }: AsciiMaskStyleOptions = {}
-): CSSProperties => {
-  const { size } = getThresholdMap(matrix);
-  const image = asciiMask(level, { matrix });
-  const tile =
-    typeof cell === "number" ? `${size * cell}px` : `calc(${cell} * ${size})`;
-  return {
-    WebkitMaskImage: image,
-    WebkitMaskRepeat: "repeat",
-    WebkitMaskSize: tile,
-    maskImage: image,
-    maskRepeat: "repeat",
-    maskSize: tile,
-  };
+  {
+    matrix = "bayer4",
+    glyphs = "shade",
+    cell = "var(--ascii-cell)",
+  }: AsciiMaskStyleOptions = {}
+): CSSProperties => levelMaskStyle(level, { cell, glyphs, matrix });
+
+export interface TileGlyphsProps {
+  /** The tile to draw. */
+  tile: GlyphTile;
+  /** Cell width in user units. */
+  cellWidth: number;
+  /** Cell height in user units. */
+  cellHeight: number;
+  /** Glyph colour. */
+  fill: string;
+}
+
+/**
+ * A tile's glyphs as SVG: one path for every geometric glyph, and `<text>`
+ * in `--ascii-font` for any glyph that needs a font.
+ */
+export const TileGlyphs = ({
+  tile,
+  cellWidth,
+  cellHeight,
+  fill,
+}: TileGlyphsProps) => {
+  const drawing = drawTile(tile, cellWidth, cellHeight);
+  return (
+    <>
+      {drawing.path === "" ? null : <path d={drawing.path} style={{ fill }} />}
+      {drawing.text.map(({ glyph, x, y }) => (
+        <text
+          key={`${x}:${y}`}
+          x={x + cellWidth / 2}
+          y={y + cellHeight / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={{
+            fill,
+            fontFamily: "var(--ascii-font, ui-monospace, monospace)",
+            fontSize: cellHeight / LINE_HEIGHT,
+          }}
+        >
+          {glyph}
+        </text>
+      ))}
+    </>
+  );
 };
 
 export interface AsciiPatternProps {
   /** The id to reference, as in `fill="url(#id)"`. */
   id: string;
-  /** Share of cells inked, 0 to 1. */
+  /** Density, 0 to 1. */
   level: number;
-  /** Threshold matrix. Default `"bayer4"`. */
+  /** Threshold matrix that mixes glyphs between levels. Default `"bayer4"`. */
   matrix?: DitherMatrix;
-  /** Cell size in SVG user units (CSS pixels when the SVG is not scaled). Default 3. */
+  /** The ramp: a variant name or custom glyphs from empty to dense. Default `"shade"`. */
+  glyphs?: FillGlyphs;
+  /** Glyph cell height in SVG user units (CSS pixels when the SVG is not scaled). Default 12. */
   cell?: number;
-  /** Ink colour. Default `--ascii-ink`. */
+  /** Cell width over height. Default 0.5, a monospace cell. */
+  aspect?: number;
+  /** Glyph colour. Default `--ascii-ink`. */
   color?: AsciiColor;
-  /** Colour behind the ink. Default: transparent. */
+  /** Colour behind the glyphs. Default: transparent. */
   background?: AsciiColor;
 }
 
 /**
- * An SVG `<pattern>` filled with one dither level. Place it inside `<defs>`
- * and fill shapes with `url(#id)`. Colours accept CSS variables, so the
- * fill follows the theme.
+ * An SVG `<pattern>` of glyphs at one level. Place it inside `<defs>` and
+ * fill shapes with `url(#id)`. Colours accept CSS variables, so the fill
+ * follows the theme.
  */
 export const AsciiPattern = ({
   id,
   level,
   matrix = "bayer4",
-  cell = 3,
+  glyphs = "shade",
+  cell = DEFAULT_CELL,
+  aspect = CELL_ASPECT,
   color = "--ascii-ink",
   background,
 }: AsciiPatternProps) => {
-  const { size } = getThresholdMap(matrix);
-  const tile = size * cell;
+  const tile = levelTile(level, { glyphs, matrix });
+  const cellWidth = cell * aspect;
+  const width = tile.columns * cellWidth;
+  const height = tile.rows * cell;
   return (
     <pattern
       id={id}
-      width={tile}
-      height={tile}
+      width={width}
+      height={height}
       patternUnits="userSpaceOnUse"
-      shapeRendering="crispEdges"
     >
       {background === undefined ? null : (
         <rect
-          width={tile}
-          height={tile}
+          width={width}
+          height={height}
           style={{ fill: cssColor(background) }}
         />
       )}
-      <path
-        d={asciiPath(level, matrix)}
-        transform={`scale(${cell})`}
-        style={{ fill: cssColor(color) }}
+      <TileGlyphs
+        tile={tile}
+        cellWidth={cellWidth}
+        cellHeight={cell}
+        fill={cssColor(color)}
       />
     </pattern>
   );

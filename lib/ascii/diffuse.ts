@@ -2,9 +2,13 @@ import { getThresholdMap } from "@/lib/ascii/matrices";
 import type { Rgba } from "@/lib/ascii/tokens";
 
 /**
- * CPU dithering for still images. Pure functions over RGBA pixels: the
- * input is never changed and the result is a new `ImageData`, so this runs
- * on the main thread or in a Web Worker (anywhere `ImageData` exists).
+ * Tone reduction for still images before they become glyphs: snap every
+ * pixel to a small palette with ordered thresholds or error diffusion
+ * (Floyd–Steinberg, Atkinson, Sierra Lite). Spreading the error keeps
+ * detail when a photo is mapped to a short glyph ramp or to the 16 ANSI
+ * colours. Pure functions over RGBA pixels: the input is never changed and
+ * the result is a new `ImageData`, so this runs on the main thread or in a
+ * Web Worker (anywhere `ImageData` exists).
  */
 
 export type OrderedMethod = "bayer4" | "bayer8" | "blue-noise";
@@ -230,8 +234,9 @@ const asciiDiffusion = (
 const DEFAULT_OPTIONS: DiffuseOptions = { method: "floyd-steinberg" };
 
 /**
- * Dither an image to a palette. Returns a new `ImageData` the same size;
- * `image` is not modified. Default: Floyd–Steinberg in black and white.
+ * Reduce an image to a palette with ordered thresholds or error diffusion.
+ * Returns a new `ImageData` the same size; `image` is not modified.
+ * Default: Floyd–Steinberg in black and white.
  */
 export const ditherImage = (
   image: PixelBuffer,

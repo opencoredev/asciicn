@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 
 import { resolveColor, subscribeToTheme } from "@/lib/ascii/color";
+import { CrtOverlay } from "@/lib/ascii/crt";
 import { MutableFrame } from "@/lib/ascii/frame";
 import type { AsciiFrame, AsciiHandle } from "@/lib/ascii/frame";
+import type { PostFx } from "@/lib/ascii/look";
 import { gridSize, measureCell, readCell, readFont } from "@/lib/ascii/measure";
 import type { CellMetrics } from "@/lib/ascii/measure";
 import { useFrameLoop } from "@/lib/ascii/motion";
 import type { FrameLoopState } from "@/lib/ascii/motion";
+import { paintFrame } from "@/lib/ascii/paint";
 import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor, Rgba } from "@/lib/ascii/tokens";
 import { cn } from "@/lib/utils";
@@ -71,6 +74,8 @@ export interface AsciiGridProps extends Omit<
   fallback?: ReactNode;
   /** Filled with a handle for export: the latest frame and the canvas. */
   handle?: RefObject<AsciiHandle | null>;
+  /** CRT effects, drawn as a CSS overlay (`CrtOverlay`). Default: none. */
+  fx?: PostFx;
 }
 
 const CANVAS_CLASS = "absolute top-0 left-0 block";
@@ -80,7 +85,8 @@ const toCss = ([r, g, b, a]: Rgba) =>
 
 /**
  * A grid of glyphs drawn by a function you write, painted on a canvas at
- * device resolution. For anything computed on the CPU: 3D scenes,
+ * device resolution from the shared glyph atlas (one tint pass colours
+ * every glyph, however many colours the frame uses). For anything computed on the CPU: 3D scenes,
  * simulations, terminal panels, sampled images. Pauses offscreen and in
  * hidden tabs, holds a still frame under reduced motion and follows the
  * theme. `data-state` reports `fallback`, `running`, `paused` or `static`.
@@ -98,6 +104,7 @@ export const AsciiGrid = ({
   interactive = false,
   fallback,
   handle,
+  fx,
   className,
   style,
   "aria-hidden": ariaHidden = true,
@@ -153,42 +160,7 @@ export const AsciiGrid = ({
       time: timeRef.current,
     });
 
-    const { ink: inkCss, paper: paperCss } = colorsRef.current;
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    if (paperCss) {
-      context.fillStyle = paperCss;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    context.font = `${metrics.fontSize * metrics.dpr}px ${metrics.font}`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    const { deviceWidth, deviceHeight } = metrics;
-    const { glyphs, colors, columns } = frame;
-    let current = "";
-    for (let index = 0; index < glyphs.length; index += 1) {
-      const glyph = glyphs[index];
-      if (glyph === undefined || glyph === " " || glyph === "") {
-        continue;
-      }
-      let fill = inkCss;
-      if (colors && (colors[index * 4 + 3] ?? 0) > 0) {
-        const at = index * 4;
-        fill = `rgba(${colors[at]}, ${colors[at + 1]}, ${colors[at + 2]}, ${(colors[at + 3] ?? 255) / 255})`;
-      }
-      if (fill !== current) {
-        context.fillStyle = fill;
-        current = fill;
-      }
-      const column = index % columns;
-      const row = (index - column) / columns;
-      context.fillText(
-        glyph,
-        column * deviceWidth + deviceWidth / 2,
-        row * deviceHeight + deviceHeight / 2
-      );
-    }
+    paintFrame(context, frame, metrics, colorsRef.current);
     if (!hasFrame) {
       setHasFrame(true);
     }
@@ -362,6 +334,7 @@ export const AsciiGrid = ({
       {fallback && !hasFrame ? (
         <div className="absolute inset-0">{fallback}</div>
       ) : null}
+      {fx ? <CrtOverlay fx={fx} /> : null}
     </div>
   );
 };

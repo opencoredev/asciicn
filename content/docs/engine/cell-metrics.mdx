@@ -1,52 +1,75 @@
 ---
-title: "Pixel scale"
-description: "How big one dither cell is, how it stays crisp on every screen, and how to change it."
+title: "Cell metrics"
+description: "How big one glyph cell is, how it stays sharp on every screen, and how to change its size and font."
 ---
 
-import ConceptCell from "@/examples/concept-cell";
+import EngineCell from "@/examples/engine-cell";
 
-Every dither is drawn on a grid of square cells, and each cell is either ink or paper. The size of one cell sets the grain: small cells read as texture, large ones as pixel art.
+Every renderer lays glyphs on a grid of cells. A cell is as tall as one line of text and as wide as one glyph advance in the font, so it is about twice as tall as it is wide. Its height sets the grain: small cells read as texture, large ones as type.
 
-<ComponentPreview src="examples/concept-cell.tsx" size="lg" align="stretch">
-  <ConceptCell />
+<ComponentPreview src="examples/engine-cell.tsx" size="lg" align="stretch">
+  <EngineCell />
 </ComponentPreview>
 
 ## Setting the size
 
-The size comes from the `--ascii-cell` CSS variable, 3px by default. Change it for the whole site in your CSS, or for one section by setting it on a wrapper:
+`cell` is always the cell **height** in CSS pixels. It comes from the `--ascii-cell` variable, 12px by default. Change it for the whole site, or for one section on a wrapper:
 
 ```css
 .pricing-hero {
-  --ascii-cell: 5px;
+  --ascii-cell: 16px;
 }
 ```
 
-To size one component directly, pass `cell` in CSS pixels. It wins over the variable:
+To size one component, pass `cell`. It wins over the variable:
 
 ```tsx
-<AsciiGradient cell={6} />
+<AsciiImage src="/portrait.jpg" cell={8} />
 ```
 
-## Crisp on every screen
+The font size is the cell height divided by 1.2, the line height glyphs are set at, so a 12px cell sets glyphs at 10px. The width follows the font: most monospace fonts advance 0.6em, which makes a 12px cell 6px wide.
 
-`AsciiShader` renders one canvas pixel per cell and scales the canvas up with `image-rendering: pixelated`, so a large hero costs about as much as a thumbnail. A 1440×700 hero at 3px cells is 480×234 pixels of shading.
+## The font
 
-To keep every cell the same size, the cell is rounded to whole device pixels. On a 2× screen a 3px cell is exactly 6 device pixels. At 1.5× it would be 4.5, so it becomes 5 device pixels, 3.33 CSS pixels. Without this rounding, neighbouring cells would alternate between 4 and 5 pixels and the pattern would shimmer.
+Glyphs that come from a font use `--ascii-font`, a monospace stack starting at `ui-monospace`. Set it to your own:
 
-The canvas covers its box to the next whole cell and the overflow is clipped, so the grid always starts at the top left corner.
-
-## Static fills
-
-`asciiMaskStyle` tiles its mask at `--ascii-cell` too. Its `cell` option takes CSS pixels or any CSS length:
-
-```tsx
-<div className="bg-ascii-ink" style={asciiMaskStyle(0.5, { cell: 4 })} />
+```css
+:root {
+  --ascii-font: "JetBrains Mono", ui-monospace, monospace;
+}
 ```
 
-`AsciiPattern` lives inside an SVG, so its `cell` is in SVG user units: CSS pixels when the SVG is drawn at its natural size. If the SVG scales with a `viewBox`, the cells scale with it.
+`measureCell` measures the font's real advance once per family and measures again when a web font finishes loading, so the grid never drifts out of step with the glyphs. Blocks, shades, quadrants, Braille, dots and box lines don't come from the font at all: they are drawn from shapes, so they look the same whichever font you pick.
 
-## Choosing a size
+## Sharp on every screen
 
-- 2 to 3px reads as fine grain. It's the right default for large backgrounds behind text.
-- 4 to 6px is clearly a dither from across the room, good for heroes that are the main visual.
-- 8px and up is pixel art. Pair it with fewer `levels` for a bold, posterised look.
+A glyph edge that falls between two device pixels turns into a blurry grey line. To avoid it, `measureCell` rounds both sides of the cell to whole device pixels: at 2× density, a 12px cell is exactly 24 device pixels tall, and its width rounds to the nearest whole device pixel. The canvas is sized in whole cells, and block edges inside a cell snap to whole pixels too.
+
+The cost is that the CSS size of a cell can be fractional (6.5px at 2×, for example). The grid still covers the box; the last column or row is clipped by the component.
+
+```ts
+const metrics = measureCell({ cell: 12, font: readFont(element) });
+// { width: 6, height: 12, deviceWidth: 12, deviceHeight: 24, dpr: 2, fontSize: 10, font: "…" }
+
+const { columns, rows } = gridSize(metrics, box.width, box.height);
+```
+
+## Reading the tokens
+
+| Helper              | Returns                                                 |
+| ------------------- | ------------------------------------------------------- |
+| `readCell(el)`      | `--ascii-cell` on an element in pixels, or 12           |
+| `readFont(el)`      | `--ascii-font` on an element, or the default stack      |
+| `readGlow(el)`      | `--ascii-glow` (or the older `--ascii-bloom`), 0 to 1   |
+| `measureCell(opts)` | `CellMetrics` for a height, font and device pixel ratio |
+| `gridSize(m, w, h)` | Whole columns and rows that cover a box                 |
+
+`readAsciiCell` is the same as `readCell`, kept under its older name.
+
+## Picking a size
+
+- 8 to 10px for dense backgrounds and photos, where you want the picture first.
+- 12px for most components. Glyphs are still legible, so the ASCII reads as text.
+- 16px and up for hero text, logos and anything that should look like a terminal at arm's length.
+
+Braille and quadrants carry 8 and 4 samples per cell, so they keep detail at larger cells than ramps do.

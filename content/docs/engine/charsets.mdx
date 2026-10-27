@@ -1,0 +1,82 @@
+---
+title: "Charsets"
+description: "The ten built-in glyph sets, how Braille and quadrants pack several samples into one cell, and how to bring your own ramp."
+---
+
+import EngineCharsets from "@/examples/engine-charsets";
+import EngineSubcells from "@/examples/engine-subcells";
+import EngineRamp from "@/examples/engine-ramp";
+
+A charset is the set of glyphs a renderer draws tones with. Every component that draws a field takes a `charset` prop, and the same picture reads very differently in each one:
+
+<ComponentPreview src="examples/engine-charsets.tsx" size="lg" align="stretch">
+  <EngineCharsets />
+</ComponentPreview>
+
+```tsx
+<AsciiImage src="/portrait.jpg" charset="braille" />
+```
+
+## Built-in charsets
+
+| `charset`   | Glyphs                                 | Samples per cell | Good for                                          |
+| ----------- | -------------------------------------- | ---------------- | ------------------------------------------------- |
+| `standard`  | `" .:-=+*#%@"`                         | 1                | Photos and anything that should read as ASCII art |
+| `dense`     | 70 glyphs, `.` to `$`                  | 1                | Smooth tone on large grids                        |
+| `blocks`    | `" ░▒▓█"`                              | 1                | Bold fills, the ANSI-art look                     |
+| `quadrants` | `▘▝▀▖▌▞▛▗▚▐▜▄▙▟█`                      | 2×2              | Blocky shapes with twice the detail               |
+| `braille`   | 256 dot patterns, `⠁` to `⣿`           | 2×4              | Fine lines, plots, wireframes                     |
+| `cp437`     | IBM PC symbols, `·` to `█`             | 1                | DOS-era texture                                   |
+| `petscii`   | Commodore lines and blocks             | 1                | Retro computer screens                            |
+| `katakana`  | Half-width katakana and digits         | 1                | Digital rain                                      |
+| `dots`      | `" ·•●"`                               | 1                | Halftone print                                    |
+| `edge`      | `- / \ \|` on edges, `standard` inside | 1                | Line drawings and outlines                        |
+
+Ramps are ordered by how much ink each glyph puts on the cell in a typical monospace font, so they read correctly even where coverage can't be measured, such as in an `AsciiPre` rendered on the server. `CHARSET_NAMES` lists the ids in picker order and `CHARSETS[id]` holds each set's label, kind, glyphs and sample grid.
+
+## Sub-cell charsets
+
+Braille and quadrant glyphs aren't a ramp. Each one is a tiny bitmap: Braille has 8 dots in 2 columns of 4, quadrants have 4 squares in a 2×2 grid. The engine samples the field once per dot, lights each dot whose tone is above `threshold` (0.5 by default), and packs the lit dots into one glyph. Click the samples below:
+
+<ComponentPreview src="examples/engine-subcells.tsx">
+  <EngineSubcells />
+</ComponentPreview>
+
+Braille glyphs start at U+2800, and each dot adds one bit: dots 1 to 3 run down the left column (`0x01`, `0x02`, `0x04`), dots 4 to 6 down the right (`0x08`, `0x10`, `0x20`), and dots 7 and 8 sit on the bottom row (`0x40`, `0x80`). `brailleChar(mask)` builds the glyph and `BRAILLE_DOT_BITS[row][column]` gives each dot's bit. Quadrants use `quadrantChar(mask)` with top-left 1, top-right 2, bottom-left 4 and bottom-right 8.
+
+Because the sample grid is finer than the cell grid, a field must not assume one sample per glyph. In GLSL, `res` is measured in sample rows; on the CPU, `createToneField(columns, rows, charset)` sizes the field for you.
+
+Lower `threshold` lights more dots and thickens thin features. With `dither` set, each dot uses the matrix threshold at its sample instead, which turns soft tones into an even scatter of dots.
+
+## Edge glyphs
+
+The `edge` charset runs a 3×3 Sobel filter on the graded tones. Where the gradient is stronger than `edgeThreshold` (0.22 by default), the cell draws the glyph that runs across it: `|` for a left-right change, `-` for top-bottom, `/` and `\` for diagonals. Everywhere else it falls back to the `standard` ramp. `edgeChar(gx, gy)` does the direction step on its own, with y pointing down.
+
+## Custom ramps
+
+Pass `chars` with your own glyphs, from empty to densest. It wins over `charset`. A ramp needs at least two glyphs; anything shorter falls back to `standard`.
+
+<ComponentPreview src="examples/engine-ramp.tsx" size="lg" align="stretch">
+  <EngineRamp />
+</ComponentPreview>
+
+```tsx
+<AsciiImage src="/logo.png" chars=" .oO@" />
+```
+
+Start with a space so empty tones stay empty. Order the rest by how much ink they put on the cell, not alphabetically. The safest way to check is to look: a smooth gradient should brighten steadily with no glyph that jumps out.
+
+## Calibration
+
+A font draws `:` and `;` at almost the same weight, so an evenly spaced ramp wastes levels on glyphs you can't tell apart. The GPU renderer measures how much of the cell each glyph inks in your actual font (the glyph atlas does this once per font and size) and spaces the ramp by that coverage, blended with even spacing so every glyph stays reachable. `mapTones` on the CPU spaces glyphs evenly, which is what you want for exported text, because the reader's font is unknown.
+
+## Helpers
+
+| Helper                                                 | Returns                                                               |
+| ------------------------------------------------------ | --------------------------------------------------------------------- |
+| `resolveCharset(charset, chars?)`                      | The `Charset` to draw with, custom ramp first                         |
+| `rampChar(charset, tone)`                              | The ramp glyph nearest a tone                                         |
+| `eighthsBar(value, width)`                             | A row of eighth blocks, such as `"███▎  "` for 0.55 of 6              |
+| `EIGHTHS_UP`, `EIGHTHS_RIGHT`                          | `" ▁▂▃▄▅▆▇█"` and `" ▏▎▍▌▋▊▉█"`, for bars and progress                |
+| `BOX.light` / `heavy` / `double` / `rounded` / `ascii` | Corners, edges and crossings for frames                               |
+| `SPINNERS`                                             | Frame sequences: `braille`, `orbit`, `arc`, `bar`, `quadrant`, `tick` |

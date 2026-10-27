@@ -3,8 +3,8 @@
     "name": "ascii-core",
     "type": "registry:lib",
     "title": "ASCII core",
-    "description": "The CPU side of the asciicn engine: charsets (classic, dense, ANSI blocks, quadrants, Braille 2x4, CP437, PETSCII, katakana, halftone, Sobel edges), colour modes and palettes, a frame model with tone-to-glyph mapping, cell metrics, a Canvas2D glyph grid, theme colours and motion hooks.",
-    "docs": "asciicn's components are examples built on this engine. To have your coding agent build any dither of its own on it, add the agent skill if you haven't: npx shadcn@latest add {{REGISTRY_URL}}/asciicn-skill.json",
+    "description": "The CPU side of the asciicn engine: ten charsets (classic, dense, ANSI blocks, quadrants, Braille 2x4, CP437, PETSCII, katakana, halftone, Sobel edges), colour modes and palettes, a frame model with the reference tone-to-glyph mapping, cell metrics, the shared glyph atlas, a fast Canvas2D glyph grid, media sampling, a server-rendered <pre>, a CSS CRT overlay, glyph-textured fills for charts and UI, theme colours and motion hooks.",
+    "docs": "asciicn's components are examples built on this engine. To have your coding agent build ASCII components of its own on it, add the agent skill if you haven't: npx shadcn@latest add {{REGISTRY_URL}}/asciicn-skill.json",
     "registryDependencies": ["utils", "{{REGISTRY_URL}}/ascii-tokens.json"],
     "files": [
       {
@@ -33,9 +33,44 @@
         "target": "lib/ascii/measure.ts"
       },
       {
+        "path": "lib/ascii/glyphs.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/glyphs.ts"
+      },
+      {
+        "path": "lib/ascii/atlas.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/atlas.ts"
+      },
+      {
+        "path": "lib/ascii/paint.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/paint.ts"
+      },
+      {
         "path": "lib/ascii/grid.tsx",
         "type": "registry:lib",
         "target": "lib/ascii/grid.tsx"
+      },
+      {
+        "path": "lib/ascii/crt.tsx",
+        "type": "registry:lib",
+        "target": "lib/ascii/crt.tsx"
+      },
+      {
+        "path": "lib/ascii/pre.tsx",
+        "type": "registry:lib",
+        "target": "lib/ascii/pre.tsx"
+      },
+      {
+        "path": "lib/ascii/sample.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/sample.ts"
+      },
+      {
+        "path": "lib/ascii/pointer.ts",
+        "type": "registry:lib",
+        "target": "lib/ascii/pointer.ts"
       },
       {
         "path": "lib/ascii/matrices.ts",
@@ -63,14 +98,14 @@
         "target": "lib/ascii/motion.ts"
       },
       {
-        "path": "lib/ascii/pattern.tsx",
-        "type": "registry:lib",
-        "target": "lib/ascii/pattern.tsx"
-      },
-      {
         "path": "lib/ascii/style.ts",
         "type": "registry:lib",
         "target": "lib/ascii/style.ts"
+      },
+      {
+        "path": "lib/ascii/pattern.tsx",
+        "type": "registry:lib",
+        "target": "lib/ascii/pattern.tsx"
       },
       {
         "path": "lib/ascii/fill.tsx",
@@ -98,7 +133,7 @@
     "name": "ascii-export",
     "type": "registry:lib",
     "title": "ASCII export",
-    "description": "Save any ASCII frame as plain .txt, ANSI .ans (truecolor or 16-colour), crisp vector .svg, high-DPI .png, or a .webm video recorded from the live canvas.",
+    "description": "Save any ASCII frame as plain .txt, ANSI escape art (.ans, truecolor or 16-colour), vector .svg with exact columns, high-DPI .png, or a WebM/MP4 video recorded from the live canvas, plus download and copy helpers.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {

@@ -4,8 +4,12 @@
  *
  * The WebGL2 renderer lives in `@/lib/ascii/shader` (the ascii-shader
  * registry item), so components that only draw text, charts or interface
- * pieces never ship WebGL code.
+ * pieces never ship WebGL code. File export (.txt, .ans, .svg, .png,
+ * video) lives in `@/lib/ascii/export` (the ascii-export item).
  */
+
+// This is ascii-core's public entry point, so it re-exports every module.
+// oxlint-disable oxc/no-barrel-file
 
 export * from "@/lib/ascii/charsets";
 export * from "@/lib/ascii/palettes";
@@ -14,6 +18,15 @@ export * from "@/lib/ascii/measure";
 export * from "@/lib/ascii/grid";
 export * from "@/lib/ascii/look";
 export * from "@/lib/ascii/scene";
+export * from "@/lib/ascii/glyphs";
+export * from "@/lib/ascii/paint";
+export * from "@/lib/ascii/sample";
+export * from "@/lib/ascii/pre";
+export * from "@/lib/ascii/crt";
+export { getGlyphAtlas, rampLevel, rampPositions } from "@/lib/ascii/atlas";
+export type { GlyphAtlas } from "@/lib/ascii/atlas";
+export { trackPointer } from "@/lib/ascii/pointer";
+export type { PointerTracker } from "@/lib/ascii/pointer";
 
 export {
   BAYER_2,
@@ -41,31 +54,11 @@ export type {
   Rgba,
 } from "@/lib/ascii/tokens";
 
-export {
-  BLOOM_LEVELS,
-  BLOOMS,
-  bloomFilter,
-  bloomLayerStyle,
-  bloomStyle,
-  asciiRamp,
-  FILL_VARIANTS,
-  fillStyle,
-  fillTile,
-  SERIES_COLORS,
-  seriesColor,
-} from "@/lib/ascii/style";
-export type {
-  Bloom,
-  FillEdge,
-  FillStyleOptions,
-  FillTile,
-  FillVariant,
-  RampOptions,
-  RampTile,
-} from "@/lib/ascii/style";
+export * from "@/lib/ascii/style";
 
 export {
   readAsciiCell,
+  readGlow,
   resolveColor,
   subscribeToTheme,
   useAsciiColors,
@@ -91,17 +84,7 @@ export type {
   FillRamp,
 } from "@/lib/ascii/fill";
 
-export {
-  AsciiPattern,
-  asciiMask,
-  asciiMaskStyle,
-  asciiPath,
-} from "@/lib/ascii/pattern";
-export type {
-  AsciiMaskOptions,
-  AsciiMaskStyleOptions,
-  AsciiPatternProps,
-} from "@/lib/ascii/pattern";
+export * from "@/lib/ascii/pattern";
 
 export { DITHER_METHODS, ditherImage } from "@/lib/ascii/diffuse";
 export type {

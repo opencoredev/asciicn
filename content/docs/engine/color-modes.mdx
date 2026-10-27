@@ -1,85 +1,118 @@
 ---
-title: "Palettes"
-description: "How dithers take their colours from your theme, and how to use more than two."
+title: "Colour modes"
+description: "How glyphs get their colour: one phosphor ink, the source's own colour, the 16 ANSI colours, a duotone ramp or your theme palette."
 ---
 
-import ConceptHues from "@/examples/concept-hues";
-import ConceptPalettes from "@/examples/concept-palettes";
+import EngineColorModes from "@/examples/engine-color-modes";
+import EngineRamps from "@/examples/engine-ramps";
+import { controls as colorModeControls } from "@/examples/engine-color-modes-controls";
 
-A palette is the list of colours a dither can use, ordered from paper (tone 0) to ink (tone 1). By default it's two colours, `--ascii-paper` and `--ascii-ink`, which [`ascii-tokens`](/docs/theming) points at your `--background` and `--primary`.
+The charset decides which glyph a cell draws. The colour mode decides what colour it draws in. Every renderer takes the same `colorMode` prop:
 
-<ComponentPreview src="examples/concept-palettes.tsx">
-  <ConceptPalettes />
+<ComponentPreview
+  src="examples/engine-color-modes.tsx"
+  size="lg"
+  align="stretch"
+  controls={colorModeControls}
+>
+  <EngineColorModes />
 </ComponentPreview>
 
-## More than two colours
+| `colorMode` | Each glyph is drawn in                                        |
+| ----------- | ------------------------------------------------------------- |
+| `mono`      | One ink colour: `--ascii-ink`, a phosphor, or your `ink` prop |
+| `truecolor` | The source colour under its cell, graded                      |
+| `ansi16`    | That colour snapped to the nearest of the 16 ANSI colours     |
+| `duotone`   | A multi-stop ramp, read by the cell's tone                    |
+| `palette`   | Your `palette`, from paper to ink, read by tone               |
 
-Components that draw with `AsciiShader` take a `palette` prop with two or more colours. The tone is spread across the list, and each cell is dithered between the two neighbouring colours. With four colours, a tone of 0.5 sits halfway between the second and third:
+## Mono and phosphors
+
+`mono` is the default for most components. Glyphs take `--ascii-ink`, which follows your theme's `--primary`, and the background is `--ascii-paper`. Pass `ink` and `paper` to override them, or pick a CRT phosphor:
+
+| `phosphor`  | Ink       | Glass     |
+| ----------- | --------- | --------- |
+| `p1`        | `#33ff66` | `#020a04` |
+| `p3`        | `#ffb000` | `#0c0700` |
+| `ibm`       | `#f4f4f5` | `#09090b` |
+| `blueprint` | `#38bdf8` | `#020a12` |
 
 ```tsx
-<AsciiGradient
-  palette={["--background", "--chart-3", "--chart-2", "--chart-1"]}
+<AsciiImage src="/portrait.jpg" phosphor="p3" />
+```
+
+## Truecolor and grading
+
+`truecolor` gives each glyph the average colour of the samples in its cell, so a photo keeps its colours while the glyphs keep its tones. On the GPU, a field supplies colour through `colorField`; on the CPU, through the `colors` of a tone field (`sampleToField` fills them from images and video).
+
+`grade` shapes tones and colours before anything else happens:
+
+```tsx
+<AsciiImage
+  src="/street.jpg"
+  colorMode="truecolor"
+  grade={{ contrast: 1.3, gamma: 1.1, saturation: 1.4 }}
 />
 ```
 
-Each entry is a CSS variable name such as `"--chart-1"`, or any CSS colour: `"var(--chart-1)"`, `"oklch(0.72 0.15 272)"`, `"#7c8cff"`, even `"transparent"` to let the page show through the paper. The type is `AsciiPalette`, a tuple of at least two `AsciiColor` strings, so a one-colour palette fails to compile.
+- `contrast` multiplies around mid grey. 1 leaves tones alone.
+- `brightness` is added after contrast, from -1 to 1.
+- `gamma` above 1 lifts the midtones, below 1 sinks them.
+- `saturation` scales colour around its luma: 0 is grey.
 
-Order matters more than hue. Put colours in order of how much they stand out against the paper, or the ramp will jump back and forth.
+The same curve runs on the tone (which picks the glyph) and on each colour channel, so a brighter grade draws both denser glyphs and lighter colours.
 
-## Any number of hues
+## ANSI 16
 
-A field returns one tone per cell, and the palette turns that tone into a colour. So with a palette of several hues, the tone decides both how dense the dots are and which colour they take. That suits ramps, such as a glow that runs from deep blue to white, but it can't draw a red line and a blue line at the same strength, or a spectrum that runs along a line.
+`ansi16` snaps each glyph's colour to the nearest of 16 terminal colours, measured in OKLab so the match follows what the eye sees. Pick the table with `ansi`:
 
-For that, add a `colorField`: a second function that returns the colour of the dots in each cell. The field still decides where the dots go, and cells without a dot are paper, `palette[0]`:
+- `vga`: the IBM PC text-mode palette, with its famous brown `#aa5500` in place of dark yellow.
+- `xterm`: xterm's defaults, brighter and more saturated.
 
-<ComponentPreview src="examples/concept-hues.tsx" size="lg" align="stretch">
-  <ConceptHues />
+Frames drawn in `ansi16` export to [ANSI escape art](/docs/engine/export#ansi) that looks the same in any terminal: `toAnsi(frame, { mode: "ansi16" })` writes the classic 30 to 37 and 90 to 97 colour codes.
+
+## Duotone ramps
+
+`duotone` ignores the source colour and reads each cell's tone through a multi-stop ramp, dark to light. Every ramp starts on a colour that sits well on near-black and ends on one that holds up as the densest glyph:
+
+<ComponentPreview src="examples/engine-ramps.tsx">
+  <EngineRamps />
 </ComponentPreview>
 
 ```tsx
-const COLOR_FIELD = `
-vec3 colorField(vec2 uv, vec2 res, float t) {
-  return spectrum(uv.x * 0.75 - t * 0.03);
-}
-`;
-
-<AsciiShader
-  field={FIELD}
-  colorField={COLOR_FIELD}
-  palette={["--background", "--foreground"]}
-/>;
+<AsciiImage src="/portrait.jpg" colorMode="duotone" ramp="glacier" />
+<AsciiImage src="/portrait.jpg" colorMode="duotone" ramp={["#001018", "#00a3a3", "#e8fffb"]} />
 ```
 
-It takes the same arguments and uniforms as the field, and returns `vec3` RGB or `vec4` RGBA. If TypeScript says `colorField` doesn't exist, your copy of the engine is older than it: [update the engine](/docs/installation#update-the-engine). Two helpers come with it:
+`ramp` takes a name from `RAMP_NAMES` or your own list of `#rrggbb` stops.
 
-- `spectrum(h)` is a saturated rainbow: 0 is red, then yellow, green, cyan, blue and magenta, and red again at 1. It wraps, so `h` can keep growing with time.
-- `paletteColor(x)` reads the palette's ink colours, every entry after the paper, as a smooth ramp from 0 to 1. Use it to colour by position in your theme colours: `return paletteColor(uv.x).rgb;` with `palette={["--background", "--chart-1", "--chart-2", "--chart-3"]}`.
+## Palette
 
-Soft tones still dither, so a coloured glow fades out in sparse dots of its colour. To colour several shapes differently, work out which shape a cell is in with a helper. Both strings compile into one shader: define the helper in the field string, or prepend the same helpers to both (the engine keeps one copy), and call it from both functions; the demo above finds the nearest line that way and shifts each line's hue.
-
-`spectrum` is fully saturated, so check light mode: yellow and cyan nearly vanish on white. The demo mixes a fifth of the theme's foreground into every hue, `mix(spectrum(h), paletteColor(0.0).rgb, 0.2)`, which keeps it readable in both modes.
-
-If the colour has to come from outside the shader, such as an image or a CSS gradient, put that layer under the shader and use `palette={["--background", "transparent"]}`: tone 0 paints the background and tone 1 shows the layer.
-
-## Following the theme
-
-Colours are resolved in the browser, in the context of the component, so a variable you override on a wrapper applies to everything inside it. Formats the GPU can't read, such as `oklch()`, are converted by painting them once into a 1×1 canvas.
-
-When the class or style on `<html>` changes, as it does when next-themes switches between light and dark, every dither re-reads its colours and redraws. Nothing else needs to happen.
-
-For your own canvas work, `useAsciiColors` does the same and returns the colours as `[r, g, b, a]` in [0, 1]:
+`palette` reads tone through colours you choose, from paper to ink. Shader components take CSS variable names, so the palette follows your theme:
 
 ```tsx
-const ref = useRef<HTMLDivElement>(null);
-const colors = useAsciiColors(ref); // [ink, paper], or null before mount
+<AsciiShader
+  field={FIELD}
+  colorMode="palette"
+  palette={["--background", "--chart-3", "--chart-1"]}
+/>
 ```
 
-Pass a list of names as the second argument to read other variables, such as `useAsciiColors(ref, ["--chart-1", "--chart-2"])`.
+`mapTones` on the CPU takes the same idea as byte triples: `palette: [[16, 16, 24], [59, 75, 216], [255, 251, 234]]`.
 
-## Static fills
+## Transparent backgrounds
 
-`AsciiPattern` takes a `color` and an optional `background`, and `asciiMaskStyle` masks whatever background colour the element already has. Both accept CSS variables, so they follow the theme without JavaScript.
+`background="transparent"` draws glyphs only, so the page shows between them. Use it to lay ASCII over a photo, a gradient or another component. `AsciiGrid` is transparent by default; set `paper` to give it a background.
 
-## Contrast
+## Theme tokens
 
-A dither reads only when ink and paper differ enough. For charts and anything that carries information, aim for the contrast you would want for body text, about 4.5:1. Quiet backgrounds can go lower, since nobody needs to read them. The defaults, your primary on your background, usually clear that bar in both modes.
+Components never hard-code colours. They read these CSS variables from the `ascii-tokens` item:
+
+| Token                  | Default                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| `--ascii-ink`          | Your theme's `--primary`                                     |
+| `--ascii-paper`        | Your theme's `--background`                                  |
+| `--ascii-color-{name}` | Series colours: blue, purple, green, pink, orange, red, grey |
+| `--ascii-glow`         | Glow strength, 0 to 1, per theme                             |
+
+Pass a palette name such as `"green"` wherever a component takes an `AsciiColor`, and it resolves to `--ascii-color-green`. `seriesColor(color, index)` gives chart series distinct hues in a fixed order.

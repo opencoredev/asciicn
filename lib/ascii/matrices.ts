@@ -1,10 +1,13 @@
 import { BLUE_NOISE_64_BASE64 } from "@/lib/ascii/blue-noise";
 
 /**
- * Threshold maps for ordered dithering. A cell is inked when the tone at
- * that cell is above its threshold, so a tone of 0.25 inks a quarter of the
- * cells. Thresholds sit halfway between steps, `(rank + 0.5) / cells`, so no
- * tone ever lands exactly on one.
+ * Threshold maps for ordered dithering between glyph levels. A tone that
+ * falls between two glyphs of a ramp picks the denser one in cells where
+ * it is above that cell's threshold, so a tone a quarter of the way from
+ * `:` to `-` draws `-` in a quarter of the cells, and gradients drawn with
+ * few glyphs stay smooth. Braille and quadrant dots use the same maps.
+ * Thresholds sit halfway between steps, `(rank + 0.5) / cells`, so no tone
+ * ever lands exactly on one.
  */
 
 export type DitherMatrix = "bayer2" | "bayer4" | "bayer8" | "blue-noise";

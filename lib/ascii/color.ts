@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import type { RefObject } from "react";
 
+import { readCell } from "@/lib/ascii/measure";
 import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor, Rgba } from "@/lib/ascii/tokens";
-
-const DEFAULT_CELL = 3;
 
 let probe: CanvasRenderingContext2D | null = null;
 
@@ -46,13 +45,28 @@ export const resolveColor = (value: AsciiColor, el?: Element | null): Rgba => {
   return [r / 255, g / 255, b / 255, a / 255];
 };
 
-/** The dither cell size in CSS pixels, read from `--ascii-cell` on `el`. */
-export const readAsciiCell = (el?: Element | null): number => {
-  const host = el ?? document.documentElement;
-  const value = Number.parseFloat(
-    getComputedStyle(host).getPropertyValue("--ascii-cell")
-  );
-  return Number.isFinite(value) && value > 0 ? value : DEFAULT_CELL;
+/**
+ * The glyph cell height in CSS pixels, read from `--ascii-cell` on `el`.
+ * The same as `readCell`; kept under its older name.
+ */
+export const readAsciiCell = (el?: Element | null): number => readCell(el);
+
+/**
+ * Glow strength for the theme, 0 to 1: `--ascii-glow` on `el`, then the
+ * older `--ascii-bloom`, then 1.
+ */
+export const readGlow = (el?: Element | null): number => {
+  if (typeof document === "undefined") {
+    return 1;
+  }
+  const style = getComputedStyle(el ?? document.documentElement);
+  for (const name of ["--ascii-glow", "--ascii-bloom"]) {
+    const value = Number.parseFloat(style.getPropertyValue(name));
+    if (Number.isFinite(value)) {
+      return Math.min(1, Math.max(0, value));
+    }
+  }
+  return 1;
 };
 
 const themeListeners = new Set<() => void>();

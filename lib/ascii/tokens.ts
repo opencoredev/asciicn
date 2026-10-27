@@ -47,7 +47,7 @@ export const ASCII_COLORS = {
 } as const satisfies Record<AsciiColorName, `--${string}`>;
 
 /**
- * A colour the dither components accept: a palette name such as
+ * A colour asciicn components accept: a palette name such as
  * `"green"`, a CSS variable name such as `"--ascii-ink"`, or any CSS
  * colour such as `"var(--chart-1)"`, `"oklch(0.7 0.15 272)"` or `"#fff"`.
  * Palette names win over the CSS keywords they share (`"red"` is the
