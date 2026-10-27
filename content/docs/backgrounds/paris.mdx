@@ -1,0 +1,257 @@
+---
+title: "Paris"
+description: "The Eiffel Tower glowing gold at blue hour over the Seine, with its sparkle, its beacon, a bateau-mouche and zinc rooftops."
+---
+
+import ParisDemo from "@/examples/paris-demo";
+import { controls as demoControls } from "@/examples/paris-controls";
+import ParisHeadline from "@/examples/paris-headline";
+import ParisPhosphor from "@/examples/paris-phosphor";
+
+<ComponentPreview
+  src="examples/paris-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <ParisDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="paris" />
+
+## Usage
+
+```tsx
+import { Paris } from "@/components/asciicn/paris";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Paris intensity={0.7} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The tower stands on the far bank of the Seine, lit gold. For part of every 18 seconds white flashes run over it, and a searchlight turns on its top. In front, a stone bridge crosses the river, a bateau-mouche glides past, and a row of Haussmann buildings with zinc roofs, dormers and chimney pots lines the bottom. Clouds drift through a sky that fades from rose at the horizon to deep blue.
+
+On wide boxes the tower sits right of centre, so a headline fits on the left. On tall boxes it stands in the middle. Moving the pointer slides the near layers further than the far ones.
+
+It draws in `standard` glyphs by default. `braille` gives the finest lattice, `blocks` and `dense` solid shapes, and `edge` an outline drawing. In `truecolor`, the default, it paints its own colours on a deep blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.6}` thins the glyphs so white text on the left reads first, and `clouds={0.7}` fills the sky a little more.
+
+<ComponentPreview src="examples/paris-headline.tsx" size="lg" align="stretch">
+  <ParisHeadline />
+</ComponentPreview>
+
+### On an amber monitor
+
+`colorMode="mono"` with `phosphor="p3"` draws every glyph in one amber. The `dense` charset, a 10px cell and `fx` scanlines, bloom and vignette finish the look.
+
+<ComponentPreview src="examples/paris-phosphor.tsx">
+  <ParisPhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the city draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "sparkle",
+      type: "number",
+      default: "0.3",
+      description:
+        "Share of each 18 second cycle the tower sparkles with white flashes. 0 never, 1 always.",
+    },
+    {
+      name: "beacon",
+      type: "boolean",
+      default: "true",
+      description: "The searchlight that turns on top of the tower.",
+    },
+    {
+      name: "clouds",
+      type: "number",
+      default: "0.5",
+      description: "How much of the sky the clouds cover, from 0 (clear) to 1.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep blue; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"sodium"',
+      description:
+        "In duotone mode, the colour ramp from dark to light. The default draws gold on the blue hour.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "false turns off the parallax and any pointer interaction.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "2",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime`, mid-sparkle, and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
+- The whole city is one shader pass on the GPU. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
