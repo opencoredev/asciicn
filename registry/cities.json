@@ -3,8 +3,11 @@
     "name": "miami",
     "type": "registry:component",
     "title": "Miami",
-    "description": "Ocean Drive at dusk: art deco hotels glowing in neon pastels, swaying palms and a slow surf under a pink sky.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Ocean Drive at dusk: art deco hotels with flickering neon fins, swaying palms, cars on the drive and a slow surf under a low sun.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/miami.tsx",
@@ -17,8 +20,11 @@
     "name": "tokyo",
     "type": "registry:component",
     "title": "Tokyo",
-    "description": "Tokyo at night: Tokyo Tower over a skyline of lit towers, with neon signs flickering above busy streets.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Tokyo on a clear night: Tokyo Tower lit among towers of windows, vertical neon signs, a train on a curving elevated line and Mount Fuji on the horizon.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/tokyo.tsx",
@@ -31,8 +37,11 @@
     "name": "new-york",
     "type": "registry:component",
     "title": "New York",
-    "description": "Manhattan at night: the Empire State and Chrysler buildings, thousands of lit windows and the Brooklyn Bridge over the river.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Manhattan at night from across the East River, with the Empire State and Chrysler buildings, a skyline of lit windows, the Brooklyn Bridge and a ferry.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/new-york.tsx",
@@ -45,8 +54,11 @@
     "name": "paris",
     "type": "registry:component",
     "title": "Paris",
-    "description": "The Eiffel Tower sparkling over the Seine at twilight, with zinc rooftops and drifting clouds.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "The Eiffel Tower glowing gold at blue hour over the Seine, with its sparkle, its beacon, a bateau-mouche and zinc rooftops.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/paris.tsx",
@@ -59,8 +71,11 @@
     "name": "london",
     "type": "registry:component",
     "title": "London",
-    "description": "Big Ben and Tower Bridge in rolling fog over the Thames, with a red bus crossing.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Big Ben, the Houses of Parliament and Tower Bridge in evening fog over the Thames, with amber lamps and a red bus crossing.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/london.tsx",
@@ -73,8 +88,11 @@
     "name": "dubai",
     "type": "registry:component",
     "title": "Dubai",
-    "description": "The Burj Khalifa rising over a glittering skyline, with desert dunes and heat shimmer behind it.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Dubai at golden hour: the Burj Khalifa catching the last sun above a cluster of glass towers, the sail of the Burj Al Arab on the shore, and dunes with sand blowing off their crests.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/dubai.tsx",
@@ -87,8 +105,11 @@
     "name": "san-francisco",
     "type": "registry:component",
     "title": "San Francisco",
-    "description": "The Golden Gate Bridge as fog pours through the strait, with the city on its hills behind.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "The Golden Gate Bridge on a foggy morning: orange towers, fog rolling through the strait and under the deck, the city and the Transamerica Pyramid behind, and sailboats on the bay.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/san-francisco.tsx",
@@ -101,8 +122,11 @@
     "name": "hong-kong",
     "type": "registry:component",
     "title": "Hong Kong",
-    "description": "Victoria Harbour at night: dense towers mirrored in the water, with a junk boat drifting past.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Victoria Harbour at night from Kowloon: towers up the slopes of Victoria Peak, the Bank of China Tower and IFC, a rooftop light show, and a junk and a Star Ferry on the mirrored water.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/hong-kong.tsx",
@@ -115,8 +139,11 @@
     "name": "rio",
     "type": "registry:component",
     "title": "Rio de Janeiro",
-    "description": "Sugarloaf Mountain over the bay and the Copacabana shoreline, with the statue on Corcovado above.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Sugarloaf and Corcovado in the late afternoon over Copacabana, with cable cars, breaking surf, the wave-mosaic promenade and frigatebirds.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/rio.tsx",
@@ -129,8 +156,11 @@
     "name": "sydney",
     "type": "registry:component",
     "title": "Sydney",
-    "description": "The Opera House and Harbour Bridge, with fireworks bursting over the harbour.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "Sydney Harbour at night: the Opera House lit white, the Harbour Bridge behind it, fireworks bursting over the arch and the whole scene mirrored in the water.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/sydney.tsx",

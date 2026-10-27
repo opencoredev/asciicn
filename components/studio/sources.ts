@@ -68,7 +68,7 @@ export type FieldSource = SourceBase & {
 export type SceneSource = SourceBase & {
   readonly kind: "scene";
   readonly id: SceneSourceId;
-  readonly group: "scenes";
+  readonly group: "cities";
   readonly load: () => Promise<StudioComponent>;
 };
 
@@ -83,7 +83,7 @@ export type StudioSource = FieldSource | SceneSource | MediaSource;
 export const SOURCE_GROUPS = [
   { id: "backgrounds", label: "Backgrounds" },
   { id: "objects", label: "3D objects" },
-  { id: "scenes", label: "Cities" },
+  { id: "cities", label: "Cities" },
   { id: "media", label: "Media" },
 ] as const;
 
@@ -253,18 +253,18 @@ const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
   tokyo: "Tokyo",
 };
 
-/** Each scene's own charset, so the snippet and the stage agree. */
+/** Each city's own charset, so the snippet and the stage agree. */
 const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
   dubai: { charset: "standard", colorMode: "truecolor" },
-  "hong-kong": { charset: "standard", colorMode: "truecolor" },
+  "hong-kong": { charset: "braille", colorMode: "truecolor" },
   london: { charset: "standard", colorMode: "truecolor" },
   miami: { charset: "standard", colorMode: "truecolor" },
   "new-york": { charset: "standard", colorMode: "truecolor" },
   paris: { charset: "standard", colorMode: "truecolor" },
   rio: { charset: "standard", colorMode: "truecolor" },
   "san-francisco": { charset: "standard", colorMode: "truecolor" },
-  sydney: { charset: "standard", colorMode: "truecolor" },
-  tokyo: { charset: "standard", colorMode: "truecolor" },
+  sydney: { charset: "braille", colorMode: "truecolor" },
+  tokyo: { charset: "braille", colorMode: "truecolor" },
 };
 
 const isSceneId = (id: string): id is SceneSourceId =>
@@ -275,11 +275,11 @@ const SCENE_SOURCES: readonly SceneSource[] = CITIES.flatMap((scene) =>
     ? [
         {
           defaults: SCENE_DEFAULTS[scene.id],
-          group: "scenes",
+          group: "cities",
           hint: scene.title,
           id: scene.id,
           importName: pascal(scene.id),
-          importPath: `@/components/asciicn/scenes/${scene.id}`,
+          importPath: `@/components/asciicn/${scene.id}`,
           kind: "scene",
           label: SCENE_TITLES[scene.id],
           load: scene.load,
