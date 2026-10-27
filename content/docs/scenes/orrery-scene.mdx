@@ -1,0 +1,264 @@
+---
+title: "Clockwork Orrery"
+description: "A brass orrery of meshing gears driving planets on their arms; drag to spin the clockwork faster."
+---
+
+import OrrerySceneDemo from "@/examples/orrery-scene-demo";
+import { controls as sceneControls } from "@/examples/orrery-scene-controls";
+import OrrerySceneEdge from "@/examples/orrery-scene-edge";
+import OrreryScenePhosphor from "@/examples/orrery-scene-phosphor";
+
+<ComponentPreview
+  src="examples/orrery-scene-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={sceneControls}
+>
+  <OrrerySceneDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="orrery-scene" />
+
+## Usage
+
+```tsx
+import { OrreryScene } from "@/components/asciicn/scenes/orrery-scene";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[520px]">
+      <OrreryScene className="absolute inset-0 -z-10" />
+      <h1 className="text-white">Built to keep time</h1>
+    </section>
+  );
+}
+```
+
+A bronze plate sits under a glowing sun, seen from above at a three-quarter angle. A bronze 12-tooth centre wheel turns on the central column, and four brass gears with 6, 8, 9 and 10 teeth ring it. All five are cut with the same tooth size, so each follower sits one pitch radius from the centre wheel's edge and turns the other way at the ratio of their tooth counts: the 6-tooth pinion turns twice for every turn of the centre wheel. Their teeth stay interleaved where they touch.
+
+Three arms rise from the central column at different heights. The inner one carries a small red planet, the middle one a banded planet with a tilted ring, and the outer one a blue planet with a moon on its own short arm. The further out an arm reaches, the slower it turns.
+
+Gear faces are shaded like spun brass: a bright streak crosses each wheel toward the light and stays put while the teeth run through it. Tooth rims catch the light, tooth gaps and spoke windows fall dark, and the gears cast soft shadows on the plate. Orbit lines are engraved into the plate and a ring of hour ticks into the bezel.
+
+Dragging sideways across the scene winds the clockwork faster. Drag the other way and it runs backwards. Let go and it coasts back to its own pace over a second or two. Hovering tilts and turns the view a little toward the pointer. `tilt` sets the viewing angle and `engraving` how deep the cut lines read.
+
+## Examples
+
+### Edge glyphs
+
+The `edge` charset draws `- / | \` along strong tone edges. Bright brass against the dark plate gives every tooth flank its own stroke, so the gear outlines turn into rings of slashes and bars that rotate with the train.
+
+<ComponentPreview
+  src="examples/orrery-scene-edge.tsx"
+  size="lg"
+  align="stretch"
+>
+  <OrrerySceneEdge />
+</ComponentPreview>
+
+### Amber phosphor, behind a headline
+
+`phosphor="p3"` switches to mono amber glyphs, and `fx={CRT_FX}` adds scanlines, bloom and curvature. A lower view and a slower `speed` leave room for the headline in the corner.
+
+<ComponentPreview
+  src="examples/orrery-scene-phosphor.tsx"
+  size="lg"
+  align="stretch"
+>
+  <OrreryScenePhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "tilt",
+      type: "number",
+      default: "0.5",
+      description:
+        "Viewing angle, from 0 (nearly overhead) to 1 (low across the plate).",
+    },
+    {
+      name: "glow",
+      type: "number",
+      default: "1",
+      description: "Glow round the sun, from 0 (none) to 1.5.",
+    },
+    {
+      name: "engraving",
+      type: "number",
+      default: "1",
+      description:
+        "Depth of the engraved lines: orbits on the plate, ticks on the bezel and rings on the wheels, from 0 (smooth metal) to 1.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description:
+        "Which glyphs draw the scene: standard, dense, blocks, quadrants, braille, cp437, petscii, katakana, dots or edge.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: '"mono" when phosphor is set. How glyphs are coloured.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass for mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description:
+        "The ramp duotone reads tones through: a ramp name or #rrggbb stops.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "The 16-colour table for ansi16.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "Ink-blue night in truecolor, ansi16 and duotone",
+      description:
+        "Paper behind the glyphs. In mono and palette it follows the theme, or the phosphor.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied before glyphs are chosen.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description: "Edge charset: the Sobel strength that draws - / | \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description:
+        "Ordered dithering between glyph levels. In braille and quadrants it also sets which dots light, so gradients show as dot density.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws glyphs only, so the page shows between them.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT post effects: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1. CRT_FX is a full set.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Scales every motion in the scene. 0 freezes it.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false holds a still frame: stillTime if it never moved, the current frame if it did.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "60",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Lets hover tilt the view and drag wind the clockwork. false keeps both still.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description:
+        "An engine pointer effect drawn on top. Only applies while interactive is true.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle for export: capture() returns the glyphs on screen.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "A gradient of the sun over the plate",
+      description:
+        "Shown without WebGL2, until the first frame, and while far offscreen.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- The canvas ignores the pointer, so links and buttons on top of it keep working. Drags are read from the window and count only when they start inside the scene.
+- With reduced motion turned on it draws one still frame, at `stillTime`, and stops. Dragging does nothing then.
+- It pauses when scrolled out of view or when the tab is hidden, and gives up its WebGL context when far offscreen. Without WebGL2 it shows `fallback`, a gradient of the sun over the plate.
+- Each sample marches its ray through the instrument at up to 96 steps, then traces a soft shadow and four occlusion taps. Rays that miss the instrument's bounding sphere skip all of it. Braille samples eight times per glyph; a larger `cell` or a single-sample charset cuts the work. See [Performance](/docs/engine/performance).
