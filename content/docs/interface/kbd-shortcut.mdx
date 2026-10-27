@@ -1,0 +1,130 @@
+---
+title: "Keyboard shortcut"
+description: "Keyboard shortcuts drawn as box-drawing keycaps, with Mac and PC labels and caps that press down while the visitor holds the keys."
+---
+
+import KbdShortcutDemo from "@/examples/kbd-shortcut-demo";
+import { controls as kbdShortcutControls } from "@/examples/kbd-shortcut-controls";
+import KbdShortcutMenu from "@/examples/kbd-shortcut-menu";
+import KbdShortcutCheatsheet from "@/examples/kbd-shortcut-cheatsheet";
+
+<ComponentPreview
+  src="examples/kbd-shortcut-demo.tsx"
+  size="sm"
+  controls={kbdShortcutControls}
+>
+  <KbdShortcutDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="kbd-shortcut" />
+
+## Usage
+
+```tsx
+import { KbdShortcut } from "@/components/asciicn/kbd-shortcut";
+
+export function PaletteHint() {
+  return <KbdShortcut keys="mod+shift+p" />;
+}
+```
+
+`keys` is the shortcut as text. Join the keys of a chord with `+`, and separate steps with a space: `"g i"` draws `G then I`. Write `++` or a lone `+` for the plus key.
+
+`mod` is ⌘ on a Mac and Ctrl elsewhere. Other names: `ctrl`, `alt` (or `option`), `shift`, `meta` (or `cmd`), `enter`, `esc`, `tab`, `space`, `backspace`, `delete` and the arrows `up`, `down`, `left` and `right`. Anything else is shown as written, with single letters in capitals.
+
+On a Mac the caps show symbols, `⌘ ⇧ P`. On a PC they show words joined by `+`, `Ctrl + Shift + P`. `platform="auto"` picks from the visitor's browser after the page loads; set `"mac"` or `"pc"` to fix it.
+
+A `cap` keycap is three rows of box-drawing glyphs with a heavy bottom edge for depth:
+
+```text
+┌─────┐ ┌───┐ ┌───┐
+│  ⌘  │ │ ⇧ │ │ P │
+┕━━━━━┙ ┕━━━┙ ┕━━━┙
+```
+
+With `listen`, a cap presses down while the visitor holds its key: the bottom edge goes flat and the label turns to reverse video. `onTrigger` runs each time the whole chord goes down.
+
+`variant="inline"` sets each key in brackets on one row, `[⌘] [K]`, to sit inside menus and running text.
+
+## Examples
+
+### Menu
+
+Inline shortcuts aligned to the right of each action.
+
+<ComponentPreview src="examples/kbd-shortcut-menu.tsx">
+  <KbdShortcutMenu />
+</ComponentPreview>
+
+### Cheat sheet
+
+Keycaps in grey, in two groups.
+
+<ComponentPreview src="examples/kbd-shortcut-cheatsheet.tsx">
+  <KbdShortcutCheatsheet />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "keys",
+      type: "string",
+      required: true,
+      description:
+        'The shortcut: + joins a chord, a space separates steps, as in "mod+shift+p" or "g i".',
+    },
+    {
+      name: "variant",
+      type: '"cap" | "inline"',
+      default: '"cap"',
+      description: "Three-row keycaps, or keys in brackets on one row.",
+    },
+    {
+      name: "platform",
+      type: '"auto" | "mac" | "pc"',
+      default: '"auto"',
+      description: "Mac symbols or PC words. auto reads the visitor's platform.",
+    },
+    {
+      name: "listen",
+      type: "boolean",
+      default: "false",
+      description: "Press the caps down while the visitor holds those keys.",
+    },
+    {
+      name: "onTrigger",
+      type: "() => void",
+      description:
+        "With listen, called once each time the whole chord goes down. One-step shortcuts only.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "Label colour, a palette name or any CSS colour. The frame uses it at 55%.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg"',
+      default: '"md"',
+      description: "Glyph cell height: 12, 16 or 20px.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The root and each key are `<kbd>` elements, as HTML nests them for a key combination. Box-drawing glyphs are hidden from screen readers, and each symbol has a spoken name, so `⌘` reads as "Command".
+- `listen` only watches the keyboard; it never stops the browser or the page from handling a shortcut. Pair it with your own handler.
+- The server renders PC labels. On a Mac, `platform="auto"` swaps in the symbols right after hydration.
+- Pressing is instant, with no animation, because it answers the visitor's own keys.

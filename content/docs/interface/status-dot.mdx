@@ -1,0 +1,120 @@
+---
+title: "Status dot"
+description: "A one-glyph status indicator for online, busy, offline and error, with a distinct shape per state and a ping, turn or flash in glyphs."
+---
+
+import StatusDotDemo from "@/examples/status-dot-demo";
+import { controls as statusDotControls } from "@/examples/status-dot-controls";
+import StatusDotServices from "@/examples/status-dot-services";
+import StatusDotLive from "@/examples/status-dot-live";
+
+<ComponentPreview
+  src="examples/status-dot-demo.tsx"
+  controls={statusDotControls}
+>
+  <StatusDotDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="status-dot" />
+
+## Usage
+
+```tsx
+import { StatusDot } from "@/components/asciicn/status-dot";
+
+export function Presence({ away }: { away: boolean }) {
+  return <StatusDot status={away ? "offline" : "online"} />;
+}
+```
+
+Each state has its own glyph and colour, so the shape tells them apart even without colour:
+
+| Status    | `dot`                 | `braille`               | Colour |
+| --------- | --------------------- | ----------------------- | ------ |
+| `online`  | `●`, pings `◉ ◎`      | `⠶`, pulses `⣿`         | green  |
+| `busy`    | `◐`, turns `◓ ◑ ◒`    | `⣾`, orbits `⣽ ⣻ ⢿`     | orange |
+| `offline` | `○`, still            | `⠤`, still              | grey   |
+| `error`   | `✕`, flashes `×`      | `⣿`, flashes `⠶`        | red    |
+
+`label` replaces the state name next to the glyph, such as `"Degraded"` for a busy service. Set `showLabel={false}` to show the glyph alone; screen readers still hear the label.
+
+## Examples
+
+### Service health
+
+The `braille` variant in a table, with labels for each service.
+
+<ComponentPreview src="examples/status-dot-services.tsx">
+  <StatusDotServices />
+</ComponentPreview>
+
+### Changing state
+
+A deploy that moves through every state every 2.2 seconds, at `size="lg"`.
+
+<ComponentPreview src="examples/status-dot-live.tsx">
+  <StatusDotLive />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "status",
+      type: '"online" | "busy" | "offline" | "error"',
+      default: '"online"',
+      description: "The state to show.",
+    },
+    {
+      name: "label",
+      type: "string",
+      default: 'The state, as in "Online"',
+      description: "Text next to the glyph and the name screen readers hear.",
+    },
+    {
+      name: "showLabel",
+      type: "boolean",
+      default: "true",
+      description:
+        "Show the label. When false it is read to screen readers only.",
+    },
+    {
+      name: "variant",
+      type: '"dot" | "braille"',
+      default: '"dot"',
+      description: "Geometric glyphs or one Braille cell per state.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "Online pings, busy turns and error flashes.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: "Green, orange, grey or red by state",
+      description: "Glyph colour override, a palette name or any CSS colour.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg"',
+      default: '"md"',
+      description: "Glyph cell height: 12, 16 or 20px.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The root has `role="status"`, so screen readers announce a new state once, politely. The glyph is hidden from them; they hear the label.
+- The animation swaps one glyph a few times a second. It pauses offscreen and in hidden tabs, and with reduced motion each state holds its first glyph.
+- The glyph is DOM text in `--ascii-font`, one cell wide, so the label never shifts as it changes.

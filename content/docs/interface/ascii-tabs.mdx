@@ -1,0 +1,140 @@
+---
+title: "ASCII tabs"
+description: "Tabs drawn as box-drawing folder tabs or a sliding glyph underline, with arrow-key navigation and a roving tab stop."
+---
+
+import AsciiTabsDemo from "@/examples/ascii-tabs-demo";
+import { controls as asciiTabsControls } from "@/examples/ascii-tabs-controls";
+import AsciiTabsInstall from "@/examples/ascii-tabs-install";
+import AsciiTabsControlled from "@/examples/ascii-tabs-controlled";
+
+<ComponentPreview
+  src="examples/ascii-tabs-demo.tsx"
+  controls={asciiTabsControls}
+>
+  <AsciiTabsDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-tabs" />
+
+## Usage
+
+```tsx
+import { AsciiTabs } from "@/components/asciicn/ascii-tabs";
+
+export function ProjectTabs() {
+  return (
+    <AsciiTabs
+      label="Project"
+      tabs={[
+        { value: "overview", label: "Overview", content: <Overview /> },
+        { value: "deploys", label: "Deploys", content: <Deploys /> },
+      ]}
+    />
+  );
+}
+```
+
+Each tab has a `value`, a plain-text `label` and the `content` of its panel. Labels are plain strings because every tab is a whole number of glyph cells wide: the label plus a cell of space each side, with a divider cell between tabs.
+
+The `folder` variant lifts the active tab out of a framed panel, like a file folder:
+
+```text
+            ╭──────────╮
+  Overview  │ Deploys  │ Settings
+╭───────────╯          ╰──────────────╮
+│                                     │
+```
+
+When you pick another tab, its lid and the opening under it slide over in whole cells for 200ms, and the sides close once they land.
+
+The `underline` variant runs a light rule `─` under the tabs with a heavy `━` under the active one. It slides in half-cell steps, using `╾` and `╼` where it ends halfway through a cell.
+
+The tabs control themselves, starting from `defaultValue` or the first tab. To control them, pass `value` and `onValueChange`.
+
+## Examples
+
+### Install command
+
+The `underline` variant in green, switching between package managers.
+
+<ComponentPreview src="examples/ascii-tabs-install.tsx">
+  <AsciiTabsInstall />
+</ComponentPreview>
+
+### Controlled
+
+`value` and `onValueChange` from `useState`, at `size="sm"`.
+
+<ComponentPreview src="examples/ascii-tabs-controlled.tsx">
+  <AsciiTabsControlled />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "tabs",
+      type: "readonly AsciiTab[]",
+      required: true,
+      description:
+        "{ value: string; label: string; content: ReactNode }, left to right.",
+    },
+    {
+      name: "value",
+      type: "string",
+      description: "The active tab, when you control it.",
+    },
+    {
+      name: "defaultValue",
+      type: "string",
+      default: "The first tab",
+      description: "The tab active at first, when the tabs control themselves.",
+    },
+    {
+      name: "onValueChange",
+      type: "(value: string) => void",
+      description: "Called with the new tab's value when the visitor picks a tab.",
+    },
+    {
+      name: "label",
+      type: "string",
+      description: "Names the tab list for screen readers.",
+    },
+    {
+      name: "variant",
+      type: '"folder" | "underline"',
+      default: '"folder"',
+      description: "Folder tabs over a framed panel, or a sliding underline.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "Colour of the active label and the underline, a palette name or any CSS colour.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg"',
+      default: '"md"',
+      description: "Glyph cell height: 12, 16 or 20px.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The tabs follow the ARIA tabs pattern. The list has one tab stop, on the active tab. Left and Right arrows move between tabs and wrap at the ends, Home and End jump to the first and last, and the panel follows focus.
+- Each panel is a `tabpanel` named by its tab and is a tab stop itself, so keyboard users can reach a panel with no controls in it. Inactive panels stay in the page with `hidden`.
+- Each tab's hit area reaches over the frame rows above and below its label, so a 16px row is still easy to tap.
+- The frame is DOM text in `--ascii-font` and hidden from screen readers. With reduced motion, the lid and the underline jump to the new tab.
+- The strip is as wide as its tabs. Keep labels short on narrow screens: three tabs of eight letters need about 34 cells.

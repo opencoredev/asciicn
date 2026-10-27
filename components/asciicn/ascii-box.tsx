@@ -301,7 +301,7 @@ export const AsciiBox = ({
             {backdrop}
           </div>
         ) : null}
-        <div className="pointer-events-none absolute inset-0 grid grid-cols-[var(--box-cw)_minmax(0,1fr)_var(--box-cw)] grid-rows-[var(--box-ch)_minmax(0,1fr)_var(--box-ch)] font-[family-name:var(--ascii-font,ui-monospace,monospace)] text-[var(--box-ink)] whitespace-pre select-none [font-size:calc(var(--box-ch)/1.2)] [font-variant-ligatures:none] leading-[var(--box-ch)]">
+        <div className="pointer-events-none absolute inset-0 grid grid-cols-[var(--box-cw)_minmax(0,1fr)_var(--box-cw)] grid-rows-[var(--box-ch)_minmax(0,1fr)_var(--box-ch)] font-[family-name:var(--ascii-font,ui-monospace,monospace)] text-[var(--box-ink)] whitespace-pre select-none [font-size:calc(var(--box-ch)/1.17)] [font-variant-ligatures:none] leading-[var(--box-ch)]">
           <span aria-hidden="true">{glyphs.tl}</span>
           <Edge
             glyph={glyphs.h}
@@ -334,7 +334,7 @@ export const AsciiBox = ({
       {shade ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute top-[var(--box-ch)] right-0 bottom-0 left-[var(--box-cw)] font-[family-name:var(--ascii-font,ui-monospace,monospace)] text-[var(--box-ink)] whitespace-pre opacity-70 select-none [font-size:calc(var(--box-ch)/1.2)] leading-[var(--box-ch)]"
+          className="pointer-events-none absolute top-[var(--box-ch)] right-0 bottom-0 left-[var(--box-cw)] font-[family-name:var(--ascii-font,ui-monospace,monospace)] text-[var(--box-ink)] whitespace-pre opacity-70 select-none [font-size:calc(var(--box-ch)/1.17)] leading-[var(--box-ch)]"
         >
           <div className="absolute top-0 right-0 bottom-0 w-[var(--box-cw)] overflow-hidden">
             {verticalRun(shade)}

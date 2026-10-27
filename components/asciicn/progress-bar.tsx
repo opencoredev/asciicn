@@ -182,7 +182,7 @@ const useEased = (
     const start = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / MOTION.slow);
+      const t = Math.min(1, Math.max(0, (now - start) / MOTION.slow));
       // Ease out: fast toward the new value, settling gently on it.
       const eased = 1 - (1 - t) ** 4;
       const next = goal.map((value, index) => {

@@ -1,0 +1,116 @@
+---
+title: "ASCII badge"
+description: "A status badge set in glyphs, such as [ OK ], < beta > or ┤ v2 ├, with tones from the palette, a fixed width for aligned columns and an optional live dot."
+---
+
+import AsciiBadgeDemo from "@/examples/ascii-badge-demo";
+import { controls as asciiBadgeControls } from "@/examples/ascii-badge-controls";
+import AsciiBadgeBoot from "@/examples/ascii-badge-boot";
+import AsciiBadgeShapes from "@/examples/ascii-badge-shapes";
+
+<ComponentPreview
+  src="examples/ascii-badge-demo.tsx"
+  controls={asciiBadgeControls}
+>
+  <AsciiBadgeDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-badge" />
+
+## Usage
+
+```tsx
+import { AsciiBadge } from "@/components/asciicn/ascii-badge";
+
+export function BuildStatus() {
+  return <AsciiBadge tone="ok">OK</AsciiBadge>;
+}
+```
+
+`shape` sets the glyphs around the label: `square` (`[ OK ]`), `angle` (`< beta >`), `round` (`( new )`), `pipe` (`┤ v2 ├`) or `inverse`, a solid label in reverse video.
+
+`tone` sets the colour from the `--ascii-color-*` palette: `neutral` is ink, `ok` green, `info` blue, `warn` orange, `error` red and `accent` purple. Pass `color` to use any other colour.
+
+By default the label has one cell of space each side. Set `width` to centre it in at least that many cells instead, so a column of badges lines up: with `width={4}`, `OK` and `WARN` both draw six cells wide, as `[ OK ]` and `[WARN]`.
+
+`dot` puts a `●` before the label that opens out to `◉` and `◎` and back, for states that are live or running.
+
+## Examples
+
+### Boot log
+
+Badges at `width={6}`, so every line of the log starts its text in the same column.
+
+<ComponentPreview src="examples/ascii-badge-boot.tsx">
+  <AsciiBadgeBoot />
+</ComponentPreview>
+
+### Shapes and labels
+
+Each shape once, then badges next to feature names, one with a live dot.
+
+<ComponentPreview src="examples/ascii-badge-shapes.tsx">
+  <AsciiBadgeShapes />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "children",
+      type: "ReactNode",
+      description: "The label. Short text reads best: OK, beta, v2.4.",
+    },
+    {
+      name: "shape",
+      type: '"square" | "angle" | "round" | "pipe" | "inverse"',
+      default: '"square"',
+      description: "The glyphs around the label, or reverse video.",
+    },
+    {
+      name: "tone",
+      type: '"neutral" | "ok" | "info" | "warn" | "error" | "accent"',
+      default: '"neutral"',
+      description: "Sets the colour: ink, green, blue, orange, red or purple.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: "The tone's colour",
+      description: "Colour override, a palette name or any CSS colour.",
+    },
+    {
+      name: "dot",
+      type: "boolean",
+      default: "false",
+      description: "A pinging ● before the label, for live states.",
+    },
+    {
+      name: "width",
+      type: "number",
+      default: "The label plus a cell each side",
+      description:
+        "Centre the label in at least this many cells, so badges in a column line up.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg"',
+      default: '"md"',
+      description: "Glyph cell height: 12, 16 or 20px.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The brackets and chevrons are hidden from screen readers, which read the label alone. Write labels that make sense without the colour, such as `FAIL` rather than a red `●`.
+- The badge is a `span` of DOM text in `--ascii-font`, so it sits on the text baseline and can be selected and copied.
+- The live dot swaps one glyph six times a second, pauses offscreen and in hidden tabs, and holds a solid `●` with reduced motion.

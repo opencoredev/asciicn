@@ -1,0 +1,77 @@
+[
+  {
+    "name": "terminal-window",
+    "type": "registry:component",
+    "title": "Terminal window",
+    "description": "A terminal window framed in box-drawing glyphs that plays a scripted session: typed commands, streamed output, spinners, block progress bars and coloured ok, warn and error lines.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-box.json",
+      "{{REGISTRY_URL}}/loader.json",
+      "{{REGISTRY_URL}}/progress-bar.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/terminal-window.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/terminal-window.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-badge",
+    "type": "registry:component",
+    "title": "ASCII badge",
+    "description": "A status badge set in glyphs, such as [ OK ], < beta > or ┤ v2 ├, with tones from the palette, a fixed width for aligned columns and an optional live dot.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-badge.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-badge.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-tabs",
+    "type": "registry:component",
+    "title": "ASCII tabs",
+    "description": "Tabs drawn as box-drawing folder tabs or a sliding glyph underline, with arrow-key navigation and a roving tab stop.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-tabs.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-tabs.tsx"
+      }
+    ]
+  },
+  {
+    "name": "kbd-shortcut",
+    "type": "registry:component",
+    "title": "Keyboard shortcut",
+    "description": "Keyboard shortcuts drawn as box-drawing keycaps, with Mac and PC labels and caps that press down while the visitor holds the keys.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/kbd-shortcut.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/kbd-shortcut.tsx"
+      }
+    ]
+  },
+  {
+    "name": "status-dot",
+    "type": "registry:component",
+    "title": "Status dot",
+    "description": "A one-glyph status indicator for online, busy, offline and error, with a distinct shape per state and a ping, turn or flash in glyphs.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/status-dot.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/status-dot.tsx"
+      }
+    ]
+  }
+]

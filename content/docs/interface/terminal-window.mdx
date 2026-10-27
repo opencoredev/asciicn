@@ -1,0 +1,148 @@
+---
+title: "Terminal window"
+description: "A terminal window framed in box-drawing glyphs that plays a scripted session: typed commands, streamed output, spinners, block progress bars and coloured ok, warn and error lines."
+---
+
+import TerminalWindowDemo from "@/examples/terminal-window-demo";
+import { controls as terminalWindowControls } from "@/examples/terminal-window-controls";
+import TerminalWindowDeploy from "@/examples/terminal-window-deploy";
+import TerminalWindowHero from "@/examples/terminal-window-hero";
+
+<ComponentPreview
+  src="examples/terminal-window-demo.tsx"
+  size="lg"
+  controls={terminalWindowControls}
+>
+  <TerminalWindowDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="terminal-window" />
+
+## Usage
+
+```tsx
+import { TerminalWindow } from "@/components/asciicn/terminal-window";
+import type { TerminalStep } from "@/components/asciicn/terminal-window";
+
+const script: TerminalStep[] = [
+  { kind: "command", text: "pnpm test" },
+  { kind: "task", text: "Running 128 tests", duration: 1.5 },
+  { kind: "output", text: "128 passed", tone: "ok" },
+];
+
+export function TestRun() {
+  return <TerminalWindow script={script} title="~/acme — test" rows={8} />;
+}
+```
+
+Leave `script` out to play the built-in session: `npx shadcn add` installs a component, retries once after a registry timeout, fills a progress bar, lists the files it wrote, builds the site and prints a frame of a torus in the `standard` ramp.
+
+A script is a list of steps, each with a `kind`:
+
+- `command`: typed after the prompt one key at a time, with a small, repeatable jitter between keys, then entered.
+- `output`: printed a line at a time. `tone` colours it and sets the mark before it: `ok` (`✔`), `info` (`›`), `warn` (`!`), `error` (`✖`), `muted` or `plain`. Set `wrap: false` to clip long lines, for ASCII art, and `alt` to say what the art is to screen readers.
+- `task`: a `Loader` spinner for `duration` seconds, then a result mark. `result` is `ok`, `warn` or `error`, and `done` replaces the text when it ends.
+- `progress`: a `ProgressBar` in brackets that fills from 0 to 100% over `duration` seconds, as in `[████████░░] 82%`. It stalls and spurts like a real install.
+- `wait`: a pause with nothing printed.
+
+After the last step a prompt waits with a blinking `█` cursor. With `loop`, the session starts over 3.5 seconds later.
+
+The window is `rows` lines tall and never changes size. New lines push older ones off the top, and long commands wrap.
+
+## Examples
+
+### Custom script
+
+A deploy that fails a check, retries with the check skipped, uploads and goes live. Twelve rows, the `light` frame and `size="md"`.
+
+<ComponentPreview src="examples/terminal-window-deploy.tsx" size="lg">
+  <TerminalWindowDeploy />
+</ComponentPreview>
+
+### Landing hero
+
+The default session at 1.25x speed with a headline. They sit side by side once the container is 760px wide, and stack below that.
+
+<ComponentPreview src="examples/terminal-window-hero.tsx" size="lg">
+  <TerminalWindowHero />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "script",
+      type: "readonly TerminalStep[]",
+      default: "DEFAULT_TERMINAL_SCRIPT",
+      description:
+        "The session to play. Steps are command, output, task, progress and wait.",
+    },
+    {
+      name: "title",
+      type: "string",
+      default: '"~/acme — zsh"',
+      description: "Text in the title bar, such as a path or a command. Also names the window for screen readers.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Playback speed multiplier.",
+    },
+    {
+      name: "loop",
+      type: "boolean",
+      default: "true",
+      description:
+        "Start over 3.5 seconds after the end. When false, the button in the bottom border becomes replay.",
+    },
+    {
+      name: "rows",
+      type: "number",
+      default: "18",
+      description: "Height of the screen in lines.",
+    },
+    {
+      name: "prompt",
+      type: "string",
+      default: '"$"',
+      description: "The prompt before each command.",
+    },
+    {
+      name: "frame",
+      type: '"light" | "heavy" | "double" | "rounded" | "ascii"',
+      default: '"rounded"',
+      description: "Box-drawing set for the window frame.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"grey"',
+      description: "Frame colour, a palette name or any CSS colour.",
+    },
+    {
+      name: "size",
+      type: '"sm" | "md" | "lg"',
+      default: '"lg"',
+      description: "Glyph cell height: 12, 14 or 16px.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
+    },
+  ]}
+/>
+
+`TerminalWindow` also takes the `AsciiBox` props `shadow`, `filled`, `padding` and `labelAlign`, and any `div` attribute.
+
+## Notes
+
+- The screen is hidden from screen readers, because it changes many times a second. A visually hidden transcript of the whole session sits next to it, and the window is a group named by `title`.
+- The clock runs only while the window is on screen and the tab is visible, so the session starts when the visitor scrolls to it.
+- The bottom border holds a pause button, which turns into play when paused and into replay when a session without `loop` ends. It is a real button, reachable with Tab.
+- With reduced motion, the window shows the finished session as one still frame, with a steady cursor and no button.
+- The text is DOM text in `--ascii-font`, so it stays sharp at any zoom and can be selected and copied.
