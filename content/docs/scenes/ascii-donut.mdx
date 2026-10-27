@@ -35,13 +35,15 @@ Every sample casts a ray from a perspective camera and marches it into the torus
 
 The shading is built for glyphs. A key light sets the body tone, a cool rim light from behind outlines the far edge, the inside of the ring sits in soft shadow, and a tight specular highlight is the only place the densest glyphs appear. In truecolor, the body takes `color`, the rim takes `rim`, and highlights go white.
 
-Drag to spin it. Let go mid-drag and it coasts, then settles back into its own spin. With keyboard focus, the arrow keys turn it.
+At rest the ring leans toward you in a three-quarter view, with the hole open, and rocks slowly a little either way while it turns on its own axis. It never turns edge-on by itself, and it does not react to hover.
+
+Press and drag to turn it. Let go mid-drag and it coasts, then eases back to its resting view. With keyboard focus, the arrow keys turn it.
 
 ## Examples
 
 ### Ribbed, in Braille
 
-`surface="ribbed"` winds grooves around the tube, which flash as they turn through the light.
+`surface="ribbed"` winds grooves around the tube, which catch the light as the ring turns on its axis.
 
 <ComponentPreview src="examples/ascii-donut-ribbed.tsx" size="lg">
   <AsciiDonutRibbed />
@@ -75,16 +77,17 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
     },
     {
       name: "spin",
-      type: "[number, number]",
-      default: "[0.7, 0.45]",
+      type: "number",
+      default: "0.4",
       description:
-        "Spin around the horizontal and vertical axes, in radians per second.",
+        "Turn around the ring's own axis, in radians per second. Shows on the ribbed surface.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "Multiplies the spin. 0 holds it still until dragged.",
+      description:
+        "Multiplies the spin and the slow rocking. 0 holds it still until dragged.",
     },
     {
       name: "surface",
@@ -152,5 +155,6 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
 ## Notes
 
 - It is announced as an image. Pass `aria-label` to describe what it stands for on your page.
-- Under reduced motion it draws one still frame.
+- Under reduced motion it draws one still frame, in the resting three-quarter view.
+- Only a press and drag turns it. Moving the mouse over it changes nothing.
 - It draws at up to 60 fps and pauses offscreen and in hidden tabs. Rays that miss the ring's bounding sphere skip the march, so empty space costs almost nothing.

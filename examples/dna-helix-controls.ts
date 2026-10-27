@@ -26,7 +26,7 @@ export const orientation = segmented({
 });
 
 export const speed = slider({
-  default: 0.6,
+  default: 0.35,
   id: "speed",
   label: "Spin",
   max: 3,

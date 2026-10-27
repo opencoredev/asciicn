@@ -51,7 +51,7 @@ export interface TorusKnotProps
   thickness?: number;
   /** How much of the box's shorter side the knot spans, 0.3 to 1. Default 0.86. */
   size?: number;
-  /** Turn around the knot's own axis, in radians per second. Default 0.4. */
+  /** Turn around the knot's own axis, in radians per second. Default 0.25. */
   spin?: number;
   /** Time multiplier for the spin and the slow sway. Default 1. */
   speed?: number;
@@ -746,7 +746,7 @@ export const TorusKnot = ({
   q = 5,
   thickness = 0.13,
   size = 0.86,
-  spin = 0.4,
+  spin = 0.25,
   speed = 1,
   colors = DEFAULT_COLORS,
   hue = "film",
@@ -856,8 +856,8 @@ export const TorusKnot = ({
     // A torus knot reads best near face on, so it turns on its own axis
     // and sways a little to show its depth, rather than tumbling edge on.
     rotation(
-      0.6 + 0.26 * Math.sin(time * 0.29) + state.x,
-      0.34 * Math.sin(time * 0.21) + state.y,
+      0.6 + 0.16 * Math.sin(time * 0.23) + state.x,
+      0.22 * Math.sin(time * 0.17) + state.y,
       state.roll,
       matrix.current
     );

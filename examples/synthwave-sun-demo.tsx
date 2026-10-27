@@ -17,8 +17,6 @@ export default function SynthwaveSunDemo() {
       glow={usePreviewValue(knobs.glow)}
       mountains={usePreviewValue(knobs.mountains)}
       stars={usePreviewValue(knobs.stars)}
-      interactive={usePreviewValue(knobs.interactive)}
-      interaction={usePreviewValue(knobs.interaction)}
       cell={usePreviewValue(knobs.cell)}
       className="absolute inset-0"
     />

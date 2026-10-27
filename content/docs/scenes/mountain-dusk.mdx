@@ -38,9 +38,9 @@ export function Hero() {
 
 Ridge after ridge of mountains runs back to the horizon. Each ridgeline is drawn with real line glyphs: `/` up a slope, `\` down the other side, `^` on a sharp peak and `_` or `-` along the flats. Below its crest each ridge falls away into haze, dense near the top and sparse at the foot, so the ridge in front always stands out against the one behind. Far ridges are pale rose, near ones deep violet, and mist drifts in the valleys between them.
 
-`time` runs the evening. At 0 the sun sits on the far ridge and the sky glows orange into violet. As it rises the sun sinks out of sight, the afterglow fades, the moon climbs on the right and the stars come out, brightest first. From about 0.3 a shooting star crosses now and then. Each star is a single sample, so it stays one crisp glyph, or one Braille dot.
+`time` runs the evening. At 0 the sun sits on the far ridge and the sky glows orange into violet. As it rises the sun sinks out of sight, the afterglow fades, the moon climbs on the right and the stars come out, brightest first. From about 0.3 a shooting star crosses once in a while, at most every 18 seconds. Each star is a single sample, so it stays one crisp glyph, or one Braille dot.
 
-The ridges drift slowly sideways, the near ones fastest, so the depth shows even when nothing else moves. With `interactive` on, the default, they also slide apart as the pointer moves, and glide back when it leaves.
+The mountains stand still. Only the sky moves: stars twinkle slowly, mist drifts through the valleys and the odd shooting star crosses. The scene does not react to hover or the pointer.
 
 It draws in `standard` glyphs and `truecolor` by default. The charset sets the glyphs for the haze, sky, sun, moon and mist. With a ramp charset the ridgelines are drawn as line glyphs on top; `braille` and `quadrants` draw them from their own sub-cell dots instead. In `mono` mode every glyph takes the ink, or a `phosphor`. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline.
 
@@ -115,12 +115,6 @@ It draws in `standard` glyphs and `truecolor` by default. The charset sets the g
         "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
     },
     {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description: "The ridges slide apart as the pointer moves, nearest most.",
-    },
-    {
       name: "charset",
       type: "CharsetName",
       default: '"standard"',
@@ -171,7 +165,7 @@ It draws in `standard` glyphs and `truecolor` by default. The charset sets the g
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the ridges drift and the stars twinkle.",
+      description: "How fast the mist drifts and the stars twinkle.",
     },
     {
       name: "animate",
@@ -205,5 +199,6 @@ It draws in `standard` glyphs and `truecolor` by default. The charset sets the g
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer, so moving the mouse over it changes nothing.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Each ridge's crest is worked out once per column, not per sample, so `braille`, which samples eight times per cell, costs mostly the sky and mist.

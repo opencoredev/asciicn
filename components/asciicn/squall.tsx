@@ -12,14 +12,14 @@ export interface SquallProps extends Omit<
   seed?: string;
 }
 
-// Muted teal running to slate blue, with heavy folds and fast drift,
+// Muted teal running to slate blue, with heavy folds and a steady drift,
 // like rain bands crossing a sky.
 const SQUALL = {
   hue: [190, 206],
   ribbons: {
     amplitude: [0.15, 0.22],
     count: [4, 5],
-    drift: [0.1, 0.15],
+    drift: [0.045, 0.07],
     fold: [0.7, 1.1],
     glow: [0.35, 0.6],
   },

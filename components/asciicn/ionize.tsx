@@ -12,11 +12,12 @@ export interface IonizeProps extends Omit<
   seed?: string;
 }
 
-// Thin, fast, hot ribbons in electric blue that cool towards cyan.
+// Thin, hot ribbons in electric blue that cool towards cyan. The drift
+// stays unhurried; the twist and glow carry the energy.
 const IONIZE = {
   hue: [258, 270],
   ribbons: {
-    drift: [0.1, 0.16],
+    drift: [0.045, 0.07],
     glow: [0.75, 0.95],
     twist: [1.8, 2.8],
     width: [0.022, 0.042],
@@ -26,7 +27,7 @@ const IONIZE = {
 } as const satisfies SeedOptions;
 
 /**
- * Electric blue plasma ribbons: thin, bright and quick, with a wide glow
+ * Electric blue plasma ribbons: thin and bright, with a wide glow
  * and tight twists. Braille by default, so each ribbon draws as fine dots.
  * Decorative and full-bleed: size it with `className`, usually
  * `absolute inset-0`.

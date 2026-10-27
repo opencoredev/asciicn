@@ -627,7 +627,7 @@ const project = (view: View, [px, py, pz]: Vec3, out: Float64Array) => {
 // The resting three-quarter view, and how far the idle sway goes.
 const BASE_YAW = -0.48;
 const BASE_PITCH = 0.3;
-const SWAY = 0.12;
+const SWAY = 0.08;
 
 /**
  * Scale and centre so the whole model fits the box with a margin, at
@@ -1349,10 +1349,10 @@ export const RetroComputer = ({
     const aspect = metrics.width / gx / (metrics.height / gy);
     const frameView = fitView(field.width, field.height, aspect);
     const still = delta === 0 && (!animate || reducedMotion);
-    const sway = still ? 0 : Math.sin(time * 0.31) * SWAY;
+    const sway = still ? 0 : Math.sin(time * 0.2) * SWAY;
     const view: View = {
       ...frameView,
-      pitch: BASE_PITCH + turn.y + (still ? 0 : Math.sin(time * 0.23) * 0.03),
+      pitch: BASE_PITCH + turn.y + (still ? 0 : Math.sin(time * 0.15) * 0.02),
       yaw: BASE_YAW + turn.x + sway,
     };
     // The text grid comes from the most turned pose of the idle sway.
@@ -1399,7 +1399,7 @@ export const RetroComputer = ({
       prompt,
       {
         color: textColor,
-        cursor: Math.floor(time * 1.8) % 2 === 0 || session.typing !== "",
+        cursor: Math.floor(time * 1.2) % 2 === 0 || session.typing !== "",
       },
       [gx, gy]
     );

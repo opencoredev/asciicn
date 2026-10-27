@@ -38,7 +38,7 @@ export function Hero() {
 
 Each seed rolls a set of ribbons: how many, how they swing, how much slow noise bends them, how wide they are and how often they twist. A ribbon's width follows its twist, so where it turns edge-on it narrows to a bright line, like a strip of film turning in the light. Its rims are the brightest part, a soft halo surrounds it, and the ribbons further back sit a little dimmer. In `truecolor` each ribbon takes its own hue along the palette.
 
-Squall runs from a muted teal to slate blue at low chroma. It rolls four or five heavy, deeply folded ribbons that drift fast, like rain bands crossing a sky. It draws in the `standard` ramp by default.
+Squall runs from a muted teal to slate blue at low chroma. It rolls four or five heavy, deeply folded ribbons that drift steadily, like rain bands crossing a sky. It draws in the `standard` ramp by default.
 
 Each seed gets its own palette, built in OKLCH: a first hue, then a turn of up to 120 degrees that never runs through the olive and khaki hues that turn muddy at glyph sizes. The palette comes in two versions, deep to bright on dark paper and pale to deep on light paper, and switches with the theme, so the densest glyphs always have the most contrast.
 
@@ -187,7 +187,8 @@ Half intensity drops the bands to the light end of the ramp under the text.
       name: "interaction",
       type: '"none" | "repel" | "ripple" | "trail"',
       default: '"none"',
-      description: "What the pointer does to the glyphs.",
+      description:
+        "What the pointer does to the glyphs. Off by default, so the field ignores hover; opt in only where a pointer effect suits the page.",
     },
     {
       name: "interactive",
@@ -248,5 +249,6 @@ Half intensity drops the bands to the light end of the ramp under the text.
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- By default it does not react to the pointer: moving the mouse over it changes nothing.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows soft CSS glows in the seed's colours.
 - A seed is rolled once, on the CPU, in a few milliseconds: a small exposure check samples the field at 40×22 at three moments and re-rolls (up to eight times) until between a quarter and three fifths of the box carries a glyph, then sets the gain so the brightest glyphs reach the top of the ramp. Changing `seed` re-rolls; changing the look props does not. See [Performance](/docs/engine/performance).

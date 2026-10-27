@@ -9,7 +9,7 @@ export default function AsciiDonutRibbed() {
       ramp="glacier"
       thickness={0.32}
       radius={0.58}
-      spin={[0.4, 0.9]}
+      spin={0.6}
       cell={9}
       className="aspect-[4/3] w-full max-w-xl"
     />

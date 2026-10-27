@@ -77,12 +77,6 @@ export const intensity = slider({
   step: 0.05,
 });
 
-export const interactive = toggle({
-  default: true,
-  id: "interactive",
-  label: "Parallax",
-});
-
 export const cell = slider({
   default: 12,
   id: "cell",
@@ -110,7 +104,6 @@ export const controls = [
   mist,
   moon,
   intensity,
-  interactive,
   cell,
   animate,
 ];

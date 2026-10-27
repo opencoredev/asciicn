@@ -17,7 +17,6 @@ export default function MountainDuskDemo() {
       mist={usePreviewValue(knobs.mist)}
       moon={usePreviewValue(knobs.moon)}
       intensity={usePreviewValue(knobs.intensity)}
-      interactive={usePreviewValue(knobs.interactive)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

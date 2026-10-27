@@ -153,16 +153,17 @@ const moonAt = (aspect: number): readonly [number, number] => [
 /**
  * The sea surface at a point on the water, about -1 to 1: two long swells
  * rolling in toward the viewer, bent a little sideways, and wind chop on
- * top. Swells move toward the viewer, so their phase grows with time.
+ * top. Swells move toward the viewer, so their phase grows with time,
+ * slowly: one long swell every six seconds or so, like a calm night.
  */
 const seaHeight = (wx: number, z: number, params: OceanParams): number => {
   const { time, swell, wind } = params;
-  const bend = 0.7 * Math.sin(wx * 2.1 + time * 0.15);
-  const long = Math.sin((z / 0.1) * Math.PI * 2 + bend + time * 1.1);
+  const bend = 0.7 * Math.sin(wx * 2.1 + time * 0.08);
+  const long = Math.sin((z / 0.1) * Math.PI * 2 + bend + time * 0.55);
   const cross = Math.sin(
-    (z / 0.055 + wx / 0.2) * Math.PI * 2 + time * 1.7 + 1.3
+    (z / 0.055 + wx / 0.2) * Math.PI * 2 + time * 0.85 + 1.3
   );
-  const chop = noise(wx * 26 + time * 0.6, z * 40 - time * 2) - 0.5;
+  const chop = noise(wx * 26 + time * 0.3, z * 40 - time * 0.9) - 0.5;
   return (
     (long * 0.7 + cross * 0.3) * lerp(0.25, 1, swell) +
     chop * (0.4 + wind * 1.2)
@@ -197,7 +198,7 @@ const water = (
   const moon = moonAt(aspect);
   // The moon's path widens toward the viewer and wavers with the swell.
   const width = 0.02 + below * 0.32;
-  const waver = 0.025 * Math.sin(z * 30 + params.time * 0.8) * below * 3;
+  const waver = 0.025 * Math.sin(z * 30 + params.time * 0.4) * below * 3;
   const path = params.moon
     ? 1 - smoothstep(width * 0.4, width, Math.abs(x - moon[0] + waver))
     : 0;
@@ -285,10 +286,12 @@ const paintField = (field: ToneField, aspect: number, params: OceanParams) => {
           tone = Math.max(tone, lerp(0.3, 0.62, froth));
           color = mixRgb(color, FOAM, froth);
         }
-        // The moon's path: glints flicker where a wave face catches it.
+        // The moon's path: glints shimmer where a wave face catches it.
+        // Each sample changes on its own beat, about once a second, so the
+        // path glitters rather than flashing all at once.
         if (w.path > 0) {
           const glint = hash(
-            sx * 7 + Math.floor(time * 5),
+            sx * 7 + Math.floor(time * 1.1 + hash(sx, sy + 17)),
             sy * 3 + Math.floor(w.z * 40)
           );
           const lit = w.path * smoothstep(0.1, 0.8, w.height + 0.5 * glint);
@@ -355,7 +358,10 @@ const drawCrests = (
       const crest = here.height > 0.22 && above.height < here.height + 0.05;
       const foamAt = lerp(0.95, 0.55, params.wind) - 0.15 * here.near;
       const strength = lerp(0.45, 1, here.near);
-      const seed = hash(cx * 13 + Math.floor(params.time * 3), cy);
+      const seed = hash(
+        cx * 13 + Math.floor(params.time * 1.1 + hash(cx, cy + 17)),
+        cy
+      );
       if (here.path > 0.3 && seed < 0.3 * here.path) {
         frame.put(cx, cy, seed < 0.1 ? "*" : "+", fade(GLITTER, 1));
       } else if (here.height > foamAt && here.near > 0.15) {
@@ -399,8 +405,8 @@ const toBytes = (rgba: readonly number[] | undefined, fallback: Rgb8): Rgb8 =>
  * as the crests spill, a full moon with a path of glints on the water, and
  * clouds drifting past. Drawn on the CPU: the sky, clouds and water shading
  * go through the charset's ramp, and ramps get line glyphs for crests and
- * foam on top. Decorative: size it with `className`, usually
- * `absolute inset-0`.
+ * foam on top. It does not react to the pointer. Decorative: size it with
+ * `className`, usually `absolute inset-0`.
  */
 // oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const OceanWaves = ({

@@ -36,7 +36,7 @@ export function Hero() {
 }
 ```
 
-The view is out to sea on a clear night. Long swells roll in toward you, small and crowded at the horizon and wide near the bottom of the box, with a run of `~` along every crest. Where a crest spills it comes apart into foam: `*`, `'`, `.` and `` ` ``, lighter the further it breaks. A full moon hangs over the water and lays a path of glints that flicker as the waves pass through it. Thin clouds drift across the sky, lit at their edges near the moon.
+The view is out to sea on a clear night. Long swells roll in slowly toward you, small and crowded at the horizon and wide near the bottom of the box, with a run of `~` along every crest. Where a crest spills it comes apart into foam: `*`, `'`, `.` and `` ` ``, lighter the further it breaks. A full moon hangs over the water and lays a path of glints that shimmer as the waves pass through it, each glint on its own slow beat. Thin clouds drift across the sky, lit at their edges near the moon.
 
 `swell` sets the size of the swells, from a flat calm at 0 to heavy seas at 1. `wind` adds chop on top, brings foam to more of the crests and moves the clouds faster. Turn `moon` off for a dark night with only starlight and foam.
 
@@ -184,5 +184,6 @@ It draws in `standard` glyphs and `truecolor` by default. The charset sets the g
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer, so moving the mouse over it changes nothing.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Far out the swells fade into a calm sheen before they crowd closer than a glyph row, so the horizon stays steady instead of shimmering.

@@ -38,9 +38,9 @@ export function StatusHero() {
 
 The rack is seen from the front. A fibre patch panel and a 48-port core switch sit at the top, a UPS at the bottom, and between them a mix of 1U web servers, 2U GPU nodes with fans turning behind the grille, 2U storage shelves and blanking plates. Rack numbers run up the left rail and a power strip with one outlet per unit runs beside it.
 
-Every light keeps its own rhythm. Drive LEDs go quiet, then flicker fast for a second or two, the way real disk I/O comes in spells. Each machine's health LED beats twice and rests. Switch ports stay green while their link is up and blink dark with traffic. The locator LED turns blue now and then. Each machine's uplink fibre runs out to the cable channel on the right and climbs out through the roof, and pulses of light travel along it both ways.
+Every light keeps its own rhythm. Drive LEDs go quiet, then blink a couple of times a second for a few seconds, the way real disk I/O comes in spells. Fewer than half are busy at once, so the rack hums rather than strobes. Each machine's health LED beats twice and rests. Switch ports stay green while their link is up and blink dark with traffic. The locator LED turns blue now and then. Each machine's uplink fibre runs out to the cable channel on the right and climbs out through the roof, and slow pulses of light travel along it both ways.
 
-`activity` sets how busy it all looks. At 0 the drives sit still and only the heartbeats and steady links remain. At 1 the drives chatter and the fibres carry three streams each. `alert` flashes one unit amber: its bezel, name and status LED. Pass `true` to flag the first storage shelf, or a rack position counted from the bottom, like the numbers on the rail.
+`activity` sets how busy it all looks. At 0 the drives sit still and only the heartbeats and steady links remain. At 1 more drives blink and the fibres carry two streams each. `alert` blinks one unit amber, about every two seconds: its bezel, name and status LED. Pass `true` to flag the first storage shelf, or a rack position counted from the bottom, like the numbers on the rail.
 
 It draws in `cp437` by default: box drawing for the cabinet and bezels, shades for the drive sleds, `≡` for vents, and doubled lines where a pulse passes. `standard` swaps every glyph for plain ASCII, for fonts and terminals without box drawing. When the box is wider than one rack, neighbouring racks fill the aisle on both sides, dimmer the further out they stand.
 
@@ -89,7 +89,7 @@ It draws in `cp437` by default: box drawing for the cabinet and bezels, shades f
       type: "boolean | number",
       default: "false",
       description:
-        "true flashes the first storage shelf amber. A number flags the unit at that rack position, counted from the bottom.",
+        "true blinks the first storage shelf amber. A number flags the unit at that rack position, counted from the bottom.",
     },
     {
       name: "intensity",
@@ -176,6 +176,7 @@ It draws in `cp437` by default: box drawing for the cabinet and bezels, shades f
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real status text next to it or on top of it, not inside it.
+- It ignores the pointer, so moving the mouse over it changes nothing.
 - With reduced motion turned on, it draws one still frame at `stillTime`, with some LEDs lit and a few pulses mid-fibre.
 - It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Every frame is a few thousand cell writes, so it costs little even full-screen.
 - The unit names and readouts are glyphs on a canvas, not text. Copy or export them with `handle`.

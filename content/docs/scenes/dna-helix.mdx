@@ -35,7 +35,7 @@ The two backbones and every rung are built from lit spheres, drawn into a depth 
 
 The strands sit less than half a turn apart, as in real DNA, which opens a wide groove and a narrow one. Each rung is one base pair: A with T, or G with C. In truecolor each half takes its own base's colour, with a hairline gap in the middle where the pair bonds. The far side of the helix fades towards the paper, and the whole molecule slides slowly along its axis.
 
-Drag sideways to spin it. When it stands upright, drag up or down to tilt it. Let go mid-drag and it keeps spinning, then settles back to its own pace. With keyboard focus, the arrow keys spin and tilt it.
+It does not react to hover. Press and drag sideways to spin it. When it stands upright, drag up or down to tilt it. Let go mid-drag and it keeps spinning, then settles back to its own pace. With keyboard focus, the arrow keys spin and tilt it.
 
 ## Examples
 
@@ -64,7 +64,7 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
     {
       name: "speed",
       type: "number",
-      default: "0.6",
+      default: "0.35",
       description:
         "Spin around the helix axis, in radians per second. Negative spins the other way.",
     },
@@ -84,7 +84,7 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
     {
       name: "scroll",
       type: "number",
-      default: "1",
+      default: "0.5",
       description:
         "Base pairs per second that slide along the axis. 0 holds the helix in place.",
     },

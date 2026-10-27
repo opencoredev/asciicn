@@ -13,10 +13,16 @@ export interface PrismProps extends Omit<
 }
 
 // Violet folds turning to teal: the turn crosses blue, never the muddy
-// greens, and four or five ribbons keep the glass layered.
+// greens, and four or five ribbons keep the glass layered. A slow drift
+// keeps it calm behind text.
 const PRISM = {
   hue: [302, 318],
-  ribbons: { count: [4, 5], glow: [0.5, 0.85], width: [0.04, 0.068] },
+  ribbons: {
+    count: [4, 5],
+    drift: [0.035, 0.06],
+    glow: [0.5, 0.85],
+    width: [0.04, 0.068],
+  },
   turn: [-128, -110],
   vividness: 1.1,
 } as const satisfies SeedOptions;

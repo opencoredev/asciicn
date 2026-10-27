@@ -20,7 +20,7 @@ export interface AsciiSceneProps
   fps?: number;
   /** The moment drawn when motion is off or reduced, in seconds. */
   stillTime?: number;
-  /** Pointer parallax, steering and repulsion. Default `true`. */
+  /** Drag-to-turn on the 3D objects. Scenes and cities ignore it: nothing reacts to hover. */
   interactive?: boolean;
   /** Filled with a handle for export (.txt, .ans, .svg, .png, video). */
   handle?: RefObject<AsciiHandle | null>;

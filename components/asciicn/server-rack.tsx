@@ -32,7 +32,7 @@ export interface ServerRackProps extends Omit<
   units?: number;
   /** How busy the machines are, from 0 (idle) to 1 (flat out). Drives the drive LEDs, port lights and fibre pulses. Default 0.6. */
   activity?: number;
-  /** `true` flashes one unit amber; a number flags the unit at that rack position, counted from the bottom. Default `false`. */
+  /** `true` blinks one unit amber; a number flags the unit at that rack position, counted from the bottom. Default `false`. */
   alert?: boolean | number;
   /** How much the scene shows, from 0 (empty paper) to 1. Lower it under body text. Default 1. */
   intensity?: number;
@@ -268,20 +268,22 @@ const hash = (a: number, b: number): number => {
 };
 
 /**
- * Disk and port activity: busy spells of a second or two come and go, and
- * inside a spell the light flickers fast and unevenly, like real I/O.
+ * Disk and port activity: busy spells of a few seconds come and go, and
+ * inside a spell the light blinks a couple of times a second, unevenly,
+ * like real I/O. Fewer than half the lights are in a spell at once, so the
+ * rack hums rather than strobes.
  */
 const burst = (seed: number, time: number, activity: number): boolean => {
-  const spell = time * 0.7 + hash(seed, 1) * 9;
-  if (hash(seed, Math.floor(spell)) > activity * 0.95) {
+  const spell = time * 0.22 + hash(seed, 1) * 9;
+  if (hash(seed, Math.floor(spell)) > activity * 0.6) {
     return false;
   }
-  return hash(seed + 3, Math.floor(time * 15 + hash(seed, 2) * 7)) < 0.62;
+  return hash(seed + 3, Math.floor(time * 2.5 + hash(seed, 2) * 7)) < 0.62;
 };
 
 /** The health LED: a slow double beat, lub-dub, then a long rest. */
 const heartbeat = (seed: number, time: number): number => {
-  const phase = (time / 1.8 + hash(seed, 5)) % 1;
+  const phase = (time / 2.4 + hash(seed, 5)) % 1;
   if (phase < 0.07) {
     return 1;
   }
@@ -291,9 +293,9 @@ const heartbeat = (seed: number, time: number): number => {
   return 0;
 };
 
-/** The alert flash: a sharp on, a softer off, about once a second. */
+/** The alert flash: a steady on, a softer off, about every two seconds. */
 const alarmAt = (time: number): number => {
-  const phase = (time * 1.1) % 1;
+  const phase = (time * 0.5) % 1;
   if (phase < 0.45) {
     return 1;
   }
@@ -461,12 +463,12 @@ const statusLeds = (
   p.put(x + 4, y, locate ? g.ledOn : g.ledOff, locate ? colors.blue : off);
 };
 
-/** A two-row LCD of load bars that scroll left. */
+/** A two-row LCD of load bars that scroll left, one step every two seconds. */
 const lcd = (p: Painter, x: number, y: number, width: number, seed: number) => {
   const { colors, g } = p;
   const lit = mix(colors.paper, mix(colors.green, colors.ink, 0.3), 0.75);
   for (let i = 0; i < width; i += 1) {
-    const step = Math.floor(p.time * 2) + i;
+    const step = Math.floor(p.time * 0.5) + i;
     const load = clamp(
       0.15 + p.activity * 0.7 * hash(seed, step) + 0.15 * hash(seed + 1, step),
       0,
@@ -519,7 +521,8 @@ const fans = (p: Painter, x: number, y: number, width: number) => {
   }
   const count = Math.max(1, Math.floor(width / 4));
   for (let f = 0; f < count; f += 1) {
-    const spin = Math.floor(p.time * (6 + p.activity * 18) + f);
+    // A few steps a second: the fans read as turning, not as a strobe.
+    const spin = Math.floor(p.time * (1.5 + p.activity * 2.5) + f);
     const at = x + 1 + f * 4;
     for (let r = 1; r <= 2; r += 1) {
       p.put(at, y + r, "(", steel(colors, 0.4));
@@ -635,7 +638,7 @@ const drawBlank = (p: Painter, unit: Unit, face: Face) => {
 const drawUps = (p: Painter, unit: Unit, face: Face, label: Rgb8) => {
   const { colors, g } = p;
   const dim = steel(colors, 0.3);
-  const load = Math.round(28 + p.activity * 52 + 6 * Math.sin(p.time * 0.6));
+  const load = Math.round(28 + p.activity * 52 + 6 * Math.sin(p.time * 0.2));
   const lcdColor = mix(colors.green, colors.ink, 0.35);
   let at = text(p, face.x, face.y, "UPS", label);
   at = text(p, at + 2, face.y, "online", lcdColor);
@@ -649,7 +652,7 @@ const drawUps = (p: Painter, unit: Unit, face: Face, label: Rgb8) => {
   const cells = clamp(face.x + face.width - at - 2, 0, 10);
   // The battery stays topped up; one cell charges slowly.
   for (let i = 0; i < cells; i += 1) {
-    const full = i < cells - 1 || Math.floor(p.time) % 2 === 0;
+    const full = i < cells - 1 || Math.floor(p.time / 3) % 2 === 0;
     p.put(
       at + 2 + i,
       face.y,
@@ -793,13 +796,14 @@ const pulses = (
   if (length < 4) {
     return;
   }
-  const streams = 1 + Math.round(activity * 2);
+  // One or two slow packets per fibre with long gaps between laps.
+  const streams = 1 + Math.round(activity);
   for (let k = 0; k < streams; k += 1) {
-    const velocity = 16 + 18 * hash(seed, 40 + k);
-    const cycle = length + 8 + 40 * (1 - activity) * hash(seed, 50 + k);
+    const velocity = 5 + 4 * hash(seed, 40 + k);
+    const cycle = length + 24 + 60 * (1 - activity) * hash(seed, 50 + k);
     const travel = time * velocity + hash(seed, 60 + k) * cycle;
     const lap = Math.floor(travel / cycle);
-    if (hash(seed * 3 + k, lap) > 0.3 + 0.7 * activity) {
+    if (hash(seed * 3 + k, lap) > 0.2 + 0.5 * activity) {
       continue;
     }
     const head = travel - lap * cycle;
@@ -983,11 +987,12 @@ const drawFibres = (scene: Scene, mono: boolean) => {
 /**
  * A data-centre rack seen from the front, drawn in glyphs on the CPU.
  * Patch panel and core switch at the top, servers, GPU nodes and storage
- * shelves in the middle, a UPS at the bottom. Drive LEDs flicker in busy
- * spells, health LEDs beat slowly, port lights blink with traffic, and
- * light pulses run along the fibres that climb the cable channel and leave
- * through the roof. Wide boxes show neighbouring racks, dimmer, either side.
- * Decorative: size it with `className`, usually `absolute inset-0`.
+ * shelves in the middle, a UPS at the bottom. Drive LEDs blink in short
+ * busy spells, health LEDs beat slowly, port lights blink with traffic, and
+ * slow light pulses run along the fibres that climb the cable channel and
+ * leave through the roof. Wide boxes show neighbouring racks, dimmer, either
+ * side. It does not react to the pointer. Decorative: size it with
+ * `className`, usually `absolute inset-0`.
  */
 // oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const ServerRack = ({

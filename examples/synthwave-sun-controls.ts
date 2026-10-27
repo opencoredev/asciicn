@@ -4,7 +4,7 @@ import {
   PHOSPHOR_NAMES,
   RAMP_NAMES,
 } from "@/lib/ascii";
-import { segmented, select, slider, toggle } from "@/lib/preview-controls";
+import { select, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the synthwave sun's main demo, shared by the page and the demo.
 
@@ -79,12 +79,6 @@ export const stars = toggle({
   label: "Stars",
 });
 
-export const interactive = toggle({
-  default: true,
-  id: "interactive",
-  label: "Steer",
-});
-
 export const cell = slider({
   default: 12,
   id: "cell",
@@ -93,13 +87,6 @@ export const cell = slider({
   min: 8,
   step: 1,
   unit: "px",
-});
-
-export const interaction = segmented({
-  default: "none",
-  id: "interaction",
-  label: "Pointer",
-  options: ["none", "repel", "ripple", "trail"],
 });
 
 /** Display order of the tray. */
@@ -113,7 +100,5 @@ export const controls = [
   glow,
   mountains,
   stars,
-  interactive,
-  interaction,
   cell,
 ];

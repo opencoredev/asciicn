@@ -17,8 +17,8 @@ export default function DnaHelixFeature() {
       </div>
       <DnaHelix
         cell={8}
-        speed={0.45}
-        scroll={0.6}
+        speed={0.3}
+        scroll={0.4}
         interactive={false}
         background="transparent"
         className="h-80 w-full sm:h-96"

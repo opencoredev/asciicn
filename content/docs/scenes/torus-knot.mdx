@@ -43,7 +43,7 @@ In truecolor the colour comes from `colors`, the site's orange, pink, purple and
 
 Where one strand crosses over another, the strand underneath breaks just short of the one on top, the way knots are drawn by hand. That keeps every crossing readable even in a coarse charset. With ramp charsets, `contours` traces the silhouette with `- / | \` glyphs that follow the outline.
 
-It turns on its own axis and sways a little, so you see the knot near face on with its depth showing. Drag to tilt it. Let go mid-drag and it coasts, then stays where you left it. With keyboard focus, the arrow keys turn it.
+It turns slowly on its own axis and sways a little, so you see the knot near face on with its depth showing. It does not react to hover. Press and drag to tilt it. Let go mid-drag and it coasts, then stays where you left it. With keyboard focus, the arrow keys turn it.
 
 ## Examples
 
@@ -99,7 +99,7 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
     {
       name: "spin",
       type: "number",
-      default: "0.4",
+      default: "0.25",
       description: "Turn around the knot's own axis, in radians per second.",
     },
     {

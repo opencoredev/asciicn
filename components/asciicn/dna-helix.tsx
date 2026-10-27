@@ -35,13 +35,13 @@ export type HelixBase = "A" | "C" | "G" | "T";
 
 export interface DnaHelixProps
   extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
-  /** Turn around the helix axis, in radians per second. Negative turns the other way. Default 0.6. */
+  /** Turn around the helix axis, in radians per second. Negative turns the other way. Default 0.35. */
   speed?: number;
   /** How tightly the strands wind. 1 is B-DNA's own shape, one turn every 3.4 radii. Default 1. */
   twist?: number;
   /** Base pairs per turn, 4 to 20. Default 10. */
   rungs?: number;
-  /** Base pairs per second that slide along the axis. Default 1. */
+  /** Base pairs per second that slide along the axis. Default 0.5. */
   scroll?: number;
   /** Default `"vertical"`. */
   orientation?: HelixOrientation;
@@ -549,10 +549,10 @@ const KEYS: Partial<Record<string, readonly [number, number]>> = {
  */
 // oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const DnaHelix = ({
-  speed = 0.6,
+  speed = 0.35,
   twist = 1,
   rungs = 10,
-  scroll = 1,
+  scroll = 0.5,
   orientation = "vertical",
   sequence = DEFAULT_SEQUENCE,
   color = "--ascii-ink",

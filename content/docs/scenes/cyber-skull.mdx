@@ -37,7 +37,7 @@ The skull is a mesh of about 3,200 triangles built in code when the component fi
 
 `surface="faceted"` gives each face one tone, so the low-poly mesh shows. `smooth` blends the light across faces for a rounder bone.
 
-Drag sideways to turn it and up or down to nod it. Let go mid-drag and it coasts, then settles back to its own spin. With keyboard focus, the arrow keys turn it.
+It does not react to hover. Press and drag sideways to turn it and up or down to nod it. Let go mid-drag and it coasts, then settles back to its own spin. With keyboard focus, the arrow keys turn it.
 
 ## Examples
 
@@ -79,7 +79,7 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
     {
       name: "speed",
       type: "number",
-      default: "0.5",
+      default: "0.3",
       description:
         "Turn around the vertical axis, in radians per second. Negative turns the other way.",
     },
@@ -87,14 +87,14 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
       name: "jaw",
       type: "boolean",
       default: "true",
-      description: "Open and close the jaw in short bursts.",
+      description: "Open and close the jaw slowly now and then.",
     },
     {
       name: "scan",
       type: "boolean",
       default: "true",
       description:
-        'A bright band that sweeps down the bone. Not drawn with `shading="wire"`.',
+        'A bright band that falls slowly down the bone every eight seconds. Not drawn with `shading="wire"`.',
     },
     {
       name: "eyes",

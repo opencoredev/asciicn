@@ -12,7 +12,7 @@ export default function DnaHelixTerminal() {
         sequence="GATTACA"
         charset="standard"
         baseColors={{ A: "red", C: "purple", G: "orange", T: "blue" }}
-        speed={-0.8}
+        speed={-0.45}
         cell={11}
         className="aspect-[2/1] w-full"
       />

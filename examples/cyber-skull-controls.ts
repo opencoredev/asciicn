@@ -33,7 +33,7 @@ export const surface = segmented({
 });
 
 export const speed = slider({
-  default: 0.5,
+  default: 0.3,
   id: "speed",
   label: "Spin",
   max: 3,

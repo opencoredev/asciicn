@@ -248,7 +248,7 @@ const RADIANS = Math.PI / 180;
 // Globe radius as a share of half the box's shorter side; the rest is halo.
 const RADIUS_SHARE = 0.86;
 const HALO = 0.07;
-const PULSE = 2.4;
+const PULSE = 4;
 
 const clamp01 = (value: number) => (value > 0 ? Math.min(value, 1) : 0);
 
@@ -450,7 +450,8 @@ const drawArcs = (
       Math.max(-1, Math.min(1, ax * bx + ay * by + az * bz))
     );
     const lift = 0.06 + 0.22 * (span / Math.PI);
-    const head = (time * 0.35 + index * 0.29) % 1.4;
+    // One slow packet per arc, about eight seconds a lap.
+    const head = (time * 0.18 + index * 0.29) % 1.4;
     for (let step = 0; step <= ARC_POINTS; step += 1) {
       const t = step / ARC_POINTS;
       const point = project(

@@ -1,6 +1,6 @@
 ---
 title: "Synthwave sun"
-description: "An outrun grid racing toward a sliced setting sun, between a wireframe ridge and under a glowing horizon, steered by the pointer."
+description: "An outrun grid rolling toward a sliced setting sun, between a wireframe ridge and under a glowing horizon."
 ---
 
 import SynthwaveSunDemo from "@/examples/synthwave-sun-demo";
@@ -35,11 +35,11 @@ export function Hero() {
 }
 ```
 
-The scene runs on the GPU as one field. The floor is a perspective grid: rows race toward you and columns meet at the vanishing point. A line lights exactly the samples it passes through, so in Braille every grid line is one dot wide and in a glyph ramp one glyph wide. Far from the camera the rows crowd closer than one sample, and there they fade into an even haze instead of flickering.
+The scene runs on the GPU as one field. The floor is a perspective grid: rows roll steadily toward you and columns meet at the vanishing point. A line lights exactly the samples it passes through, so in Braille every grid line is one dot wide and in a glyph ramp one glyph wide. Far from the camera the rows crowd closer than one sample, and there they fade into an even haze instead of flickering.
 
 The sun sets into the horizon in amber at the top and magenta below. Slices cut across its lower half in whole sample rows, so each gap is a clean row of empty cells. They widen as they fall and slide slowly down. A one-row line marks the horizon, the glow above it thins as it climbs, and the sun's reflection breaks into alternate rows on the floor.
 
-Move the pointer across it to steer: the vanishing point, the sun and the grid's columns swing with you. Set `interactive={false}` to keep it centred.
+The vanishing point stays in the centre and the scene does not react to hover or the pointer. Only the floor rolls, the slices slide and the stars twinkle, all slowly.
 
 ## Examples
 
@@ -69,7 +69,7 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
       name: "travel",
       type: "number",
       default: "1",
-      description: "How fast the grid races toward you. 0 parks it.",
+      description: "How fast the grid rolls toward you. 0 parks it.",
     },
     {
       name: "slices",
@@ -123,19 +123,6 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
       description: "The surface behind the glyphs, or the phosphor's glass.",
     },
     {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description: "Steer the vanishing point with the pointer.",
-    },
-    {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description:
-        "What the pointer does to the glyphs, on top of the steering.",
-    },
-    {
       name: "cell",
       type: "number",
       default: "12",
@@ -171,5 +158,6 @@ Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with
 
 - The canvas is decorative and hidden from assistive technology. Put your real heading and copy beside or on top of it.
 - Under reduced motion it draws one still frame at `stillTime`. It pauses offscreen and in hidden tabs.
+- It ignores the pointer, so moving the mouse over it changes nothing.
 - On a light page the colours deepen so amber stays visible on white paper.
 - Without WebGL2 it shows `fallback`: by default a gradient with the sun, the sky and the horizon.

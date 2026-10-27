@@ -9,7 +9,7 @@ export default function CyberSkullInfrared() {
       colorMode="duotone"
       ramp="infrared"
       eyes={false}
-      speed={-0.35}
+      speed={-0.25}
       cell={9}
       className="aspect-[4/3] w-full max-w-xl"
     />

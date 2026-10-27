@@ -40,9 +40,9 @@ export interface AsciiDonutProps
   radius?: number;
   /** Tube radius over ring radius, 0.1 to 0.9. Default 0.46. */
   thickness?: number;
-  /** Spin around the horizontal and vertical axes, in radians per second. Default `[0.7, 0.45]`. */
-  spin?: readonly [number, number];
-  /** Time multiplier for the spin. Default 1. */
+  /** Turn around the ring's own axis, in radians per second. Shows on the ribbed surface. Default 0.4. */
+  spin?: number;
+  /** Time multiplier for the spin and the slow rocking. 0 holds it still. Default 1. */
   speed?: number;
   /** Default `"smooth"`. */
   surface?: DonutSurface;
@@ -158,7 +158,9 @@ const sceneLook = (
 /* -------------------------------------------------------------------------- */
 
 interface Spin {
-  /** Angles around the horizontal (x) and vertical (y) axes. */
+  /** Seconds of idle motion, scaled by `speed`. */
+  clock: number;
+  /** Drag offsets from the resting pose, around the horizontal (x) and vertical (y) axes. */
   x: number;
   y: number;
   /** Extra angular velocity from a drag, decaying back to 0. */
@@ -167,7 +169,7 @@ interface Spin {
   dragging: boolean;
 }
 
-/** Pointer drags turn the torus; the last drag velocity coasts and fades. */
+/** Pointer drags turn the torus; the last drag velocity coasts and fades. Plain hover does nothing. */
 const useDragSpin = (
   ref: RefObject<HTMLDivElement | null>,
   spin: RefObject<Spin>,
@@ -399,16 +401,39 @@ const shade = (scene: Scene, u: number, v: number, out: Float64Array): void => {
 };
 
 /** Object-to-view rotation: around x by `a`, then around y by `b`. */
-const rotation = (a: number, b: number, into: Float64Array) => {
+const rotation = (a: number, b: number, c: number, into: Float64Array) => {
   const ca = Math.cos(a);
   const sa = Math.sin(a);
   const cb = Math.cos(b);
   const sb = Math.sin(b);
-  // R = Ry(b) * Rx(a), row-major.
-  into.set([cb, sb * sa, sb * ca, 0, ca, -sa, -sb, cb * sa, cb * ca]);
+  const cc = Math.cos(c);
+  const sc = Math.sin(c);
+  // R = Ry(b) * Rx(a) * Ry(c), row-major: spin around the ring's own axis,
+  // lean it toward the camera, then turn it.
+  into.set([
+    cb * cc - sb * ca * sc,
+    sb * sa,
+    cb * sc + sb * ca * cc,
+    sa * sc,
+    ca,
+    -sa * cc,
+    -sb * cc - cb * ca * sc,
+    cb * sa,
+    -sb * sc + cb * ca * cc,
+  ]);
 };
 
-const DEFAULT_SPIN = [0.7, 0.45] as const;
+// The resting lean, in radians from edge-on: the top of the ring tips
+// toward the camera, so you look down onto the lit face with the hole
+// open, a clear three-quarter view. The slow rocking stays within
+// TILT_SWAY and TURN_SWAY of it, so the ring never turns edge-on.
+const REST_TILT = -0.62;
+const TILT_SWAY = 0.1;
+const TURN_SWAY = 0.42;
+
+/** Wrap an angle into -PI to PI, so a drag offset eases back the short way. */
+const wrap = (angle: number) =>
+  angle - Math.PI * 2 * Math.round(angle / (Math.PI * 2));
 
 const KEYS: Partial<Record<string, readonly [number, number]>> = {
   ArrowDown: [0.18, 0],
@@ -428,7 +453,7 @@ const KEYS: Partial<Record<string, readonly [number, number]>> = {
 export const AsciiDonut = ({
   radius = 0.5,
   thickness = 0.46,
-  spin = DEFAULT_SPIN,
+  spin = 0.4,
   speed = 1,
   surface = "smooth",
   color = "orange",
@@ -464,7 +489,14 @@ export const AsciiDonut = ({
     rim,
   ]);
   const reducedMotion = usePrefersReducedMotion();
-  const spinRef = useRef<Spin>({ dragging: false, vx: 0, vy: 0, x: 0.5, y: 0 });
+  const spinRef = useRef<Spin>({
+    clock: 0,
+    dragging: false,
+    vx: 0,
+    vy: 0,
+    x: 0,
+    y: 0,
+  });
   useDragSpin(rootRef, spinRef, draggable);
   const fieldRef = useRef<ToneField | null>(null);
   const matrix = useRef(new Float64Array(9));
@@ -498,26 +530,35 @@ export const AsciiDonut = ({
     time,
   }: AsciiGridDrawContext) => {
     const state = spinRef.current;
-    if (!state.dragging) {
-      if (delta > 0) {
-        state.x += (spin[0] * speed + state.vx) * delta;
-        state.y += (spin[1] * speed + state.vy) * delta;
-        // Coast after a drag, then settle back to the idle spin.
+    if (delta > 0) {
+      state.clock += delta * speed;
+      if (!state.dragging) {
+        state.x = wrap(state.x + state.vx * delta);
+        state.y = wrap(state.y + state.vy * delta);
+        // Coast after a drag, then ease back to the resting pose.
         const fade = Math.exp(-delta * 1.6);
+        const settle = 1 - Math.exp(-delta * 0.7);
         state.vx *= fade;
         state.vy *= fade;
-      } else if (!animate || reducedMotion) {
-        state.x = 0.5 + spin[0] * speed * time;
-        state.y = spin[1] * speed * time;
+        state.x -= state.x * settle;
+        state.y -= state.y * settle;
       }
+    } else if (!animate || reducedMotion) {
+      state.clock = time * speed;
     }
+    const { clock } = state;
     let field = fieldRef.current;
     const [gx, gy] = resolved.grid;
     if (!field || field.width !== columns * gx || field.height !== rows * gy) {
       field = createToneField(columns, rows, resolved, { color: true });
       fieldRef.current = field;
     }
-    rotation(state.x, state.y, matrix.current);
+    rotation(
+      REST_TILT + TILT_SWAY * Math.sin(clock * 0.31) + state.x,
+      TURN_SWAY * Math.sin(clock * 0.19) + state.y,
+      spin * clock,
+      matrix.current
+    );
     const angle = (light * Math.PI) / 180;
     const key = normalize3(Math.sin(angle) * 0.9, Math.cos(angle) * 0.9, -0.75);
     const scene: Scene = {
@@ -584,8 +625,8 @@ export const AsciiDonut = ({
       aria-label={
         ariaLabel ??
         (draggable
-          ? "A spinning ring drawn in glyphs. Drag it or use the arrow keys to turn it."
-          : "A spinning ring drawn in glyphs.")
+          ? "A ring drawn in glyphs, turning slowly. Drag it or use the arrow keys to turn it."
+          : "A ring drawn in glyphs, turning slowly.")
       }
       tabIndex={draggable ? 0 : undefined}
       onKeyDown={onKeyDown}

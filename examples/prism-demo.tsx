@@ -11,7 +11,6 @@ export default function PrismDemo() {
       charset={usePreviewValue(knobs.charset)}
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
-      interaction={usePreviewValue(knobs.interaction)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

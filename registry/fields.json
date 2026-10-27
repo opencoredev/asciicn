@@ -56,7 +56,7 @@
     "name": "ionize",
     "type": "registry:component",
     "title": "Ionize",
-    "description": "Electric blue plasma ribbons: thin, bright, quick and tightly twisted, drawn in Braille dots.",
+    "description": "Electric blue plasma ribbons: thin, bright and tightly twisted, drawn in Braille dots.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json",

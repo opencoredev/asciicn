@@ -3,12 +3,7 @@
 import type { ReactNode } from "react";
 
 import { resolveCharset, useAsciiColors } from "@/lib/ascii";
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  Interaction,
-  PhosphorName,
-} from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, PhosphorName } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
 // An outrun horizon in box-height units: y runs from -0.5 at the bottom to
@@ -57,7 +52,8 @@ vec4 swSky(vec2 p, vec2 px, float vx, float t, float rowsPerUnit) {
   vec2 id = floor(p / px);
   float star = hash21(id + 7.0);
   if (swStars > 0.5 && star > 0.993) {
-    float twinkle = 0.6 + 0.4 * sin(t * (1.0 + star * 5.0) + star * 90.0);
+    // Slow and shallow, so the sky glimmers rather than flickers.
+    float twinkle = 0.75 + 0.25 * sin(t * (0.3 + star * 0.9) + star * 90.0);
     float s = twinkle * smoothstep(0.12, 0.32, h);
     if (s > tone) {
       col = mix(vec3(1.0, 0.85, 0.95), vec3(0.75, 0.8, 1.0), hash21(id + 3.1));
@@ -78,7 +74,7 @@ vec4 swSky(vec2 p, vec2 px, float vx, float t, float rowsPerUnit) {
     float below = (radius * 0.32 - s.y) * rowsPerUnit;
     float period = max(3.0, floor(rows * 0.17 + 0.5));
     float fall = clamp(below / (rows * 1.3), 0.0, 1.0);
-    float local = mod(floor(below) + floor(t * swRate * 6.0), period);
+    float local = mod(floor(below) + floor(t * swRate * 1.5), period);
     float gap = floor(mix(1.0, period * 0.72, fall) + 0.5) * swSlices;
     if (below > 0.0 && local < gap) {
       return vec4(col, tone);
@@ -122,7 +118,7 @@ vec4 swFloor(vec2 p, vec2 px, float vx, float t) {
   }
   float near = d + px.y * 0.5;
   float far = max(d - px.y * 0.5, 1e-4);
-  float travel = t * swTravel * 1.6;
+  float travel = t * swTravel * 0.6;
   // Rows across the floor: depth z = 1 / d. A row lights the samples whose
   // depth span holds it; once rows are closer than one sample they merge.
   float zNear = 1.0 / near;
@@ -169,9 +165,8 @@ vec4 swScene(vec2 uv, vec2 res, float t) {
   // One sample in box units. Rows come from the contract; columns from
   // the sample grid, since glyph cells are narrower than they are tall.
   vec2 px = vec2(aspect / ascii_samples.x, 1.0 / res.y);
-  // Steering: the vanishing point, and the sun with it, follow the pointer.
-  float steer = (u_pointer.x - 0.5) * u_pointer.z * swParallax;
-  float vx = steer * 0.18 + sin(t * 0.17) * 0.015;
+  // The vanishing point stays dead centre: the landscape never sways.
+  float vx = 0.0;
   vec4 col;
   if (p.y >= SW_HORIZON) {
     float top = swRidgeTop(p.x, vx);
@@ -225,8 +220,11 @@ const usePaperIsLight = (
   return 0.2126 * rgba[0] + 0.7152 * rgba[1] + 0.0722 * rgba[2] > 0.55;
 };
 
-export interface SynthwaveSunProps extends AsciiSceneProps {
-  /** How fast the grid races toward you. 0 parks it. Default 1. */
+export interface SynthwaveSunProps extends Omit<
+  AsciiSceneProps,
+  "interactive"
+> {
+  /** How fast the grid rolls toward you. 0 parks it. Default 1. */
   travel?: number;
   /** How wide the gaps cut across the sun grow, from 0 (a solid disc) to 1. Default 1. */
   slices?: number;
@@ -240,18 +238,16 @@ export interface SynthwaveSunProps extends AsciiSceneProps {
   stars?: boolean;
   /** The surface behind the glyphs. Default `"--ascii-paper"`, or the phosphor's glass. */
   paper?: AsciiColor;
-  /** What the pointer does to the glyphs, on top of the steering. Default `"none"`. */
-  interaction?: Interaction;
   /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
   fallback?: ReactNode;
 }
 
 /**
- * Synthwave sun. A neon grid races toward a horizon under a setting sun
+ * Synthwave sun. A neon grid rolls toward a horizon under a setting sun
  * cut by sliding slices, between a wireframe ridge, with stars above and
  * the sun's reflection broken across the floor. Grid lines, the horizon
  * and the slices are decided per sample, so they draw as crisp rows of
- * glyphs. The pointer steers the vanishing point.
+ * glyphs. It does not react to the pointer.
  */
 // oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const SynthwaveSun = ({
@@ -270,8 +266,6 @@ export const SynthwaveSun = ({
   cell = 12,
   fps = 60,
   stillTime = 4,
-  interactive = true,
-  interaction = "none",
   fallback = FALLBACK,
   ...props
 }: SynthwaveSunProps) => {
@@ -292,7 +286,6 @@ export const SynthwaveSun = ({
         swLine: packed ? 1 : 0.7,
         swMountainHeight: clamp(mountains, 0, 2),
         swOnLight: onLight ? 1 : 0,
-        swParallax: interactive ? 1 : 0,
         swRate: slide,
         swSlices: clamp(slices, 0, 1),
         swStars: stars ? 1 : 0,
@@ -307,7 +300,6 @@ export const SynthwaveSun = ({
       cell={cell}
       fps={fps}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
       fallback={fallback}
       {...props}
     />

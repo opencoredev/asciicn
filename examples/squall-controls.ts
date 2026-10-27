@@ -1,5 +1,5 @@
 import { CHARSET_NAMES, COLOR_MODES } from "@/lib/ascii";
-import { segmented, select, slider, toggle } from "@/lib/preview-controls";
+import { select, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the squall main demo, shared by the page and the demo.
 
@@ -33,13 +33,6 @@ export const intensity = slider({
   step: 0.05,
 });
 
-export const interaction = segmented({
-  default: "none",
-  id: "interaction",
-  label: "Pointer",
-  options: ["none", "repel", "ripple", "trail"],
-});
-
 export const cell = slider({
   default: 12,
   id: "cell",
@@ -57,12 +50,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [
-  seed,
-  charset,
-  colorMode,
-  intensity,
-  interaction,
-  cell,
-  animate,
-];
+export const controls = [seed, charset, colorMode, intensity, cell, animate];

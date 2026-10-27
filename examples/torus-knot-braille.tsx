@@ -9,7 +9,7 @@ export default function TorusKnotBraille() {
       charset="braille"
       hue="tube"
       colors={["orange", "pink", "purple"]}
-      spin={0.6}
+      spin={0.35}
       cell={12}
       className="aspect-square w-full max-w-md"
     />

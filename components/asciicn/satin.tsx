@@ -17,6 +17,7 @@ const SATIN = {
   hue: [330, 346],
   ribbons: {
     count: [3, 4],
+    drift: [0.03, 0.05],
     fold: [0.2, 0.45],
     glow: [0.4, 0.6],
     twist: [0.7, 1.3],

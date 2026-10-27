@@ -43,8 +43,6 @@ export interface MountainDuskProps extends Omit<
   moon?: boolean;
   /** How much the scene shows, from 0 (empty paper) to 1. Lower it under body text. Default 1. */
   intensity?: number;
-  /** Ridges slide apart as the pointer moves, nearest most. Default `true`. */
-  interactive?: boolean;
   /** Which glyphs draw the haze, sky and mist. Default `"standard"`. */
   charset?: CharsetName;
   /** A custom ramp from empty to dense, such as `" .oO@"`. Wins over `charset`. */
@@ -186,8 +184,6 @@ interface DuskParams {
   mist: number;
   moon: boolean;
   intensity: number;
-  /** Pointer offset from the centre, -0.5 to 0.5 on each axis, y up. */
-  pointer: readonly [number, number];
   /** Darken light colours so they show on a light paper. */
   onLight: boolean;
 }
@@ -197,14 +193,6 @@ const depths = (count: number): number[] =>
   Array.from({ length: count }, (_, i) =>
     count > 1 ? lerp(1 - (count - 1) / 5, 1, i / (count - 1)) : 1
   );
-
-/** Each ridge drifts slowly and follows the pointer, nearer ones further. */
-const shiftFor = (depth: number, params: DuskParams): number =>
-  params.time * 0.006 * lerp(0.15, 1, depth) +
-  params.pointer[0] * lerp(0.015, 0.09, depth);
-
-const liftFor = (depth: number, params: DuskParams): number =>
-  params.pointer[1] * lerp(0.004, 0.02, depth);
 
 const sunAt = (aspect: number, night: number): readonly [number, number] => [
   -aspect * 0.17,
@@ -221,9 +209,11 @@ const moonAt = (aspect: number, night: number): readonly [number, number] => [
  * with a fading tail. Returns its tone at a point for this moment, or null.
  */
 const shootingStar = (time: number, aspect: number, params: DuskParams) => {
-  const slot = Math.floor(time / 6);
-  const when = time - slot * 6;
-  if (params.night < 0.3 || when > 0.9 || hash(slot, 4) > 0.65 * params.stars) {
+  // One chance every 18 s, taken less than half the time: a rare event,
+  // not a show.
+  const slot = Math.floor(time / 18);
+  const when = time - slot * 18;
+  if (params.night < 0.3 || when > 0.9 || hash(slot, 4) > 0.45 * params.stars) {
     return null;
   }
   const startX = (hash(slot, 1) - 0.6) * aspect * 0.8;
@@ -262,14 +252,12 @@ const paintField = (
   const { night, time } = params;
   const pixel = 1 / height;
   const ridges = depths(params.layers);
-  // Crest heights per sample column, per ridge.
+  // Crest heights per sample column, per ridge. The ridges never move.
   const crests = ridges.map((depth, layer) => {
     const row = new Float32Array(width);
-    const shift = shiftFor(depth, params);
-    const lift = liftFor(depth, params);
     for (let sx = 0; sx < width; sx += 1) {
       const x = ((sx + 0.5) / width - 0.5) * aspect;
-      row[sx] = crestAt(x + shift, depth, layer) - lift;
+      row[sx] = crestAt(x, depth, layer);
     }
     return row;
   });
@@ -350,16 +338,17 @@ const paintField = (
           night
         );
         const twinkle = Math.sin(
-          time * (1.2 + hash(sx, sy + 5) * 2) + magnitude * 40
+          time * (0.2 + hash(sx, sy + 5) * 0.4) + magnitude * 40
         );
         // Stars pop in rather than fade, and twinkle by stepping down one
-        // glyph, so each stays a clean dot, plus or asterisk.
+        // glyph, so each stays a clean dot, plus or asterisk. Slow cycles
+        // and short dips keep only a few dimmed at any moment.
         const faint = packed ? 0.55 : 0.12;
         let bright = faint;
         if (magnitude < 0.12) {
-          bright = twinkle > -0.6 ? 0.72 : 0.56;
+          bright = twinkle > -0.85 ? 0.72 : 0.56;
         } else if (magnitude < 0.35) {
-          bright = twinkle > -0.85 ? 0.56 : faint;
+          bright = twinkle > -0.95 ? 0.56 : faint;
         }
         const shown = out > 0.5 && h > 0.08 ? bright : 0;
         if (shown > tone) {
@@ -405,7 +394,7 @@ const paintField = (
           const band = Math.exp(-(((y - bandY) / 0.05) ** 2));
           if (band > 0.02) {
             const n = fbm(
-              x * 3 - time * (0.03 + 0.03 * depth) + layer * 4,
+              x * 3 - time * (0.015 + 0.015 * depth) + layer * 4,
               y * 14
             );
             const haze = band * smoothstep(0.4, 0.68, n) * params.mist;
@@ -467,12 +456,10 @@ const drawCrests = (
   // Crest rows (top-down, fractional) at the left edge, centre and right
   // edge of every cell column, per ridge.
   const edges = ridges.map((depth, layer) => {
-    const shift = shiftFor(depth, params);
-    const lift = liftFor(depth, params);
     const at = new Float32Array(columns * 2 + 1);
     for (let i = 0; i <= columns * 2; i += 1) {
       const x = (i / (columns * 2) - 0.5) * aspect;
-      at[i] = (1 - (crestAt(x + shift, depth, layer) - lift)) * rows;
+      at[i] = (1 - crestAt(x, depth, layer)) * rows;
     }
     return at;
   });
@@ -540,9 +527,9 @@ const toBytes = (rgba: readonly number[] | undefined, fallback: Rgb8): Rgb8 =>
  * behind the far ridge, the moon rising on the other side, stars coming
  * out with the occasional shooting star, and mist in the valleys. Drawn on
  * the CPU: the sky, haze and mist go through the charset's ramp, and the
- * ridgelines are drawn with real line glyphs. The ridges drift slowly and
- * slide apart with the pointer, nearest most. Decorative: size it with
- * `className`, usually `absolute inset-0`.
+ * ridgelines are drawn with real line glyphs. The ridges stand still and
+ * nothing reacts to the pointer; only the stars, mist and the odd shooting
+ * star move. Decorative: size it with `className`, usually `absolute inset-0`.
  */
 // oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const MountainDusk = ({
@@ -552,7 +539,6 @@ export const MountainDusk = ({
   mist = 0.7,
   moon = true,
   intensity = 1,
-  interactive = true,
   charset = "standard",
   chars,
   colorMode,
@@ -571,7 +557,6 @@ export const MountainDusk = ({
   const mode = colorMode ?? (preset ? "mono" : "truecolor");
   const theme = useAsciiColors(rootRef, [preset?.paper ?? "--ascii-paper"]);
   const fieldRef = useRef<ToneField | null>(null);
-  const pointer = useRef<[number, number]>([0, 0]);
   const resolved: Charset = resolveCharset(charset, chars);
   const packed = resolved.kind === "braille" || resolved.kind === "quadrants";
 
@@ -581,21 +566,11 @@ export const MountainDusk = ({
     rows,
     metrics,
     time: seconds,
-    delta,
-    pointer: hover,
   }: AsciiGridDrawContext) => {
     const paper = toBytes(theme?.[0], [0, 0, 0]);
     const onLight =
       preset === undefined &&
       (0.2126 * paper[0] + 0.7152 * paper[1] + 0.0722 * paper[2]) / 255 > 0.55;
-    // Ease toward the pointer so the ridges glide rather than jump.
-    const target: readonly [number, number] =
-      interactive && hover.inside
-        ? [hover.x / columns - 0.5, 0.5 - hover.y / rows]
-        : [0, 0];
-    const ease = delta > 0 ? 1 - Math.exp(-delta * 4) : 1;
-    pointer.current[0] += (target[0] - pointer.current[0]) * ease;
-    pointer.current[1] += (target[1] - pointer.current[1]) * ease;
 
     const [gx, gy] = resolved.grid;
     let field = fieldRef.current;
@@ -612,7 +587,6 @@ export const MountainDusk = ({
       moon,
       night: smoothstep(0.05, 0.9, clamp(time, 0, 1)),
       onLight,
-      pointer: pointer.current,
       stars: clamp(stars, 0, 1),
       time: seconds,
     };
@@ -649,7 +623,6 @@ export const MountainDusk = ({
       animate={animate}
       fps={30}
       stillTime={stillTime}
-      interactive={interactive}
       handle={handle}
       fx={fx}
       {...props}

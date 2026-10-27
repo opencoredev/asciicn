@@ -17,7 +17,7 @@
     "name": "synthwave-sun",
     "type": "registry:component",
     "title": "Synthwave sun",
-    "description": "An outrun grid racing toward a sliced setting sun, between a wireframe ridge and under a glowing horizon, steered by the pointer.",
+    "description": "An outrun grid rolling toward a sliced setting sun, between a wireframe ridge and under a glowing horizon.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

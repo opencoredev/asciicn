@@ -8,7 +8,7 @@ export default function CyberSkullPanic() {
         charset="braille"
         accent="red"
         jaw={false}
-        speed={0.7}
+        speed={0.4}
         interactive={false}
         className="aspect-square w-full"
       />

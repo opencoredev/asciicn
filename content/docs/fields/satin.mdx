@@ -187,7 +187,8 @@ Three `seed` strings, three drapes of the same satin.
       name: "interaction",
       type: '"none" | "repel" | "ripple" | "trail"',
       default: '"none"',
-      description: "What the pointer does to the glyphs.",
+      description:
+        "What the pointer does to the glyphs. Off by default, so the field ignores hover; opt in only where a pointer effect suits the page.",
     },
     {
       name: "interactive",
@@ -248,5 +249,6 @@ Three `seed` strings, three drapes of the same satin.
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- By default it does not react to the pointer: moving the mouse over it changes nothing.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows soft CSS glows in the seed's colours.
 - A seed is rolled once, on the CPU, in a few milliseconds: a small exposure check samples the field at 40×22 at three moments and re-rolls (up to eight times) until between a quarter and three fifths of the box carries a glyph, then sets the gain so the brightest glyphs reach the top of the ramp. Changing `seed` re-rolls; changing the look props does not. See [Performance](/docs/engine/performance).

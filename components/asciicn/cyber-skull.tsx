@@ -51,7 +51,7 @@ export interface CyberSkullProps
   shading?: SkullShading;
   /** Default `"faceted"`. */
   surface?: SkullSurface;
-  /** Turn around the vertical axis, in radians per second. Negative turns the other way. Default 0.5. */
+  /** Turn around the vertical axis, in radians per second. Negative turns the other way. Default 0.3. */
   speed?: number;
   /** Open and close the jaw. Default `true`. */
   jaw?: boolean;
@@ -1346,11 +1346,11 @@ const KEYS: Partial<Record<string, readonly [number, number]>> = {
 const DEFAULT_BONE = [225, 225, 220] as const satisfies Rgb8;
 const DEFAULT_ACCENT = [90, 170, 255] as const satisfies Rgb8;
 
-/** How far the jaw hangs open at time `t`: bursts of chatter, then rest. */
+/** How far the jaw hangs open at time `t`: a slow open and close now and then, then rest. */
 const jawAngle = (t: number) =>
-  -0.3 *
-  (0.5 - 0.5 * Math.cos(t * 4.2)) *
-  smoothstep(-0.2, 0.6, Math.sin(t * 0.75));
+  -0.24 *
+  (0.5 - 0.5 * Math.cos(t * 1.3)) *
+  smoothstep(-0.2, 0.6, Math.sin(t * 0.4));
 
 /**
  * A low-poly skull drawn in glyphs on the CPU. The mesh is built in code:
@@ -1363,7 +1363,7 @@ const jawAngle = (t: number) =>
 export const CyberSkull = ({
   shading = "both",
   surface = "faceted",
-  speed = 0.5,
+  speed = 0.3,
   jaw = true,
   scan = true,
   eyes = true,
@@ -1484,7 +1484,7 @@ export const CyberSkull = ({
     // side, which perspective draws larger.
     const unit = Math.max(4, Math.min(height * 0.4, width * 0.42));
     // A slow nod keeps the skull alive between drags.
-    const pitch = clampPitch(state.pitch + 0.06 * Math.sin(time * 0.7));
+    const pitch = clampPitch(state.pitch + 0.05 * Math.sin(time * 0.4));
     rotation(state.yaw, pitch, matrix.current);
     const pose: Pose = {
       cx: width / 2,
@@ -1494,8 +1494,9 @@ export const CyberSkull = ({
       unit,
     };
     transformMesh(mesh, pose, view);
-    // The band falls from the crown to below the chin, then rests a beat.
-    const sweep = (time / 3.4) % 1;
+    // The band falls slowly from the crown to below the chin, then rests
+    // for most of the cycle.
+    const sweep = (time / 8) % 1;
     const raster: Raster = {
       accent: accentRgb,
       bone,
@@ -1510,7 +1511,7 @@ export const CyberSkull = ({
     };
     rasterize(mesh, view, raster);
     if (eyes) {
-      const pulse = 0.8 + 0.2 * Math.sin(time * 2.3);
+      const pulse = 0.85 + 0.15 * Math.sin(time * 0.9);
       for (const eye of mesh.eyes) {
         drawEye(raster, pose, eye, 0.07, pulse);
       }
