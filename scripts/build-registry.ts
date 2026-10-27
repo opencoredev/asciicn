@@ -222,6 +222,44 @@ for (const folder of [".agents/skills/asciicn", ".claude/skills/asciicn"]) {
   }
 }
 
+// Docs controls files run on the server: the MDX page passes `controls` to
+// the preview frame. A "use client" module's exports are client references
+// there, so a value imported from one (an option list) breaks prerendering.
+// Type-only imports are fine; copy the values and check them with
+// `satisfies typeof`.
+const VALUE_IMPORT =
+  /^import\s+(?!type\b)\{([^}]*)\}\s+from\s+["'](@\/[^"']+)["']/gm;
+const isClientModule = (specifier: string) =>
+  [".tsx", ".ts"].some((extension) => {
+    try {
+      const head = readFileSync(
+        path.join(ROOT, `${specifier.replace("@/", "")}${extension}`),
+        "utf-8"
+      ).trimStart();
+      return head.startsWith('"use client"') || head.startsWith("'use client'");
+    } catch {
+      return false;
+    }
+  });
+for (const file of readdirSync(path.join(ROOT, "examples"))) {
+  if (!file.endsWith("-controls.ts")) {
+    continue;
+  }
+  const code = readFileSync(path.join(ROOT, "examples", file), "utf-8");
+  for (const match of code.matchAll(VALUE_IMPORT)) {
+    const names = (match[1] ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name !== "" && !name.startsWith("type "));
+    const specifier = match[2] ?? "";
+    if (names.length > 0 && isClientModule(specifier)) {
+      errors.push(
+        `examples/${file} imports ${names.join(", ")} from the "use client" module ${specifier}; it runs on the server, so import types only and copy the values`
+      );
+    }
+  }
+}
+
 const registry = {
   $schema: "https://ui.shadcn.com/schema/registry.json",
   homepage: SITE_URL,

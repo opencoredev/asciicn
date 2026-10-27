@@ -1,9 +1,23 @@
-import {
-  CHART_FILLS,
-  CHART_GLYPHS,
+import type {
+  CHART_FILLS as CHART_FILLS_SOURCE,
+  CHART_GLYPHS as CHART_GLYPHS_SOURCE,
 } from "@/components/asciicn/cartesian-chart";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const CHART_FILLS = [
+  "gradient",
+  "solid",
+  "pattern",
+] as const satisfies typeof CHART_FILLS_SOURCE;
+const CHART_GLYPHS = [
+  "braille",
+  "blocks",
+  "ascii",
+] as const satisfies typeof CHART_GLYPHS_SOURCE;
 
 // Knobs for the bar chart's main demo, shared by the page and the demo.
 

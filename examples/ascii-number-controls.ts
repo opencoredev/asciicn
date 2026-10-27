@@ -1,6 +1,16 @@
-import { ASCII_NUMBER_FONTS } from "@/components/asciicn/ascii-number";
+import type { ASCII_NUMBER_FONTS as ASCII_NUMBER_FONTS_SOURCE } from "@/components/asciicn/ascii-number";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const ASCII_NUMBER_FONTS = [
+  "blocks",
+  "half",
+  "box",
+  "braille",
+] as const satisfies typeof ASCII_NUMBER_FONTS_SOURCE;
 
 // Knobs for the ASCII number demo, shared by the page and the demo.
 

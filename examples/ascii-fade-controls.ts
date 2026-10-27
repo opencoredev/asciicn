@@ -1,5 +1,15 @@
-import { FADE_SIDES } from "@/components/asciicn/ascii-fade";
+import type { FADE_SIDES as FADE_SIDES_SOURCE } from "@/components/asciicn/ascii-fade";
 import { select, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const FADE_SIDES = [
+  "bottom",
+  "top",
+  "left",
+  "right",
+] as const satisfies typeof FADE_SIDES_SOURCE;
 
 // Knobs for the ASCII fade demo, shared by the page and the demo.
 

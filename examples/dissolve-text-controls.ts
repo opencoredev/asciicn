@@ -1,5 +1,15 @@
-import { DISSOLVE_ORDERS } from "@/components/asciicn/dissolve-text";
+import type { DISSOLVE_ORDERS as DISSOLVE_ORDERS_SOURCE } from "@/components/asciicn/dissolve-text";
 import { select, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const DISSOLVE_ORDERS = [
+  "start",
+  "end",
+  "center",
+  "random",
+] as const satisfies typeof DISSOLVE_ORDERS_SOURCE;
 
 // Knobs for the dissolve text demo, shared by the page and the demo.
 

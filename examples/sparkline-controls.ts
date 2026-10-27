@@ -1,6 +1,15 @@
-import { SPARKLINE_GLYPHS } from "@/components/asciicn/sparkline";
+import type { SPARKLINE_GLYPHS as SPARKLINE_GLYPHS_SOURCE } from "@/components/asciicn/sparkline";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const SPARKLINE_GLYPHS = [
+  "eighths",
+  "braille",
+  "ascii",
+] as const satisfies typeof SPARKLINE_GLYPHS_SOURCE;
 
 // Knobs for the sparkline's main demo, shared by the page and the demo.
 

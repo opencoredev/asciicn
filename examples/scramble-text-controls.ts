@@ -1,9 +1,29 @@
-import {
-  SCRAMBLE_GLYPH_NAMES,
-  SCRAMBLE_TRIGGERS,
+import type {
+  SCRAMBLE_GLYPH_NAMES as SCRAMBLE_GLYPH_NAMES_SOURCE,
+  SCRAMBLE_TRIGGERS as SCRAMBLE_TRIGGERS_SOURCE,
 } from "@/components/asciicn/scramble-text";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, select, slider } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const SCRAMBLE_GLYPH_NAMES = [
+  "katakana",
+  "braille",
+  "cp437",
+  "petscii",
+  "blocks",
+  "symbols",
+  "hex",
+  "binary",
+] as const satisfies typeof SCRAMBLE_GLYPH_NAMES_SOURCE;
+const SCRAMBLE_TRIGGERS = [
+  "mount",
+  "view",
+  "hover",
+  "loop",
+] as const satisfies typeof SCRAMBLE_TRIGGERS_SOURCE;
 
 // Knobs for the scramble text demo, shared by the page and the demo.
 

@@ -1,9 +1,26 @@
-import {
-  ASCII_BUTTON_FRAMES,
-  ASCII_BUTTON_VARIANTS,
+import type {
+  ASCII_BUTTON_FRAMES as ASCII_BUTTON_FRAMES_SOURCE,
+  ASCII_BUTTON_VARIANTS as ASCII_BUTTON_VARIANTS_SOURCE,
 } from "@/components/asciicn/ascii-button";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, select, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const ASCII_BUTTON_FRAMES = [
+  "rounded",
+  "light",
+  "heavy",
+  "double",
+  "ascii",
+  "brackets",
+] as const satisfies typeof ASCII_BUTTON_FRAMES_SOURCE;
+const ASCII_BUTTON_VARIANTS = [
+  "filled",
+  "outline",
+  "ghost",
+] as const satisfies typeof ASCII_BUTTON_VARIANTS_SOURCE;
 
 // Knobs for the button's main demo, shared by the page and the demo.
 

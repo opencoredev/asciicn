@@ -1,6 +1,15 @@
-import { CHART_GLYPHS } from "@/components/asciicn/cartesian-chart";
+import type { CHART_GLYPHS as CHART_GLYPHS_SOURCE } from "@/components/asciicn/cartesian-chart";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const CHART_GLYPHS = [
+  "braille",
+  "blocks",
+  "ascii",
+] as const satisfies typeof CHART_GLYPHS_SOURCE;
 
 // Knobs for the line chart's main demo, shared by the page and the demo.
 

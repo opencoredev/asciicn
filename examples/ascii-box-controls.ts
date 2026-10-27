@@ -1,6 +1,17 @@
-import { ASCII_BOX_FRAMES } from "@/components/asciicn/ascii-box";
+import type { ASCII_BOX_FRAMES as ASCII_BOX_FRAMES_SOURCE } from "@/components/asciicn/ascii-box";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const ASCII_BOX_FRAMES = [
+  "light",
+  "heavy",
+  "double",
+  "rounded",
+  "ascii",
+] as const satisfies typeof ASCII_BOX_FRAMES_SOURCE;
 
 // Knobs for the box's main demo, shared by the page and the demo.
 

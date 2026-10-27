@@ -1,6 +1,16 @@
-import { ASCII_TEXT_REVEALS } from "@/components/asciicn/ascii-text";
+import type { ASCII_TEXT_REVEALS as ASCII_TEXT_REVEALS_SOURCE } from "@/components/asciicn/ascii-text";
 import { CHARSET_NAMES } from "@/lib/ascii";
 import { segmented, select, slider } from "@/lib/preview-controls";
+
+// Option lists are copied, not imported: this file runs on the server (the
+// MDX page passes `controls` to the preview frame), where a "use client"
+// module's exports are client references. `satisfies` keeps them in step.
+const ASCII_TEXT_REVEALS = [
+  "none",
+  "decode",
+  "scan",
+  "wipe",
+] as const satisfies typeof ASCII_TEXT_REVEALS_SOURCE;
 
 // Knobs for the ASCII text demo, shared by the page and the demo.
 
