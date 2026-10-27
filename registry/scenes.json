@@ -72,10 +72,7 @@
     "type": "registry:component",
     "title": "Retro CRT Cyberdeck OS",
     "description": "A live multi-pane terminal console: a rotating wireframe satellite, a scrolling hex dump, a waveform scope and system diagnostics.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/scenes/terminal-deck-scene.tsx",
@@ -89,10 +86,7 @@
     "type": "registry:component",
     "title": "Sacred Geometry Torus Knot",
     "description": "A z-buffered 3D p-q torus knot and morphing polyhedra, shaded with directional edge glyphs.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/scenes/sacred-torus-scene.tsx",
@@ -106,10 +100,7 @@
     "type": "registry:component",
     "title": "Digital Rain Vault",
     "description": "Perspective columns built from falling half-width katakana and hex streams, fading into depth fog.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/scenes/matrix-cathedral-scene.tsx",
@@ -191,10 +182,7 @@
     "type": "registry:component",
     "title": "Interactive Curl-Noise Plume",
     "description": "A smoke and ink plume driven by curl noise that swirls around the pointer, drawn in Braille or dense ramps.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/scenes/fluid-smoke-scene.tsx",
