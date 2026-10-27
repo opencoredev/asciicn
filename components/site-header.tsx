@@ -1,11 +1,12 @@
+import Link from "next/link";
+
 import { BrandContextMenu } from "@/components/brand-context-menu";
 import { CommandMenu } from "@/components/command-menu";
 import { GithubLink } from "@/components/github-link";
+import { Wordmark } from "@/components/logo";
 import { MainNav } from "@/components/main-nav";
 import { MobileNav } from "@/components/mobile-nav";
 import { ModeSwitcher } from "@/components/mode-switcher";
-import { PaletteSwitcher } from "@/components/terminal/palette-switcher";
-import { Ruler } from "@/components/terminal/ruler";
 import { ROUTES } from "@/constants/routes";
 import { getSearchGroups } from "@/lib/search-index";
 import { source } from "@/lib/source";
@@ -20,13 +21,7 @@ const navItems = [
   {
     href: ROUTES.DOCS_EXAMPLES,
     label: "Components",
-    match: [
-      "/docs/backgrounds",
-      "/docs/charts",
-      "/docs/interface",
-      "/docs/text",
-      "/docs/images",
-    ],
+    match: ["/docs/charts", "/docs/interface", "/docs/text", "/docs/images"],
   },
   {
     href: ROUTES.BACKGROUNDS,
@@ -37,17 +32,16 @@ const navItems = [
 ];
 
 /**
- * A full-width instrument bar: wordmark, nav and tools on one 44px row,
- * then a 12px column ruler that runs the width of the page. The ruler is
- * the site's signature; the page reads as a canvas measured in cells.
- * Total height is --header-height (56px) so sticky sidebars clear it.
+ * A floating pill rather than a full-width bar: the header strip itself is
+ * transparent, so the page shows around the pill as it scrolls under it.
+ * The strip keeps --header-height so sticky sidebars and anchors still clear it.
  */
 export const SiteHeader = () => (
   <header
-    className="bg-background/92 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-50 flex h-(--header-height) w-full flex-col border-b backdrop-blur-md"
+    className="pointer-events-none sticky top-0 z-50 flex h-(--header-height) w-full items-end px-3 pb-2"
     style={{ viewTransitionName: "site-header" }}
   >
-    <div className="flex h-11 w-full items-center gap-1 px-2 sm:px-4">
+    <div className="bg-background/95 supports-[backdrop-filter]:bg-background/90 pointer-events-auto mx-auto flex h-12 w-full max-w-[46rem] items-center gap-2 rounded-full border px-1.5 lg:pl-4 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.25)] backdrop-blur-md">
       <MobileNav
         items={navItems}
         tree={source.pageTree}
@@ -55,27 +49,29 @@ export const SiteHeader = () => (
           <GithubLink
             label="GitHub"
             location="mobile_menu"
-            className="text-foreground gap-3 text-base [&_svg]:size-4"
+            className="text-foreground gap-3 text-2xl font-medium [&_svg]:size-6"
           />
         }
         className="flex lg:hidden"
       />
-      <BrandContextMenu className="group/brand flex h-8 items-center rounded-xs px-1.5 lg:mr-4" />
+      <BrandContextMenu>
+        <Link
+          href={ROUTES.HOME}
+          transitionTypes={["nav-back"]}
+          className="focus-visible:ring-ring/50 flex h-8 items-center rounded-full px-1 outline-none focus-visible:ring-[3px] max-lg:ml-2 lg:mr-2"
+        >
+          <Wordmark />
+        </Link>
+      </BrandContextMenu>
       <MainNav items={navItems} className="hidden lg:flex" />
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-2 max-md:gap-4">
         <CommandMenu groups={getSearchGroups()} />
-        <span
-          aria-hidden
-          className="bg-border mx-1.5 hidden h-4 w-px sm:block"
-        />
-        <PaletteSwitcher />
         <GithubLink
           location="navbar"
-          className="extend-touch-target hidden h-8 rounded-xs px-2 text-xs sm:inline-flex"
+          className="extend-touch-target h-8 px-1.5"
         />
         <ModeSwitcher />
       </div>
     </div>
-    <Ruler cell={8} className="border-t opacity-80" />
   </header>
 );

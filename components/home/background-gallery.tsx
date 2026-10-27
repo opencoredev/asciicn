@@ -23,7 +23,7 @@ import {
 } from "@/components/home/stage-controls";
 import { useStageSettings } from "@/components/home/use-stage-settings";
 import { Icon } from "@/components/icon";
-import { Kbd } from "@/components/terminal/kbd";
+import { Kbd } from "@/components/ui/kbd";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useSiteOrigin } from "@/hooks/use-site-origin";
 import { CHARSETS } from "@/lib/ascii";

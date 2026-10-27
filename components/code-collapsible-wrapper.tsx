@@ -25,7 +25,7 @@ export const CodeCollapsibleWrapper = ({
     <Collapsible
       open={isOpened}
       onOpenChange={setIsOpened}
-      className={cn("group/collapsible relative", className)}
+      className={cn("group/collapsible relative md:-mx-1", className)}
       {...props}
     >
       <CollapsibleTrigger asChild>
@@ -38,7 +38,7 @@ export const CodeCollapsibleWrapper = ({
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground h-7 px-2 text-xs"
+            className="text-muted-foreground h-7 rounded-md px-2"
           >
             {isOpened ? "Collapse" : "Expand"}
           </Button>
@@ -52,7 +52,7 @@ export const CodeCollapsibleWrapper = ({
         {children}
       </CollapsibleContent>
 
-      <div className="absolute inset-x-px bottom-px flex h-20 items-center justify-center rounded-b-sm bg-linear-to-b from-code/70 to-code group-data-[state=open]/collapsible:hidden">
+      <div className="absolute inset-x-0 -bottom-2 flex h-20 items-center justify-center rounded-b-lg bg-linear-to-b from-code/70 to-code group-data-[state=open]/collapsible:hidden">
         <CollapsibleTrigger asChild>
           <Button variant="outline" size="sm">
             Expand

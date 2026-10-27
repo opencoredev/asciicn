@@ -13,9 +13,9 @@ import {
   isCellSize,
 } from "@/components/home/looks";
 import type { FxSwitch, StageSettings } from "@/components/home/looks";
+import { Segmented } from "@/components/home/segmented";
 import type { StageSource } from "@/components/home/sources";
 import { Icon } from "@/components/icon";
-import { Segmented } from "@/components/terminal/segmented";
 import {
   Drawer,
   DrawerContent,

@@ -44,8 +44,8 @@ export const DocsShareMenu = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="text-muted-foreground hidden size-7 border-none active:scale-none sm:flex"
-          variant="ghost"
+          className="hidden sm:flex size-7 border-none active:scale-none"
+          variant="secondary"
           size="icon-sm"
           aria-label="Share this page"
         >

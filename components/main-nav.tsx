@@ -15,10 +15,6 @@ interface NavItem {
 const isActive = (pathname: string, { href, match = [] }: NavItem) =>
   pathname === href || match.some((prefix) => pathname.startsWith(prefix));
 
-/**
- * Lowercase mono tabs. The current one gets an ink rule on the header's
- * bottom edge and a `▸` marker, so position reads without colour alone.
- */
 export const MainNav = ({
   items,
   className,
@@ -29,22 +25,16 @@ export const MainNav = ({
   const pathname = usePathname();
 
   return (
-    <nav className={cn("h-full items-stretch", className)} {...props}>
+    <nav className={cn("items-center gap-1", className)} {...props}>
       {items.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           aria-current={isActive(pathname, item) ? "page" : undefined}
-          className="group/nav text-muted-foreground hover:text-foreground aria-[current=page]:text-foreground relative flex items-center px-3 text-[13px] lowercase transition-colors duration-150 after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-transparent aria-[current=page]:after:bg-(--ascii-ink)"
+          className="text-muted-foreground hover:bg-accent/60 hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-foreground focus-visible:ring-ring/50 rounded-full px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px]"
           transitionTypes={["nav-forward"]}
         >
-          <span
-            aria-hidden
-            className="text-ink -ml-1 w-[1ch] opacity-0 group-aria-[current=page]/nav:opacity-100"
-          >
-            ▸
-          </span>
-          <span className="ml-1">{item.label}</span>
+          {item.label}
         </Link>
       ))}
     </nav>

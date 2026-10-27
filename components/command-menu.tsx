@@ -37,22 +37,23 @@ import type { SearchEntry, SearchGroup } from "@/lib/search-index";
 import { cn } from "@/lib/utils";
 
 /*
- * Direction: a terminal picker. A `>` prompt line, rows that carry a small
- * print of the component, and an inspector pane on the right that shows the
- * selected one large with its description, so you see what you'll open
- * before you open it. The selected row gets an ink bar and an ink wash.
- * The footer is a status line of keys. No open or close motion: a keyboard
- * shortcut opens it.
+ * Direction: a component picker, after shadcn's and Raycast's. Every row
+ * carries a small print of the component from the catalog, and the pane on
+ * the right shows the selected one large with its description, so you see
+ * what you'll open before you open it. Docs pages get an icon tile in the
+ * same frame. Group names are small mono labels like the catalog counts.
+ * Avoiding: bare text rows, a chevron on every row, a patterned highlight,
+ * and open or close motion (a keyboard shortcut opens it).
  */
 
 const GROUP_CLS =
-  "p-0! [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-3! [&_[cmdk-group-heading]]:pt-4! [&_[cmdk-group-heading]]:pb-1.5! [&_[cmdk-group-heading]]:label-caps";
+  "p-0! [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-3! [&_[cmdk-group-heading]]:pt-4! [&_[cmdk-group-heading]]:pb-1.5! [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[0.7rem] [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:uppercase";
 
 const ITEM_CLS =
-  "group/item text-foreground/80 data-[selected=true]:bg-ink-soft data-[selected=true]:text-foreground data-[selected=true]:shadow-[inset_2px_0_0_var(--ascii-ink)] h-11 gap-3 rounded-xs px-2! font-mono text-[13px]";
+  "group/item text-foreground/80 data-[selected=true]:bg-foreground/[0.07] data-[selected=true]:text-foreground h-12 gap-3 rounded-lg px-2! text-[0.9rem]";
 
 const KEY_CLS =
-  "border-rule text-foreground/70 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-xs border border-b-2 px-1 font-mono text-[10px]";
+  "border-border/80 text-foreground/70 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 pb-px font-mono text-[0.7rem]";
 
 // Docs pages have no print: their group's icon on a faint glyph texture of the ink.
 const PLATE_GRAIN = asciiMaskStyle(0.125, { cell: 2 });
@@ -126,8 +127,8 @@ const Plate = ({
       className={cn(
         "bg-card ring-border/70 relative flex shrink-0 items-center justify-center overflow-hidden ring-1",
         size === "row"
-          ? "h-7 w-10 rounded-xs"
-          : "aspect-[4/3] w-full rounded-xs"
+          ? "h-8 w-11 rounded-md"
+          : "aspect-[4/3] w-full rounded-xl"
       )}
     >
       {entry.preview ? (
@@ -164,13 +165,13 @@ const Pane = ({ located }: { located: Located | undefined }) =>
     >
       <Plate located={located} size="pane" />
       <div className="flex flex-col gap-1.5 px-1">
-        <span className="label-caps text-muted-foreground">
+        <span className="text-muted-foreground font-mono text-[0.7rem] tracking-wide uppercase">
           {located.group.label}
         </span>
-        <span className="font-display text-[15px] font-medium tracking-[-0.02em]">
+        <span className="font-medium tracking-[-0.01em]">
           {located.entry.name}
         </span>
-        <p className="text-muted-foreground line-clamp-4 font-sans text-sm text-pretty">
+        <p className="text-muted-foreground line-clamp-4 text-sm text-pretty">
           {located.entry.description}
         </p>
       </div>
@@ -283,20 +284,16 @@ export const CommandMenu = ({
         <button
           type="button"
           aria-keyshortcuts={isMac ? "Meta+K /" : "Control+K /"}
-          className="text-muted-foreground hover:text-foreground hover:border-rule extend-touch-target bg-background flex h-8 items-center gap-2 rounded-xs border pr-1 pl-2.5 text-xs transition-colors duration-150 max-md:size-8 max-md:justify-center max-md:border-transparent max-md:p-0 md:w-52 lg:w-60"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 extend-touch-target flex h-8 items-center gap-2 rounded-full bg-foreground/[0.06] pr-3.5 pl-3 text-sm outline-none focus-visible:ring-[3px] max-md:size-8 max-md:justify-center max-md:bg-transparent max-md:p-0"
         >
-          <Icon icon={Search01Icon} className="size-3.5 shrink-0" />
+          <Icon icon={Search01Icon} className="size-4" />
           {/* Phones get the icon alone, with the same accessible name. */}
           <span className="max-md:sr-only">Search</span>
-          <span aria-hidden className="ml-auto hidden gap-0.5 md:flex">
-            <kbd className={KEY_CLS}>{isMac ? "⌘" : "ctrl"}</kbd>
-            <kbd className={KEY_CLS}>K</kbd>
-          </span>
         </button>
       </DialogTrigger>
       <DialogContent
         showCloseButton={false}
-        className="bg-popover border-rule top-[14vh] translate-y-0 gap-0 overflow-hidden rounded-sm border p-0 shadow-[0_24px_64px_-24px_rgb(0_0_0/0.45)] duration-0 sm:max-w-3xl"
+        className="bg-popover top-[14vh] translate-y-0 gap-0 overflow-hidden rounded-[20px] p-0 shadow-[0_24px_64px_-16px_rgb(0_0_0/0.5)] duration-0 sm:max-w-3xl"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Search the docs</DialogTitle>
@@ -308,15 +305,15 @@ export const CommandMenu = ({
           value={selected}
           onValueChange={setSelected}
           filter={handleFilter}
-          className="rounded-none bg-transparent font-mono **:data-[slot=command-input-wrapper]:h-12 **:data-[slot=command-input-wrapper]:gap-3 **:data-[slot=command-input-wrapper]:px-4 **:data-[slot=command-input-wrapper]:[&>svg]:text-ink **:data-[slot=command-input]:h-12 **:data-[slot=command-input]:text-sm"
+          className="rounded-none bg-transparent **:data-[slot=command-input-wrapper]:h-14 **:data-[slot=command-input-wrapper]:gap-3 **:data-[slot=command-input-wrapper]:px-5 **:data-[slot=command-input]:h-14 **:data-[slot=command-input]:text-base"
         >
           <CommandInput
-            placeholder="search components, backgrounds and docs"
+            placeholder="Search components and docs"
             onValueChange={trackSearch}
           />
           <div className="flex h-[min(26rem,58vh)] min-h-0">
             <CommandList className="no-scrollbar max-h-none min-w-0 flex-1 scroll-pt-10 scroll-pb-2 px-2 pb-2">
-              <CommandEmpty className="text-muted-foreground py-14 text-center text-xs">
+              <CommandEmpty className="text-muted-foreground py-14 text-center text-sm">
                 Nothing matches that. Try a component name, like waves.
               </CommandEmpty>
               {groups.map((group) => (
@@ -355,7 +352,7 @@ export const CommandMenu = ({
             <Pane located={byUrl.get(selected)} />
           </div>
         </Command>
-        <div className="text-muted-foreground flex h-9 items-center gap-4 border-t px-4 font-mono text-[11px] max-md:hidden">
+        <div className="text-muted-foreground flex h-11 items-center gap-4 border-t px-5 font-mono text-[0.7rem] max-md:hidden">
           <span className="flex items-center gap-1.5">
             <kbd className={KEY_CLS}>↑</kbd>
             <kbd className={KEY_CLS}>↓</kbd>

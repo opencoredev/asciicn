@@ -4,8 +4,9 @@ const Kbd = ({ className, ...props }: React.ComponentProps<"kbd">) => (
   <kbd
     data-slot="kbd"
     className={cn(
-      "pointer-events-none inline-flex h-[18px] w-fit min-w-[18px] items-center justify-center gap-1 rounded-xs border border-b-2 border-rule bg-background px-1 font-mono text-[10px]/none font-normal text-muted-foreground select-none [&_svg:not([class*='size-'])]:size-3",
-      "in-data-[slot=tooltip-content]:border-background/30 in-data-[slot=tooltip-content]:bg-transparent in-data-[slot=tooltip-content]:text-background",
+      "pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm px-1 font-sans text-xs/none font-normal text-muted-foreground select-none [&_svg:not([class*='size-'])]:size-3",
+      "bg-black/5 shadow-[inset_0_-1px_2px] shadow-black/10 dark:bg-white/10 dark:shadow-white/10",
+      "in-data-[slot=tooltip-content]:bg-white/20 in-data-[slot=tooltip-content]:text-background in-data-[slot=tooltip-content]:shadow-white/20 dark:in-data-[slot=tooltip-content]:bg-black/10 dark:in-data-[slot=tooltip-content]:shadow-black/10",
       className
     )}
     {...props}

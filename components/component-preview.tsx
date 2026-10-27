@@ -55,7 +55,6 @@ export const ComponentPreview = async ({
     <ComponentPreviewFrame
       code={code}
       codeHtml={codeHtml}
-      file={src?.split("/").pop()}
       size={size}
       align={align}
       controls={controls}

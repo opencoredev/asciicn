@@ -20,11 +20,11 @@ const Step = ({
   title: React.ReactNode;
   children?: React.ReactNode;
 }) => (
-  <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-3">
-    <span className="border-rule text-muted-foreground tabular flex h-6 items-center justify-center rounded-xs border font-mono text-[11px]">
-      {String(index).padStart(2, "0")}
+  <li className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 gap-y-3">
+    <span className="bg-muted text-muted-foreground flex size-6 items-center justify-center rounded-full font-mono text-xs tabular-nums">
+      {index}
     </span>
-    <p className="text-foreground/85 [&_code]:bg-muted pt-0.5 text-sm leading-relaxed [&_code]:rounded-xs [&_code]:border [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.84em]">
+    <p className="text-foreground/85 [&_code]:bg-muted pt-0.5 text-sm leading-relaxed [&_code]:rounded-md [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.8rem]">
       {title}
     </p>
     {children ? <div className="col-start-2 min-w-0">{children}</div> : null}
@@ -47,7 +47,7 @@ const SourceFile = async ({
   return (
     <figure
       data-rehype-pretty-code-figure=""
-      className="mx-0! mt-0! [&_pre]:max-h-80 [&_pre]:overflow-auto"
+      className="mx-0! mt-0! rounded-[14px]! [&_pre]:max-h-80 [&_pre]:overflow-auto"
     >
       <figcaption data-rehype-pretty-code-title="">{target}</figcaption>
       <CopyButton

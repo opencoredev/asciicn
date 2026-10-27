@@ -1,6 +1,6 @@
 /**
- * StatusBar: a one-line terminal telemetry strip, like a tmux or vim status
- * line. Left and right groups of segments, separated by a middle dot.
+ * StatusBar: one quiet line of readouts under a stage. Left and right
+ * groups of segments, separated by a middle dot.
  *
  *   <StatusBar
  *     left={<><StatusItem label="charset" value="braille" /><StatusItem value="212×58" /></>}
@@ -18,8 +18,8 @@
  * StatusItem props
  * - `label`: dim key shown before the value (e.g. "charset").
  * - `value`: the reading. Numbers get tabular, slashed-zero figures.
- * - `tone`: "default" | "ink" (palette ink) | "muted" | "warn" (default "default").
- * - `live`: shows a pulsing ink dot before the item (static under reduced motion).
+ * - `tone`: "default" | "ink" | "muted" | "warn" (default "default").
+ * - `live`: shows a small dot before the item, for values that update live.
  * - all other `span` props.
  */
 
@@ -46,7 +46,7 @@ const BORDERS = {
 // Separators come from CSS so callers can pass any number of items, or
 // conditionally render some, without managing dividers.
 const GROUP =
-  "flex min-w-0 items-center gap-x-2 overflow-hidden whitespace-nowrap [&>*+*]:before:text-faint [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']";
+  "flex min-w-0 items-center gap-x-2 overflow-hidden whitespace-nowrap [&>*+*]:before:text-muted-foreground/50 [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']";
 
 export const StatusBar = ({
   left,
@@ -60,7 +60,7 @@ export const StatusBar = ({
   <div
     data-slot="status-bar"
     className={cn(
-      "bg-background/80 text-muted-foreground tabular flex w-full items-center justify-between gap-4 px-3 font-mono text-[11px] leading-none",
+      "text-muted-foreground tabular flex w-full items-center justify-between gap-4 px-3 font-mono text-[11px] leading-none",
       size === "sm" ? "h-6" : "h-7",
       BORDERS[bordered],
       className
@@ -75,12 +75,12 @@ export const StatusBar = ({
   </div>
 );
 
-/** A small square ink dot that pulses; the "recording" light of the kit. */
+/** A small dot that marks a live reading. */
 export const LiveDot = ({ className }: { className?: string }) => (
   <span
     aria-hidden
     className={cn(
-      "bg-ink inline-block size-1.5 shrink-0 motion-safe:animate-[live-pulse_1.6s_steps(2,jump-none)_infinite]",
+      "bg-foreground/70 inline-block size-1.5 shrink-0 rounded-full",
       className
     )}
   />
@@ -96,15 +96,15 @@ export interface StatusItemProps extends Omit<
   value: React.ReactNode;
   /** Colour of the value. Default "default". */
   tone?: "default" | "ink" | "muted" | "warn";
-  /** Prefix a pulsing ink dot, for values that update live. */
+  /** Prefix a small dot, for values that update live. */
   live?: boolean;
 }
 
 const TONES = {
   default: "text-foreground",
-  ink: "text-ink",
+  ink: "text-foreground",
   muted: "text-muted-foreground",
-  warn: "text-ascii-orange",
+  warn: "text-destructive",
 } as const satisfies Record<NonNullable<StatusItemProps["tone"]>, string>;
 
 export const StatusItem = ({

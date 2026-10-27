@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, ReactNode, RefObject } from "react";
 
+import { StatusBar, StatusItem } from "@/components/stage-status";
 import { cellRgb, cssToRgb } from "@/components/studio/frame-colors";
 import { codePoint, glyphDensity } from "@/components/studio/inspector";
 import type { Density } from "@/components/studio/inspector";
@@ -16,9 +17,7 @@ import { studioCharset } from "@/components/studio/media";
 import type { StageNotice } from "@/components/studio/renderers";
 import type { StudioSource } from "@/components/studio/sources";
 import type { Look } from "@/components/studio/state";
-import { Ruler } from "@/components/terminal/ruler";
-import { StatusBar, StatusItem } from "@/components/terminal/status-bar";
-import { useFrameRate } from "@/components/terminal/use-frame-rate";
+import { useFrameRate } from "@/hooks/use-frame-rate";
 import { CHARSETS } from "@/lib/ascii/charsets";
 import type { AsciiFrame, AsciiHandle } from "@/lib/ascii/frame";
 import { gridSize, measureCell, readFont } from "@/lib/ascii/measure";
@@ -382,7 +381,6 @@ const StageStatus = ({
   fps: number | null;
 }) => (
   <StatusBar
-    className="col-span-2"
     left={
       <>
         <StatusItem live={!paused} value={source.label.toLowerCase()} />
@@ -449,24 +447,10 @@ export const StageFrame = ({
   return (
     <div
       className={cn(
-        "bg-background grid min-h-0 min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] grid-rows-[1rem_minmax(0,1fr)_auto]",
+        "bg-background grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto]",
         className
       )}
     >
-      <div aria-hidden="true" className="border-rule border-r border-b" />
-      <Ruler
-        variant="ticks"
-        cell={metrics?.width ?? 7}
-        highlight={inspection ? inspection.column + 1 : undefined}
-        className="border-rule border-b"
-      />
-      <Ruler
-        orientation="vertical"
-        variant="ticks"
-        cell={metrics?.height ?? 12}
-        highlight={inspection ? inspection.row + 1 : undefined}
-        className="border-rule w-full border-r"
-      />
       <div
         ref={viewportRef}
         role="img"

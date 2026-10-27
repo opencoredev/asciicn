@@ -44,7 +44,7 @@ export const DocsNavLink = ({
 
   const link = (
     <Button
-      variant="ghost"
+      variant="secondary"
       size={size}
       className={cn("group/nav shadow-none", className)}
       asChild

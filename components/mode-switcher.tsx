@@ -3,8 +3,8 @@
 import { Moon02Icon, Sun03Icon } from "@hugeicons/core-free-icons";
 
 import { Icon } from "@/components/icon";
-import { Kbd } from "@/components/terminal/kbd";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +26,7 @@ export const ModeSwitcher = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:text-foreground extend-touch-target size-8"
+          className="text-muted-foreground hover:text-foreground extend-touch-target size-8 rounded-full hover:bg-transparent dark:hover:bg-transparent"
           aria-keyshortcuts="D"
           onClick={toggleTheme}
         >
@@ -35,7 +35,7 @@ export const ModeSwitcher = () => {
           <span className="sr-only">Toggle theme</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="pr-1.5 pl-2.5">
+      <TooltipContent className="pr-2 pl-3">
         <div className="flex items-center gap-3">
           Toggle theme
           <Kbd>D</Kbd>

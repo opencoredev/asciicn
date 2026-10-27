@@ -7,7 +7,7 @@ import {
   SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode, UIEvent } from "react";
 
 import { CopyButton } from "@/components/copy-button";
@@ -17,23 +17,19 @@ import {
   PreviewControlsProvider,
 } from "@/components/preview-controls";
 import type { PreviewControlsLayout } from "@/components/preview-controls";
-import { Ruler } from "@/components/terminal/ruler";
-import { StatusBar, StatusItem } from "@/components/terminal/status-bar";
-import { useFrameRate } from "@/components/terminal/use-frame-rate";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNearViewport } from "@/hooks/use-near-viewport";
-import { measureCell, readCell, readFont } from "@/lib/ascii/measure";
 import { pageContext, trackEvent } from "@/lib/events";
 import type { PreviewControlSet, PreviewValue } from "@/lib/preview-controls";
 import { cn } from "@/lib/utils";
 
 /*
- * Direction: a terminal pane. One 1px-ruled frame holds a title row (mono
- * tabs with an ink underline, the demo's file name, tools), a column ruler
- * measured to the default glyph cell, the stage, and a status line with
- * the grid the stage holds (columns x rows at --ascii-cell) and the page
- * frame rate. The demo is the only thing with colour besides the ink.
- * Expand lifts the same pane to fill the window, knobs alongside.
+ * Direction: a gallery stage, after quiet component pages like Geist's
+ * docs. The demo sits alone on a borderless 20px plate (bg-card,
+ * #141414 on the black site); the chrome above it is quiet text and one
+ * segmented control, so the glyph art is the only thing with colour.
+ * Expand lifts the same plate to fill the window, knobs alongside.
+ * Avoiding: dashed outlines, drop shadows, toolbars inside the stage.
  */
 
 export type PreviewSize = "sm" | "md" | "lg" | "full";
@@ -72,46 +68,10 @@ const pinScroll = (event: UIEvent<HTMLDivElement>) => {
 };
 
 const TRIGGER_CLASS =
-  "text-muted-foreground hover:text-foreground data-[state=active]:text-foreground relative h-full flex-none rounded-none border-0 border-r px-3 font-mono text-xs lowercase transition-colors duration-150 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-(--ascii-ink) dark:data-[state=active]:border-0 dark:data-[state=active]:border-r dark:data-[state=active]:bg-transparent";
+  "text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background h-7 flex-none rounded-full border-0 px-3 text-[0.8rem] transition-colors duration-150 data-[state=active]:shadow-none dark:data-[state=active]:border-0";
 
 const TOOL_BUTTON =
-  "text-muted-foreground hover:text-foreground hover:bg-accent inline-flex h-7 min-w-7 items-center justify-center gap-1.5 rounded-xs px-2 font-mono text-[11px] lowercase transition-[color,background-color,scale] duration-150 active:scale-[0.96]";
-
-/**
- * Glyph cell width and height at the page's --ascii-cell and --ascii-font,
- * plus the columns and rows that fill `box`: what a component left on its
- * defaults draws, so the ruler ticks sit over its columns.
- */
-const useStageGrid = (box: React.RefObject<HTMLDivElement | null>) => {
-  const [grid, setGrid] = useState<{
-    cellWidth: number;
-    cellHeight: number;
-    columns: number;
-    rows: number;
-  } | null>(null);
-
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) {
-      return;
-    }
-    const measure = () => {
-      const metrics = measureCell({ cell: readCell(el), font: readFont(el) });
-      setGrid({
-        cellHeight: metrics.height,
-        cellWidth: metrics.width,
-        columns: Math.floor(el.clientWidth / metrics.width),
-        rows: Math.floor(el.clientHeight / metrics.height),
-      });
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [box]);
-
-  return grid;
-};
+  "text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[0.8rem] font-medium transition-[color,scale] duration-150 outline-none focus-visible:ring-[3px] active:scale-[0.96] sm:px-3";
 
 /** Visible from `sm` up; below that the button shows its icon only. */
 const TOOL_LABEL = "max-sm:sr-only";
@@ -176,61 +136,10 @@ const useDebouncedTweak = () => {
   };
 };
 
-/** The charset knob's value, when the demo has one, for the status line. */
-const charsetReadout = (
-  controls: PreviewControlSet,
-  values: Record<string, PreviewValue>
-): string | null => {
-  const control = controls.find((item) => item.id === "charset");
-  return control ? String(values[control.id] ?? control.default) : null;
-};
-
-/** The pane's status line: live state, the cell grid, charset and fps. */
-const StageStatus = ({
-  live,
-  grid,
-  charset,
-  fps,
-}: {
-  live: boolean;
-  grid: ReturnType<typeof useStageGrid>;
-  charset: string | null;
-  fps: number | null;
-}) => (
-  <StatusBar
-    left={
-      <>
-        <StatusItem
-          live={live}
-          value={live ? "live" : "idle"}
-          tone={live ? "ink" : "muted"}
-        />
-        {grid ? (
-          <StatusItem value={`${grid.columns}×${grid.rows}`} label="grid" />
-        ) : null}
-        {grid ? (
-          <StatusItem
-            label="cell"
-            value={`${Math.round(grid.cellHeight)}px`}
-            className="max-sm:hidden"
-          />
-        ) : null}
-        {charset ? <StatusItem label="charset" value={charset} /> : null}
-      </>
-    }
-    right={
-      fps === null ? null : (
-        <StatusItem label="fps" value={fps} className="max-sm:hidden" />
-      )
-    }
-  />
-);
-
 export const ComponentPreviewFrame = ({
   children,
   code,
   codeHtml,
-  file,
   size,
   align,
   controls,
@@ -239,8 +148,6 @@ export const ComponentPreviewFrame = ({
   children: ReactNode;
   code: string | null;
   codeHtml: string | null;
-  /** Demo file name shown in the title row. */
-  file?: string;
   size: PreviewSize;
   align: PreviewAlign;
   controls?: PreviewControlSet;
@@ -255,10 +162,6 @@ export const ComponentPreviewFrame = ({
   const controlList = controls ?? [];
   const hasControls = controlList.length > 0;
   const showPanel = hasControls && panelOpen;
-  const stageBox = useRef<HTMLDivElement>(null);
-  const grid = useStageGrid(stageBox);
-  const fps = useFrameRate({ enabled: isNear && tab === "preview" });
-  const charset = charsetReadout(controlList, values);
 
   const trackTweak = useDebouncedTweak();
   const replay = () => setRun((count) => count + 1);
@@ -293,13 +196,10 @@ export const ComponentPreviewFrame = ({
       <Tabs
         value={tab}
         onValueChange={setTab}
-        className={cn(
-          "bg-card text-card-foreground not-first:mt-6 gap-0 overflow-clip rounded-sm border [--ascii-paper:var(--card)]",
-          className
-        )}
+        className={cn("not-first:mt-6 gap-3", className)}
       >
-        <div className="flex h-9 items-stretch justify-between gap-3 border-b pr-1">
-          <TabsList className="h-full gap-0 rounded-none bg-transparent p-0">
+        <div className="flex items-center justify-between gap-3">
+          <TabsList className="bg-muted/70 h-8 rounded-full p-0.5">
             <TabsTrigger value="preview" className={TRIGGER_CLASS}>
               Preview
             </TabsTrigger>
@@ -309,13 +209,8 @@ export const ComponentPreviewFrame = ({
               </TabsTrigger>
             ) : null}
           </TabsList>
-          {file ? (
-            <span className="text-muted-foreground hidden min-w-0 items-center truncate font-mono text-[11px] md:flex">
-              {file}
-            </span>
-          ) : null}
           {tab === "preview" ? (
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center">
               {hasControls ? (
                 <ControlsButton open={panelOpen} onToggle={togglePanel} />
               ) : null}
@@ -331,21 +226,14 @@ export const ComponentPreviewFrame = ({
                 </span>
               </DialogPrimitive.Trigger>
             </div>
-          ) : (
-            <span />
-          )}
+          ) : null}
         </div>
         <TabsContent
           value="preview"
           forceMount
           className="data-[state=inactive]:hidden"
         >
-          <Ruler
-            cell={grid?.cellWidth ?? 7}
-            className="border-b"
-            cells={grid?.columns}
-          />
-          <div ref={stageBox} className="relative">
+          <div className="bg-card text-card-foreground w-full overflow-clip rounded-[20px] [--ascii-paper:var(--card)]">
             <div
               ref={ref}
               onScroll={pinScroll}
@@ -353,26 +241,20 @@ export const ComponentPreviewFrame = ({
             >
               {isNear && !expanded ? demo : null}
             </div>
+            {expanded ? null : panel("tray")}
           </div>
-          <StageStatus
-            live={isNear && !expanded}
-            grid={grid}
-            charset={charset}
-            fps={fps}
-          />
-          {expanded ? null : panel("tray")}
         </TabsContent>
         {code && codeHtml ? (
           <TabsContent value="code">
             <figure
               data-rehype-pretty-code-figure=""
-              className="mx-0! mt-0! rounded-none! border-0! [&_pre]:max-h-[480px] [&_pre]:overflow-auto"
+              className="mx-0! mt-0! rounded-[20px]! [&_pre]:max-h-[480px] [&_pre]:overflow-auto"
             >
               <CopyButton
                 value={code}
                 event="component_code_copied"
                 eventProperties={{ section: "preview_code" }}
-                className="top-2 right-2"
+                className="top-3 right-3"
               />
               <div dangerouslySetInnerHTML={{ __html: codeHtml }} />
             </figure>
@@ -386,8 +268,8 @@ export const ComponentPreviewFrame = ({
           className="bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=closed]:zoom-out-[0.98] fixed inset-0 z-50 flex flex-col gap-3 overscroll-contain p-3 duration-200 ease-(--ease-out) outline-none motion-reduce:animate-none sm:p-4"
         >
           <div className="flex h-8 shrink-0 items-center justify-between gap-3 pl-2">
-            <DialogPrimitive.Title className="label-caps text-muted-foreground">
-              {file ?? "Preview"}
+            <DialogPrimitive.Title className="text-muted-foreground font-mono text-[11px] tracking-[0.08em] uppercase">
+              Preview
             </DialogPrimitive.Title>
             <div className="flex items-center">
               {hasControls ? (
@@ -406,7 +288,7 @@ export const ComponentPreviewFrame = ({
               </DialogPrimitive.Close>
             </div>
           </div>
-          <div className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-clip rounded-sm border [--ascii-paper:var(--card)] lg:flex-row">
+          <div className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col overflow-clip rounded-[20px] [--ascii-paper:var(--card)] lg:flex-row">
             <div
               onScroll={pinScroll}
               className={cn(STAGE_CLASS, "min-h-0 flex-1", ALIGN_CLASS[align])}
@@ -414,7 +296,7 @@ export const ComponentPreviewFrame = ({
               {demo}
             </div>
             {showPanel ? (
-              <div className="max-h-[42dvh] shrink-0 overflow-y-auto overscroll-contain border-t lg:max-h-none lg:w-80 lg:border-t-0 lg:border-l">
+              <div className="lg:border-border/70 max-h-[42dvh] shrink-0 overflow-y-auto overscroll-contain lg:max-h-none lg:w-80 lg:border-l">
                 {panel("sidebar")}
               </div>
             ) : null}

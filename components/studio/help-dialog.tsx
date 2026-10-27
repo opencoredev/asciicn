@@ -1,7 +1,6 @@
 "use client";
 
 import { charsetShortcut } from "@/components/studio/controls";
-import { Kbd } from "@/components/terminal/kbd";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { CHARSET_NAMES, CHARSETS } from "@/lib/ascii/charsets";
 
 const SHORTCUTS = [
@@ -36,7 +36,11 @@ export const HelpDialog = ({
         {SHORTCUTS.map((shortcut) => (
           <div key={shortcut.label} className="contents">
             <dt>
-              <Kbd keys={shortcut.keys} size="md" />
+              <KbdGroup>
+                {shortcut.keys.map((key) => (
+                  <Kbd key={key}>{key}</Kbd>
+                ))}
+              </KbdGroup>
             </dt>
             <dd className="text-foreground/85">{shortcut.label}</dd>
           </div>

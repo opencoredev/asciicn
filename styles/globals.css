@@ -10,14 +10,14 @@
   --breakpoint-4xl: 2000px;
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
-  --font-heading: var(--font-display);
-  /* Terminal-tight corners: nothing on the site is rounder than 4px. */
-  --radius-xs: 1px;
-  --radius-sm: 2px;
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 1px);
-  --radius-xl: calc(var(--radius) + 2px);
+  /* Older names some components still use; both are the sans. */
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --radius-xs: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -30,12 +30,10 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-rule: var(--rule);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -59,6 +57,8 @@
   --color-code-number: var(--code-number);
   --color-selection: var(--selection);
   --color-selection-foreground: var(--selection-foreground);
+  --color-faint: var(--faint);
+  --color-rule: var(--rule);
   --color-ink: var(--ascii-ink);
   --color-ink-soft: var(--ink-soft);
   --color-ascii-ink: var(--ascii-ink);
@@ -70,176 +70,161 @@
   --color-ascii-orange: var(--ascii-color-orange);
   --color-ascii-red: var(--ascii-color-red);
   --color-ascii-grey: var(--ascii-color-grey);
+  --color-dither-blue: var(--ascii-color-blue);
+  --color-dither-purple: var(--ascii-color-purple);
+  --color-dither-green: var(--ascii-color-green);
+  --color-dither-pink: var(--ascii-color-pink);
+  --color-dither-orange: var(--ascii-color-orange);
+  --color-dither-red: var(--ascii-color-red);
+  --color-dither-grey: var(--ascii-color-grey);
 }
 
 /*
- * asciicn: a terminal studio. Graphite (dark, the default) or bright
- * paper (light) neutrals carry a trace of the active palette hue, and one
- * ink colour does every accent job: glyphs, primary actions, focus, the
- * selection and the live readouts in status bars.
- *
- * The palette comes from `<html data-palette>` (set before paint by the
- * inline script in app/layout.tsx):
- *   phosphor (default)  P1 green
- *   amber               P3 amber
- *   cyanotype           iron blue, a blueprint on paper in light mode
- *   custom              any hue, read from --palette-hue (0..360)
- * Each palette sets its hue plus a light and a dark ink. Light inks sit
- * near L 0.5 so they pass 4.5:1 as text on paper; dark inks near L 0.84.
+ * asciicn palette: blue ink on neutral black (dark, the default) or
+ * white. Neutrals carry no hue; only primary, ring, charts and the
+ * selection are blue. Glyphs draw in the foreground on the background:
+ * ASCII components read --ascii-* (below), which follow these tokens.
  */
 :root {
-  --palette-h: 148;
-  --ink-on-paper: oklch(0.5 0.15 148);
-  --ink-on-graphite: oklch(0.86 0.2 148);
-}
-
-html[data-palette="amber"] {
-  --palette-h: 70;
-  --ink-on-paper: oklch(0.54 0.14 58);
-  --ink-on-graphite: oklch(0.84 0.16 74);
-}
-
-html[data-palette="cyanotype"] {
-  --palette-h: 245;
-  --ink-on-paper: oklch(0.47 0.16 258);
-  --ink-on-graphite: oklch(0.8 0.12 228);
-}
-
-html[data-palette="custom"] {
-  --palette-h: var(--palette-hue, 300);
-  --ink-on-paper: oklch(0.52 0.17 var(--palette-hue, 300));
-  --ink-on-graphite: oklch(0.82 0.15 var(--palette-hue, 300));
-}
-
-:root {
-  --radius: 3px;
-  --background: oklch(0.985 0.003 var(--palette-h));
-  --foreground: oklch(0.2 0.012 var(--palette-h));
-  --card: oklch(0.995 0.002 var(--palette-h));
-  --card-foreground: var(--foreground);
+  --radius: 0.375rem;
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(0.955 0 0);
+  --card-foreground: oklch(0.15 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: var(--foreground);
-  --primary: var(--ink-on-paper);
-  --primary-foreground: oklch(0.99 0.004 var(--palette-h));
-  --secondary: oklch(0.955 0.005 var(--palette-h));
-  --secondary-foreground: var(--foreground);
-  --muted: oklch(0.955 0.005 var(--palette-h));
-  --muted-foreground: oklch(0.47 0.012 var(--palette-h));
-  --faint: oklch(0.62 0.01 var(--palette-h));
-  --accent: oklch(0.94 0.008 var(--palette-h));
-  --accent-foreground: var(--foreground);
-  --destructive: oklch(0.55 0.2 27);
-  --border: oklch(0.9 0.007 var(--palette-h));
-  --rule: oklch(0.82 0.01 var(--palette-h));
-  --input: oklch(0.86 0.008 var(--palette-h));
-  --ring: var(--ink-on-paper);
-  --chart-1: var(--ink-on-paper);
-  --chart-2: var(--ascii-color-blue);
-  --chart-3: var(--ascii-color-orange);
-  --chart-4: var(--ascii-color-purple);
-  --chart-5: var(--ascii-color-grey);
-  --sidebar: var(--background);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-  --surface: oklch(0.965 0.005 var(--palette-h));
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.5 0.24 268);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.93 0 0);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.93 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.92 0 0);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.56 0.21 27);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.86 0 0);
+  --ring: oklch(0.5 0.24 268 / 60%);
+  --chart-1: oklch(0.5 0.24 268);
+  --chart-2: oklch(0.62 0.17 268);
+  --chart-3: oklch(0.72 0.11 266);
+  --chart-4: oklch(0.4 0.18 270);
+  --chart-5: oklch(0.3 0.12 270);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: oklch(0.5 0.24 268);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.92 0 0);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-border: oklch(0.88 0 0);
+  --sidebar-ring: oklch(0.5 0.24 268 / 60%);
+  --surface: oklch(0.955 0 0);
   --surface-foreground: var(--foreground);
-  --code: oklch(0.97 0.004 var(--palette-h));
+  --code: oklch(0.965 0 0);
   --code-foreground: var(--foreground);
-  --code-highlight: oklch(0.93 0.012 var(--palette-h));
-  --code-number: oklch(0.62 0.01 var(--palette-h));
-  --selection: var(--ink-on-paper);
-  --selection-foreground: oklch(0.99 0 0);
-  --ink-soft: color-mix(in oklab, var(--ascii-ink) 12%, transparent);
-  --ascii-ink: var(--ink-on-paper);
+  --code-highlight: oklch(0.92 0 0);
+  --code-number: oklch(0.52 0 0);
+  --selection: oklch(0.5 0.24 268);
+  --selection-foreground: oklch(0.985 0 0);
+  --faint: oklch(0.62 0 0);
+  --rule: oklch(0.88 0 0);
+  --ink-soft: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --ascii-ink: var(--foreground);
   --ascii-paper: var(--background);
   --ascii-cell: 12px;
   --ascii-font:
-    var(--font-mono), "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas,
-    "DejaVu Sans Mono", "Noto Sans Mono", monospace;
-  --ascii-glow: 0.35;
+    var(--font-mono), var(--font-glyphs), ui-monospace, "SF Mono", Menlo,
+    Consolas, "DejaVu Sans Mono", monospace;
+  --ascii-glow: 0;
+  --ascii-color-blue: oklch(0.56 0.18 248);
+  --ascii-color-purple: oklch(0.53 0.22 302);
+  --ascii-color-green: oklch(0.58 0.15 152);
+  --ascii-color-pink: oklch(0.58 0.21 355);
+  --ascii-color-orange: oklch(0.64 0.17 52);
+  --ascii-color-red: oklch(0.55 0.21 27);
+  --ascii-color-grey: oklch(0.55 0 0);
   /* Older name for --ascii-glow, read by lib/ascii/style.ts. */
   --ascii-bloom: var(--ascii-glow);
-  --ascii-color-blue: oklch(0.55 0.17 250);
-  --ascii-color-purple: oklch(0.53 0.2 302);
-  --ascii-color-green: oklch(0.56 0.15 150);
-  --ascii-color-pink: oklch(0.57 0.2 355);
-  --ascii-color-orange: oklch(0.62 0.16 52);
-  --ascii-color-red: oklch(0.55 0.2 27);
-  --ascii-color-grey: oklch(0.56 0.01 var(--palette-h));
 }
 
 .dark {
-  --background: oklch(0.18 0.006 var(--palette-h));
-  --foreground: oklch(0.94 0.008 var(--palette-h));
-  --card: oklch(0.205 0.007 var(--palette-h));
-  --card-foreground: var(--foreground);
-  --popover: oklch(0.22 0.008 var(--palette-h));
-  --popover-foreground: var(--foreground);
-  --primary: var(--ink-on-graphite);
-  --primary-foreground: oklch(0.17 0.02 var(--palette-h));
-  --secondary: oklch(0.24 0.008 var(--palette-h));
-  --secondary-foreground: var(--foreground);
-  --muted: oklch(0.23 0.008 var(--palette-h));
-  --muted-foreground: oklch(0.71 0.012 var(--palette-h));
-  --faint: oklch(0.55 0.012 var(--palette-h));
-  --accent: oklch(0.255 0.01 var(--palette-h));
-  --accent-foreground: var(--foreground);
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.185 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.2 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.72 0.15 272);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.68 0.19 24);
-  --border: oklch(0.285 0.009 var(--palette-h));
-  --rule: oklch(0.37 0.012 var(--palette-h));
-  --input: oklch(0.33 0.01 var(--palette-h));
-  --ring: var(--ink-on-graphite);
-  --chart-1: var(--ink-on-graphite);
-  --surface: oklch(0.21 0.007 var(--palette-h));
-  --surface-foreground: oklch(0.86 0.01 var(--palette-h));
-  --code: oklch(0.2 0.007 var(--palette-h));
-  --code-foreground: oklch(0.9 0.008 var(--palette-h));
-  --code-highlight: oklch(0.27 0.014 var(--palette-h));
-  --code-number: oklch(0.5 0.012 var(--palette-h));
-  --selection: var(--ink-on-graphite);
-  --selection-foreground: oklch(0.17 0.02 var(--palette-h));
-  --ascii-ink: var(--ink-on-graphite);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.15 272 / 60%);
+  --chart-1: oklch(0.72 0.15 272);
+  --chart-2: oklch(0.6 0.19 270);
+  --chart-3: oklch(0.82 0.08 268);
+  --chart-4: oklch(0.5 0.2 270);
+  --chart-5: oklch(0.4 0.15 270);
+  --sidebar: oklch(0 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.72 0.15 272);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.72 0.15 272 / 60%);
+  --surface: oklch(0.185 0 0);
+  --surface-foreground: oklch(0.82 0 0);
+  --code: oklch(0.185 0 0);
+  --code-foreground: oklch(0.88 0 0);
+  --code-highlight: oklch(0.25 0 0);
+  --code-number: oklch(0.62 0 0);
+  --selection: oklch(0.72 0.15 272);
+  --selection-foreground: oklch(0 0 0);
+  --faint: oklch(0.5 0 0);
+  --rule: oklch(1 0 0 / 12%);
+  --ascii-ink: var(--foreground);
   --ascii-paper: var(--background);
-  --ascii-glow: 0.9;
   --ascii-color-blue: oklch(0.72 0.14 240);
-  --ascii-color-purple: oklch(0.72 0.17 304);
-  --ascii-color-green: oklch(0.8 0.17 150);
+  --ascii-color-purple: oklch(0.7 0.18 304);
+  --ascii-color-green: oklch(0.78 0.17 152);
   --ascii-color-pink: oklch(0.74 0.17 354);
   --ascii-color-orange: oklch(0.79 0.15 62);
-  --ascii-color-red: oklch(0.69 0.19 25);
-  --ascii-color-grey: oklch(0.66 0.01 var(--palette-h));
+  --ascii-color-red: oklch(0.68 0.2 25);
+  --ascii-color-grey: oklch(0.66 0 0);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/60;
+    @apply border-border outline-ring/50;
   }
   ::selection {
     @apply bg-selection text-selection-foreground;
   }
   html {
     @apply overscroll-y-none scroll-smooth;
-    /* Ligatures turn `->` and `!=` into arrows; glyph art needs them literal. */
-    font-variant-ligatures: none;
   }
   body {
+    /* Glyph art needs literal characters: ligatures turn `->` into arrows. */
+    font-variant-ligatures: none;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
   }
-  :focus-visible {
-    outline-style: solid;
-    outline-width: 1px;
-    outline-offset: 2px;
-    outline-color: var(--ring);
-  }
 
   [data-slot="layout"] {
-    @apply overscroll-none;
+    @apply 3xl:p-2 3xl:fixed:p-0 overscroll-none;
+  }
+
+  @supports (font: -apple-system-body) and (-webkit-appearance: none) {
+    [data-wrapper] {
+      @apply min-[1800px]:border-t;
+    }
   }
 
   a:active:not([data-slot="button"]),
@@ -248,19 +233,18 @@ html[data-palette="custom"] {
   }
 }
 
-/* Numerals that line up in status bars and readouts. */
+/* Numerals that line up in readouts. */
 @utility tabular {
   font-variant-numeric: tabular-nums slashed-zero;
 }
 
-/* Small uppercase chrome label set in the display face. */
+/* Small uppercase label, the same mono caps the preview knobs use. */
 @utility label-caps {
-  font-family: var(--font-display);
-  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
   line-height: 1rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-stretch: 87.5%;
 }
 
 @utility border-grid {
@@ -268,7 +252,7 @@ html[data-palette="custom"] {
 }
 
 @utility section-soft {
-  @apply bg-background;
+  @apply from-background to-surface/40 dark:bg-background 3xl:fixed:bg-none bg-gradient-to-b;
 }
 
 @utility container-wrapper {
@@ -296,8 +280,8 @@ html[data-palette="custom"] {
   counter-increment: step;
 
   &:before {
-    @apply border-rule bg-background text-muted-foreground tabular mr-2 inline-flex h-6 min-w-8 items-center justify-center rounded-xs border px-1 text-center font-mono text-xs md:absolute md:mt-[-1px] md:ml-[-52px];
-    content: counter(step, decimal-leading-zero);
+    @apply border-background bg-muted mr-2 inline-flex size-6 items-center justify-center rounded-full text-center -indent-px font-mono text-sm font-medium md:absolute md:mt-[-4px] md:ml-[-50px] md:size-9 md:border-4;
+    content: counter(step);
   }
 }
 
@@ -329,14 +313,15 @@ html[data-palette="custom"] {
   [data-rehype-pretty-code-figure] {
     background-color: var(--color-code);
     color: var(--color-code-foreground);
-    border-radius: var(--radius-sm);
-    border-width: 1px;
+    border-radius: var(--radius-lg);
+    border-width: 0px;
     border-color: var(--border);
     margin-top: calc(var(--spacing) * 6);
     overflow: hidden;
-    font-size: 13px;
+    font-size: var(--text-sm);
     outline: none;
     position: relative;
+    @apply -mx-1 md:-mx-1;
 
     &:has([data-rehype-pretty-code-title]) [data-slot="copy-button"] {
       top: calc(var(--spacing) * 1.5) !important;
@@ -344,10 +329,12 @@ html[data-palette="custom"] {
   }
 
   [data-rehype-pretty-code-title] {
-    border-bottom: 1px solid var(--border);
-    padding-block: calc(var(--spacing) * 2);
+    border-bottom: color-mix(in oklab, var(--border) 30%, transparent);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    padding-block: calc(var(--spacing) * 2.5);
     padding-inline: calc(var(--spacing) * 4);
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-family: var(--font-mono);
     color: var(--color-code-foreground);
   }
@@ -364,7 +351,7 @@ html[data-palette="custom"] {
   }
 
   [data-line-numbers] [data-line]::before {
-    font-size: 12px;
+    font-size: var(--text-sm);
     counter-increment: line;
     content: counter(line);
     display: inline-block;
@@ -411,12 +398,16 @@ html[data-palette="custom"] {
       width: 2px;
       height: 100%;
       content: "";
-      background-color: var(--ascii-ink);
+      background-color: color-mix(
+        in oklab,
+        var(--muted-foreground) 50%,
+        transparent
+      );
     }
   }
 
   [data-highlighted-chars] {
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-sm);
     padding-inline: 0.3rem;
     padding-block: 0.1rem;
     font-family: var(--font-mono);
@@ -661,60 +652,5 @@ html.lenis {
 @media (prefers-reduced-motion: reduce) {
   .rise-in {
     animation: none;
-  }
-}
-
-/* Terminal kit motion. Stepped, not eased: a phosphor light is on or off. */
-@keyframes live-pulse {
-  50% {
-    opacity: 0.25;
-  }
-}
-
-@keyframes caret-blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-/* OKLCH hue slider for the palette switcher: the track is the hue wheel at
- * the swatch lightness, the thumb a 1px-ruled block. */
-.hue-range {
-  appearance: none;
-  height: 12px;
-  width: 100%;
-  border-radius: 1px;
-  background: linear-gradient(
-    to right in oklch longer hue,
-    oklch(0.74 0.15 0),
-    oklch(0.74 0.15 359)
-  );
-  cursor: pointer;
-}
-.hue-range::-webkit-slider-thumb {
-  appearance: none;
-  width: 6px;
-  height: 16px;
-  border-radius: 1px;
-  background: var(--background);
-  box-shadow: 0 0 0 1px var(--foreground);
-}
-.hue-range::-moz-range-thumb {
-  width: 6px;
-  height: 16px;
-  border: 0;
-  border-radius: 1px;
-  background: var(--background);
-  box-shadow: 0 0 0 1px var(--foreground);
-}
-.hue-range:focus-visible {
-  outline: 1px solid var(--ring);
-  outline-offset: 3px;
-}
-
-/* Logo hover: the cursor block rises again in four steps (▁▂▃▄). */
-@keyframes logo-charge {
-  from {
-    scale: 1 0.25;
   }
 }

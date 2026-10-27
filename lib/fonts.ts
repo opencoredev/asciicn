@@ -1,41 +1,33 @@
 import {
-  Cascadia_Mono as FontMono,
-  Instrument_Sans as FontSans,
-  Martian_Mono as FontDisplay,
+  Cascadia_Mono as FontGlyphs,
+  JetBrains_Mono as FontMono,
+  Schibsted_Grotesk as FontSans,
 } from "next/font/google";
 
 import { cn } from "@/lib/utils";
 
-/*
- * Three faces, mono first:
- * - Martian Mono (display): headings, the wordmark, nav and chrome labels.
- *   Wide, squared and engineered; nothing else on the ASCII web uses it.
- * - Cascadia Mono (mono + glyphs): code, status bars and every rendered
- *   glyph. It is the only Google face that ships box drawing, block
- *   elements (symbols2) and the full Braille block, so `--ascii-font`
- *   needs no fallback for the charsets the engine draws.
- * - Instrument Sans (sans): long docs prose only, where a proportional
- *   face reads faster than mono.
- */
-const fontDisplay = FontDisplay({
-  axes: ["wdth"],
-  subsets: ["latin"],
-  variable: "--font-display",
-});
-
-const fontMono = FontMono({
-  subsets: ["latin", "symbols2", "braille"],
-  variable: "--font-mono",
-});
-
 const fontSans = FontSans({
-  axes: ["wdth"],
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
+const fontMono = FontMono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500"],
+});
+
+// JetBrains Mono on Google Fonts has no Braille or block elements, so the
+// glyph font falls back to Cascadia Mono for those charsets only. Its
+// faces load by unicode-range, so pages without them never fetch it.
+const fontGlyphs = FontGlyphs({
+  preload: false,
+  subsets: ["symbols2", "braille"],
+  variable: "--font-glyphs",
+});
+
 export const fontVariables = cn(
-  fontDisplay.variable,
+  fontSans.variable,
   fontMono.variable,
-  fontSans.variable
+  fontGlyphs.variable
 );

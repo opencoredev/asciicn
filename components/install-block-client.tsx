@@ -40,7 +40,7 @@ export const InstallCommand = ({
   return (
     <div
       className={cn(
-        "bg-code text-code-foreground relative overflow-hidden rounded-sm border text-sm",
+        "bg-code text-code-foreground relative overflow-hidden rounded-[14px] text-sm",
         className
       )}
     >
@@ -53,23 +53,20 @@ export const InstallCommand = ({
           }
         }}
       >
-        <TabsList className="h-9 w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 pr-10">
+        <TabsList className="h-10 gap-0.5 rounded-none bg-transparent px-2 pt-1.5 pb-0">
           {PACKAGE_MANAGERS.map((pm) => (
             <TabsTrigger
               key={pm}
               value={pm}
-              className="text-muted-foreground hover:text-foreground data-[state=active]:text-foreground relative h-full flex-none rounded-none border-0 border-r px-3 font-mono text-xs transition-colors duration-150 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-(--ascii-ink) dark:data-[state=active]:border-0 dark:data-[state=active]:border-r dark:data-[state=active]:bg-transparent"
+              className="text-muted-foreground hover:text-foreground data-[state=active]:bg-background/60 data-[state=active]:text-foreground dark:data-[state=active]:bg-background/60 h-7 flex-none rounded-full border-0 px-2.5 pt-[3px] font-mono text-xs transition-colors duration-150 data-[state=active]:shadow-none dark:data-[state=active]:border-0"
             >
               {pm}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
-      <div className="no-scrollbar overflow-x-auto px-4 py-3 pr-12">
-        <code className="font-mono text-[13px] whitespace-nowrap">
-          <span aria-hidden className="text-ink mr-[1ch] select-none">
-            $
-          </span>
+      <div className="no-scrollbar overflow-x-auto px-4 pt-2.5 pb-3.5 pr-12">
+        <code className="font-mono text-[0.8rem] whitespace-nowrap">
           {command}
         </code>
       </div>
@@ -89,7 +86,7 @@ export const InstallCommand = ({
           package_manager: packageManager,
           section: "install_block",
         }}
-        className="top-1 right-1"
+        className="top-1.5 right-2"
       />
     </div>
   );
@@ -101,7 +98,7 @@ export const ManualSteps = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-3">
-      <CollapsibleTrigger className="group/manual text-muted-foreground hover:text-foreground -mx-2 inline-flex h-8 items-center gap-1.5 rounded-xs px-2 font-mono text-xs transition-colors duration-150">
+      <CollapsibleTrigger className="group/manual text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 -mx-2 inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-sm font-medium transition-colors duration-150 outline-none focus-visible:ring-[3px]">
         Manual installation
         <Icon
           icon={ArrowDown01Icon}

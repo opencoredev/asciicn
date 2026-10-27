@@ -91,7 +91,7 @@ export const DocsTableOfContents = ({
             size="sm"
             className={cn("h-8 md:h-7", className)}
           >
-            <Icon icon={Menu01Icon} /> On this page
+            <Icon icon={Menu01Icon} /> On This Page
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -115,26 +115,21 @@ export const DocsTableOfContents = ({
   }
 
   return (
-    <nav
-      aria-label="On this page"
-      className={cn("flex flex-col pt-2 pb-4 font-mono", className)}
-    >
-      <p className="label-caps text-muted-foreground bg-background sticky top-0 z-10 pb-2">
-        On this page
+    <div className={cn("flex flex-col gap-2 p-4 pt-0 text-sm", className)}>
+      <p className="text-muted-foreground bg-background sticky top-0 h-6 text-xs">
+        On This Page
       </p>
-      <div className="flex flex-col border-l">
-        {toc.map((item) => (
-          <a
-            key={item.url}
-            href={item.url}
-            className="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground -ml-px border-l border-transparent py-1 pl-3 text-xs leading-snug no-underline transition-colors duration-150 data-[active=true]:border-(--ascii-ink) data-[depth=3]:pl-6 data-[depth=4]:pl-9"
-            data-active={item.url === `#${activeHeading}`}
-            data-depth={item.depth}
-          >
-            {item.title}
-          </a>
-        ))}
-      </div>
-    </nav>
+      {toc.map((item) => (
+        <a
+          key={item.url}
+          href={item.url}
+          className="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] data-[active=true]:font-medium no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+          data-active={item.url === `#${activeHeading}`}
+          data-depth={item.depth}
+        >
+          {item.title}
+        </a>
+      ))}
+    </div>
   );
 };

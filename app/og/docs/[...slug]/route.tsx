@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 
-import { OgCard, ogCardFonts } from "@/components/og-card";
+import { OgCard } from "@/components/og-card";
 import { getPageImage, source } from "@/lib/source";
 
 export const revalidate = false;
@@ -18,18 +18,10 @@ export const GET = async (
 
   const { title, description } = page.data;
 
-  return new ImageResponse(
-    <OgCard
-      title={title}
-      description={description}
-      path={page.url.replace(/^\//u, "")}
-    />,
-    {
-      fonts: await ogCardFonts(title, description),
-      height: 630,
-      width: 1200,
-    }
-  );
+  return new ImageResponse(<OgCard title={title} description={description} />, {
+    height: 630,
+    width: 1200,
+  });
 };
 
 export const generateStaticParams = () =>

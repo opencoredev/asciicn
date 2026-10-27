@@ -1,33 +1,33 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The asciicn mark: one glyph cell. Four corner brackets measure out the
- * 3:5 box every glyph sits in, and the lower half block `▄` waits inside
- * it like a terminal cursor about to draw. The engine's unit of measure,
- * drawn as an icon.
- *
- * Geometry is on a 12 x 20 grid so it stays crisp at 16px and up.
+ * The asciicn mark: a 4x4 dot grid whose columns hold 1, 2, 3 and 4 lit
+ * dots, a stepped ramp at the smallest size that still reads.
  */
-const VIEW_BOX = "0 0 12 20";
-const MARKS = [
-  [0, 0, 4, 2],
-  [0, 0, 2, 5],
-  [8, 0, 4, 2],
-  [10, 0, 2, 5],
-  [0, 18, 4, 2],
-  [0, 15, 2, 5],
-  [8, 18, 4, 2],
-  [10, 15, 2, 5],
-] as const satisfies readonly (readonly [
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-])[];
-const BLOCK = { height: 8, width: 6, x: 3, y: 9 } as const;
+const LIT_CELLS = [
+  [0, 0],
+  [2, 0],
+  [3, 0],
+  [1, 1],
+  [3, 1],
+  [2, 2],
+  [3, 2],
+  [1, 3],
+  [2, 3],
+  [3, 3],
+] as const satisfies readonly (readonly [x: number, y: number])[];
+
+const CELL = 6;
+const DOT = 5;
+
+const rects = (fill: string) =>
+  LIT_CELLS.map(
+    ([x, y]) =>
+      `<rect x="${x * CELL}" y="${y * CELL}" width="${DOT}" height="${DOT}" fill="${fill}"/>`
+  ).join("");
 
 export const getLogoMarkSVG = (color: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${VIEW_BOX}" shape-rendering="crispEdges" fill="${color}">${MARKS.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`).join("")}<rect x="${BLOCK.x}" y="${BLOCK.y}" width="${BLOCK.width}" height="${BLOCK.height}"/></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" shape-rendering="crispEdges">${rects(color)}</svg>`;
 
 export const LogoMark = ({
   className,
@@ -35,40 +35,33 @@ export const LogoMark = ({
 }: React.ComponentProps<"svg">) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox={VIEW_BOX}
+    viewBox="0 0 23 23"
     shapeRendering="crispEdges"
     fill="currentColor"
     aria-hidden="true"
-    className={cn("h-4 w-auto", className)}
+    className={cn("size-4", className)}
     {...props}
   >
-    {MARKS.map(([x, y, w, h]) => (
-      <rect key={`${x}-${y}-${w}`} x={x} y={y} width={w} height={h} />
+    {LIT_CELLS.map(([x, y]) => (
+      <rect
+        key={`${x}-${y}`}
+        x={x * CELL}
+        y={y * CELL}
+        width={DOT}
+        height={DOT}
+      />
     ))}
-    <rect
-      data-slot="logo-fill"
-      x={BLOCK.x}
-      y={BLOCK.y}
-      width={BLOCK.width}
-      height={BLOCK.height}
-      className="text-ink origin-bottom [transform-box:fill-box]"
-      fill="currentColor"
-    />
   </svg>
 );
 
-/**
- * Mark plus name. On hover of a `group/brand` parent the block rises again
- * in four steps (▁▂▃▄), a cursor charging up.
- */
 export const Wordmark = ({ className }: { className?: string }) => (
   <span
     className={cn(
-      "font-display inline-flex items-center gap-2 text-[15px] leading-none font-medium tracking-[-0.02em] [font-stretch:87.5%]",
+      "inline-flex items-center gap-2 font-mono text-[0.9rem] font-medium tracking-tight",
       className
     )}
   >
-    <LogoMark className="text-foreground h-[18px] group-hover/brand:[&_[data-slot=logo-fill]]:motion-safe:animate-[logo-charge_480ms_steps(4,jump-end)_both]" />
+    <LogoMark className="text-primary size-[18px]" />
     asciicn
   </span>
 );

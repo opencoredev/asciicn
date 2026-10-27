@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Segmented: a terminal radio row, `[ cli │ jsx │ ansi │ svg ]`. Use it for
- * export formats, charset pickers and other small exclusive choices.
+ * Segmented: a row of pill options for small exclusive choices, the same
+ * shape as the docs preview knobs.
  *
  *   <Segmented label="Export" options={["cli", "jsx", "ansi", "svg"]} value={f} onValueChange={setF} />
  *
@@ -11,7 +11,7 @@
  * - `value`, `onValueChange`: controlled selection.
  * - `label`: accessible name for the group (visually hidden unless `showLabel`).
  * - `showLabel`: print the label before the options in caps. Default false.
- * - `size`: "sm" (24px, default) or "md" (32px).
+ * - `size`: "sm" (28px, default) or "md" (32px).
  * - `className`: classes for the root.
  * Arrow keys move the selection (native radio inputs).
  */
@@ -35,7 +35,7 @@ export interface SegmentedProps<Value extends string> {
   label: string;
   /** Print `label` before the options. Default false. */
   showLabel?: boolean;
-  /** Row height: "sm" is 24px, "md" is 32px. Default "sm". */
+  /** Row height: "sm" is 28px, "md" is 32px. Default "sm". */
   size?: "sm" | "md";
   className?: string;
 }
@@ -64,18 +64,22 @@ export const Segmented = <Value extends string>({
     <div
       role="radiogroup"
       aria-labelledby={labelId}
-      className={cn("inline-flex items-center gap-2 font-mono", className)}
+      className={cn("inline-flex items-center gap-2", className)}
     >
       <span
         id={labelId}
-        className={showLabel ? "label-caps text-muted-foreground" : "sr-only"}
+        className={
+          showLabel
+            ? "text-muted-foreground font-mono text-[10px] tracking-[0.08em] uppercase"
+            : "sr-only"
+        }
       >
         {label}
       </span>
       <div
         className={cn(
-          "divide-border flex items-stretch divide-x rounded-xs border",
-          size === "sm" ? "h-6 text-[11px]" : "h-8 text-xs"
+          "bg-muted/70 flex items-stretch rounded-full p-0.5 font-mono",
+          size === "sm" ? "h-7 text-[11px]" : "h-8 text-xs"
         )}
       >
         {options.map((option) => {
@@ -83,7 +87,7 @@ export const Segmented = <Value extends string>({
           return (
             <label
               key={current}
-              className="text-muted-foreground hover:text-foreground has-[:checked]:bg-ink-soft has-[:checked]:text-ink has-[:focus-visible]:outline-ring relative flex cursor-pointer items-center px-2 transition-colors duration-150 select-none has-[:focus-visible]:z-10 has-[:focus-visible]:outline has-[:focus-visible]:outline-offset-1"
+              className="text-muted-foreground hover:text-foreground has-[:checked]:bg-background has-[:checked]:text-foreground has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-center rounded-full px-2.5 transition-colors duration-150 select-none has-[:checked]:shadow-[0_1px_2px_rgb(0_0_0/0.08)] has-[:focus-visible]:ring-[3px] dark:has-[:checked]:bg-white/[0.11] dark:has-[:checked]:shadow-none"
             >
               <input
                 type="radio"

@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import { cn } from "@/lib/utils";
 
 const LINK_CLS =
-  "text-muted-foreground hover:text-foreground flex items-center gap-1.5 border-t pt-3 font-mono text-xs transition-colors duration-150 [&_svg]:size-3.5";
+  "text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[0.8rem] transition-colors [&_svg]:size-3.5";
 
 export const DocsTocFooter = ({
   markdownUrl,

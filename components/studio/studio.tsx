@@ -2,10 +2,10 @@
 
 /*
  * ASCII Studio. Direction:
- * - Reference: a bench oscilloscope (graticule rulers, a readout line under
- *   the trace) and Ableton's device panels (dense, labelled, every knob live).
- * - Palette: the site's paper, graphite and 1px rules; the palette ink
- *   (`--ascii-ink`) is the only accent, used for live readings.
+ * - Reference: a bench oscilloscope (a readout line under the trace) and
+ *   Ableton's device panels (dense, labelled, every knob live).
+ * - Palette: the site's black or white paper and 1px rules; the glyphs are
+ *   the only colour.
  * - Type: the site mono for everything, display caps for section labels,
  *   tabular figures in every readout.
  * - Layout: source rack | stage framed by rulers | control rack, with the
@@ -39,7 +39,7 @@ import type {
   MediaSettings,
   StudioState,
 } from "@/components/studio/state";
-import { Kbd } from "@/components/terminal/kbd";
+import { Kbd } from "@/components/ui/kbd";
 import { useAudioBands } from "@/lib/ascii/audio";
 import { CHARSET_NAMES } from "@/lib/ascii/charsets";
 import type { AsciiHandle } from "@/lib/ascii/frame";

@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 import { Analytics } from "@/components/analytics";
-import { DEFAULT_PALETTE, PALETTE_SCRIPT } from "@/components/terminal/palette";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { META_THEME_COLORS } from "@/constants/site";
 import { fontVariables } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
 import { JsonLdScripts } from "@/seo/json-ld";
 
 import "@/styles/globals.css";
@@ -20,13 +18,8 @@ const RootLayout = ({
 }: Readonly<{
   children: React.ReactNode;
 }>) => (
-  // Font variables sit on <html> so :root tokens like --ascii-font can use them.
-  <html
-    lang="en"
-    data-palette={DEFAULT_PALETTE}
-    className={fontVariables}
-    suppressHydrationWarning
-  >
+  // Font variables sit on <html> so :root tokens like --ascii-font resolve.
+  <html lang="en" className={fontVariables} suppressHydrationWarning>
     <head>
       <JsonLdScripts />
       <meta name="theme-color" content={META_THEME_COLORS.dark} />
@@ -43,19 +36,8 @@ const RootLayout = ({
             `,
         }}
       />
-      {/* Applies the stored palette before first paint, so it never
-          flashes. A raw inline script: next/script defers inline code until
-          Next boots, which is after paint. */}
-      <script
-        // oxlint-disable-next-line react/no-danger -- a fixed, build-time string
-        dangerouslySetInnerHTML={{ __html: PALETTE_SCRIPT }}
-      />
     </head>
-    <body
-      className={cn(
-        "text-foreground group/body overscroll-none font-mono antialiased [--footer-height:--spacing(10)] [--header-height:--spacing(14)]"
-      )}
-    >
+    <body className="text-foreground group/body overscroll-none font-sans antialiased [font-feature-settings:'ss01','cv11'] [--footer-height:--spacing(14)] [--header-height:--spacing(18)] xl:[--footer-height:--spacing(24)]">
       <ThemeProvider>
         {children}
         <Toaster position="top-center" />

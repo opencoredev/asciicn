@@ -15,8 +15,7 @@ import {
   useStageProbe,
 } from "@/components/home/use-stage-probe";
 import type { StageProbe, StageState } from "@/components/home/use-stage-probe";
-import { Ruler } from "@/components/terminal/ruler";
-import { StatusBar, StatusItem } from "@/components/terminal/status-bar";
+import { StatusBar, StatusItem } from "@/components/stage-status";
 import { CHARSETS, eighthsBar, useDocumentVisible } from "@/lib/ascii";
 import type {
   AsciiFrame,
@@ -84,49 +83,6 @@ const StageNote = ({ children }: { children: ReactNode }) => (
     {children}
   </p>
 );
-
-const PointerRuler = ({
-  store,
-  probe,
-  orientation,
-}: {
-  store: PointerStore;
-  probe: StageProbe;
-  orientation: "horizontal" | "vertical";
-}) => {
-  const at = usePointer(store);
-  const horizontal = orientation === "horizontal";
-  const index = horizontal ? at?.column : at?.row;
-  const size = horizontal ? probe.cellWidth : probe.cellHeight;
-  return (
-    <div className="relative min-h-0 min-w-0">
-      <Ruler
-        orientation={orientation}
-        variant="ticks"
-        cell={size}
-        highlight={index === undefined ? undefined : index + 1}
-        className={cn(
-          "border-rule",
-          horizontal ? "border-b" : "w-4 border-r [&>span]:hidden"
-        )}
-      />
-      {index === undefined ? null : (
-        <span
-          aria-hidden
-          className={cn(
-            "bg-ink pointer-events-none absolute",
-            horizontal ? "bottom-0 h-1" : "right-0 w-1"
-          )}
-          style={
-            horizontal
-              ? { left: index * size, width: size }
-              : { height: size, top: index * size }
-          }
-        />
-      )}
-    </div>
-  );
-};
 
 /** A 1px box around the cell under the pointer. */
 const CellCursor = ({
@@ -503,13 +459,10 @@ export const Stage = ({
   return (
     <div
       className={cn(
-        "border-rule bg-background grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] border",
+        "bg-background grid min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-clip rounded-[20px] border",
         className
       )}
     >
-      <div aria-hidden className="border-rule size-4 border-r border-b" />
-      <PointerRuler store={pointer} probe={probe} orientation="horizontal" />
-      <PointerRuler store={pointer} probe={probe} orientation="vertical" />
       <div
         ref={areaRef}
         className={cn("bg-ascii-paper relative overflow-hidden", areaClassName)}
@@ -552,7 +505,6 @@ export const Stage = ({
         {children}
       </div>
       <StageStatus
-        className="col-span-2"
         probe={probe}
         store={pointer}
         sourceId={current.id}
