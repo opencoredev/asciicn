@@ -1,0 +1,262 @@
+---
+title: "Tokyo"
+description: "Tokyo on a clear night: Tokyo Tower lit among towers of windows, vertical neon signs, a train on a curving elevated line and Mount Fuji on the horizon."
+---
+
+import TokyoDemo from "@/examples/tokyo-demo";
+import { controls as demoControls } from "@/examples/tokyo-controls";
+import TokyoHero from "@/examples/tokyo-hero";
+import TokyoPhosphor from "@/examples/tokyo-phosphor";
+
+<ComponentPreview
+  src="examples/tokyo-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <TokyoDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="tokyo" />
+
+## Usage
+
+```tsx
+import { Tokyo } from "@/components/asciicn/tokyo";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Tokyo intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The scene is built in layers. A few stars and the snowy cone of Mount Fuji sit at the back, then a low far skyline, Tokyo Tower in red-orange and white with its two observation decks, mid towers with lit window grids, and near blocks hung with vertical neon signs. In front, a train runs along a curving elevated line, and cars pass on the street below.
+
+Windows switch on and off slowly, the signs flicker now and then, and the red lights on the tower and the rooftop antennas blink. With `interactive` on, the pointer shifts the layers by different amounts, so near blocks slide further than the horizon.
+
+It draws in `braille` by default, which keeps the tower's lattice and the window grids fine. In `braille` and `quadrants` it dithers with `bayer4`, so the dim facades and Fuji show as sparse dots instead of vanishing below the dot threshold. `standard` and `dense` give a typed look, and `blocks` gives solid shapes. In `truecolor`, the default, glyphs take the scene's red, white and electric blue on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+
+`intensity` scales every glyph's tone. Lower it to keep a headline on top easy to read.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.55}` and `neon={0.7}` push the city back so the headline reads first.
+
+<ComponentPreview src="examples/tokyo-hero.tsx" size="lg" align="stretch">
+  <TokyoHero />
+</ComponentPreview>
+
+### On an amber monitor
+
+`phosphor="p3"` draws every glyph in amber on dark glass. The `standard` charset and `fx` scanlines, bloom and vignette finish the look.
+
+<ComponentPreview src="examples/tokyo-phosphor.tsx">
+  <TokyoPhosphor />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+    },
+    {
+      name: "neon",
+      type: "number",
+      default: "1",
+      description:
+        "How many vertical neon signs glow, and how brightly, from 0 (none) to 1.",
+    },
+    {
+      name: "traffic",
+      type: "number",
+      default: "1",
+      description:
+        "Speed of the train and the street traffic, from 0 (parked) to 2.",
+    },
+    {
+      name: "fuji",
+      type: "boolean",
+      default: "true",
+      description: "Draws Mount Fuji on the horizon.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the scene. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        'How glyphs are coloured. truecolor uses the scene\'s own colours, mono uses the theme ink or a phosphor, duotone runs tone through a ramp. "mono" when a phosphor is set.',
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass for mono mode. Setting one switches colorMode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "–",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      description:
+        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "An engine pointer effect on top of the parallax.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer parallax: near layers slide further than far ones. false turns it off, and interaction with it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "–",
+      description:
+        "Shown without WebGL and until the first frame. By default a night gradient.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dark night gradient.
+- The whole scene is one GPU pass with no loops over buildings, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
