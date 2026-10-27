@@ -1,46 +1,32 @@
 import { AsciiCard } from "@/components/asciicn/ascii-card";
-import type { AsciiCardGlow } from "@/components/asciicn/ascii-card";
-import { cn } from "@/lib/utils";
 
-const CARDS: readonly { glow: AsciiCardGlow; title: string; body: string }[] = [
-  {
-    body: "Ship a component with one command.",
-    glow: "top",
-    title: "Install",
-  },
-  {
-    body: "Every colour follows your theme.",
-    glow: "top-right",
-    title: "Theme",
-  },
-  {
-    body: "Still frames under reduced motion.",
-    glow: "bottom-left",
-    title: "Respect",
-  },
-];
+const CARDS = [
+  { charset: "braille", color: "blue", glow: "top-left", title: "ingest" },
+  { charset: "blocks", color: "purple", glow: "top", title: "transform" },
+  { charset: "katakana", color: "green", glow: "top-right", title: "serve" },
+] as const;
 
 export default function AsciiCardGlows() {
   return (
-    <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+    <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-3">
       {CARDS.map((card) => (
         <AsciiCard
-          key={card.glow}
+          key={card.title}
+          title={card.title}
           glow={card.glow}
-          reach={130}
+          glowCharset={card.charset}
+          color={card.color}
           interactive
-          className={cn(
-            "bg-background min-h-52 px-5",
-            card.glow.startsWith("bottom") ? "justify-start" : "justify-end"
-          )}
         >
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-xs text-muted-foreground">
-              {card.glow}
-            </span>
-            <span className="font-semibold tracking-tight">{card.title}</span>
-            <span className="text-muted-foreground text-sm">{card.body}</span>
-          </div>
+          <a
+            href="#top"
+            className="font-display text-base font-semibold outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {card.charset} glow
+          </a>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lit from the {card.glow.replace("-", " ")}.
+          </p>
         </AsciiCard>
       ))}
     </div>

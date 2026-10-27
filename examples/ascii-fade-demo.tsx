@@ -4,58 +4,26 @@ import { AsciiFade } from "@/components/asciicn/ascii-fade";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-fade-controls";
 
-const ENTRIES = [
-  {
-    body: "A 64 by 64 tile with no visible grid, for grain that reads as film.",
-    date: "Oct 9",
-    title: "Blue-noise thresholds",
-  },
-  {
-    body: "Pass any number of colours from paper to ink; tones in between snap to the nearest pair.",
-    date: "Oct 2",
-    title: "Palette ramps",
-  },
-  {
-    body: "Offscreen shaders hand back their WebGL context and show a CSS fallback.",
-    date: "Sep 25",
-    title: "Context budget",
-  },
-  {
-    body: "Every background holds one still frame when the system asks for less motion.",
-    date: "Sep 18",
-    title: "Reduced motion",
-  },
-  {
-    body: "Set --ascii-cell once and every component follows it.",
-    date: "Sep 11",
-    title: "Cell size token",
-  },
-] as const;
+const LOG = Array.from({ length: 40 }, (_, index) => {
+  const ms = 12 + ((index * 37) % 180);
+  const route = ["/api/render", "/api/frames", "/r/ascii-box.json", "/studio"][
+    index % 4
+  ];
+  return `${String(index).padStart(3, "0")}  GET ${route}  200  ${ms}ms`;
+});
 
 export default function AsciiFadeDemo() {
+  const side = usePreviewValue(knobs.side);
+  const charset = usePreviewValue(knobs.charset);
   const size = usePreviewValue(knobs.size);
-  const matrix = usePreviewValue(knobs.matrix);
-  const cell = usePreviewValue(knobs.cell);
-  const animate = usePreviewValue(knobs.animate);
+  const drift = usePreviewValue(knobs.drift);
 
   return (
-    <div className="relative size-full overflow-hidden px-6 pt-10 sm:px-12">
-      <ol className="mx-auto flex max-w-lg flex-col gap-6">
-        {ENTRIES.map((entry) => (
-          <li key={entry.title} className="grid grid-cols-[4rem_1fr] gap-4">
-            <span className="text-muted-foreground pt-0.5 font-mono text-xs">
-              {entry.date}
-            </span>
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">{entry.title}</span>
-              <span className="text-muted-foreground text-sm text-pretty">
-                {entry.body}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <AsciiFade size={size} matrix={matrix} cell={cell} animate={animate} />
+    <div className="relative size-full overflow-hidden bg-[var(--ascii-paper)]">
+      <pre className="p-6 font-mono text-[13px] leading-5 text-muted-foreground">
+        {LOG.join("\n")}
+      </pre>
+      <AsciiFade side={side} charset={charset} size={size} drift={drift} />
     </div>
   );
 }

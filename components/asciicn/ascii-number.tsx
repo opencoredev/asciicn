@@ -1,715 +1,369 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, HTMLAttributes, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, HTMLAttributes } from "react";
 
 import {
+  BRAILLE_DOT_BITS,
+  brailleChar,
   cssColor,
-  asciiMask,
-  getThresholdMap,
-  MOTION,
-  thresholdAt,
   useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { AsciiColor, DitherMatrix } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/** The Bayer matrices. */
-export type AsciiNumberMatrix = Exclude<DitherMatrix, "blue-noise">;
+/*
+ * Digits are drawn from two small fonts. `box` is a seven-segment face in
+ * box-drawing glyphs, three cells by three rows. The bitmap face is three
+ * pixels by five, shown three ways: `blocks` (each pixel two full cells
+ * wide, so pixels come out square), `half` (half blocks pack two pixel
+ * rows per cell) and `braille` (each pixel a 2x2 patch of dots). Every
+ * glyph of a font is the same width, so digits stay in tabular columns.
+ */
+
+export const ASCII_NUMBER_FONTS = ["blocks", "half", "box", "braille"] as const;
+export type AsciiNumberFont = (typeof ASCII_NUMBER_FONTS)[number];
+
+/** Seven-segment digits and signs in box-drawing glyphs: three rows each. */
+const BOX_GLYPHS: Record<string, readonly [string, string, string]> = {
+  "%": ["o ╱", " ╱ ", "╱ o"],
+  "+": ["   ", "╶┼╴", "   "],
+  ",": [" ", " ", "╯"],
+  "-": ["   ", "╶─╴", "   "],
+  ".": [" ", " ", "▪"],
+  "/": ["  ╱", " ╱ ", "╱  "],
+  "0": ["┌─┐", "│ │", "└─┘"],
+  "1": [" ╷ ", " │ ", " ╵ "],
+  "2": ["╶─┐", "┌─┘", "└─╴"],
+  "3": ["╶─┐", " ─┤", "╶─┘"],
+  "4": ["╷ ╷", "└─┤", "  ╵"],
+  "5": ["┌─╴", "└─┐", "╶─┘"],
+  "6": ["┌─╴", "├─┐", "└─┘"],
+  "7": ["╶─┐", "  │", "  ╵"],
+  "8": ["┌─┐", "├─┤", "└─┘"],
+  "9": ["┌─┐", "└─┤", "╶─┘"],
+  ":": [" ", "∙", "∙"],
+};
+
+/** The 3x5 bitmap face: `#` is a lit pixel. Narrow signs are one pixel wide. */
+const BITMAP: Record<string, readonly string[]> = {
+  "%": ["#.#", "..#", ".#.", "#..", "#.#"],
+  "+": ["...", ".#.", "###", ".#.", "..."],
+  ",": ["..", "..", "..", ".#", "#."],
+  "-": ["...", "...", "###", "...", "..."],
+  ".": [".", ".", ".", ".", "#"],
+  "/": ["..#", "..#", ".#.", "#..", "#.."],
+  "0": ["###", "#.#", "#.#", "#.#", "###"],
+  "1": [".#.", "##.", ".#.", ".#.", "###"],
+  "2": ["###", "..#", "###", "#..", "###"],
+  "3": ["###", "..#", ".##", "..#", "###"],
+  "4": ["#.#", "#.#", "###", "..#", "..#"],
+  "5": ["###", "#..", "###", "..#", "###"],
+  "6": ["###", "#..", "###", "#.#", "###"],
+  "7": ["###", "..#", "..#", ".#.", ".#."],
+  "8": ["###", "#.#", "###", "#.#", "###"],
+  "9": ["###", "#.#", "###", "..#", "###"],
+  ":": [".", "#", ".", "#", "."],
+};
+
+const HALF = [" ", "▀", "▄", "█"] as const;
+
+type Bitmap = readonly string[];
+
+const isLit = (bitmap: Bitmap, x: number, y: number) => bitmap[y]?.[x] === "#";
+
+/** Each pixel two full cells wide, so pixels come out square. */
+const blocksRows = (bitmap: Bitmap): string[] =>
+  bitmap.map((row) => [...row].map((p) => (p === "#" ? "██" : "  ")).join(""));
+
+/** Two pixel rows per cell in half blocks; the sixth row is empty. */
+const halfRows = (bitmap: Bitmap): string[] => {
+  const width = bitmap[0]?.length ?? 0;
+  const rows: string[] = [];
+  for (let y = 0; y < 6; y += 2) {
+    let line = "";
+    for (let x = 0; x < width; x += 1) {
+      line +=
+        HALF[(isLit(bitmap, x, y) ? 1 : 0) + (isLit(bitmap, x, y + 1) ? 2 : 0)];
+    }
+    rows.push(line);
+  }
+  return rows;
+};
 
 /**
- * `roll`: each digit spins on a strip to its new value, faded at the top
- * and bottom by a dither.
- * `resolve`: each changed digit turns into the new one cell by cell, the
- * old digit giving up exactly the cells the new one takes.
+ * Each pixel a 2x2 patch of dots: 5 pixel rows make 10 dot rows over 3
+ * cells, with one empty dot row above and below to centre the digit.
  */
-export const ASCII_NUMBER_EFFECTS = ["roll", "resolve"] as const;
-export type AsciiNumberEffect = (typeof ASCII_NUMBER_EFFECTS)[number];
-
-/** Type presets, from a table cell up to a landing page stat. */
-export const ASCII_NUMBER_SIZES = ["sm", "md", "lg", "xl", "display"] as const;
-export type AsciiNumberSize = (typeof ASCII_NUMBER_SIZES)[number];
-
-const SIZE_CLASS = {
-  display: "text-[clamp(3.5rem,11vw,8rem)] font-semibold tracking-[-0.06em]",
-  lg: "text-6xl font-semibold tracking-[-0.05em]",
-  md: "text-4xl font-semibold tracking-[-0.04em]",
-  sm: "text-2xl font-semibold tracking-[-0.03em]",
-  xl: "text-8xl font-semibold tracking-[-0.055em]",
-} as const satisfies Record<AsciiNumberSize, string>;
-
-export type AsciiNumberProps = Omit<
-  HTMLAttributes<HTMLSpanElement>,
-  "children" | "color" | "prefix"
-> & {
-  /** The number to show. Change it and the digits move to the new value. */
-  value: number;
-  /** Where the first run starts. Default 0. */
-  from?: number;
-  /** Passed to `Intl.NumberFormat`: currency, percent, compact notation, decimals. */
-  format?: Intl.NumberFormatOptions;
-  /** Passed to `Intl.NumberFormat`. Set it when the server and client must format the same way. Default: the visitor's locale. */
-  locales?: Intl.LocalesArgument;
-  /** Text before the number, such as `"+"` or `"~"`. */
-  prefix?: string;
-  /** Text after the number, such as `" ms"` or `" users"`. */
-  suffix?: string;
-  /** Classes for the prefix and suffix, for example a smaller, muted unit. */
-  affixClassName?: string;
-  /** How digits move. Default `"roll"`. */
-  effect?: AsciiNumberEffect;
-  /** Start the first run on mount, or when scrolled into view. Default `"in-view"`. */
-  trigger?: "mount" | "in-view";
-  /** A type preset. Leave it unset to size the number with your own classes. */
-  size?: AsciiNumberSize;
-  /** Colour of the number: a palette name or any CSS colour. Default: the text colour. */
-  color?: AsciiColor;
-  /** Colour a digit takes while it moves, fading back as it lands. `"none"` keeps it the number's colour. Default `"ink"`. */
-  accent?: AsciiColor | "none";
-  /** Milliseconds per change. Default 900 for roll, 560 for resolve. */
-  duration?: number;
-  /** Milliseconds between one digit starting and the next, left to right. Default 40. */
-  stagger?: number;
-  /** Threshold matrix for the dithered edges and the resolve. Default `"bayer4"`. */
-  matrix?: AsciiNumberMatrix;
-  /** Cell size in CSS pixels. Default: about 1/30 of the font size, at least 1. */
-  cell?: number;
-};
-
-type Glyph =
-  | { kind: "digit"; key: string; digit: number | null; place: number }
-  | { kind: "static"; key: string; char: string };
-
-const DIGIT = /^[0-9]$/u;
-const DIGIT_RUNS = /([0-9]+)/u;
-
-/**
- * Lay out `target` as slots, then fill the digit slots with the digits of
- * `shown`, aligned from the right. Missing digits are `fill`.
- */
-const layout = (
-  formatter: Intl.NumberFormat,
-  target: number,
-  shown: number,
-  fill: number | null
-): Glyph[] => {
-  const chars = [...formatter.format(target)];
-  const shownDigits = [...formatter.format(shown)].filter((char) =>
-    DIGIT.test(char)
-  );
-  const digitCount = chars.filter((char) => DIGIT.test(char)).length;
-  let place = digitCount;
-  return chars.map((char, index): Glyph => {
-    if (!DIGIT.test(char)) {
-      return { char, key: `s${chars.length - index}`, kind: "static" };
-    }
-    place -= 1;
-    const fromShown = shownDigits.at(-1 - place);
-    return {
-      digit: fromShown === undefined ? fill : Number(fromShown),
-      key: `d${place}`,
-      kind: "digit",
-      place,
-    };
-  });
-};
-
-// Separators, signs and symbols keep their natural width; only digits
-// are tabular.
-const STATIC_CLASS = "whitespace-pre [font-variant-numeric:normal]";
-
-// Decorative digits are drawn as generated content, so they stay out of
-// the page's text (copy, search snippets); only the real value is text.
-const GLYPH_CLASS = "before:content-[attr(data-digit)]";
-
-/**
- * Tint a slot with the accent at once, then let it fade back to the
- * number's colour from `at` ms, over the rest of the motion.
- */
-const flash = (el: HTMLElement, at: number, fade: number) => {
-  el.style.transition = "none";
-  el.style.color = "var(--number-accent)";
-  el.getBoundingClientRect();
-  el.style.transition = `color ${fade}ms ${MOTION.ease} ${at}ms`;
-  el.style.color = "";
-};
-
-/** 1 counting up, -1 counting down, 0 to jump without motion. */
-type Direction = 1 | -1 | 0;
-
-interface Shown {
-  direction: Direction;
-  value: number;
-  /** How far the shown digits moved in the last change, read as one integer. */
-  delta: number;
-}
-
-interface SlotProps {
-  digit: number | null;
-  direction: Direction;
-  /** Spin a full extra turn: the value moved by ten or more at this place. */
-  spin: boolean;
-  duration: number;
-  delay: number;
-  matrix: AsciiNumberMatrix;
-  accent: boolean;
-}
-
-// ---------------------------------------------------------------- roll
-
-const COPIES = 3;
-const ROWS = 10 * COPIES;
-const STRIP = Array.from({ length: ROWS }, (_, index) => index % 10);
-
-const translate = (row: number) => `translateY(${(-row * 100) / ROWS}%)`;
-
-/** The strip's current row, read from its computed transform mid-flight. */
-const currentRow = (strip: HTMLElement) => {
-  const { transform } = getComputedStyle(strip);
-  const rowHeight = strip.offsetHeight / ROWS;
-  if (transform === "none" || rowHeight === 0) {
-    return 0;
-  }
-  return -new DOMMatrixReadOnly(transform).m42 / rowHeight;
-};
-
-const modulo = (value: number, base: number) => ((value % base) + base) % base;
-
-/** Start and end rows on the strip for a roll from `at` to `value`. */
-const rollRows = ({
-  at,
-  value,
-  direction,
-  spin,
-}: {
-  at: number;
-  value: number;
-  direction: 1 | -1;
-  spin: boolean;
-}) => {
-  const extra = spin ? 10 : 0;
-  if (direction === 1) {
-    return { end: value + (value > at ? 0 : 10) + extra, start: at };
-  }
-  return { end: value + 20 - (value < at ? 0 : 10) - extra, start: at + 20 };
-};
-
-const RollSlot = ({
-  digit,
-  direction,
-  spin,
-  duration,
-  delay,
-  accent,
-}: SlotProps) => {
-  const stripRef = useRef<HTMLSpanElement>(null);
-  const value = digit ?? 0;
-  // The first row is rendered once; after that the effect owns the
-  // transform, so React never resets it mid-roll.
-  const [initialRow] = useState(value + 10);
-
-  useLayoutEffect(() => {
-    const strip = stripRef.current;
-    if (!strip) {
-      return;
-    }
-    if (direction === 0) {
-      strip.style.transition = "none";
-      strip.style.transform = translate(value + 10);
-      return;
-    }
-    const row = currentRow(strip);
-    // Snap float drift (9.9996) to the row it really shows.
-    const at = modulo(
-      Math.abs(row - Math.round(row)) < 0.01 ? Math.round(row) : row,
-      10
-    );
-    const { start, end } = rollRows({ at, direction, spin, value });
-    if (Math.abs(end - start) < 0.01) {
-      return;
-    }
-    // Accent first, with no transition, then roll and fade it back.
-    const color = accent
-      ? `color ${duration * 0.8}ms ${MOTION.ease} ${delay + duration * 0.45}ms`
-      : "";
-    strip.style.transition = "none";
-    strip.style.transform = translate(start);
-    strip.style.color = accent ? "var(--number-accent)" : "";
-    // Commit the start row before transitioning from it.
-    strip.getBoundingClientRect();
-    strip.style.transition = [
-      `transform ${duration}ms ${MOTION.ease} ${delay}ms`,
-      color,
-    ]
-      .filter(Boolean)
-      .join(", ");
-    strip.style.transform = translate(end);
-    strip.style.color = "";
-    const settle = (event: TransitionEvent) => {
-      if (event.propertyName !== "transform") {
-        return;
-      }
-      // Jump back to the middle copy without motion; a colour fade in
-      // flight keeps running.
-      strip.style.transition = color || "none";
-      strip.style.transform = translate(value + 10);
-      strip.removeEventListener("transitionend", settle);
-    };
-    strip.addEventListener("transitionend", settle);
-    return () => strip.removeEventListener("transitionend", settle);
-  }, [accent, delay, direction, duration, spin, value]);
-
-  return (
-    <span
-      ref={stripRef}
-      className="absolute inset-x-0 top-(--number-pad) flex flex-col items-center will-change-transform"
-      style={{ transform: translate(initialRow) }}
-    >
-      {STRIP.map((row, index) => (
-        <span key={index} data-digit={row} className={`block ${GLYPH_CLASS}`} />
-      ))}
-    </span>
-  );
-};
-
-// ------------------------------------------------------------- resolve
-
-const RESOLVE_STEPS: Record<AsciiNumberMatrix, number> = {
-  bayer2: 4,
-  bayer4: 16,
-  bayer8: 16,
-};
-const resolveSheets = new Map<AsciiNumberMatrix, string>();
-
-// The old digit uses the complement of the new one's mask: a solid layer
-// with the dither excluded. Every cell shows one digit or the other.
-const SOLID = "linear-gradient(#000 0 0)";
-const CLEAR = "linear-gradient(transparent 0 0)";
-
-/**
- * Keyframes stepping a mask through the matrix's levels with an ease-out
- * shape: level k lands at t where 1 - (1 - t)^2 = k / steps.
- */
-const resolveKeyframes = (matrix: AsciiNumberMatrix) => {
-  const cached = resolveSheets.get(matrix);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const steps = RESOLVE_STEPS[matrix];
-  const levels = Array.from({ length: steps + 1 }, (_, k) => k);
-  const frame = (k: number, out: boolean) => {
-    const offset = ((1 - Math.sqrt(1 - k / steps)) * 100).toFixed(2);
-    const dither = asciiMask(k / steps, { matrix });
-    let image = dither;
-    if (k >= steps) {
-      image = out ? CLEAR : "none";
-    } else if (out) {
-      image = `${SOLID},${dither}`;
-    }
-    return `${offset}%{-webkit-mask-image:${image};mask-image:${image}}`;
-  };
-  const css = `@keyframes dcn-number-in-${matrix}{${levels.map((k) => frame(k, false)).join("")}}@keyframes dcn-number-out-${matrix}{${levels.map((k) => frame(k, true)).join("")}}`;
-  resolveSheets.set(matrix, css);
-  return css;
-};
-
-interface Layer {
-  id: number;
-  digit: number | null;
-  leaving: boolean;
-}
-
-const layerStyle = ({
-  layer,
-  matrix,
-  duration,
-  delay,
-}: {
-  layer: Layer;
-  matrix: AsciiNumberMatrix;
-  duration: number;
-  delay: number;
-}): CSSProperties => {
-  const tile = `calc(var(--number-cell) * ${getThresholdMap(matrix).size})`;
-  const name = layer.leaving ? "dcn-number-out" : "dcn-number-in";
-  return {
-    WebkitMaskComposite: "xor",
-    WebkitMaskRepeat: "repeat",
-    WebkitMaskSize: tile,
-    animation: `${name}-${matrix} ${duration}ms step-end ${delay}ms both`,
-    maskComposite: "exclude",
-    maskRepeat: "repeat",
-    maskSize: tile,
-  };
-};
-
-const ResolveSlot = ({
-  digit,
-  direction,
-  duration,
-  delay,
-  matrix,
-  accent,
-}: SlotProps) => {
-  const [layers, setLayers] = useState<Layer[]>([
-    { digit, id: 0, leaving: false },
-  ]);
-  const [current, setCurrent] = useState(digit);
-  const newestRef = useRef<HTMLSpanElement>(null);
-
-  // Adjust state during render when the digit changes (no effect needed).
-  if (current !== digit) {
-    setCurrent(digit);
-    const id = (layers.at(-1)?.id ?? 0) + 1;
-    setLayers(
-      direction === 0
-        ? [{ digit, id, leaving: false }]
-        : [
-            // Only the newest visible layer leaves; anything older is dropped.
-            ...layers
-              .filter((layer) => !layer.leaving)
-              .map((layer) => ({ ...layer, leaving: true })),
-            { digit, id, leaving: false },
-          ]
-    );
-  }
-
-  const newest = layers.at(-1);
-  useLayoutEffect(() => {
-    const el = newestRef.current;
-    if (el && accent && newest && newest.id > 0 && direction !== 0) {
-      flash(el, delay + duration * 0.5, duration * 1.2);
-    }
-  }, [accent, delay, direction, duration, newest]);
-
-  return layers.map((layer) => (
-    <span
-      key={layer.id}
-      ref={layer === newest ? newestRef : undefined}
-      onAnimationEnd={() => {
-        if (layer.leaving) {
-          setLayers((list) => list.filter(({ id }) => id !== layer.id));
+const brailleRows = (bitmap: Bitmap): string[] => {
+  const width = bitmap[0]?.length ?? 0;
+  const rows: string[] = [];
+  for (let cellRow = 0; cellRow < 3; cellRow += 1) {
+    let line = "";
+    for (let x = 0; x < width; x += 1) {
+      let mask = 0;
+      for (let dotRow = 0; dotRow < 4; dotRow += 1) {
+        const pixelY = Math.floor((cellRow * 4 + dotRow - 1) / 2);
+        if (isLit(bitmap, x, pixelY)) {
+          // Both dots of the row: the bits are distinct, so adding sets them.
+          mask +=
+            (BRAILLE_DOT_BITS[dotRow]?.[0] ?? 0) +
+            (BRAILLE_DOT_BITS[dotRow]?.[1] ?? 0);
         }
-      }}
-      data-digit={layer.digit ?? ""}
-      className={`absolute inset-0 text-center ${GLYPH_CLASS}`}
-      style={
-        // The first layer is static until it leaves.
-        direction === 0 || (layer.id === 0 && !layer.leaving)
-          ? undefined
-          : layerStyle({ delay, duration, layer, matrix })
       }
-    />
-  ));
+      line += brailleChar(mask);
+    }
+    rows.push(line);
+  }
+  return rows;
 };
 
-// --------------------------------------------------------- edge mask
-
-/**
- * A mask for the roll window: solid across the middle of the line,
- * dithered out across the top and bottom `fade` share of it. Built per
- * measured size so the cells stay square.
- */
-const edgeMask = ({
-  height,
-  cell,
-  matrix,
-  fade = 0.2,
-}: {
-  height: number;
-  cell: number;
-  matrix: AsciiNumberMatrix;
-  fade?: number;
-}): CSSProperties => {
-  const { size } = getThresholdMap(matrix);
-  const rows = Math.max(1, Math.round(height / cell));
-  const fadeRows = Math.max(1, Math.round((height * fade) / cell));
-  let path = "";
-  for (let y = 0; y < rows; y += 1) {
-    const edge = Math.min(y, rows - 1 - y);
-    const level = edge >= fadeRows ? 1 : (edge + 0.5) / fadeRows;
-    for (let x = 0; x < size; x += 1) {
-      if (level > thresholdAt(matrix, x, y)) {
-        path += `M${x} ${y}h1v1h-1z`;
-      }
+/** Rows of text for one character in a font, or `null` when the font lacks it. */
+const drawChar = (
+  char: string,
+  font: AsciiNumberFont
+): readonly string[] | null => {
+  if (font === "box") {
+    return BOX_GLYPHS[char] ?? null;
+  }
+  const bitmap = BITMAP[char];
+  if (!bitmap) {
+    return null;
+  }
+  switch (font) {
+    case "blocks": {
+      return blocksRows(bitmap);
+    }
+    case "half": {
+      return halfRows(bitmap);
+    }
+    case "braille": {
+      return brailleRows(bitmap);
+    }
+    default: {
+      const exhaustive: never = font;
+      return exhaustive;
     }
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${rows}" width="${size * cell}" height="${rows * cell}" shape-rendering="crispEdges"><path d="${path}"/></svg>`;
-  const image = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  return {
-    WebkitMaskImage: image,
-    WebkitMaskPosition: "0 50%",
-    WebkitMaskRepeat: "repeat-x",
-    maskImage: image,
-    maskPosition: "0 50%",
-    maskRepeat: "repeat-x",
-  };
 };
 
-// ------------------------------------------------------------- state
+const ROWS = {
+  blocks: 5,
+  box: 3,
+  braille: 3,
+  half: 3,
+} as const satisfies Record<AsciiNumberFont, number>;
+
+/** Cells between glyphs. */
+const GAP = {
+  blocks: 2,
+  box: 1,
+  braille: 1,
+  half: 1,
+} as const satisfies Record<AsciiNumberFont, number>;
+
+interface Rendered {
+  readonly lines: readonly string[];
+  readonly ghost: readonly string[];
+}
 
 /**
- * What the digits show, and how they got there. The server renders the
- * final value; on the client the digits wait at `from` until triggered.
+ * Lay out a string in a font. Characters the font lacks (letters from
+ * compact notation, currency signs) are set as one plain glyph on the
+ * bottom row, like a unit. `ghost` is every digit position drawn as an
+ * `8`, for the unlit-segment look.
  */
-const useShownValue = ({
-  value,
-  from,
-  trigger,
-  inView,
-  formatter,
-}: {
-  value: number;
-  from: number;
-  trigger: "mount" | "in-view";
-  inView: boolean;
-  formatter: Intl.NumberFormat;
-}) => {
-  // Digits as one integer ("$4.12K" → 412), so a spin follows what is shown,
-  // not the raw value behind compact notation or decimals.
-  const digitsRef = useRef((input: number) =>
-    Number(formatter.format(input).replaceAll(/\D/gu, "") || 0)
-  );
-  useEffect(() => {
-    digitsRef.current = (input: number) =>
-      Number(formatter.format(input).replaceAll(/\D/gu, "") || 0);
-  });
-  const reducedMotion = usePrefersReducedMotion();
-  const [shown, setShown] = useState<Shown>({
-    delta: 0,
-    direction: 0,
-    value,
-  });
-  const [armed, setArmed] = useState(false);
-  const [started, setStarted] = useState(false);
-
-  // Only the first mount waits at `from`.
-  const fromRef = useRef(from);
-  useLayoutEffect(() => {
-    if (!reducedMotion) {
-      setShown({ delta: 0, direction: 0, value: fromRef.current });
+const render = (text: string, font: AsciiNumberFont): Rendered => {
+  const rows = ROWS[font];
+  const lines = Array.from({ length: rows }, () => "");
+  const ghost = Array.from({ length: rows }, () => "");
+  const gap = " ".repeat(GAP[font]);
+  const eight = drawChar("8", font);
+  for (const [index, char] of [...text].entries()) {
+    const glyph = drawChar(char, font);
+    const isDigit = char >= "0" && char <= "9";
+    const cells =
+      glyph ??
+      Array.from({ length: rows }, (_, row) =>
+        row === rows - 1 ? char.trim() || " " : " "
+      );
+    const width = Math.max(...cells.map((row) => [...row].length));
+    for (let row = 0; row < rows; row += 1) {
+      const cell = (cells[row] ?? "").padEnd(width, " ");
+      const prefix = index === 0 ? "" : gap;
+      lines[row] += prefix + cell;
+      ghost[row] +=
+        prefix + (isDigit && eight ? (eight[row] ?? "") : " ".repeat(width));
     }
-    setArmed(true);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (armed && !started && (trigger === "mount" || inView)) {
-      setStarted(true);
-    }
-  }, [armed, inView, started, trigger]);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setShown({ delta: 0, direction: 0, value });
-      return;
-    }
-    if (!(armed && started)) {
-      return;
-    }
-    setShown((previous) =>
-      previous.value === value
-        ? previous
-        : {
-            delta: Math.abs(
-              digitsRef.current(value) - digitsRef.current(previous.value)
-            ),
-            direction: value > previous.value ? 1 : -1,
-            value,
-          }
-    );
-  }, [armed, reducedMotion, started, value]);
-
-  return shown;
+  }
+  return { ghost, lines };
 };
-
-/** Measure the type for square dither cells and the roll window mask. */
-const useCells = ({
-  rootRef,
-  windowRef,
-  cell,
-  matrix,
-}: {
-  rootRef: RefObject<HTMLSpanElement | null>;
-  windowRef: RefObject<HTMLSpanElement | null>;
-  cell: number | undefined;
-  matrix: AsciiNumberMatrix;
-}) => {
-  const [mask, setMask] = useState<CSSProperties | null>(null);
-  const [cellSize, setCellSize] = useState(cell ?? 2);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) {
-      return;
-    }
-    const measure = () => {
-      const fontSize = Number.parseFloat(getComputedStyle(root).fontSize) || 16;
-      const size = cell ?? Math.max(1, Math.round(fontSize / 30));
-      setCellSize(size);
-      const height = windowRef.current?.offsetHeight ?? 0;
-      setMask(height > 0 ? edgeMask({ cell: size, height, matrix }) : null);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(root);
-    return () => observer.disconnect();
-  }, [cell, matrix, rootRef, windowRef]);
-
-  return { cellSize, mask };
-};
-
-// --------------------------------------------------------------- root
 
 /**
- * An animated number for dashboards and landing stats. Digits are
- * tabular, formatting comes from `Intl.NumberFormat`, and each changed
- * digit rolls or resolves through a dither into place, tinted with the
- * accent while it moves. The formatted value is real text laid over the
- * animation, so it is selectable and read by screen readers.
+ * Decimals to count in: the format's own maximum when it sets one,
+ * otherwise as many as the value has (at most 3, as Intl shows).
+ */
+const decimalsOf = (
+  value: number,
+  format: Intl.NumberFormatOptions | undefined
+): number => {
+  if (format?.maximumFractionDigits !== undefined) {
+    return format.maximumFractionDigits;
+  }
+  const [, fraction = ""] = String(value).split(".");
+  return Math.min(3, fraction.length);
+};
+
+/** Pad every line on the left to `width` cells, so numbers align right. */
+const padStart = (lines: readonly string[], width: number) =>
+  lines.map((line) => line.padStart(width, " "));
+
+export interface AsciiNumberProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "children" | "color" | "prefix"
+> {
+  /** The number to show. Changing it counts from the shown value to the new one. */
+  value: number;
+  /** Where the first count starts. Default 0. */
+  from?: number;
+  /** The digit face. Default `"blocks"`. */
+  font?: AsciiNumberFont;
+  /** Text before the number, drawn in the font where it can be. Default none. */
+  prefix?: string;
+  /** Text after the number, such as `"%"` or `" ms"`. Default none. */
+  suffix?: string;
+  /** A BCP 47 locale for grouping and decimals, such as `"de-DE"`. Fixed by default so server and browser agree. Default `"en-US"`. */
+  locale?: string;
+  /** `Intl.NumberFormat` options: decimals, compact notation, units. Default `{}`. */
+  format?: Intl.NumberFormatOptions;
+  /** Count on change and on the first view. Default `true`. */
+  animate?: boolean;
+  /** Seconds a count takes. Default 1.4. */
+  duration?: number;
+  /** When the first count plays. Default `"view"`. */
+  trigger?: "mount" | "view";
+  /** Draw unlit segments of every digit faintly, as on an LCD. Default `false`. */
+  ghost?: boolean;
+  /** Glyph colour. Default `"ink"`. */
+  color?: AsciiColor;
+  /** Glyph cell height in CSS pixels. Default `--ascii-cell`, or 12. */
+  cell?: number;
+  /** Which side digits line up on as the width changes. Default `"end"`. */
+  align?: "start" | "end";
+}
+
+type NumberVars = CSSProperties & Record<"--num-cell", string>;
+
+// Ease-out expo: fast at first, settling softly on the final value.
+const easeOut = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
+
+/**
+ * A big number drawn in glyphs: block, half-block, braille or
+ * seven-segment box-drawing digits that count to their value with
+ * tabular alignment, locale formatting, a prefix and a suffix. The real
+ * number is in the element for screen readers and copy.
  */
 export const AsciiNumber = ({
   value,
   from = 0,
+  font = "blocks",
+  prefix = "",
+  suffix = "",
+  locale = "en-US",
   format,
-  locales,
-  prefix,
-  suffix,
-  affixClassName,
-  effect = "roll",
-  trigger = "in-view",
-  size,
-  color,
-  accent = "ink",
-  duration,
-  stagger = 40,
-  matrix = "bayer4",
+  animate = true,
+  duration = 1.4,
+  trigger = "view",
+  ghost = false,
+  color = "ink",
   cell,
+  align = "end",
   className,
   style,
-  ...rest
+  ...props
 }: AsciiNumberProps) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  const windowRef = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { rootMargin: "0px 0px -8% 0px" });
-  const formatter = new Intl.NumberFormat(locales, format);
-  const shown = useShownValue({ formatter, from, inView, trigger, value });
-  const { cellSize, mask } = useCells({
-    cell,
-    matrix,
-    rootRef: ref,
-    windowRef,
-  });
+  const rootRef = useRef<HTMLDivElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const inView = useInView(rootRef, { rootMargin: "0px" });
+  const motion = animate && !reduced;
+  const [shown, setShown] = useState(motion ? from : value);
+  const shownRef = useRef(shown);
+  const startedRef = useRef(false);
+  const formatter = new Intl.NumberFormat(locale, format);
+  const formatValue = (input: number) => formatter.format(input);
+  const decimals = decimalsOf(value, format);
 
-  const glyphs = layout(
-    formatter,
-    value,
-    shown.value,
-    effect === "roll" ? 0 : null
+  useEffect(() => {
+    shownRef.current = shown;
+  }, [shown]);
+
+  const armed = trigger === "mount" || inView || startedRef.current;
+  useEffect(() => {
+    if (!motion) {
+      setShown(value);
+      return;
+    }
+    if (!armed) {
+      return;
+    }
+    startedRef.current = true;
+    const start = performance.now();
+    const origin = shownRef.current;
+    let frame = 0;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / (duration * 1000));
+      // Count in steps of the final value's precision, so no extra decimals appear mid-count.
+      const unit = 10 ** -decimals;
+      const next = origin + (value - origin) * easeOut(t);
+      setShown(t >= 1 ? value : Math.round(next / unit) * unit);
+      if (t < 1) {
+        frame = requestAnimationFrame(step);
+      }
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value, motion, armed, duration, decimals]);
+
+  // Reserve the widest of the start and end values, so the count never resizes the box.
+  const target = render(`${prefix}${formatValue(value)}${suffix}`, font);
+  const origin = render(`${prefix}${formatValue(from)}${suffix}`, font);
+  const current = render(`${prefix}${formatValue(shown)}${suffix}`, font);
+  const width = Math.max(
+    ...[target, origin, current].map((art) => [...(art.lines[0] ?? "")].length)
   );
-  const resolvedDuration = duration ?? (effect === "roll" ? 900 : 560);
-  const Slot = effect === "roll" ? RollSlot : ResolveSlot;
-  let digitIndex = 0;
+  const fit = (lines: readonly string[]) =>
+    align === "end"
+      ? padStart(lines, width)
+      : lines.map((line) => line.padEnd(width, " "));
 
-  const rootStyle: CSSProperties & Record<`--${string}`, string> = {
-    "--number-accent": accent === "none" ? "currentColor" : cssColor(accent),
-    "--number-cell": `${cellSize}px`,
-    "--number-pad": "0.14em",
-    ...(color === undefined ? {} : { color: cssColor(color) }),
-    ...style,
+  const vars: NumberVars = {
+    "--num-cell": cell === undefined ? "var(--ascii-cell, 12px)" : `${cell}px`,
   };
-  const affix = (text: string | undefined, key: string) =>
-    text === undefined ? null : (
-      <span key={key} className={cn(STATIC_CLASS, affixClassName)}>
-        {text}
-      </span>
-    );
+  const art =
+    "m-0 whitespace-pre font-[family-name:var(--ascii-font,ui-monospace,monospace)] leading-[var(--num-cell)] font-normal tracking-normal [font-size:calc(var(--num-cell)/1.2)] [font-variant-ligatures:none]";
 
   return (
-    <span
-      {...rest}
-      ref={ref}
-      className={cn(
-        "inline-grid tabular-nums [font-kerning:none] [font-variant-ligatures:none]",
-        size === undefined ? undefined : SIZE_CLASS[size],
-        // After the size preset: tailwind-merge drops a line height that
-        // comes before a font size.
-        "leading-[1.1]",
-        className
-      )}
-      style={rootStyle}
+    <div
+      ref={rootRef}
+      data-slot="ascii-number"
+      data-font={font}
+      className={cn("relative inline-block", className)}
+      style={{ ...vars, color: cssColor(color), ...style }}
+      {...props}
     >
-      {effect === "resolve" ? (
-        <style href={`dcn-number-${matrix}`} precedence="default">
-          {resolveKeyframes(matrix)}
-        </style>
+      <span className="sr-only">{`${prefix}${formatValue(value)}${suffix}`}</span>
+      {ghost ? (
+        <pre
+          aria-hidden="true"
+          className={cn(art, "absolute inset-0 opacity-[0.14]")}
+        >
+          {fit(current.ghost).join("\n")}
+        </pre>
       ) : null}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none [grid-area:1/1] whitespace-nowrap select-none forced-colors:hidden"
-      >
-        {affix(prefix, "prefix")}
-        {glyphs.map((glyph) => {
-          if (glyph.kind === "static") {
-            return (
-              <span
-                key={glyph.key}
-                data-digit={glyph.char}
-                className={`${STATIC_CLASS} ${GLYPH_CLASS}`}
-              />
-            );
-          }
-          const slotIndex = digitIndex;
-          digitIndex += 1;
-          return (
-            <span key={glyph.key} className="relative inline-block">
-              <span data-digit="0" className={`invisible ${GLYPH_CLASS}`} />
-              <span
-                ref={slotIndex === 0 ? windowRef : undefined}
-                className={cn(
-                  "absolute overflow-clip",
-                  // The roll window reaches a little past the line so the
-                  // dithered fade sits mostly outside the glyphs.
-                  effect === "roll"
-                    ? "inset-x-0 -inset-y-(--number-pad)"
-                    : "inset-0"
-                )}
-                style={effect === "roll" ? (mask ?? undefined) : undefined}
-              >
-                <Slot
-                  digit={glyph.digit}
-                  direction={shown.direction}
-                  spin={shown.delta >= 10 ** (glyph.place + 1)}
-                  duration={resolvedDuration}
-                  delay={slotIndex * stagger}
-                  matrix={matrix}
-                  accent={accent !== "none"}
-                />
-              </span>
-            </span>
-          );
-        })}
-        {affix(suffix, "suffix")}
-      </span>
-      <span className="[grid-area:1/1] whitespace-nowrap text-transparent forced-colors:text-[CanvasText]">
-        {affix(prefix, "prefix")}
-        {formatter
-          .format(value)
-          .split(DIGIT_RUNS)
-          .map((run, index) =>
-            // Split with a capture group: odd entries are digit runs, kept as
-            // one text node each so the number is read as a whole.
-            index % 2 === 1 ? (
-              run
-            ) : (
-              <span key={index} className={STATIC_CLASS}>
-                {run}
-              </span>
-            )
-          )}
-        {affix(suffix, "suffix")}
-      </span>
-    </span>
+      <pre aria-hidden="true" className={cn(art, "relative")}>
+        {fit(current.lines).join("\n")}
+      </pre>
+    </div>
   );
 };

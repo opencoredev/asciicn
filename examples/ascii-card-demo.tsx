@@ -5,31 +5,38 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-card-controls";
 
 export default function AsciiCardDemo() {
-  const fill = usePreviewValue(knobs.fill);
-  const color = usePreviewValue(knobs.tint);
+  const frame = usePreviewValue(knobs.frame);
   const glow = usePreviewValue(knobs.glow);
-  const strength = usePreviewValue(knobs.strength);
+  const glowCharset = usePreviewValue(knobs.glowCharset);
+  const color = usePreviewValue(knobs.tint);
+  const interactive = usePreviewValue(knobs.interactive);
 
   return (
     <AsciiCard
+      title="edge-runtime"
+      footer="▲ 31 regions"
+      frame={frame}
       glow={glow}
-      fill={fill}
+      glowCharset={glowCharset}
       color={color}
-      strength={strength}
-      interactive
-      reach={260}
-      tabIndex={0}
-      className="bg-background w-full max-w-sm px-6 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      interactive={interactive}
+      className="max-w-md"
     >
-      <div className="flex flex-col gap-1 pt-32">
-        <span className="text-muted-foreground text-sm">Monthly revenue</span>
-        <span className="text-4xl font-semibold tracking-tight tabular-nums">
-          $48,210
-        </span>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        Up 12% on September, with most of the growth from annual plans.
+      <p className="font-display text-lg font-semibold tracking-tight">
+        Cold starts under 40 ms
       </p>
+      <p className="mt-2 text-sm text-balance text-muted-foreground">
+        Functions boot from a snapshot in the nearest region, so the first
+        request feels like the hundredth.
+      </p>
+      {interactive ? (
+        <a
+          href="#top"
+          className="mt-4 inline-block font-mono text-sm underline-offset-4 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          Read the benchmark →
+        </a>
+      ) : null}
     </AsciiCard>
   );
 }

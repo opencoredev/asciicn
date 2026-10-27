@@ -8,22 +8,18 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-button-controls";
 
 export default function AsciiButtonDemo() {
-  const fill = usePreviewValue(knobs.fill);
+  const variant = usePreviewValue(knobs.variant);
+  const frame = usePreviewValue(knobs.frame);
   const color = usePreviewValue(knobs.tint);
   const size = usePreviewValue(knobs.size);
-  const bloom = usePreviewValue(knobs.bloom);
-  const cell = usePreviewValue(knobs.cell);
   const loading = usePreviewValue(knobs.loading);
-  const shared = { cell, color, fill, size };
+  const shared = { color, frame, size };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
-      <AsciiButton {...shared} bloom={bloom} loading={loading}>
+    <div className="flex flex-wrap items-center justify-center gap-4">
+      <AsciiButton {...shared} variant={variant} loading={loading}>
         {loading ? "Deploying" : "Deploy"}
-        {loading ? null : (
-          // The chevron sits inside empty viewBox; pull it into the padding.
-          <Icon icon={ArrowRight01Icon} className="-mr-[5px]" />
-        )}
+        {loading ? null : <Icon icon={ArrowRight01Icon} />}
       </AsciiButton>
       <AsciiButton {...shared} variant="outline">
         View logs
@@ -31,7 +27,7 @@ export default function AsciiButtonDemo() {
       <AsciiButton
         {...shared}
         size="icon"
-        variant="outline"
+        variant="ghost"
         aria-label="Settings"
       >
         <Icon icon={Settings01Icon} />

@@ -1,40 +1,45 @@
-import { DITHER_MATRICES } from "@/lib/ascii";
-import { select, slider, toggle } from "@/lib/preview-controls";
+import { FADE_SIDES } from "@/components/asciicn/ascii-fade";
+import { select, segmented, slider, toggle } from "@/lib/preview-controls";
 
-// Knobs for the dither fade's main demo, shared by the page and the demo.
+// Knobs for the ASCII fade demo, shared by the page and the demo.
+
+export const side = segmented({
+  default: "bottom",
+  id: "side",
+  label: "Side",
+  options: FADE_SIDES,
+});
+
+export const charset = select({
+  default: "blocks",
+  id: "charset",
+  label: "Charset",
+  options: [
+    "blocks",
+    "quadrants",
+    "braille",
+    "standard",
+    "dense",
+    "dots",
+    "petscii",
+  ],
+});
 
 export const size = slider({
-  default: 240,
+  default: 10,
   id: "size",
-  label: "Size",
-  max: 360,
-  min: 80,
-  step: 20,
-  unit: "px",
-});
-
-export const matrix = select({
-  default: "bayer4",
-  id: "matrix",
-  label: "Matrix",
-  options: DITHER_MATRICES,
-});
-
-export const cell = slider({
-  default: 3,
-  id: "cell",
-  label: "Cell",
-  max: 8,
-  min: 1,
+  label: "Depth",
+  max: 24,
+  min: 3,
   step: 1,
-  unit: "px",
+  unit: "cells",
 });
 
-export const animate = toggle({
-  default: false,
-  id: "animate",
+export const drift = toggle({
+  default: true,
+  id: "drift",
   label: "Drift",
 });
 
 /** Display order of the tray. */
-export const controls = [size, matrix, cell, animate];
+export const controls = [side, charset, size, drift];

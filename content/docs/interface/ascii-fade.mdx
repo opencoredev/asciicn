@@ -1,11 +1,10 @@
 ---
-title: "Dither fade"
-description: "A dithered edge that fades a section's content into a solid colour, for the seam between two sections or the end of a clipped list."
+title: "ASCII fade"
+description: "A section edge that fades content into the background through a glyph density ramp, with a slow drift."
 ---
 
 import AsciiFadeDemo from "@/examples/ascii-fade-demo";
 import { controls as asciiFadeControls } from "@/examples/ascii-fade-controls";
-import AsciiFadeSections from "@/examples/ascii-fade-sections";
 import AsciiFadeSides from "@/examples/ascii-fade-sides";
 import AsciiFadeDrift from "@/examples/ascii-fade-drift";
 
@@ -29,45 +28,39 @@ import { AsciiFade } from "@/components/asciicn/ascii-fade";
 
 export function Changelog() {
   return (
-    <section className="relative overflow-hidden">
-      <ChangelogEntries />
-      <AsciiFade side="bottom" size={200} />
+    <section className="relative max-h-96 overflow-hidden">
+      {/* long content */}
+      <AsciiFade side="bottom" size={8} />
     </section>
   );
 }
 ```
 
-Put the fade inside a `relative` parent. It covers `size` along `side` and paints `color` over whatever is underneath: sparse cells on the content side, solid at the edge. The default colour is `--ascii-paper`, your page background.
+`AsciiFade` sits on one side of its nearest positioned parent (give the parent `relative`) and draws glyphs in the background colour over the content there. Next to the content the glyphs are sparse, so most of it shows through. Toward the edge they get denser (`░▒▓█` with the default `blocks` set) until the content is gone. The very edge is one solid half cell, so nothing peeks through between glyph rows.
 
-It is still and drawn with CSS masks, so it renders on the server and uses no WebGL. Use as many as you like on one page.
+`size` is the depth in cells: rows for `top` and `bottom`, columns for `left` and `right`. `color` is the colour the content fades into, `--ascii-paper` by default. Set it to the parent's background if that differs.
+
+With `drift` on, the inner edge wanders slowly through value noise, so the fade breathes instead of sitting as a flat band.
 
 ## Examples
 
-### Between two sections
+### Both sides of a scroller
 
-Give the fade the colour of the section below it, or leave the default when that section uses the page background. The upper section dissolves into the next one with no hard line.
+Two quadrant fades on a horizontal list, a short one on the left and a long one on the right, with drift off.
 
-<ComponentPreview
-  src="examples/ascii-fade-sections.tsx"
-  size="lg"
-  align="stretch"
->
-  <AsciiFadeSections />
-</ComponentPreview>
-
-### Both ends of a row
-
-`side="left"` and `side="right"` fade a scrolling row at its ends. Different sizes on each side hint at which way there is more to see.
-
-<ComponentPreview src="examples/ascii-fade-sides.tsx">
+<ComponentPreview src="examples/ascii-fade-sides.tsx" size="sm">
   <AsciiFadeSides />
 </ComponentPreview>
 
-### Drifting edge
+### Braille stipple
 
-With `animate` the edge wanders slowly, drawn with WebGL. Keep it for one hero-sized seam; the still fade is the better default.
+A deep `braille` fade on a solid ink panel. Braille lights single dots, so the fade reads as a fine stipple.
 
-<ComponentPreview src="examples/ascii-fade-drift.tsx" size="lg" align="stretch">
+<ComponentPreview
+  src="examples/ascii-fade-drift.tsx"
+  size="full"
+  align="stretch"
+>
   <AsciiFadeDrift />
 </ComponentPreview>
 
@@ -77,54 +70,84 @@ With `animate` the edge wanders slowly, drawn with WebGL. Keep it for one hero-s
   rows={[
     {
       name: "side",
-      type: '"top" | "bottom" | "left" | "right"',
+      type: '"bottom" | "top" | "left" | "right"',
       default: '"bottom"',
       description:
-        "The edge of the parent the fade sits on. The colour is solid there.",
+        "The edge of the parent the fade sits on. Content fades out toward it.",
     },
     {
       name: "size",
-      type: "number | string",
-      default: "160",
+      type: "number",
+      default: "8",
       description:
-        'Depth of the fade. A number is CSS pixels; a string is any CSS length, such as "30%".',
+        "Depth of the fade in cells: rows for top and bottom, columns for left and right.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description: "Which glyphs the fade steps through, from sparse to dense.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'A custom ramp from empty to dense, such as " ·:░▒▓█". Wins over charset.',
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between glyph levels, which smooths the ramp.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"--ascii-paper"',
-      description:
-        'The colour the content fades into: a palette name such as "grey", a CSS variable name, or any CSS colour.',
+      description: "The colour the content fades into.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "drift",
+      type: "boolean",
+      default: "true",
+      description: "The inner edge wanders slowly through value noise.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Drift speed multiplier.",
     },
     {
       name: "animate",
       type: "boolean",
-      default: "false",
-      description: "true lets the edge drift slowly, drawn with WebGL.",
+      default: "true",
+      description: "false holds a still frame.",
     },
     {
-      name: "className",
-      type: "string",
-      default: "–",
-      description: "Extra classes for the fade's box.",
+      name: "fps",
+      type: "number",
+      default: "20",
+      description: "Frame rate cap for the drift.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the latest frame and the canvas.",
     },
   ]}
 />
 
 ## Notes
 
-- The fade is decorative and hidden from assistive technology. Content under it stays in the page and is still read out, so do not hide anything important beneath it.
-- The still fade has no motion. With `animate`, reduced motion holds one still frame, and it pauses offscreen like the other backgrounds.
-- The still fade is 16 masked layers and no script. The animated one costs one small draw per frame and one WebGL context.
+- The fade is `aria-hidden` and lets clicks through to the content under it.
+- It draws on a canvas with `AsciiGrid`, so it pauses offscreen and in hidden tabs, holds a still frame with reduced motion, and follows theme changes.
+- With `drift={false}` it draws once and again only on resize.

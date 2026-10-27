@@ -1,13 +1,36 @@
-import { ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, select, slider } from "@/lib/preview-controls";
+import { ASCII_BOX_FRAMES } from "@/components/asciicn/ascii-box";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, select, toggle } from "@/lib/preview-controls";
 
-// Knobs for the dither card's main demo, shared by the page and the demo.
+// Knobs for the ASCII card demo, shared by the page and the demo.
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const frame = segmented({
+  default: "rounded",
+  id: "frame",
+  label: "Frame",
+  options: ASCII_BOX_FRAMES,
+});
+
+export const glow = select({
+  default: "top-right",
+  id: "glow",
+  label: "Glow",
+  options: [
+    "none",
+    "top",
+    "top-right",
+    "top-left",
+    "bottom",
+    "bottom-right",
+    "center",
+  ],
+});
+
+export const glowCharset = select({
+  default: "standard",
+  id: "glowCharset",
+  label: "Glow glyphs",
+  options: ["standard", "dense", "blocks", "braille", "dots", "katakana"],
 });
 
 export const tint = color({
@@ -17,28 +40,11 @@ export const tint = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const glow = select({
-  default: "top-right",
-  id: "glow",
-  label: "Glow",
-  options: [
-    "top-left",
-    "top-right",
-    "bottom-left",
-    "bottom-right",
-    "top",
-    "bottom",
-  ],
-});
-
-export const strength = slider({
-  default: 0.6,
-  id: "strength",
-  label: "Strength",
-  max: 1,
-  min: 0.1,
-  step: 0.05,
+export const interactive = toggle({
+  default: true,
+  id: "interactive",
+  label: "Interactive",
 });
 
 /** Display order of the tray. */
-export const controls = [fill, tint, glow, strength];
+export const controls = [frame, glow, glowCharset, tint, interactive];

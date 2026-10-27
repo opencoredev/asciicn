@@ -1,301 +1,147 @@
 "use client";
 
 import { Slot } from "radix-ui";
-import type { ComponentProps, CSSProperties, ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useState } from "react";
+import type {
+  ComponentProps,
+  CSSProperties,
+  MouseEvent,
+  ReactNode,
+} from "react";
 
-import { bloomStyle, cssColor, fillStyle } from "@/lib/ascii";
-import type { Bloom, AsciiColor, FillVariant } from "@/lib/ascii";
+import { BOX, cssColor, SPINNERS, usePrefersReducedMotion } from "@/lib/ascii";
+import type { AsciiColor, BoxStyle, SpinnerName } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
 /*
- * The surface is lit like a pixel-art bevel. A filled button is the full
- * colour, with a highlight (the colour mixed towards white) dithered down
- * from the top edge and a shade (towards black) dithered up from the
- * bottom, so every button shows its Bayer steps at rest. The fill variant
- * is the texture of the shade: a ramp for gradient, a lattice for dotted,
- * diagonals for hatched, and a thin rim for solid. Hover fades in a longer,
- * denser highlight; press fades in a shade from the top, so the face looks
- * pushed in. Only opacity animates, so every cell stays on the grid.
- * Outline buttons draw the same layers in the plain colour at low
- * coverage, over a faint tint, inside a hairline edge.
+ * The button is set in the glyph font on a grid of cells, two rows tall.
+ * Its frame is box-drawing text one cell larger than the button on every
+ * side, so the lines run through the button's edges, and the label row
+ * sits between them. A filled button shows that row in inverse video (a
+ * slab of colour with the label knocked out); an outline button inverts
+ * on hover. A cursor glyph steps into the cell before the label on hover
+ * and focus, as a terminal menu marks its selection. Labels, gaps and
+ * icons are whole cells wide, so the frame always closes on the grid.
  */
 
-export type AsciiButtonVariant = "filled" | "outline";
+export const ASCII_BUTTON_VARIANTS = ["filled", "outline", "ghost"] as const;
+export type AsciiButtonVariant = (typeof ASCII_BUTTON_VARIANTS)[number];
+
+/** `brackets` draws only the four corners; the rest are `BOX` sets. */
+export const ASCII_BUTTON_FRAMES = [
+  "rounded",
+  "light",
+  "heavy",
+  "double",
+  "ascii",
+  "brackets",
+] as const;
+export type AsciiButtonFrame = (typeof ASCII_BUTTON_FRAMES)[number];
+
 export type AsciiButtonSize = "sm" | "md" | "lg" | "icon";
 
-const HEIGHT = { icon: 36, lg: 44, md: 36, sm: 32 } as const satisfies Record<
+/** Cell height per size in CSS pixels; the button is two cells tall. */
+const CELL = { icon: 16, lg: 20, md: 16, sm: 14 } as const satisfies Record<
   AsciiButtonSize,
   number
 >;
 
-const SIZE = {
-  icon: "size-9 rounded-[9px]",
-  lg: "h-11 gap-2 rounded-[11px] px-5 text-[15px] [&_svg:not([class*='size-'])]:size-4.5",
-  md: "h-9 gap-2 rounded-[9px] px-4 text-sm",
-  sm: "h-8 gap-1.5 rounded-[8px] px-3 text-[13px]",
-} as const satisfies Record<AsciiButtonSize, string>;
+/** Long enough for any label; the rest is clipped. */
+const RUN = 160;
 
-interface Shades {
-  base: string;
-  light: string;
-  dark: string;
+interface FrameGlyphs {
+  readonly tl: string;
+  readonly tr: string;
+  readonly bl: string;
+  readonly br: string;
+  readonly h: string;
+  readonly v: string;
 }
 
-const shadesOf = (color: AsciiColor): Shades => {
-  const base = cssColor(color);
-  return {
-    base,
-    dark: `color-mix(in oklab, ${base}, black 48%)`,
-    light: `color-mix(in oklab, ${base}, white 42%)`,
-  };
-};
-
-interface LayerOptions {
-  fill: FillVariant;
-  cell: number;
-  /** Height of the button in cells. */
-  rows: number;
-}
-
-const cells = (rows: number, share: number) =>
-  Math.max(2, Math.round(rows * share));
-
-/** The shade at rest, textured by the fill variant. */
-const shadeLayer = (
-  { fill, cell, rows }: LayerOptions,
-  color: string
-): CSSProperties => {
-  switch (fill) {
-    case "gradient": {
-      return fillStyle("gradient", {
-        cell,
-        color,
-        edge: "bottom",
-        from: 1,
-        length: cells(rows, 0.5),
-        to: 0,
-      });
-    }
-    case "dotted":
-    case "hatched": {
-      return { ...fillStyle(fill, { cell, color }), opacity: 0.5 };
-    }
-    case "solid": {
-      return fillStyle("gradient", {
-        cell,
-        color,
-        edge: "bottom",
-        from: 1,
-        length: 3,
-        to: 0,
-      });
-    }
-    default: {
-      const exhaustive: never = fill;
-      return exhaustive;
-    }
-  }
-};
-
-const highlight = (
-  { cell, rows }: LayerOptions,
-  color: string,
-  share: number,
-  from: number
-) =>
-  fillStyle("gradient", {
-    cell,
-    color,
-    edge: "top",
-    from,
-    length: cells(rows, share),
-    to: 0,
-  });
-
-const pressLayer = ({ cell, rows }: LayerOptions, color: string) =>
-  fillStyle("gradient", {
-    cell,
-    color,
-    edge: "top",
-    from: 0.5,
-    length: cells(rows, 0.4),
-    to: 0,
-  });
-
-/**
- * Keeps the label's band clear: dither shows only along the top and bottom
- * edges, so dots frame the text instead of crossing it.
- */
-const CLEAR_LABEL =
-  "linear-gradient(to bottom, #000 0 30%, transparent 34% 66%, #000 70%)";
-
-// On a wrapper: the dither layers already use mask-image for their pattern,
-// and an ancestor's mask composes with theirs.
-const FRAME: CSSProperties = {
-  WebkitMaskImage: CLEAR_LABEL,
-  maskImage: CLEAR_LABEL,
-};
-
-/** A layer's inline style, with its opacity once shown (default 1). */
-type LayerStyle = CSSProperties & { "--dcn-btn-on"?: string };
-
-interface Surface {
-  base: CSSProperties;
-  rest: readonly CSSProperties[];
-  hover: LayerStyle;
-  press: LayerStyle;
-}
-
-const filledSurface = (options: LayerOptions, shades: Shades): Surface => ({
-  base: { backgroundColor: shades.base },
-  hover: highlight(options, shades.light, 0.72, 1),
-  press: pressLayer(options, shades.dark),
-  rest: [
-    shadeLayer(options, shades.dark),
-    highlight(options, shades.light, 0.2, 1),
-  ],
-});
-
-// Outline: the plain colour, sparse at rest and denser as you act.
-const outlineSurface = (options: LayerOptions, shades: Shades): Surface => {
-  const { cell, rows, fill } = options;
-  const rest =
-    fill === "dotted" || fill === "hatched"
-      ? { ...fillStyle(fill, { cell, color: shades.base }), opacity: 0.32 }
-      : fillStyle("gradient", {
-          cell,
-          color: shades.base,
-          edge: "bottom",
-          from: fill === "solid" ? 0.25 : 0.5,
-          length: cells(rows, 0.55),
-          to: 0,
-        });
-  return {
-    base: {
-      backgroundColor: `color-mix(in oklab, ${shades.base} 9%, transparent)`,
-    },
-    hover: {
-      ...fillStyle("gradient", {
-        cell,
-        color: shades.base,
-        edge: "bottom",
-        from: 0.75,
-        length: cells(rows, 0.9),
-        to: 0.0625,
-      }),
-      "--dcn-btn-on": "0.7",
-    },
-    press: {
-      ...fillStyle("gradient", {
-        cell,
-        color: shades.base,
-        edge: "bottom",
-        from: 0.75,
-        length: rows,
-        to: 0.125,
-      }),
-      "--dcn-btn-on": "0.5",
-    },
-    rest: [rest],
-  };
-};
+const framesFor = (frame: AsciiButtonFrame): FrameGlyphs =>
+  frame === "brackets"
+    ? { bl: "└", br: "┘", h: " ", tl: "┌", tr: "┐", v: " " }
+    : BOX[frame satisfies BoxStyle];
 
 const STYLES = [
-  ".dcn-btn-hover,.dcn-btn-press{opacity:0;transition:opacity 220ms cubic-bezier(0.23,1,0.32,1)}",
-  "@media (hover:hover){.dcn-btn:hover .dcn-btn-hover{opacity:var(--dcn-btn-on,1)}}",
-  ".dcn-btn:focus-visible .dcn-btn-hover{opacity:var(--dcn-btn-on,1)}",
-  ".dcn-btn:active .dcn-btn-press{opacity:var(--dcn-btn-on,1);transition-duration:80ms}",
-  ".dcn-btn:active .dcn-btn-hover{opacity:0;transition-duration:80ms}",
-  "@keyframes dcn-btn-busy{from{opacity:0}to{opacity:var(--dcn-btn-on,1)}}",
-  ".dcn-btn[data-loading] .dcn-btn-hover{animation:dcn-btn-busy 0.9s cubic-bezier(0.77,0,0.175,1) infinite alternate}",
-  "@keyframes dcn-btn-step{0%,100%{opacity:0.25}33%{opacity:1}}",
-  ".dcn-btn-dot{animation:dcn-btn-step 0.9s steps(1,end) infinite}",
-  "@media (prefers-reduced-motion:reduce){.dcn-btn-hover,.dcn-btn-press{transition:none}.dcn-btn[data-loading] .dcn-btn-hover,.dcn-btn-dot{animation:none}}",
+  ".acn-btn-slab{opacity:0;transition:opacity 150ms cubic-bezier(0.23,1,0.32,1)}",
+  ".acn-btn[data-variant=filled] .acn-btn-slab{opacity:1}",
+  ".acn-btn[data-variant=filled] .acn-btn-label{color:var(--btn-paper)}",
+  ".acn-btn-mark{visibility:hidden}",
+  ".acn-btn:focus-visible .acn-btn-mark,.acn-btn[data-loading] .acn-btn-mark{visibility:visible}",
+  "@media (hover:hover){.acn-btn:hover .acn-btn-mark{visibility:visible}",
+  ".acn-btn:not([data-variant=filled]):hover .acn-btn-slab{opacity:1}",
+  ".acn-btn:not([data-variant=filled]):hover .acn-btn-label{color:var(--btn-paper)}",
+  ".acn-btn[data-variant=filled]:hover .acn-btn-slab{background:color-mix(in oklab,var(--btn-ink) 86%,var(--btn-paper))}}",
+  ".acn-btn:active .acn-btn-slab{opacity:1;background:color-mix(in oklab,var(--btn-ink) 78%,black);transition-duration:60ms}",
+  ".acn-btn:active .acn-btn-label{color:var(--btn-paper)}",
+  ".acn-btn[data-variant=ghost] .acn-btn-frame{opacity:0;transition:opacity 150ms cubic-bezier(0.23,1,0.32,1)}",
+  "@media (hover:hover){.acn-btn[data-variant=ghost]:hover .acn-btn-frame{opacity:1}}",
+  ".acn-btn[data-variant=ghost]:focus-visible .acn-btn-frame{opacity:1}",
+  "@media (prefers-reduced-motion:reduce){.acn-btn-slab,.acn-btn-frame{transition:none!important}}",
 ].join("");
 
-const edgeStyle = (
-  variant: AsciiButtonVariant,
-  color: AsciiColor
-): CSSProperties => {
-  const ink = cssColor(color);
-  if (variant === "outline") {
-    return {
-      boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${ink} 55%, transparent)`,
-    };
-  }
-  // A darker hairline holds the edge on any background; the top lip catches the light.
-  return {
-    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${ink}, black 30%), inset 0 1px 0 color-mix(in oklab, ${ink}, white 55%)`,
-  };
-};
+/** The button's CSS variables: cell height, ink and paper. */
+type ButtonVars = CSSProperties &
+  Record<"--btn-cell" | "--btn-ink" | "--btn-paper", string>;
 
-const LAYER = "absolute inset-0 rounded-[inherit]";
+const JOIN = "inline-block scale-y-[1.08]";
 
-interface FillProps extends LayerOptions {
-  variant: AsciiButtonVariant;
-  color: AsciiColor;
-  bloom: Bloom;
-}
-
-const Fill = ({ variant, color, bloom, ...options }: FillProps) => {
-  const shades = shadesOf(color);
-  const surface =
-    variant === "filled"
-      ? filledSurface(options, shades)
-      : outlineSurface(options, shades);
+const Frame = ({ glyphs }: { glyphs: FrameGlyphs }) => {
+  const run = glyphs.h.repeat(RUN);
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
-      style={variant === "filled" ? bloomStyle(color, bloom) : undefined}
+      className="acn-btn-frame pointer-events-none absolute -inset-y-[calc(var(--btn-cell)/2)] -inset-x-[0.5ch] grid grid-cols-[1ch_minmax(0,1fr)_1ch] grid-rows-3 whitespace-pre text-[var(--btn-ink)] select-none"
     >
-      <style href="asciicn-ascii-button" precedence="asciicn">
-        {STYLES}
-      </style>
-      <span className={LAYER} style={surface.base} />
-      <span className={LAYER} style={FRAME}>
-        {surface.rest.map((style, index) => (
-          // The rest layers are fixed in number and order per variant.
-          // oxlint-disable-next-line no-array-index-key
-          <span key={index} className={LAYER} style={style} />
-        ))}
-        <span className={cn(LAYER, "dcn-btn-hover")} style={surface.hover} />
-        <span className={cn(LAYER, "dcn-btn-press")} style={surface.press} />
-      </span>
-      {/* The edge goes over the fill; an inset shadow on the root would sit under it. */}
-      <span className={LAYER} style={edgeStyle(variant, color)} />
+      {/* Corners and sides stretch a hair taller than their cell, so the
+          vertical strokes overlap and no seam shows between rows. */}
+      <span className={JOIN}>{glyphs.tl}</span>
+      <span className="overflow-hidden">{run}</span>
+      <span className={JOIN}>{glyphs.tr}</span>
+      <span className={JOIN}>{glyphs.v}</span>
+      <span />
+      <span className={JOIN}>{glyphs.v}</span>
+      <span className={JOIN}>{glyphs.bl}</span>
+      <span className="overflow-hidden">{run}</span>
+      <span className={JOIN}>{glyphs.br}</span>
     </span>
   );
 };
 
-/** Three cells stepping in turn, shown before the label while loading. */
-const Busy = () => (
-  <span aria-hidden="true" className="inline-flex items-center gap-[3px]">
-    {[0, 0.3, 0.6].map((delay) => (
-      <span
-        key={delay}
-        className="dcn-btn-dot size-[3px] bg-current"
-        style={{ animationDelay: `${delay}s` }}
-      />
-    ))}
-  </span>
-);
+/** Steps through a spinner's frames; holds the first under reduced motion. */
+const Spinner = ({ name }: { name: SpinnerName }) => {
+  const frames = SPINNERS[name];
+  const reduced = usePrefersReducedMotion();
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    if (reduced) {
+      return;
+    }
+    const timer = window.setInterval(
+      () => setStep((value) => (value + 1) % frames.length),
+      80
+    );
+    return () => window.clearInterval(timer);
+  }, [reduced, frames.length]);
+  return <>{frames[step] ?? frames[0]}</>;
+};
 
 interface OwnProps {
-  /** `filled` is the lit colour surface; `outline` is a faint tint that fills in on hover. Default `"filled"`. */
+  /** `filled` is an inverse-video label inside the frame; `outline` inverts on hover; `ghost` shows its frame only on hover and focus. Default `"filled"`. */
   variant?: AsciiButtonVariant;
-  /** Texture of the shade: a Bayer ramp, a dot lattice, diagonals, or a thin rim. Default `"gradient"`. */
-  fill?: FillVariant;
-  /** A palette name or any CSS colour. Default `"ink"`. */
+  /** Box-drawing set for the frame, or `brackets` for corners only. Default `"rounded"`. */
+  frame?: AsciiButtonFrame;
+  /** A palette name, a CSS variable name or any CSS colour. Default `"ink"`. */
   color?: AsciiColor;
-  /** Default `"md"`. `icon` is a square for a lone icon; give it an `aria-label`. */
+  /** Cell heights of 14, 16 and 20 pixels, so buttons 28, 32 and 40 pixels tall. `icon` fits one icon; give it an `aria-label`. Default `"md"`. */
   size?: AsciiButtonSize;
-  /** A soft glow in the button's colour. Default `"off"`. */
-  bloom?: Bloom;
-  /** Size of one dither cell in CSS pixels. Default 2. */
-  cell?: number;
-  /** Show a busy state: the label stays, the button ignores clicks and reports `aria-busy`. Default `false`. */
+  /** Glyph shown before the label on hover and focus. Default `"›"`. */
+  cursor?: string;
+  /** Busy state: a spinner takes the cursor's cell, clicks are ignored and `aria-busy` is set. Default `false`. */
   loading?: boolean;
+  /** Which `SPINNERS` sequence spins while loading. Default `"braille"`. */
+  spinner?: SpinnerName;
   /** Render your own element (a link) with the button's look, as shadcn's `asChild`. Default `false`. */
   asChild?: boolean;
   children?: ReactNode;
@@ -304,42 +150,20 @@ interface OwnProps {
 export type AsciiButtonProps = OwnProps &
   Omit<ComponentProps<"button">, "children" | "color">;
 
-const rootClass = (
-  variant: AsciiButtonVariant,
-  size: AsciiButtonSize,
-  className: string | undefined
-) =>
-  cn(
-    "dcn-btn group/button relative isolate inline-flex shrink-0 cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none",
-    "transition-[scale] duration-150 ease-(--ease-out) motion-safe:active:scale-[0.97]",
-    // Filled: dark text on the bright dark-theme colours, light text on the deeper light-theme ones.
-    variant === "filled"
-      ? "text-white [text-shadow:0_1px_0_oklch(0_0_0/0.35)] dark:text-[oklch(0.13_0.02_268)] dark:[text-shadow:none]"
-      : "text-foreground",
-    // An outline, not a ring: the edge is an inline box-shadow and would hide a ring.
-    "outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid",
-    "disabled:cursor-not-allowed disabled:opacity-45 aria-disabled:cursor-not-allowed aria-disabled:opacity-45",
-    "data-loading:cursor-progress",
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-    SIZE[size],
-    className
-  );
-
 /**
- * A real `<button>` with a lit, dithered surface in any palette colour: a
- * highlight dithered down from the top and a shade dithered up from the
- * bottom. Hover brightens it through the Bayer levels and press shades it
- * from the top. Four fills, two variants, four sizes, a loading state, and
- * `asChild` to put the look on a link.
+ * A real `<button>` set in glyphs: a box-drawing frame around a label row
+ * that inverts like a terminal selection. Three variants, six frames, four
+ * sizes, a spinner from `SPINNERS` while loading, and `asChild` to put the
+ * look on a link.
  */
 export const AsciiButton = ({
   variant = "filled",
-  fill = "gradient",
+  frame = "rounded",
   color = "ink",
   size = "md",
-  bloom = "off",
-  cell = 2,
+  cursor = "›",
   loading = false,
+  spinner = "braille",
   asChild = false,
   className,
   style,
@@ -349,34 +173,69 @@ export const AsciiButton = ({
   onClick,
   ...props
 }: AsciiButtonProps) => {
-  const Comp = asChild ? Slot.Root : "button";
-  const step = Math.max(1, Math.round(cell));
-  return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-fill={fill}
-      data-loading={loading ? "" : undefined}
-      aria-busy={loading || undefined}
-      aria-disabled={loading || undefined}
-      // A link has no `type` or `disabled`; a button defaults to type="button".
-      type={asChild ? undefined : (type ?? "button")}
-      disabled={asChild ? undefined : disabled}
-      onClick={loading ? (event) => event.preventDefault() : onClick}
-      {...props}
-      className={rootClass(variant, size, className)}
-      style={style}
-    >
-      <Fill
-        variant={variant}
-        bloom={bloom}
-        fill={fill}
-        color={color}
-        cell={step}
-        rows={Math.round(HEIGHT[size] / step)}
+  const vars: ButtonVars = {
+    "--btn-cell": `${CELL[size]}px`,
+    "--btn-ink": cssColor(color),
+    "--btn-paper": "var(--ascii-paper)",
+  };
+  const layers = (label: ReactNode) => (
+    <>
+      <style href="asciicn-ascii-button" precedence="asciicn">
+        {STYLES}
+      </style>
+      {/* The label row in inverse video: between the frame's sides, one cell tall. */}
+      <span
+        aria-hidden="true"
+        className="acn-btn-slab pointer-events-none absolute inset-x-[0.5ch] top-[calc(var(--btn-cell)/2)] -z-10 h-[var(--btn-cell)] bg-[var(--btn-ink)]"
       />
-      {loading ? <Busy /> : null}
-      <Slot.Slottable>{children}</Slot.Slottable>
-    </Comp>
+      <Frame glyphs={framesFor(frame)} />
+      <span
+        aria-hidden="true"
+        className="acn-btn-mark acn-btn-label absolute left-[0.5ch] w-[1ch] text-center"
+      >
+        {loading ? <Spinner name={spinner} /> : cursor}
+      </span>
+      <span className="acn-btn-label inline-flex items-center gap-[1ch]">
+        {label}
+      </span>
+    </>
+  );
+  const rootProps = {
+    "aria-busy": loading || undefined,
+    "aria-disabled": loading || undefined,
+    "data-frame": frame,
+    "data-loading": loading ? "" : undefined,
+    "data-size": size,
+    "data-slot": "button",
+    "data-variant": variant,
+    ...props,
+    className: cn(
+      "acn-btn group/button relative isolate inline-flex h-[calc(var(--btn-cell)*2)] shrink-0 cursor-pointer items-center px-[2.5ch] align-middle font-medium whitespace-nowrap text-foreground no-underline select-none",
+      "font-[family-name:var(--ascii-font,ui-monospace,monospace)] leading-[var(--btn-cell)] [font-size:calc(var(--btn-cell)/1.2)] [font-variant-ligatures:none]",
+      "transition-[scale] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:active:scale-[0.97]",
+      "outline-hidden focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ring focus-visible:outline-solid",
+      "disabled:cursor-not-allowed disabled:opacity-45 aria-disabled:cursor-not-allowed aria-disabled:opacity-45 data-loading:cursor-progress",
+      // Icons take exactly two cells, so the frame still closes on the grid.
+      "[&_svg]:pointer-events-none [&_svg]:h-[1.15em] [&_svg]:w-[2ch] [&_svg]:shrink-0",
+      className
+    ),
+    onClick: loading
+      ? (event: MouseEvent<HTMLButtonElement>) => event.preventDefault()
+      : onClick,
+    style: { ...vars, ...style },
+  };
+
+  if (asChild && isValidElement<{ children?: ReactNode }>(children)) {
+    // The child (a link) becomes the root; its own content becomes the label.
+    return (
+      <Slot.Root {...rootProps}>
+        {cloneElement(children, undefined, layers(children.props.children))}
+      </Slot.Root>
+    );
+  }
+  return (
+    <button {...rootProps} type={type ?? "button"} disabled={disabled}>
+      {layers(children)}
+    </button>
   );
 };

@@ -1,18 +1,18 @@
 ---
 title: "Scramble text"
-description: "Text that resolves character by character through dithered blocks and glyphs, with no layout shift. Plays on mount, in view, on hover or when the text changes."
+description: "Text whose characters cycle through katakana, braille, CP437, PETSCII or symbol glyphs and settle left to right, without moving the layout."
 ---
 
 import ScrambleTextDemo from "@/examples/scramble-text-demo";
-import { controls as scrambleControls } from "@/examples/scramble-text-controls";
+import { controls as scrambleTextControls } from "@/examples/scramble-text-controls";
 import ScrambleTextHero from "@/examples/scramble-text-hero";
 import ScrambleTextHover from "@/examples/scramble-text-hover";
 import ScrambleTextStatus from "@/examples/scramble-text-status";
 
 <ComponentPreview
   src="examples/scramble-text-demo.tsx"
-  size="lg"
-  controls={scrambleControls}
+  size="md"
+  controls={scrambleTextControls}
 >
   <ScrambleTextDemo />
 </ComponentPreview>
@@ -26,42 +26,42 @@ import ScrambleTextStatus from "@/examples/scramble-text-status";
 ```tsx
 import { ScrambleText } from "@/components/asciicn/scramble-text";
 
-export function Title() {
-  return <ScrambleText as="h2">Every frame accounted for</ScrambleText>;
+export function Headline() {
+  return (
+    <ScrambleText as="h2" glyphs="katakana" className="text-4xl font-bold">
+      Decrypting the signal
+    </ScrambleText>
+  );
 }
 ```
 
-Each character resolves on its own, a few milliseconds after the one before it. In the default `dither` mode a block in the accent colour thickens through the levels of a 4×4 Bayer matrix, a few glyphs flicker, and the letter lands, fading from the accent colour to the text colour. `blocks` skips the glyphs and `glyphs` skips the blocks.
+Every character starts on a random glyph from the set, changes `rate` times a second, and settles on its letter after `duration` seconds plus `stagger` seconds per character before it, so the text resolves left to right. Spaces stay spaces.
 
-The glyphs come from the text itself, so a headline scrambles in its own typeface instead of falling back to a terminal font. Pass `characters` for a specific set: `SCRAMBLE_MONO` and `SCRAMBLE_HEX` are exported.
-
-Change `children` and only the characters that differ scramble, from the old text to the new one. In the demo above, the last words change every few seconds.
-
-Every placeholder sits in the slot of the character it becomes, and the real text stays underneath, so the width never changes and nothing around it moves.
+The final text is always laid out and the scrambling glyph is painted over each letter's slot, centred on it. Nothing the animation does can move the layout, even in a proportional font or with glyphs wider than the letters they cover.
 
 ## Examples
 
-### Hero reveal
+### Hero
 
-`mode="blocks"` with a colour: each letter fills in from a sparse dither to solid before it appears. The paragraph uses a short `duration` and a small `stagger` so a long line still resolves quickly.
+Two lines that play once on mount: a binary eyebrow and a braille headline.
 
-<ComponentPreview src="examples/scramble-text-hero.tsx" size="lg">
+<ComponentPreview src="examples/scramble-text-hero.tsx" size="md">
   <ScrambleTextHero />
 </ComponentPreview>
 
-### Nav links on hover
+### Navigation on hover
 
-With `trigger="hover"`, the text replays whenever the closest link or button is hovered or receives keyboard focus. `mode="glyphs"` and a short `duration` keep it quick enough for something people hover often.
+`trigger="hover"` replays a short CP437 scramble each time the pointer enters a link.
 
-<ComponentPreview src="examples/scramble-text-hover.tsx">
+<ComponentPreview src="examples/scramble-text-hover.tsx" size="sm">
   <ScrambleTextHover />
 </ComponentPreview>
 
-### Status that changes
+### Live status
 
-`trigger="change"` never plays on its own; it plays when the text changes. The status label scrambles only the letters that differ and picks up the colour of each state, with a caret while it resolves. The detail line uses hex glyphs.
+Changing the text plays the scramble again, so a status label can decode into each new state. The live region announces the settled word.
 
-<ComponentPreview src="examples/scramble-text-status.tsx">
+<ComponentPreview src="examples/scramble-text-status.tsx" size="sm">
   <ScrambleTextStatus />
 </ComponentPreview>
 
@@ -72,9 +72,8 @@ With `trigger="hover"`, the text replays whenever the closest link or button is 
     {
       name: "children",
       type: "string",
-      required: true,
       description:
-        "The final text. Change it to scramble from the old text to the new one.",
+        "The final text. It is what screen readers, search and copy get.",
     },
     {
       name: "as",
@@ -83,87 +82,76 @@ With `trigger="hover"`, the text replays whenever the closest link or button is 
       description: "The element to render.",
     },
     {
-      name: "trigger",
-      type: '"mount" | "in-view" | "hover" | "change"',
-      default: '"in-view"',
-      description:
-        "When to play. Hover also listens to the closest link or button, including keyboard focus. Change plays only when the text changes.",
-    },
-    {
-      name: "mode",
-      type: '"dither" | "blocks" | "glyphs"',
-      default: '"dither"',
-      description:
-        "How unsettled characters look: blocks then glyphs, only blocks, or only glyphs.",
+      name: "glyphs",
+      type: '"katakana" | "braille" | "cp437" | "petscii" | "blocks" | "symbols" | "hex" | "binary"',
+      default: '"katakana"',
+      description: "The glyph set characters cycle through.",
     },
     {
       name: "characters",
       type: "string",
-      default: "the text's own letters",
+      description: "Your own glyphs to cycle through. Wins over glyphs.",
+    },
+    {
+      name: "trigger",
+      type: '"mount" | "view" | "hover" | "loop"',
+      default: '"view"',
       description:
-        "Glyphs to cycle through. SCRAMBLE_MONO and SCRAMBLE_HEX are exported.",
+        "When it plays. loop plays again after pause seconds. Changing the text always plays it.",
+    },
+    {
+      name: "duration",
+      type: "number",
+      default: "0.5",
+      description:
+        "Seconds every character scrambles before the first one settles.",
+    },
+    {
+      name: "stagger",
+      type: "number",
+      default: "0.035",
+      description: "Seconds between neighbours settling, left to right.",
+    },
+    {
+      name: "delay",
+      type: "number",
+      default: "0",
+      description: "Seconds to wait before starting.",
+    },
+    {
+      name: "rate",
+      type: "number",
+      default: "20",
+      description: "New glyphs per second while scrambling.",
+    },
+    {
+      name: "pause",
+      type: "number",
+      default: "2.5",
+      description:
+        "loop only: seconds to hold the settled text before playing again.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
       description:
-        "Colour of blocks, glyphs and the caret: a palette name or any CSS colour. Settled letters fade from it to the text colour.",
-    },
-    {
-      name: "duration",
-      type: "number",
-      default: "520",
-      description: "Milliseconds one character takes to resolve.",
-    },
-    {
-      name: "stagger",
-      type: "number",
-      default: "34",
-      description: "Milliseconds between one character starting and the next.",
-    },
-    {
-      name: "delay",
-      type: "number",
-      default: "0",
-      description: "Milliseconds before the first character starts.",
-    },
-    {
-      name: "speed",
-      type: "number",
-      default: "1",
-      description: "Multiplies every timing. 2 plays twice as fast.",
-    },
-    {
-      name: "rate",
-      type: "number",
-      default: "20",
-      description: "Glyph changes per second while a character is unsettled.",
-    },
-    {
-      name: "caret",
-      type: '"none" | "running" | "always"',
-      default: '"none"',
-      description:
-        "A caret at the leading edge while the text resolves. Always keeps it blinking after the last character.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "font size / 22",
-      description: "Dither cell size in CSS pixels, at least 1.",
+        "Colour of the scrambling glyphs. Settled letters keep the text colour.",
     },
     {
       name: "onComplete",
       type: "() => void",
-      description: "Called when every character has settled.",
+      description: "Called each time the text has fully settled.",
     },
   ]}
 />
 
+Other props pass through to the element.
+
 ## Notes
 
-- The final text is always in the page as real text. While the effect plays it turns transparent and an overlay hidden from assistive technology draws the blocks and glyphs on top, so screen readers, search engines and copy and paste only ever see the final text. For a status that changes, add `aria-live="polite"` yourself.
-- With `mount` or `in-view`, the text waits hidden until it plays. Without JavaScript it shows normally.
-- With reduced motion turned on, the text never scrambles and the caret does not blink.
-- The overlay exists only while the effect plays (or while an `always` caret is shown), and the frame loop stops as soon as every character settles.
+- Screen readers get the final text once, from a visually hidden copy. The animated letters are `aria-hidden`. Copying the visible text copies the final string, never the glyphs, because the glyphs are drawn by CSS pseudo-elements.
+- With reduced motion, nothing scrambles: the text shows as is.
+- `view` plays when the text scrolls into view. Leaving the screen mid-scramble settles every letter at once.
+- Katakana and some CP437 glyphs come from a fallback font when the glyph font lacks them. They are centred over each letter, so a wider glyph never pushes its neighbours.
+- One `requestAnimationFrame` loop runs while letters are scrambling and stops when they settle. React does not re-render per frame.

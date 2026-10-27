@@ -1,55 +1,44 @@
-import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, select, slider } from "@/lib/preview-controls";
+import { DISSOLVE_ORDERS } from "@/components/asciicn/dissolve-text";
+import { select, segmented, slider, toggle } from "@/lib/preview-controls";
 
-// Knobs for the dissolve text's main demo, shared by the page and the demo.
+// Knobs for the dissolve text demo, shared by the page and the demo.
+
+export const charset = select({
+  default: "blocks",
+  id: "charset",
+  label: "Ramp",
+  options: ["blocks", "braille", "quadrants", "dots", "standard", "petscii"],
+});
+
+export const order = segmented({
+  default: "start",
+  id: "order",
+  label: "Order",
+  options: DISSOLVE_ORDERS,
+});
 
 export const by = segmented({
   default: "char",
   id: "by",
   label: "By",
-  options: ["char", "word", "line"],
+  options: ["char", "word"],
 });
 
-export const direction = select({
-  default: "start",
-  id: "direction",
-  label: "Order",
-  options: ["start", "end", "center", "edges", "random"],
+export const duration = slider({
+  default: 450,
+  id: "duration",
+  label: "Duration",
+  max: 1200,
+  min: 150,
+  step: 50,
+  unit: "ms",
 });
 
-export const fill = segmented({
-  default: "solid",
-  id: "fill",
-  label: "Settles into",
-  options: ["solid", "gradient", "dotted", "hatched"],
-});
-
-export const accent = color({
-  default: "ink",
-  id: "accent",
-  label: "Accent",
-  options: ASCII_COLOR_NAMES,
-});
-
-export const cell = slider({
-  default: 3,
-  id: "cell",
-  label: "Cell",
-  max: 6,
-  min: 1,
-  step: 1,
-  unit: "px",
-});
-
-export const speed = slider({
-  default: 1,
-  id: "speed",
-  label: "Speed",
-  max: 2,
-  min: 0.25,
-  step: 0.25,
-  unit: "×",
+export const show = toggle({
+  default: true,
+  id: "show",
+  label: "Show",
 });
 
 /** Display order of the tray. */
-export const controls = [by, direction, fill, accent, cell, speed];
+export const controls = [charset, order, by, duration, show];

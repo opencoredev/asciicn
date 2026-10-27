@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 
 import { DissolveText } from "@/components/asciicn/dissolve-text";
 
-const WORDS = ["dashboards", "landing pages", "launch posts", "status pages"];
-const HOLD = 2600;
-const EXIT = 520;
+const WORDS = ["terminals", "dashboards", "landing pages", "status bars"];
 
 export default function DissolveTextCycle() {
   const [index, setIndex] = useState(0);
   const [show, setShow] = useState(true);
 
+  // Hold, dissolve, then swap the word and assemble the next one.
   useEffect(() => {
-    const timer = setTimeout(
+    const timer = window.setTimeout(
       () => {
         if (show) {
           setShow(false);
@@ -22,24 +21,21 @@ export default function DissolveTextCycle() {
           setShow(true);
         }
       },
-      show ? HOLD : EXIT
+      show ? 2000 : 700
     );
-    return () => clearTimeout(timer);
+    return () => window.clearTimeout(timer);
   }, [show]);
 
   return (
-    <p className="px-6 text-center text-3xl leading-tight font-semibold tracking-[-0.04em] sm:text-5xl">
-      <span className="text-muted-foreground">Dithers for</span>
-      <br />
+    <p className="font-display text-2xl font-bold tracking-tight sm:text-4xl">
+      Glyphs for{" "}
       <DissolveText
-        key={index}
         show={show}
         trigger="mount"
-        duration={440}
-        stagger={22}
-        direction="random"
-        color="ink"
-        accent="--foreground"
+        charset="braille"
+        order="center"
+        color="purple"
+        className="text-[var(--ascii-color-purple)]"
       >
         {WORDS[index] ?? ""}
       </DissolveText>

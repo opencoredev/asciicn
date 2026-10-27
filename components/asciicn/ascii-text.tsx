@@ -1,457 +1,611 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  HTMLAttributes,
+  ReactNode,
+  RefObject,
+} from "react";
 
 import {
-  bloomFilter,
+  brailleChar,
+  createToneField,
   cssColor,
-  asciiMaskStyle,
-  getThresholdMap,
-  readAsciiCell,
-  useAsciiColors,
-  useFrameLoop,
+  LINE_HEIGHT,
+  mapTones,
+  measureCell,
+  readFont,
+  resolveCharset,
+  rgbToHex,
+  useInView,
+  usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type {
-  Bloom,
   AsciiColor,
+  Charset,
+  CharsetName,
   DitherMatrix,
-  AsciiPalette,
-  Rgba,
+  RampName,
 } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
+export const ASCII_TEXT_REVEALS = ["none", "decode", "scan", "wipe"] as const;
 /**
- * What fills the letters.
- * `gradient`: dense on one side, thinning through dither levels.
- * `noise`: drifting blobs of density.
- * `dotted`, `hatched`: the style kit's textures, drifting slowly.
- * `solid`: flat colour, for bloom alone or to switch the texture off.
+ * How the art appears: `decode` cycles every inked cell through random
+ * glyphs until it settles, `scan` writes rows from the top behind a bright
+ * line, `wipe` writes columns from the left behind a ragged edge.
  */
-export const ASCII_TEXT_FILLS = [
-  "gradient",
-  "noise",
-  "dotted",
-  "hatched",
-  "solid",
-] as const;
-export type AsciiTextFillName = (typeof ASCII_TEXT_FILLS)[number];
+export type AsciiTextReveal = (typeof ASCII_TEXT_REVEALS)[number];
 
-/** A side, or an angle in degrees as in CSS (0 points up, 90 right). */
-export type AsciiTextDirection = "up" | "down" | "left" | "right" | number;
+export type AsciiTextTrigger = "mount" | "view" | "hover";
 
-interface NoiseFill {
-  fill: "noise";
-  /** Size of the noise blobs: higher values give smaller blobs. Default 3. */
-  scale?: number;
-}
+export type AsciiTextTag = "h1" | "h2" | "h3" | "h4" | "p" | "div" | "span";
 
-interface OtherFill {
-  /** What fills the letters. Default `"gradient"`. */
-  fill?: Exclude<AsciiTextFillName, "noise">;
-  scale?: never;
-}
-
-export type AsciiTextFill = NoiseFill | OtherFill;
-
-export type AsciiTextTag =
-  | "h1"
-  | "h2"
-  | "h3"
-  | "h4"
-  | "p"
-  | "span"
-  | "div"
-  | "strong";
-
-export type AsciiTextProps = Omit<
+export interface AsciiTextProps extends Omit<
   HTMLAttributes<HTMLElement>,
   "children" | "color"
-> &
-  AsciiTextFill & {
-    /** The text. It stays real, selectable text. */
-    children: ReactNode;
-    /** The element to render. Default `"span"`. */
-    as?: AsciiTextTag;
-    /** Ink colour: a palette name or any CSS colour. Default `"ink"`. */
-    color?: AsciiColor;
-    /**
-     * Gradient: the way the fill thins out, from its dense side (`"down"`
-     * is solid at the top). Noise, dotted and hatched: the way it drifts.
-     * Default `"down"`.
-     */
-    direction?: AsciiTextDirection;
-    /** Tone at the dense end, 0 (no ink) to 1 (solid). Default 1. */
-    from?: number;
-    /** Tone at the sparse end. Default 0.4. */
-    to?: number;
-    /**
-     * Opacity of the ink between the dots, 0 to 1, so textured letters keep
-     * their shape. Default 0.2 for dotted and hatched, 0 otherwise.
-     */
-    ghost?: number;
-    /** A soft glow in the ink colour. Default `"off"`. */
-    bloom?: Bloom;
-    /**
-     * Colours from the lightest tone to the darkest, for a multi-tone fill.
-     * Overrides `color` and `ghost`.
-     */
-    palette?: AsciiPalette;
-    /** Threshold matrix for gradient and noise. Default `"bayer4"`. */
-    matrix?: DitherMatrix;
-    /**
-     * Cell size in CSS pixels. Default: about 1/24 of the font size, at
-     * least 2, so hero and section sizes both read well.
-     */
-    cell?: number;
-    /** Slowly shift the fill. Default `true`. */
-    animate?: boolean;
-    /** How fast the fill shifts. Default 1. */
-    speed?: number;
-  };
-
-// Value noise and fbm on the CPU, matching the shader helpers in spirit.
-// The grid is small (one sample per dither cell), so this stays cheap.
-const hash = (x: number, y: number) => {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43_758.545_312_3;
-  return s - Math.floor(s);
-};
-
-const smooth = (t: number) => t * t * (3 - 2 * t);
-
-const valueNoise = (x: number, y: number) => {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const fx = smooth(x - ix);
-  const fy = smooth(y - iy);
-  const a = hash(ix, iy);
-  const b = hash(ix + 1, iy);
-  const c = hash(ix, iy + 1);
-  const d = hash(ix + 1, iy + 1);
-  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
-};
-
-const fbm = (x: number, y: number) =>
-  valueNoise(x, y) * 0.5333 +
-  valueNoise(x * 2.03 + 17.1, y * 2.03 + 9.2) * 0.2667 +
-  valueNoise(x * 4.01 + 3.7, y * 4.01 + 31.4) * 0.1333 +
-  valueNoise(x * 8.05 + 41.3, y * 8.05 + 5.9) * 0.0667;
-
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-const modulo = (value: number, base: number) => ((value % base) + base) % base;
-
-const ANGLES = { down: 180, left: 270, right: 90, up: 0 } as const;
-
-/** Unit vector of a direction, y pointing down the page. */
-const vector = (direction: AsciiTextDirection) => {
-  const degrees = typeof direction === "number" ? direction : ANGLES[direction];
-  const radians = (degrees * Math.PI) / 180;
-  return { dx: Math.sin(radians), dy: -Math.cos(radians) };
-};
-
-// The style kit's textures, cell by cell: the same lattice as
-// `fillTile("dotted")` and `fillTile("hatched")`.
-const TEXTURES = {
-  dotted: (x: number, y: number) =>
-    modulo(y, 2) === 0 && modulo(x + y / 2, 2) === 0,
-  hatched: (x: number, y: number) => modulo(x + y, 4) === 3,
-} as const;
-
-interface FieldOptions {
-  fill: AsciiTextFillName;
-  dx: number;
-  dy: number;
-  scale: number;
-  from: number;
-  to: number;
+> {
+  /** The text to draw. Line breaks start new lines. */
+  children: string;
+  /** The element that holds the real text. Default `"h2"`. */
+  as?: AsciiTextTag;
+  /** Font size the type is drawn at, in CSS pixels, before sampling into cells. Default 96. */
+  size?: number;
+  /** Glyph cell height in CSS pixels. Smaller cells draw finer type. Default 8. */
+  cell?: number;
+  /** Glyphs the type is drawn with. `braille` gives smooth large type, `blocks` chunky banners, `edge` outlines. Default `"braille"`. */
+  charset?: CharsetName;
+  /** A custom ramp from empty to dense, such as `" .oO@"`. Wins over `charset`. */
+  chars?: string;
+  /** `mono` draws every glyph in `color`; `duotone` colours glyphs by density along `ramp`. Default `"mono"`. */
+  colorMode?: "mono" | "duotone";
+  /** `duotone`: a ramp name. Default `"mainframe"`. */
+  ramp?: RampName;
+  /** `mono`: glyph colour, a palette name, CSS variable name or any CSS colour. Default `"ink"`. */
+  color?: AsciiColor;
+  /** Braille and quadrants: the coverage that lights a dot, 0 to 1. Default 0.5. */
+  threshold?: number;
+  /** Edge set: gradient strength, 0 to 1, that draws `- / | \`. Default 0.22. */
+  edgeThreshold?: number;
+  /** Ordered dithering between glyph levels. Default `"none"`. */
+  dither?: "none" | DitherMatrix;
+  /** Animated entrance of the art. Default `"none"`. */
+  reveal?: AsciiTextReveal;
+  /** When the reveal plays. `hover` replays it on every pointer enter. Default `"view"`. */
+  trigger?: AsciiTextTrigger;
+  /** Reveal length in seconds. Default 1.2. */
+  duration?: number;
+  /** Shrink the type to fit the container's width. Default `true`. */
+  fit?: boolean;
 }
 
-/** Tone 0..1 at a cell centre. `u`, `v` are 0..1 across the box, `aspect` w/h. */
-const toneAt = (
-  { fill, dx, dy, scale, from, to }: FieldOptions,
-  u: number,
-  v: number,
-  aspect: number,
-  time: number
-) => {
-  const px = (u - 0.5) * aspect;
-  const py = v - 0.5;
-  if (fill === "noise") {
-    const n = fbm(px * scale - time * 0.09 * dx, py * scale - time * 0.09 * dy);
-    return from + (to - from) * clamp01((n - 0.22) / 0.56);
+interface Art {
+  readonly columns: number;
+  readonly rows: number;
+  readonly glyphs: readonly string[];
+  /** One CSS colour per cell, or `null` for mono. */
+  readonly colors: readonly string[] | null;
+  readonly cellWidth: number;
+}
+
+// Supersampling per glyph sample: coverage is averaged over this many
+// pixels per side, so curves land on the right glyph level.
+const SUPERSAMPLE = 3;
+const MAX_SAMPLE_PIXELS = 4_000_000;
+
+// A float hash in [0, 1): cheap, stable for integer inputs, no bitwise maths.
+const hash = (a: number, b: number): number => {
+  const value = Math.sin(a * 127.1 + b * 311.7) * 43_758.5453;
+  return value - Math.floor(value);
+};
+
+/** A random glyph of the charset's denser half, for cells still settling. */
+const noiseGlyph = (set: Charset, seed: number): string => {
+  if (set.kind === "braille") {
+    return brailleChar(1 + Math.floor(seed * 254));
   }
-  // Gradient: position along the direction, 0 at the dense side.
-  const extent = Math.abs(dx) * aspect * 0.5 + Math.abs(dy) * 0.5;
-  const drift = fbm(px * 1.6 + time * 0.07, py * 1.6 - time * 0.04) - 0.5;
-  const s = clamp01((px * dx + py * dy) / (2 * extent) + 0.5 + drift * 0.28);
-  return from + (to - from) * s;
+  const { glyphs } = set;
+  const from = Math.max(1, Math.floor(glyphs.length / 2));
+  return glyphs[from + Math.floor(seed * (glyphs.length - from))] ?? "#";
 };
 
-const toByte = (value: number) => Math.round(value * 255);
-
-interface Paint {
-  /** Colours from paper to ink. */
-  colors: readonly Rgba[];
-  /** The colour of uninked cells in a texture. */
-  gap: Rgba;
+interface DrawOptions {
+  readonly text: string;
+  readonly font: string;
+  readonly size: number;
+  readonly cell: number;
+  readonly glyphFont: string;
+  readonly set: Charset;
+  readonly maxWidth: number;
+  readonly fit: boolean;
+  readonly map: Parameters<typeof mapTones>[3];
 }
 
-interface Grid {
-  cols: number;
-  rows: number;
-  aspect: number;
-  time: number;
-}
-
-/** Fill `data` (RGBA bytes, `cols` × `rows`) with the dithered field. */
-const paintCells = (
-  data: Uint8ClampedArray,
-  { cols, rows, aspect, time }: Grid,
-  field: FieldOptions,
-  { colors, gap }: Paint,
-  matrix: DitherMatrix
-) => {
-  const { size: tile, thresholds } = getThresholdMap(matrix);
-  const segments = colors.length - 1;
-  const ink = colors.at(-1) ?? [0, 0, 0, 1];
-  const texture =
-    field.fill === "dotted" || field.fill === "hatched"
-      ? TEXTURES[field.fill]
-      : null;
-  // Textures drift a cell at a time, about two cells a second.
-  const ox = Math.round(-field.dx * time * 2);
-  const oy = Math.round(-field.dy * time * 2);
-  for (let y = 0; y < rows; y += 1) {
-    const v = (y + 0.5) / rows;
-    for (let x = 0; x < cols; x += 1) {
-      let pick: Rgba | undefined = ink;
-      if (texture) {
-        pick = texture(x + ox, y + oy) ? ink : gap;
-      } else if (field.fill !== "solid") {
-        const tone = toneAt(field, (x + 0.5) / cols, v, aspect, time);
-        const scaled = clamp01(tone) * segments;
-        const low = Math.min(segments - 1, Math.floor(scaled));
-        const threshold = thresholds[(y % tile) * tile + (x % tile)] ?? 0.5;
-        pick = scaled - low > threshold ? colors[low + 1] : colors[low];
+/** Draw the text into an offscreen canvas and map its coverage to glyphs. */
+const drawArt = ({
+  text,
+  font,
+  size,
+  cell,
+  glyphFont,
+  set,
+  maxWidth,
+  fit,
+  map,
+}: DrawOptions): Art | null => {
+  const metrics = measureCell({ cell, dpr: 1, font: glyphFont });
+  const probe = document.createElement("canvas").getContext("2d");
+  if (!probe) {
+    return null;
+  }
+  const lines = text.split("\n");
+  const measure = (px: number) => {
+    probe.font = `${font.replace("{size}", `${px}px`)}`;
+    let width = 0;
+    let ascent = 0;
+    let descent = 0;
+    for (const line of lines) {
+      const m = probe.measureText(line);
+      width = Math.max(width, m.width);
+      ascent = Math.max(ascent, m.actualBoundingBoxAscent);
+      descent = Math.max(descent, m.actualBoundingBoxDescent);
+    }
+    return { ascent, descent, width };
+  };
+  let px = size;
+  let box = measure(px);
+  const padding = metrics.width * 2;
+  if (fit && maxWidth > 0 && box.width + padding > maxWidth) {
+    px = Math.max(8, (px * (maxWidth - padding)) / box.width);
+    box = measure(px);
+  }
+  const lineGap = px * 0.2;
+  const lineHeight = box.ascent + box.descent;
+  const textHeight = lineHeight * lines.length + lineGap * (lines.length - 1);
+  const columns = Math.max(1, Math.ceil((box.width + padding) / metrics.width));
+  const rows = Math.max(1, Math.ceil(textHeight / metrics.height) + 1);
+  const field = createToneField(columns, rows, set);
+  const scale = Math.max(
+    1,
+    Math.min(
+      SUPERSAMPLE,
+      Math.floor(Math.sqrt(MAX_SAMPLE_PIXELS / (field.width * field.height)))
+    )
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = field.width * scale;
+  canvas.height = field.height * scale;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) {
+    return null;
+  }
+  const artWidth = columns * metrics.width;
+  const artHeight = rows * metrics.height;
+  // Sample cells are not square, so the two axes scale differently.
+  context.setTransform(
+    canvas.width / artWidth,
+    0,
+    0,
+    canvas.height / artHeight,
+    0,
+    0
+  );
+  context.font = font.replace("{size}", `${px}px`);
+  context.fillStyle = "#fff";
+  context.textAlign = "center";
+  context.textBaseline = "alphabetic";
+  const top = (artHeight - textHeight) / 2;
+  for (const [index, line] of lines.entries()) {
+    context.fillText(
+      line,
+      artWidth / 2,
+      top + box.ascent + index * (lineHeight + lineGap)
+    );
+  }
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  const { tones, width } = field;
+  const area = scale * scale * 255;
+  for (let y = 0; y < field.height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let sum = 0;
+      for (let dy = 0; dy < scale; dy += 1) {
+        const rowStart = ((y * scale + dy) * canvas.width + x * scale) * 4 + 3;
+        for (let dx = 0; dx < scale; dx += 1) {
+          sum += data[rowStart + dx * 4] ?? 0;
+        }
       }
-      const [r, g, b, alpha] = pick ?? [0, 0, 0, 0];
-      const offset = (y * cols + x) * 4;
-      data[offset] = toByte(r);
-      data[offset + 1] = toByte(g);
-      data[offset + 2] = toByte(b);
-      data[offset + 3] = toByte(alpha);
+      tones[y * width + x] = sum / area;
+    }
+  }
+  const frame = mapTones(field, columns, rows, { ...map, charset: set });
+  let colors: string[] | null = null;
+  if (frame.colors) {
+    colors = [];
+    for (let index = 0; index < columns * rows; index += 1) {
+      const at = index * 4;
+      colors.push(
+        rgbToHex([
+          frame.colors[at] ?? 0,
+          frame.colors[at + 1] ?? 0,
+          frame.colors[at + 2] ?? 0,
+        ])
+      );
+    }
+  }
+  return {
+    cellWidth: metrics.width,
+    colors,
+    columns,
+    glyphs: [...frame.glyphs],
+    rows,
+  };
+};
+
+/** The art at `progress` (0 to 1) through a reveal. */
+const revealGlyph = (
+  art: Art,
+  set: Charset,
+  reveal: AsciiTextReveal,
+  progress: number,
+  index: number,
+  tick: number
+): string => {
+  const glyph = art.glyphs[index] ?? " ";
+  if (reveal === "none" || progress >= 1) {
+    return glyph;
+  }
+  const column = index % art.columns;
+  const row = (index - column) / art.columns;
+  switch (reveal) {
+    case "decode": {
+      if (glyph === " ") {
+        return glyph;
+      }
+      const settle = 0.15 + hash(index, 7) * 0.8;
+      return progress >= settle ? glyph : noiseGlyph(set, hash(index, tick));
+    }
+    case "scan": {
+      const front = progress * (art.rows + 2) - 1;
+      if (row < front - 1) {
+        return glyph;
+      }
+      if (row < front) {
+        return glyph === " " ? glyph : noiseGlyph(set, hash(index, tick));
+      }
+      return " ";
+    }
+    case "wipe": {
+      const ragged = (hash(row, 3) - 0.5) * 6;
+      const front = progress * (art.columns + 12) - 6 + ragged;
+      if (column < front - 3) {
+        return glyph;
+      }
+      if (column < front) {
+        return glyph === " " ? glyph : noiseGlyph(set, hash(index, tick));
+      }
+      return " ";
+    }
+    default: {
+      const exhaustive: never = reveal;
+      return exhaustive;
     }
   }
 };
 
-interface Frame {
-  el: HTMLElement;
-  /** CSS `background-size` for the frame. */
-  size: string;
-  url: string;
+interface LinesOptions {
+  readonly art: Art;
+  readonly set: Charset;
+  readonly reveal: AsciiTextReveal;
+  readonly progress: number;
+  readonly tick: number;
+  readonly ink: string;
 }
 
-interface Swapper {
-  /** A frame is decoding. */
-  busy: boolean;
-  /** The newest frame waiting to decode; older waiting frames are dropped. */
-  queued: Frame | null;
-  /** The frame on screen. Holding it keeps it in Safari's memory cache. */
-  shown: HTMLImageElement | null;
-}
-
-/**
- * Swap queued frames into the background one at a time, each only once it
- * has decoded. Safari loads a new background image asynchronously and paints
- * a frame without it, which blinks the (transparent) text out. One decode at
- * a time, plus the newest waiting frame, keeps a slow device from piling up.
- */
-const showQueued = async (swapper: Swapper) => {
-  const frame = swapper.queued;
-  if (!frame) {
-    swapper.busy = false;
-    return;
+/** One line of text per row, or colour runs as spans when the art has colour. */
+const artLines = ({
+  art,
+  set,
+  reveal,
+  progress,
+  tick,
+  ink,
+}: LinesOptions): ReactNode[] => {
+  const lines: ReactNode[] = [];
+  for (let row = 0; row < art.rows; row += 1) {
+    const glyphAt = (column: number) =>
+      revealGlyph(art, set, reveal, progress, row * art.columns + column, tick);
+    if (!art.colors) {
+      let line = "";
+      for (let column = 0; column < art.columns; column += 1) {
+        line += glyphAt(column);
+      }
+      lines.push(`${line}\n`);
+      continue;
+    }
+    // Colour runs: one span per stretch of cells that share a colour.
+    const spans: ReactNode[] = [];
+    let run = "";
+    let runColor = "";
+    for (let column = 0; column < art.columns; column += 1) {
+      const cellColor = art.colors[row * art.columns + column] ?? ink;
+      if (cellColor !== runColor && run !== "") {
+        spans.push(
+          <span key={column} style={{ color: runColor }}>
+            {run}
+          </span>
+        );
+        run = "";
+      }
+      runColor = cellColor;
+      run += glyphAt(column);
+    }
+    spans.push(
+      <span key="end" style={{ color: runColor }}>
+        {run}
+      </span>
+    );
+    lines.push(
+      <span key={row}>
+        {spans}
+        {"\n"}
+      </span>
+    );
   }
-  swapper.busy = true;
-  swapper.queued = null;
-  const image = new Image();
-  image.src = frame.url;
-  try {
-    await image.decode();
-  } catch {
-    // Swap anyway: a frame that will not decode beats a frozen fill.
-  }
-  swapper.shown = image;
-  frame.el.style.backgroundImage = `url(${frame.url})`;
-  frame.el.style.backgroundSize = frame.size;
-  frame.el.dataset.state = "ready";
-  // Not awaited: this call finishes once it has handed off, so a long run
-  // of slow decodes doesn't build a chain of pending promises.
-  showQueued(swapper);
+  return lines;
 };
 
-/** The fill, noise scale and gap opacity a set of props resolves to. */
-const fillSettings = (props: AsciiTextFill & { ghost?: number }) => {
-  const fill = props.fill ?? "gradient";
-  const textured = fill === "dotted" || fill === "hatched";
-  return {
-    fill,
-    gapOpacity: props.ghost ?? (textured ? 0.2 : 0),
-    scale: props.fill === "noise" ? (props.scale ?? 3) : 1,
-  };
-};
-
 /**
- * Display text whose letters are filled with a dither: a gradient, noise,
- * dots or hatching in any palette colour. The text stays a real element
- * (selectable, read by screen readers, indexed); the dither is a small
- * generated image clipped to the glyphs with `background-clip: text`.
+ * The reveal clock: 0 to 1 over `duration` seconds once `armed`, again
+ * whenever `replay` changes, and 1 at once when disabled. `tick` steps 20
+ * times a second for the glyphs that are still settling.
  */
-export const AsciiText = (props: AsciiTextProps) => {
-  const {
-    as: Tag = "span",
-    children,
-    color = "ink",
-    direction = "down",
-    from = 1,
-    to = 0.4,
-    ghost: _ghost,
-    bloom = "off",
-    palette,
-    matrix = "bayer4",
-    cell,
-    animate = true,
-    speed = 1,
-    fill: _fill,
-    scale: _scale,
-    className,
-    style,
-    ...rest
-  } = props;
-  const { fill, scale, gapOpacity } = fillSettings(props);
-  const { dx, dy } = vector(direction);
-  const custom = palette !== undefined;
-
-  const ref = useRef<HTMLElement>(null);
-  const setRef = useCallback((node: HTMLElement | null) => {
-    ref.current = node;
-  }, []);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sizeRef = useRef({ cell: 3, height: 0, width: 0 });
-  const timeRef = useRef(0);
-  const swapperRef = useRef<Swapper>({
-    busy: false,
-    queued: null,
-    shown: null,
-  });
-  const resolved = useAsciiColors(
-    ref,
-    palette ?? (["transparent", color] as const)
-  );
-
-  // Paint one frame into a cell-sized canvas and set it as the background.
-  const draw = useCallback(
-    (time: number) => {
-      const el = ref.current;
-      const { width, height, cell: size } = sizeRef.current;
-      if (!el || !resolved || width === 0 || height === 0) {
-        return;
-      }
-      const cols = Math.ceil(width / size);
-      const rows = Math.ceil(height / size);
-      canvasRef.current ??= document.createElement("canvas");
-      const canvas = canvasRef.current;
-      if (canvas.width !== cols || canvas.height !== rows) {
-        canvas.width = cols;
-        canvas.height = rows;
-      }
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return;
-      }
-      const colors: Rgba[] = [...resolved];
-      const [r, g, b, a] = colors.at(-1) ?? [0, 0, 0, 1];
-      const gap: Rgba = [r, g, b, a * gapOpacity];
-      if (!custom) {
-        colors[0] = gap;
-      }
-      const image = context.createImageData(cols, rows);
-      paintCells(
-        image.data,
-        { aspect: width / height, cols, rows, time },
-        { dx, dy, fill, from, scale, to },
-        { colors, gap: custom ? (colors[0] ?? gap) : gap },
-        matrix
-      );
-      context.putImageData(image, 0, 0);
-      const swapper = swapperRef.current;
-      swapper.queued = {
-        el,
-        size: `${cols * size}px ${rows * size}px`,
-        url: canvas.toDataURL(),
-      };
-      if (!swapper.busy) {
-        showQueued(swapper);
-      }
-    },
-    [custom, dx, dy, fill, from, gapOpacity, matrix, resolved, scale, to]
-  );
-
-  useFrameLoop(
-    (time) => {
-      timeRef.current = time * speed;
-      draw(timeRef.current);
-    },
-    { enabled: animate && fill !== "solid", fps: 12, target: ref }
-  );
-
-  // Track the box and font size; redraw at the last time on any change.
+const useReveal = ({
+  enabled,
+  armed,
+  duration,
+  replay,
+}: {
+  enabled: boolean;
+  armed: boolean;
+  duration: number;
+  replay: number;
+}): { progress: number; tick: number } => {
+  const [progress, setProgress] = useState(enabled ? 0 : 1);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) {
+    if (!enabled) {
+      setProgress(1);
       return;
     }
-    const measure = () => {
-      const fontSize = Number.parseFloat(getComputedStyle(el).fontSize);
-      const auto = Math.max(2, Math.round(fontSize / 24));
-      sizeRef.current = {
-        cell: cell ?? (Number.isFinite(auto) ? auto : readAsciiCell(el)),
-        height: el.offsetHeight,
-        width: el.offsetWidth,
-      };
-      draw(timeRef.current);
+    if (!armed) {
+      setProgress(0);
+      return;
+    }
+    let frame = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const value = Math.min(1, (now - start) / (duration * 1000));
+      setProgress(value);
+      setTick(Math.floor(now / 50));
+      if (value < 1) {
+        frame = requestAnimationFrame(step);
+      }
     };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [cell, draw]);
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+    // `replay` is a counter whose only job is to restart the clock.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, armed, duration, replay]);
+  return { progress, tick };
+};
 
-  const ink = palette?.at(-1) ?? color;
-  const rootStyle: CSSProperties & Record<"--ascii-text-ink", string> = {
-    "--ascii-text-ink": cssColor(ink),
-    filter: bloomFilter(ink, bloom),
-    // Until the dither is painted, a CSS mask at the average tone.
-    ...(resolved || fill === "solid"
-      ? {}
-      : asciiMaskStyle((from + to) / 2, { matrix })),
-    ...style,
-  };
+interface ArtOptions {
+  readonly text: string;
+  readonly size: number;
+  readonly cell: number;
+  readonly charset: CharsetName;
+  readonly chars: string | undefined;
+  readonly colorMode: "mono" | "duotone";
+  readonly ramp: RampName;
+  readonly threshold: number | undefined;
+  readonly edgeThreshold: number | undefined;
+  readonly dither: "none" | DitherMatrix;
+  readonly fit: boolean;
+}
+
+/** The art for the element's text, redrawn on resize and when fonts load. */
+const useArt = (
+  ref: RefObject<HTMLElement | null>,
+  {
+    text,
+    size,
+    cell,
+    charset,
+    chars,
+    colorMode,
+    ramp,
+    threshold,
+    edgeThreshold,
+    dither,
+    fit,
+  }: ArtOptions
+): Art | null => {
+  const [art, setArt] = useState<Art | null>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) {
+      return;
+    }
+    let frame = 0;
+    let lastWidth = -1;
+    const render = () => {
+      const width = root.clientWidth;
+      if (width === lastWidth) {
+        return;
+      }
+      lastWidth = width;
+      const computed = getComputedStyle(root);
+      const font = `${computed.fontStyle} ${computed.fontWeight} {size} ${computed.fontFamily}`;
+      setArt(
+        drawArt({
+          cell,
+          fit,
+          font,
+          glyphFont: readFont(root),
+          map: { colorMode, dither, edgeThreshold, ramp, threshold },
+          maxWidth: width,
+          set: resolveCharset(charset, chars),
+          size,
+          text,
+        })
+      );
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(render);
+    };
+    const refresh = () => {
+      lastWidth = -1;
+      schedule();
+    };
+    let cancelled = false;
+    const whenFontsLoad = async () => {
+      await document.fonts.ready;
+      if (!cancelled) {
+        refresh();
+      }
+    };
+    whenFontsLoad();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(root);
+    document.fonts.addEventListener("loadingdone", refresh);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      document.fonts.removeEventListener("loadingdone", refresh);
+    };
+  }, [
+    ref,
+    text,
+    size,
+    cell,
+    charset,
+    chars,
+    colorMode,
+    ramp,
+    threshold,
+    edgeThreshold,
+    dither,
+    fit,
+  ]);
+  return art;
+};
+
+type TextVars = CSSProperties & Record<"--text-cell", string>;
+
+/**
+ * Display type drawn as ASCII art: the text is rendered in the page's own
+ * font into an offscreen canvas, sampled into a tone field and mapped to
+ * glyphs of any charset. The real text stays in the element for screen
+ * readers, search and copy, and shows on its own until the art mounts.
+ */
+// oxlint-disable-next-line complexity -- each prop default counts as a branch.
+export const AsciiText = ({
+  children,
+  as: Tag = "h2",
+  size = 96,
+  cell = 8,
+  charset = "braille",
+  chars,
+  colorMode = "mono",
+  ramp = "mainframe",
+  color = "ink",
+  threshold,
+  edgeThreshold,
+  dither = "none",
+  reveal = "none",
+  trigger = "view",
+  duration = 1.2,
+  fit = true,
+  className,
+  style,
+  onPointerEnter,
+  ...props
+}: AsciiTextProps) => {
+  const rootRef = useRef<HTMLElement | null>(null);
+  const setRoot = useCallback((node: HTMLElement | null) => {
+    rootRef.current = node;
+  }, []);
+  const [replay, setReplay] = useState(0);
+  const reduced = usePrefersReducedMotion();
+  const inView = useInView(rootRef, { rootMargin: "0px" });
+  const set = resolveCharset(charset, chars);
+
+  const art = useArt(rootRef, {
+    cell,
+    chars,
+    charset,
+    colorMode,
+    dither,
+    edgeThreshold,
+    fit,
+    ramp,
+    size,
+    text: children,
+    threshold,
+  });
+
+  const { progress, tick } = useReveal({
+    armed: trigger === "view" ? inView : true,
+    duration,
+    // Hover shows the finished art until the first pointer enter.
+    enabled:
+      reveal !== "none" &&
+      !reduced &&
+      art !== null &&
+      !(trigger === "hover" && replay === 0),
+    replay,
+  });
+
+  const vars: TextVars = { "--text-cell": `${cell}px` };
+  const ink = cssColor(color);
+
+  const lines = art
+    ? artLines({ art, ink, progress, reveal, set, tick })
+    : null;
 
   return (
     <Tag
-      {...rest}
-      ref={setRef}
-      data-state="fallback"
-      className={cn(
-        "inline-block bg-no-repeat text-(--ascii-text-ink) [image-rendering:pixelated]",
-        "data-[state=ready]:bg-clip-text data-[state=ready]:text-transparent",
-        "forced-colors:bg-none forced-colors:text-[CanvasText]",
-        className
-      )}
-      style={rootStyle}
+      ref={setRoot}
+      data-slot="ascii-text"
+      data-state={art ? "art" : "text"}
+      className={cn("relative block", className)}
+      style={{ ...vars, ...style }}
+      onPointerEnter={(event) => {
+        if (trigger === "hover") {
+          setReplay((value) => value + 1);
+        }
+        onPointerEnter?.(event);
+      }}
+      {...props}
     >
-      {children}
+      <span
+        className={art ? "sr-only" : "block text-center"}
+        style={art ? undefined : { fontSize: size, lineHeight: LINE_HEIGHT }}
+      >
+        {children}
+      </span>
+      {art ? (
+        <pre
+          aria-hidden="true"
+          className="m-0 overflow-hidden text-center font-[family-name:var(--ascii-font,ui-monospace,monospace)] leading-[var(--text-cell)] font-normal tracking-normal whitespace-pre [font-size:calc(var(--text-cell)/1.2)] [font-variant-ligatures:none]"
+          style={{ color: ink }}
+        >
+          {lines}
+        </pre>
+      ) : null}
     </Tag>
   );
 };

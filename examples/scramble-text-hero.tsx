@@ -2,24 +2,27 @@ import { ScrambleText } from "@/components/asciicn/scramble-text";
 
 export default function ScrambleTextHero() {
   return (
-    <section className="flex w-full max-w-2xl flex-col items-center gap-4 px-6 text-center">
-      <h2 className="text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-5xl">
-        <ScrambleText mode="blocks" color="green" duration={700} stagger={26}>
-          Every frame accounted for.
-        </ScrambleText>
-      </h2>
-      <p className="text-muted-foreground max-w-md text-sm text-pretty sm:text-base">
-        <ScrambleText
-          mode="blocks"
-          color="grey"
-          delay={500}
-          duration={380}
-          stagger={6}
-        >
-          Render logs stream in as they land, so you can see what shipped and
-          when.
-        </ScrambleText>
-      </p>
-    </section>
+    <div className="flex max-w-2xl flex-col gap-4">
+      <ScrambleText
+        as="p"
+        glyphs="binary"
+        trigger="mount"
+        duration={0.3}
+        color="green"
+        className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
+      >
+        v2.0 now in beta
+      </ScrambleText>
+      <ScrambleText
+        as="h3"
+        glyphs="braille"
+        trigger="mount"
+        duration={0.7}
+        stagger={0.04}
+        className="font-display text-4xl leading-tight font-bold tracking-tight text-balance sm:text-6xl"
+      >
+        Every pixel, a character.
+      </ScrambleText>
+    </div>
   );
 }

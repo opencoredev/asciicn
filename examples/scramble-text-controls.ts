@@ -1,20 +1,24 @@
+import {
+  SCRAMBLE_GLYPH_NAMES,
+  SCRAMBLE_TRIGGERS,
+} from "@/components/asciicn/scramble-text";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
+import { color, segmented, select, slider } from "@/lib/preview-controls";
 
-// Knobs for the scramble text's main demo, shared by the page and the demo.
+// Knobs for the scramble text demo, shared by the page and the demo.
 
-export const mode = segmented({
-  default: "dither",
-  id: "mode",
-  label: "Mode",
-  options: ["dither", "blocks", "glyphs"],
+export const glyphs = select({
+  default: "katakana",
+  id: "glyphs",
+  label: "Glyphs",
+  options: SCRAMBLE_GLYPH_NAMES,
 });
 
-export const caret = segmented({
-  default: "always",
-  id: "caret",
-  label: "Caret",
-  options: ["none", "running", "always"],
+export const trigger = segmented({
+  default: "loop",
+  id: "trigger",
+  label: "Trigger",
+  options: SCRAMBLE_TRIGGERS,
 });
 
 export const tint = color({
@@ -24,25 +28,15 @@ export const tint = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const speed = slider({
-  default: 1,
-  id: "speed",
-  label: "Speed",
-  max: 2,
-  min: 0.25,
-  step: 0.25,
-  unit: "×",
-});
-
 export const stagger = slider({
-  default: 34,
+  default: 35,
   id: "stagger",
   label: "Stagger",
-  max: 90,
-  min: 0,
-  step: 2,
+  max: 120,
+  min: 10,
+  step: 5,
   unit: "ms",
 });
 
 /** Display order of the tray. */
-export const controls = [mode, caret, tint, speed, stagger];
+export const controls = [glyphs, trigger, tint, stagger];

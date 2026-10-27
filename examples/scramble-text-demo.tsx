@@ -1,55 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { ScrambleText } from "@/components/asciicn/scramble-text";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/scramble-text-controls";
 
-const USES = ["landing pages", "dashboards", "status pages", "changelogs"];
-
 export default function ScrambleTextDemo() {
-  const mode = usePreviewValue(knobs.mode);
-  const caret = usePreviewValue(knobs.caret);
+  const glyphs = usePreviewValue(knobs.glyphs);
+  const trigger = usePreviewValue(knobs.trigger);
   const color = usePreviewValue(knobs.tint);
-  const speed = usePreviewValue(knobs.speed);
   const stagger = usePreviewValue(knobs.stagger);
-  const [use, setUse] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(
-      () => setUse((value) => (value + 1) % USES.length),
-      3200
-    );
-    return () => clearInterval(timer);
-  }, []);
-
-  const shared = { color, mode, speed, stagger };
 
   return (
-    <div className="flex w-full max-w-xl flex-col items-start gap-5 px-6">
+    <div className="flex max-w-xl flex-col items-center gap-3 text-center">
       <ScrambleText
-        {...shared}
-        trigger="mount"
-        characters="abcdefghijklmnopqrstuvwxyz0123456789"
-        className="text-muted-foreground font-mono text-xs tracking-[0.16em] uppercase"
+        as="h3"
+        glyphs={glyphs}
+        trigger={trigger}
+        color={color}
+        stagger={stagger / 1000}
+        className="font-display text-3xl font-bold tracking-tight text-balance sm:text-5xl"
       >
-        Release 2.4 · Text
+        Decrypting the signal
       </ScrambleText>
-      <h2 className="text-4xl leading-[1.05] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">
-        <ScrambleText {...shared} trigger="mount" delay={160}>
-          Dither kit for
-        </ScrambleText>{" "}
-        <ScrambleText
-          {...shared}
-          trigger="mount"
-          delay={420}
-          caret={caret}
-          className="text-ascii-ink"
-        >
-          {USES[use] ?? ""}
-        </ScrambleText>
-      </h2>
+      <ScrambleText
+        as="p"
+        glyphs={glyphs}
+        trigger={trigger}
+        color={color}
+        stagger={stagger / 2000}
+        delay={0.2}
+        className="font-mono text-sm text-muted-foreground"
+      >
+        handshake ok · 2048-bit · 14 ms
+      </ScrambleText>
     </div>
   );
 }

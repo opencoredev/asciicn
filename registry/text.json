@@ -2,8 +2,8 @@
   {
     "name": "ascii-text",
     "type": "registry:component",
-    "title": "Dither text",
-    "description": "Display text whose letters are filled with a dithered gradient, noise, dots or hatching in any palette colour, kept as real, selectable text.",
+    "title": "ASCII text",
+    "description": "Display type drawn as ASCII art in any charset, with an optional decode, scan or wipe reveal, while the real text stays in the page.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -14,24 +14,10 @@
     ]
   },
   {
-    "name": "dissolve-text",
-    "type": "registry:component",
-    "title": "Dissolve text",
-    "description": "Text that dissolves in through Bayer thresholds by character, word or line, in any order, settling solid or into a dithered texture.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/dissolve-text.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/dissolve-text.tsx"
-      }
-    ]
-  },
-  {
     "name": "scramble-text",
     "type": "registry:component",
     "title": "Scramble text",
-    "description": "Text that resolves character by character through dithered blocks and glyphs, with no layout shift, on mount, in view, hover or text change.",
+    "description": "Text whose characters cycle through katakana, braille, CP437, PETSCII or symbol glyphs and settle left to right, without moving the layout.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -42,10 +28,24 @@
     ]
   },
   {
+    "name": "dissolve-text",
+    "type": "registry:component",
+    "title": "Dissolve text",
+    "description": "Text that assembles out of a glyph density ramp and dissolves back into it, one character or word at a time.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/dissolve-text.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/dissolve-text.tsx"
+      }
+    ]
+  },
+  {
     "name": "ascii-number",
     "type": "registry:component",
-    "title": "Dither number",
-    "description": "An animated number with tabular digits that roll or resolve through a dither, Intl formatting, prefix and suffix, colour and size presets.",
+    "title": "ASCII number",
+    "description": "A big number drawn in block, half-block, braille or box-drawing digits that counts to its value with tabular alignment and locale formatting.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {

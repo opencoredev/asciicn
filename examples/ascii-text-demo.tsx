@@ -5,30 +5,22 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-text-controls";
 
 export default function AsciiTextDemo() {
-  const fill = usePreviewValue(knobs.fill);
-  const direction = usePreviewValue(knobs.direction);
-  const color = usePreviewValue(knobs.tint);
-  const bloom = usePreviewValue(knobs.bloom);
+  const charset = usePreviewValue(knobs.charset);
+  const reveal = usePreviewValue(knobs.reveal);
   const cell = usePreviewValue(knobs.cell);
-  const speed = usePreviewValue(knobs.speed);
-  const shared = {
-    bloom,
-    cell,
-    color,
-    direction,
-    speed,
-  };
+  const size = usePreviewValue(knobs.size);
 
   return (
     <AsciiText
-      as="h2"
-      {...shared}
-      {...(fill === "noise" ? { fill, scale: 2.6 } : { fill })}
-      className="px-6 text-center text-6xl leading-[0.9] font-bold tracking-[-0.06em] sm:text-[5.5rem]"
+      as="h3"
+      charset={charset}
+      reveal={reveal}
+      trigger="mount"
+      cell={cell}
+      size={size}
+      className="w-full font-display font-bold"
     >
-      Signal
-      <br />
-      through noise
+      asciicn
     </AsciiText>
   );
 }

@@ -1,18 +1,18 @@
 ---
 title: "Dissolve text"
-description: "Text that dissolves in through Bayer thresholds by character, word or line, in any order, settling solid or into a dithered texture, and can dissolve back out."
+description: "Text that assembles out of a glyph density ramp and dissolves back into it, one character or word at a time."
 ---
 
 import DissolveTextDemo from "@/examples/dissolve-text-demo";
-import { controls as dissolveControls } from "@/examples/dissolve-text-controls";
-import DissolveTextWords from "@/examples/dissolve-text-words";
+import { controls as dissolveTextControls } from "@/examples/dissolve-text-controls";
 import DissolveTextCycle from "@/examples/dissolve-text-cycle";
-import DissolveTextHatched from "@/examples/dissolve-text-hatched";
+import DissolveTextWords from "@/examples/dissolve-text-words";
+import DissolveTextRamps from "@/examples/dissolve-text-ramps";
 
 <ComponentPreview
   src="examples/dissolve-text-demo.tsx"
-  size="lg"
-  controls={dissolveControls}
+  size="md"
+  controls={dissolveTextControls}
 >
   <DissolveTextDemo />
 </ComponentPreview>
@@ -26,45 +26,43 @@ import DissolveTextHatched from "@/examples/dissolve-text-hatched";
 ```tsx
 import { DissolveText } from "@/components/asciicn/dissolve-text";
 
-export function Headline() {
+export function Tagline({ visible }: { visible: boolean }) {
   return (
-    <DissolveText as="h2" accent="blue" className="text-6xl font-semibold">
-      Arrives one dot at a time
+    <DissolveText as="p" show={visible} order="center">
+      Signal resolves out of the noise floor
     </DissolveText>
   );
 }
 ```
 
-Each character is masked by a 4×4 Bayer matrix that fills in level by level, from no dots to solid, so the letters build up out of the dither. By default it plays once when the text scrolls into view, one character after another. Use the replay button on the preview to see it again.
+Each character climbs a density ramp: empty, then `·░▒▓█`, then its letter. Setting `show` to `false` runs it back down the ramp and away. Characters start `stagger` seconds apart in the `order` you pick and take `duration` seconds each, so a long line reads as a wave of glyphs.
 
-`direction` sets the order: `start` (reading order), `end`, `center` (from the middle out), `edges` (from both ends in) or `random`, a shuffle that is the same on every visit. `accent` gives each unit a colour while it arrives, fading to the text colour over twice the `duration`.
-
-`fill` sets what the letters settle into. `solid` ends as plain text. `gradient` stops at a dither level (`level`, 0.625 by default). `dotted` and `hatched` end in the style kit's textures, which suit large, heavy type.
+The ramp comes from any engine charset. `braille` fills a cell dot by dot, `quadrants` corner by corner, and the plain ramps (`standard`, `dots`, `petscii`) step through their glyphs. `chars` takes your own ramp from empty to dense.
 
 ## Examples
 
-### Hatched poster type
+### Rotating words
 
-`fill="hatched"` and `direction="center"` on a heavy display face, with the line below following from the middle out.
+Dissolve a word, swap the text, and assemble the next one by toggling `show`. Here braille fills from the centre outwards.
 
-<ComponentPreview src="examples/dissolve-text-hatched.tsx" size="lg">
-  <DissolveTextHatched />
+<ComponentPreview src="examples/dissolve-text-cycle.tsx" size="sm">
+  <DissolveTextCycle />
 </ComponentPreview>
 
 ### Word by word
 
-`by="word"` reveals whole words, which reads better for a paragraph. An 8×8 matrix with 2px cells gives a finer grain at body sizes, and the heading arrives in green.
+`by="word"` gives every letter in a word the same start, and `order="random"` picks the words out of order.
 
-<ComponentPreview src="examples/dissolve-text-words.tsx">
+<ComponentPreview src="examples/dissolve-text-words.tsx" size="sm">
   <DissolveTextWords />
 </ComponentPreview>
 
-### Dissolving out and in
+### Ramps
 
-Set `show={false}` and the text dissolves back out. Here a timer hides the word, swaps it, and shows the next one in a random order. Each letter arrives white and settles into the ink colour.
+The same word through four ramps.
 
-<ComponentPreview src="examples/dissolve-text-cycle.tsx">
-  <DissolveTextCycle />
+<ComponentPreview src="examples/dissolve-text-ramps.tsx" size="sm">
+  <DissolveTextRamps />
 </ComponentPreview>
 
 ## Props
@@ -74,7 +72,6 @@ Set `show={false}` and the text dissolves back out. Here a timer hides the word,
     {
       name: "children",
       type: "string",
-      required: true,
       description: "The text.",
     },
     {
@@ -84,98 +81,82 @@ Set `show={false}` and the text dissolves back out. Here a timer hides the word,
       description: "The element to render.",
     },
     {
-      name: "by",
-      type: '"char" | "word" | "line"',
-      default: '"char"',
-      description:
-        "Dissolve each character, each word, or the whole text at once.",
-    },
-    {
-      name: "direction",
-      type: '"start" | "end" | "center" | "edges" | "random"',
-      default: '"start"',
-      description: "The order units dissolve in.",
-    },
-    {
-      name: "trigger",
-      type: '"mount" | "in-view"',
-      default: '"in-view"',
-      description:
-        "Play when mounted, or when the text first scrolls into view.",
-    },
-    {
       name: "show",
       type: "boolean",
       default: "true",
-      description: "false dissolves the text out. true brings it back.",
-    },
-    {
-      name: "color",
-      type: "AsciiColor",
-      default: "the text colour",
-      description: "Text colour: a palette name or any CSS colour.",
-    },
-    {
-      name: "accent",
-      type: 'AsciiColor | "none"',
-      default: '"none"',
       description:
-        "Colour each unit has while it arrives, fading to the text colour.",
+        "true assembles the text out of the ramp. false dissolves it into the ramp and away.",
     },
     {
-      name: "fill",
-      type: '"solid" | "gradient" | "dotted" | "hatched"',
-      default: '"solid"',
-      description: "What the letters settle into.",
+      name: "trigger",
+      type: '"mount" | "view"',
+      default: '"view"',
+      description: "When the first assembly plays. After that, show drives it.",
     },
     {
-      name: "level",
-      type: "number",
-      default: "0.625",
-      description: "Gradient only: the coverage the letters settle at, 0 to 1.",
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description:
+        "The density ramp. blocks steps ·░▒▓█. braille and quadrants fill dot by dot.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'A custom ramp from empty to dense, such as " .:+#". Wins over charset.',
+    },
+    {
+      name: "order",
+      type: '"start" | "end" | "center" | "random"',
+      default: '"start"',
+      description: "Which characters go first.",
+    },
+    {
+      name: "by",
+      type: '"char" | "word"',
+      default: '"char"',
+      description: "Stagger by character or by whole word.",
     },
     {
       name: "duration",
       type: "number",
-      default: "600",
-      description: "Milliseconds for one character, word or line.",
+      default: "0.45",
+      description: "Seconds each character takes to cross the ramp.",
     },
     {
       name: "stagger",
       type: "number",
-      default: "28 per character, 90 per word",
-      description: "Milliseconds between one unit and the next.",
+      default: "0.03",
+      description:
+        "Seconds between one character (or word) starting and the next.",
     },
     {
       name: "delay",
       type: "number",
       default: "0",
-      description: "Milliseconds before the first unit starts.",
+      description: "Seconds to wait before starting.",
     },
     {
-      name: "speed",
-      type: "number",
-      default: "1",
-      description: "Multiplies every timing. 2 plays twice as fast.",
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "Colour of the ramp glyphs. Settled letters keep the text colour.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8"',
-      default: '"bayer4"',
-      description: "The threshold pattern the letters fill in through.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      name: "onComplete",
+      type: "() => void",
+      description: "Called when an assembly or a dissolve has finished.",
     },
   ]}
 />
 
+Other props pass through to the element.
+
 ## Notes
 
-- The text stays real text, one inline element per character or word, so it can be selected, copied and indexed. While it is dissolved out, it is hidden from assistive technology.
-- The animation is plain CSS keyframes that step a `mask-image` through the matrix's levels with an ease-out timing. A text that plays on mount needs no JavaScript to run.
-- With reduced motion turned on, the text appears and disappears instantly. A textured `fill` still applies.
-- Text waiting for `in-view` stays hidden until it scrolls into view. Without JavaScript it is shown as normal text.
+- Letters keep their slots the whole time and the ramp glyphs are painted over them, so the layout never moves while text assembles or dissolves.
+- Screen readers get the text from a visually hidden copy while `show` is true, and nothing once it has dissolved. The animated letters are `aria-hidden`.
+- The text is invisible until its first assembly, so it never flashes in before animating. With reduced motion it appears (or disappears) at once.
+- One `requestAnimationFrame` loop runs during a transition and stops when it ends. React does not re-render per frame.

@@ -1,16 +1,16 @@
 ---
-title: "Dither card"
-description: "A card with a dithered glow in a corner or along an edge and a dithered rim on its border, which can grow through the levels on hover."
+title: "ASCII card"
+description: "A card framed in box-drawing glyphs, with its title set into the top border and an optional glyph glow lighting it from an edge or a corner."
 ---
 
-import { controls as asciiCardControls } from "@/examples/ascii-card-controls";
 import AsciiCardDemo from "@/examples/ascii-card-demo";
+import { controls as asciiCardControls } from "@/examples/ascii-card-controls";
 import AsciiCardGlows from "@/examples/ascii-card-glows";
-import AsciiCardPalette from "@/examples/ascii-card-palette";
+import AsciiCardStatus from "@/examples/ascii-card-status";
 
 <ComponentPreview
   src="examples/ascii-card-demo.tsx"
-  size="lg"
+  size="md"
   controls={asciiCardControls}
 >
   <AsciiCardDemo />
@@ -20,44 +20,44 @@ import AsciiCardPalette from "@/examples/ascii-card-palette";
 
 <InstallBlock name="ascii-card" />
 
+This also installs [`ascii-box`](/docs/interface/ascii-box), which draws the frame, and [`ascii-glow`](/docs/interface/ascii-glow), which draws the glow.
+
 ## Usage
 
 ```tsx
 import { AsciiCard } from "@/components/asciicn/ascii-card";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function Revenue() {
+export function RuntimeCard() {
   return (
-    <AsciiCard glow="top-right" interactive>
-      <CardHeader>
-        <CardTitle>Monthly revenue</CardTitle>
-      </CardHeader>
-      <CardContent>$48,210</CardContent>
+    <AsciiCard title="edge-runtime" footer="31 regions" glow="top-right">
+      <p className="font-semibold">Cold starts under 40 ms</p>
     </AsciiCard>
   );
 }
 ```
 
-`AsciiCard` has the same spacing, border and colours as shadcn's `Card`, so `CardHeader`, `CardContent` and `CardFooter` fit inside it. It does not depend on them: plain markup works too.
+`AsciiCard` is an `AsciiBox` that fills its container's width, with a `title` set into the top border (`┌─ Title ─────┐`), an optional `footer` in the bottom border and a `description` line above the content. The title also names the card for screen readers.
 
-The glow is a stack of rings, each filled with a denser dither than the one below it. The rim is a wider stack masked to a band one cell wide inside the border: it is dense where the glow sits and thins out round the card, so the edge catches the light. Set `radius` if you round the card differently, so the rim follows the corners. With `interactive`, a second, larger stack switches on ring by ring when the card is hovered or something inside it has focus, so the glow grows outward through the levels.
+`glow` lights the inside of the frame with an `AsciiGlow` from an edge, a corner or any point, drawn in the glyphs of `glowCharset`. The glow sits behind the content and fills the cells inside the frame exactly.
+
+Set `interactive` on a card that holds a link or button. Hover or focus inside it turns the frame heavy and brightens the glow.
 
 ## Examples
 
-### Corners and edges
+### Glows
 
-`glow` takes any corner, or `top` and `bottom` for a wide glow along an edge. Hover each card to see it grow.
+Three interactive cards lit from different sides in braille, block and katakana glyphs. Hover one, or tab to its link.
 
-<ComponentPreview src="examples/ascii-card-glows.tsx" size="lg">
+<ComponentPreview src="examples/ascii-card-glows.tsx" size="md">
   <AsciiCardGlows />
 </ComponentPreview>
 
-### Colour and texture
+### Status panel
 
-`color` takes a palette name or any CSS colour, and `fill` changes the texture. On the left, green with blue noise and 2 pixel cells for a fine, even grain. On the right, orange with a hatched fill: every ring shares the hatching, and where the rings overlap near the edge the lines build up.
+A `double` frame with a `medium` shade shadow, a description and a count in the footer.
 
-<ComponentPreview src="examples/ascii-card-palette.tsx" size="lg">
-  <AsciiCardPalette />
+<ComponentPreview src="examples/ascii-card-status.tsx" size="md">
+  <AsciiCardStatus />
 </ComponentPreview>
 
 ## Props
@@ -65,73 +65,79 @@ The glow is a stack of rings, each filled with a denser dither than the one belo
 <PropsTable
   rows={[
     {
+      name: "title",
+      type: "ReactNode",
+      description:
+        "Set into the top border. Also names the card for screen readers.",
+    },
+    {
+      name: "description",
+      type: "ReactNode",
+      description: "A line of muted text above the content.",
+    },
+    {
+      name: "footer",
+      type: "ReactNode",
+      description: "Set into the bottom border, such as a status or a count.",
+    },
+    {
       name: "glow",
-      type: '"top-left" | "top-right" | "bottom-left" | "bottom-right" | "top" | "bottom"',
-      default: '"top-left"',
-      description: "Where the glow sits.",
+      type: 'GlowPosition | "none"',
+      default: '"none"',
+      description:
+        "Where a glyph glow lights the card from: an edge, a corner, center, or an [x, y] point from 0 to 1.",
     },
     {
-      name: "reach",
-      type: "number",
-      default: "240",
-      description: "How far the glow spreads from its origin, in pixels.",
+      name: "glowCharset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Glyphs the glow is drawn with.",
     },
     {
-      name: "strength",
-      type: "number",
-      default: "0.5",
-      description: "Densest dither level, at the origin, from 0 to 1.",
-    },
-    {
-      name: "rim",
-      type: "boolean",
-      default: "true",
-      description: "Light the border with dither, densest near the glow.",
-    },
-    {
-      name: "radius",
-      type: "number",
-      default: "14",
-      description: "Corner radius in pixels. The rim follows it.",
+      name: "glowColor",
+      type: "AsciiColor",
+      default: "color",
+      description: "Glow colour.",
     },
     {
       name: "interactive",
       type: "boolean",
       default: "false",
-      description: "Grow the glow on hover and when the card has focus inside.",
+      description:
+        "For clickable cards: hover and focus inside turn the frame heavy and brighten the glow.",
+    },
+    {
+      name: "frame",
+      type: '"light" | "heavy" | "double" | "rounded" | "ascii"',
+      default: '"light"',
+      description: "Box-drawing set for the frame.",
+    },
+    {
+      name: "activeFrame",
+      type: '"light" | "heavy" | "double" | "rounded" | "ascii"',
+      default: '"heavy"',
+      description: "The frame while an interactive card is hovered or focused.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description:
-        'Glow colour: a palette name such as "green", a CSS variable name, or any CSS colour.',
+      description: "Frame colour, and the glow's unless glowColor is set.",
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the glow. Gradient steps through dither levels; the others stack one texture and fade it by overlap.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern.",
-    },
-    {
-      name: "cell",
+      name: "padding",
       type: "number",
-      default: "3",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "1",
+      description: "Space inside the frame in rows; columns are doubled.",
     },
   ]}
 />
 
+`AsciiCard` takes every other [`AsciiBox` prop](/docs/interface/ascii-box#props) (`labelAlign`, `shadow`, `filled`, `cell`) and passes the rest to the wrapping `<div>`.
+
 ## Notes
 
-- The glow is decorative and hidden from assistive technology. The card itself is a plain `div`; make the content inside it, not the card, the link or button.
-- The hover glow only runs on devices that can hover. Keyboard users get the same effect when focus moves inside the card.
-- With reduced motion turned on, the hover glow switches on in one step instead of ring by ring.
-- The glow is static SVG, so it renders on the server and costs nothing while idle.
+- The frame and glow are `aria-hidden`. The card is a `group` named by its title.
+- The glow pauses offscreen and in hidden tabs, and holds one still frame with reduced motion.
+- The interactive frame swaps glyph sets instantly, as a terminal redraws, with no transition to tune.
+- Without `glow`, the card draws no canvas and runs no animation.

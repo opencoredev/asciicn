@@ -1,48 +1,38 @@
+import { ASCII_NUMBER_FONTS } from "@/components/asciicn/ascii-number";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
+import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
-// Knobs for the dither number's main demo, shared by the page and the demo.
+// Knobs for the ASCII number demo, shared by the page and the demo.
 
-export const effect = segmented({
-  default: "roll",
-  id: "effect",
-  label: "Effect",
-  options: ["roll", "resolve"],
+export const font = segmented({
+  default: "blocks",
+  id: "font",
+  label: "Font",
+  options: ASCII_NUMBER_FONTS,
 });
 
-export const style = segmented({
-  default: "integer",
-  id: "format",
-  label: "Format",
-  options: ["integer", "currency", "percent", "compact"],
-});
-
-export const accent = color({
+export const tint = color({
   default: "ink",
-  id: "accent",
-  label: "Accent",
+  id: "color",
+  label: "Colour",
   options: ASCII_COLOR_NAMES,
 });
 
-export const duration = slider({
-  default: 900,
-  id: "duration",
-  label: "Duration",
-  max: 1800,
-  min: 200,
-  step: 100,
-  unit: "ms",
+export const cell = slider({
+  default: 12,
+  id: "cell",
+  label: "Cell",
+  max: 20,
+  min: 6,
+  step: 1,
+  unit: "px",
 });
 
-export const stagger = slider({
-  default: 40,
-  id: "stagger",
-  label: "Stagger",
-  max: 120,
-  min: 0,
-  step: 10,
-  unit: "ms",
+export const ghost = toggle({
+  default: true,
+  id: "ghost",
+  label: "Ghost",
 });
 
 /** Display order of the tray. */
-export const controls = [effect, style, accent, duration, stagger];
+export const controls = [font, tint, cell, ghost];

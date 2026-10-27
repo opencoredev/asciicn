@@ -1,17 +1,18 @@
 ---
-title: "Dither number"
-description: "An animated number for KPI tiles and landing stats: tabular digits that roll or resolve through a dither, with Intl formatting, prefix and suffix, colour and size presets."
+title: "ASCII number"
+description: "A big number drawn in block, half-block, braille or box-drawing digits that counts to its value with tabular alignment and locale formatting."
 ---
 
 import AsciiNumberDemo from "@/examples/ascii-number-demo";
-import { controls as numberControls } from "@/examples/ascii-number-controls";
+import { controls as asciiNumberControls } from "@/examples/ascii-number-controls";
 import AsciiNumberKpis from "@/examples/ascii-number-kpis";
 import AsciiNumberLanding from "@/examples/ascii-number-landing";
+import AsciiNumberFonts from "@/examples/ascii-number-fonts";
 
 <ComponentPreview
   src="examples/ascii-number-demo.tsx"
-  size="lg"
-  controls={numberControls}
+  size="md"
+  controls={asciiNumberControls}
 >
   <AsciiNumberDemo />
 </ComponentPreview>
@@ -25,40 +26,46 @@ import AsciiNumberLanding from "@/examples/ascii-number-landing";
 ```tsx
 import { AsciiNumber } from "@/components/asciicn/ascii-number";
 
-export function Stat() {
-  return <AsciiNumber value={128406} size="xl" />;
+export function Visitors({ count }: { count: number }) {
+  return <AsciiNumber value={count} font="blocks" ghost />;
 }
 ```
 
-When the number scrolls into view, every digit moves from `from` (0 by default) to its place in `value`. Change `value` later and only the digits that differ move, left to right, `stagger` milliseconds apart. While a digit moves it takes the `accent` colour, then fades back to the number's colour as it lands.
+`AsciiNumber` formats the value with `Intl.NumberFormat`, then draws each character in a digit face built for the cell grid:
 
-There are two effects:
+- `blocks`: a 3×5 pixel face with every pixel two cells wide, so pixels come out square. Five rows tall.
+- `half`: the same face packed into half blocks (`▀▄█`), two pixel rows per cell. Three rows tall.
+- `braille`: the same face with every pixel a 2×2 patch of braille dots. Three rows tall.
+- `box`: a seven-segment face in box-drawing glyphs (`┌─┐ ├─┤ └─┘`). Three rows tall.
 
-- `roll` spins each digit on a strip, up when the value grows and down when it shrinks. The top and bottom of each digit's window dither out, so digits fade in and out of the line instead of being cut off. A place that moves by ten or more spins a full extra turn, like a mechanical counter.
-- `resolve` turns the old digit into the new one cell by cell. The two use complementary dither masks, so each cell shows one digit or the other and they never blur together.
+Every digit in a face is the same width, so columns of numbers line up. Characters a face has no glyph for, such as the letters of compact notation or a currency sign, are set as one plain glyph on the bottom row, like a unit.
 
-Digits are tabular, so the width only changes when the number of digits does. Separators, currency symbols, the `prefix` and the `suffix` keep their natural width and never move.
+When `value` changes, the number counts from what is shown to the new value with an ease-out curve. The box reserves the width of the widest value it passes through, so it never resizes mid-count.
 
 ## Examples
 
-### KPI tiles
+### KPI row
 
-A dashboard row whose values update every few seconds. `size="sm"`, a muted `suffix` through `affixClassName`, and `resolve` and `roll` side by side. The latency tile uses an orange accent.
+Three `half` numbers in `AsciiBox` frames, with a fixed-decimal percentage, a millisecond suffix and compact notation.
 
-<ComponentPreview src="examples/ascii-number-kpis.tsx" size="lg">
+<ComponentPreview src="examples/ascii-number-kpis.tsx" size="sm">
   <AsciiNumberKpis />
 </ComponentPreview>
 
-### Landing stat
+### Big counter
 
-`size="display"` scales with the viewport. A longer `duration` and `stagger` make the first roll feel heavier; after that, the counter ticks up live and only the last few digits move.
+The `box` face at a large cell with `ghost`, which draws the unlit segments of every digit faintly, as on an LCD.
 
-<ComponentPreview
-  src="examples/ascii-number-landing.tsx"
-  size="lg"
-  align="stretch"
->
+<ComponentPreview src="examples/ascii-number-landing.tsx" size="md">
   <AsciiNumberLanding />
+</ComponentPreview>
+
+### Faces and locales
+
+All four faces showing the same value with German grouping and decimals.
+
+<ComponentPreview src="examples/ascii-number-fonts.tsx" size="md">
+  <AsciiNumberFonts />
 </ComponentPreview>
 
 ## Props
@@ -68,108 +75,97 @@ A dashboard row whose values update every few seconds. `size="sm"`, a muted `suf
     {
       name: "value",
       type: "number",
-      required: true,
       description:
-        "The number to show. Change it and the digits move to the new value.",
+        "The number to show. Changing it counts from the shown value to the new one.",
     },
     {
       name: "from",
       type: "number",
       default: "0",
-      description: "Where the first run starts.",
+      description: "Where the first count starts.",
     },
     {
-      name: "format",
-      type: "Intl.NumberFormatOptions",
-      description: "Currency, percent, compact notation, decimals and so on.",
-    },
-    {
-      name: "locales",
-      type: "Intl.LocalesArgument",
-      default: "The visitor's locale",
-      description:
-        "Passed to Intl.NumberFormat. Set it when the server and client must format the same way.",
+      name: "font",
+      type: '"blocks" | "half" | "box" | "braille"',
+      default: '"blocks"',
+      description: "The digit face.",
     },
     {
       name: "prefix",
       type: "string",
-      description: 'Text before the number, such as "+".',
+      description: "Text before the number, drawn in the face where it can be.",
     },
     {
       name: "suffix",
       type: "string",
-      description: 'Text after the number, such as " ms".',
+      description: 'Text after the number, such as "%" or "ms".',
     },
     {
-      name: "affixClassName",
+      name: "locale",
       type: "string",
+      default: '"en-US"',
       description:
-        "Classes for the prefix and suffix, for example a smaller, muted unit.",
+        "A BCP 47 locale for grouping and decimals. Fixed by default so the server and the browser agree.",
     },
     {
-      name: "effect",
-      type: '"roll" | "resolve"',
-      default: '"roll"',
+      name: "format",
+      type: "Intl.NumberFormatOptions",
+      default: "{}",
       description:
-        "Digits spin on a strip, or turn into the new digit cell by cell.",
+        "Decimals, compact notation, units and anything else Intl.NumberFormat takes.",
     },
     {
-      name: "trigger",
-      type: '"mount" | "in-view"',
-      default: '"in-view"',
-      description: "Start the first run on mount, or when scrolled into view.",
-    },
-    {
-      name: "size",
-      type: '"sm" | "md" | "lg" | "xl" | "display"',
-      description:
-        "A type preset: 2xl, 4xl, 6xl, 8xl, or a fluid display size. Leave it unset to size the number with your own classes.",
-    },
-    {
-      name: "color",
-      type: "AsciiColor",
-      default: "the text colour",
-      description: "Colour of the number: a palette name or any CSS colour.",
-    },
-    {
-      name: "accent",
-      type: 'AsciiColor | "none"',
-      default: '"ink"',
-      description:
-        "Colour a digit takes while it moves, fading back as it lands.",
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "Count on the first view and on every change.",
     },
     {
       name: "duration",
       type: "number",
-      default: "900 (roll), 560 (resolve)",
-      description: "Milliseconds per change, for one digit.",
+      default: "1.4",
+      description: "Seconds a count takes.",
     },
     {
-      name: "stagger",
-      type: "number",
-      default: "40",
-      description: "Milliseconds between one digit starting and the next.",
+      name: "trigger",
+      type: '"mount" | "view"',
+      default: '"view"',
+      description: "When the first count plays.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8"',
-      default: '"bayer4"',
+      name: "ghost",
+      type: "boolean",
+      default: "false",
       description:
-        "The threshold pattern for the dithered edges and the resolve.",
+        "Draw the unlit segments of every digit faintly, as on an LCD.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "Glyph colour: a palette name, a CSS variable name or any CSS colour.",
     },
     {
       name: "cell",
       type: "number",
-      default: "font size / 30",
-      description: "Size of one dither cell in CSS pixels, at least 1.",
+      default: "--ascii-cell (12)",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "align",
+      type: '"start" | "end"',
+      default: '"end"',
+      description: "Which side the digits line up on while the width changes.",
     },
   ]}
 />
 
+Other props pass through to the wrapping `<div>`.
+
 ## Notes
 
-- The formatted value, with its prefix and suffix, is real text laid over the animation and made transparent, so it can be selected and copied and is what screen readers and search engines read. The moving digits are hidden from assistive technology. For a value that updates live, add `aria-live="polite"` yourself.
-- The number sets `line-height: 1.1` so the dithered fade has room above and below the digits. A tighter `leading-*` class works, but the fade may touch the tops of tall glyphs.
-- The server renders the final value. On the client the digits wait at `from` until the trigger fires.
-- With reduced motion turned on, the number changes instantly.
-- Only ASCII digits animate. Formats that use another numbering system show their digits without motion.
+- The formatted value is in a visually hidden span for screen readers, and the glyph art is `aria-hidden`. Screen readers read the final value, not the count. Add `aria-live="polite"` to the wrapper if changes should be announced.
+- With reduced motion, the number shows its value at once.
+- The count runs on `requestAnimationFrame` for `duration` seconds and stops. Nothing runs while the number is still.
+- Server rendering draws the `from` value (0 by default) when `animate` is on, and the final value when it is off.

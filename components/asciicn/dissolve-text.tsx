@@ -1,406 +1,338 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { CSSProperties, HTMLAttributes } from "react";
 
 import {
+  brailleChar,
   cssColor,
-  asciiMask,
-  fillTile,
-  getThresholdMap,
-  MOTION,
+  QUADRANT_GLYPHS,
+  resolveCharset,
   useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { AsciiColor, DitherMatrix } from "@/lib/ascii";
+import type { AsciiColor, CharsetName } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/** The Bayer matrices. Blue noise tiles are too large to step through in CSS. */
-export type DissolveMatrix = Exclude<DitherMatrix, "blue-noise">;
-
-/**
- * What the letters settle into.
- * `solid`: plain text. `gradient`: a dither held at `level`.
- * `dotted`, `hatched`: the style kit's textures.
+/*
+ * Each character steps through a density ramp: in from empty, up through
+ * the ramp to its densest glyph, then the letter itself; out the same way
+ * in reverse. The letters keep their slots the whole time (invisible while
+ * a ramp glyph is painted over them), so the layout never moves.
  */
-export const DISSOLVE_FILLS = [
-  "solid",
-  "gradient",
-  "dotted",
-  "hatched",
-] as const;
-export type DissolveFill = (typeof DISSOLVE_FILLS)[number];
 
-/**
- * The order units dissolve in: reading order, reversed, from the middle
- * out, from both ends in, or shuffled (the same shuffle every time).
- */
-export const DISSOLVE_ORDERS = [
-  "start",
-  "end",
-  "center",
-  "edges",
-  "random",
-] as const;
+export const DISSOLVE_ORDERS = ["start", "end", "center", "random"] as const;
+/** Which characters go first. */
 export type DissolveOrder = (typeof DISSOLVE_ORDERS)[number];
+
+export type DissolveTrigger = "mount" | "view";
 
 export type DissolveTextTag = "h1" | "h2" | "h3" | "h4" | "p" | "span" | "div";
 
-export type DissolveTextProps = Omit<
+export interface DissolveTextProps extends Omit<
   HTMLAttributes<HTMLElement>,
   "children" | "color"
-> & {
-  /** The text. Each character (or word) stays real, selectable text. */
+> {
+  /** The text. It is what screen readers, search and copy get while shown. */
   children: string;
   /** The element to render. Default `"span"`. */
   as?: DissolveTextTag;
-  /** Dissolve each character, each word, or the whole text at once. Default `"char"`. */
-  by?: "char" | "word" | "line";
-  /** The order units dissolve in. Default `"start"`. */
-  direction?: DissolveOrder;
-  /** Start on mount, or when scrolled into view. Default `"in-view"`. */
-  trigger?: "mount" | "in-view";
-  /** `false` dissolves the text out; `true` brings it back. Default `true`. */
+  /** `true` assembles the text out of the ramp, `false` dissolves it into the ramp and away. Default `true`. */
   show?: boolean;
-  /** Text colour: a palette name or any CSS colour. Default: the text colour. */
-  color?: AsciiColor;
-  /** Colour each unit has while it dissolves in, fading to `color`. `"none"` skips it. Default `"none"`. */
-  accent?: AsciiColor | "none";
-  /** What the letters settle into. Default `"solid"`. */
-  fill?: DissolveFill;
-  /** Gradient fill only: coverage the letters settle at, 0 to 1. Default 0.625. */
-  level?: number;
-  /** Milliseconds for one character, word or line. Default 600. */
+  /** When the first assembly plays. Default `"view"`. */
+  trigger?: DissolveTrigger;
+  /** The density ramp. `blocks` steps `·░▒▓█`; braille and quadrants fill dot by dot. Default `"blocks"`. */
+  charset?: CharsetName;
+  /** A custom ramp from empty to dense, such as `" .:+#"`. Wins over `charset`. */
+  chars?: string;
+  /** Which characters go first. Default `"start"`. */
+  order?: DissolveOrder;
+  /** Stagger by `char` or by whole `word`. Default `"char"`. */
+  by?: "char" | "word";
+  /** Seconds each character takes to cross the ramp. Default 0.45. */
   duration?: number;
-  /** Milliseconds between one unit and the next. Default 28 per character, 90 per word. */
+  /** Seconds between one character (or word) starting and the next. Default 0.03. */
   stagger?: number;
-  /** Milliseconds before the first unit starts. Default 0. */
+  /** Seconds to wait before starting. Default 0. */
   delay?: number;
-  /** Multiplies every timing: 2 plays twice as fast. Default 1. */
-  speed?: number;
-  /** Threshold matrix. Default `"bayer4"`. */
-  matrix?: DissolveMatrix;
-  /** Cell size in CSS pixels. Default `--ascii-cell`. */
-  cell?: number;
-};
-
-type DissolveState = "waiting" | "in" | "out";
-
-// Levels stepped through per matrix: every level of bayer2 and bayer4,
-// and every fourth of bayer8.
-const STEPS: Record<DissolveMatrix, number> = {
-  bayer2: 4,
-  bayer4: 16,
-  bayer8: 16,
-};
-
-const percent = (value: number) => `${(value * 100).toFixed(2)}%`;
-
-const svgUrl = (size: number, path: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><path d="${path}"/></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-};
-
-interface Sheet {
-  matrix: DissolveMatrix;
-  fill: DissolveFill;
-  /** Gradient: the last step, out of `STEPS[matrix]`. */
-  last: number;
+  /** Colour of the ramp glyphs. Default `"ink"`. */
+  color?: AsciiColor;
+  /** Called when an assembly or a dissolve has finished. */
+  onComplete?: () => void;
 }
 
-const sheetName = ({ matrix, fill, last }: Sheet) =>
-  `${matrix}-${fill}${fill === "gradient" ? `-${last}` : ""}`;
+const STYLES = [
+  ".acn-dis-c{position:relative}",
+  ".acn-dis-c[data-g]{color:transparent}",
+  ".acn-dis-c[data-g]::after{content:attr(data-g);position:absolute;top:0;left:50%;translate:-50% 0;color:var(--dis-ink);font-family:var(--ascii-font,ui-monospace,monospace);font-weight:400;pointer-events:none;user-select:none}",
+].join("");
 
-/**
- * The mask at step `k`: the matrix level, intersected with a texture for
- * dotted and hatched. The final solid step has no mask.
- */
-const maskAt = ({ matrix, fill, last }: Sheet, k: number) => {
-  const steps = STEPS[matrix];
-  if (fill === "dotted" || fill === "hatched") {
-    const { size, path } = fillTile(fill);
-    const texture = svgUrl(size, path);
-    return k >= steps
-      ? texture
-      : `${asciiMask(k / steps, { matrix })},${texture}`;
+type DissolveVars = CSSProperties & Record<"--dis-ink", string>;
+
+/** Braille masks filling a cell dot by dot, from the bottom left up. */
+const BRAILLE_RAMP = [0, 64, 68, 100, 228, 230, 246, 254, 255].map((mask) =>
+  brailleChar(mask)
+);
+const QUADRANT_RAMP = [0, 4, 6, 7, 15].map(
+  (mask) => QUADRANT_GLYPHS[mask] ?? " "
+);
+const DEFAULT_RAMP = [" ", "·", "░", "▒", "▓", "█"];
+
+/** The ramp from empty (index 0) to densest, for any charset. */
+const rampFor = (charset: CharsetName, chars?: string): readonly string[] => {
+  const set = resolveCharset(charset, chars);
+  if (chars === undefined && charset === "blocks") {
+    return DEFAULT_RAMP;
   }
-  if (fill === "solid" && k >= steps) {
-    return "none";
-  }
-  return asciiMask(Math.min(k, last) / steps, { matrix });
-};
-
-const sheets = new Map<string, string>();
-
-/**
- * Keyframes that step a mask through the matrix's levels with an ease-out
- * shape: level k lands at t where 1 - (1 - t)^2 = k / steps.
- */
-const keyframesFor = (sheet: Sheet) => {
-  const name = sheetName(sheet);
-  const cached = sheets.get(name);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const steps = STEPS[sheet.matrix];
-  const ks = Array.from({ length: steps + 1 }, (_, k) => k);
-  const frame = (offset: number, k: number) => {
-    const image = maskAt(sheet, k);
-    return `${percent(offset)}{-webkit-mask-image:${image};mask-image:${image}}`;
-  };
-  const offset = (k: number) => 1 - Math.sqrt(1 - k / steps);
-  const into = ks.map((k) => frame(offset(k), k));
-  const out = ks.map((k) => frame(offset(k), steps - k));
-  const css = `@keyframes dcn-dissolve-in-${name}{${into.join("")}}@keyframes dcn-dissolve-out-${name}{${out.join("")}}`;
-  sheets.set(name, css);
-  return css;
-};
-
-const BASE_CSS = `
-@keyframes dcn-dissolve-tint{from{color:var(--dissolve-accent)}}
-.dcn-dissolve [data-dissolve-unit]{
-  -webkit-mask-repeat:repeat;mask-repeat:repeat;
-  -webkit-mask-size:var(--dissolve-tile);mask-size:var(--dissolve-tile);
-  -webkit-mask-composite:source-in;mask-composite:intersect;
-  animation-duration:var(--dissolve-duration),calc(var(--dissolve-duration) * 2);
-  animation-delay:calc(var(--i, 0) * var(--dissolve-stagger) + var(--dissolve-delay));
-  animation-fill-mode:both;
-  animation-timing-function:step-end,${MOTION.ease};
-}
-.dcn-dissolve:is([data-state=in],[data-state=waiting]) [data-dissolve-unit]{animation-name:var(--dissolve-in),var(--dissolve-tint)}
-.dcn-dissolve[data-state=waiting] [data-dissolve-unit]{animation-play-state:paused}
-.dcn-dissolve[data-state=out] [data-dissolve-unit]{animation-name:var(--dissolve-out),none}
-@media (prefers-reduced-motion:reduce){
-  .dcn-dissolve [data-dissolve-unit]{animation:none}
-  .dcn-dissolve[data-state=out]{opacity:0}
-}`;
-
-const NOSCRIPT_CSS =
-  ".dcn-dissolve[data-state=waiting] [data-dissolve-unit]{animation:none}";
-
-const unitStyle = (rank: number) => {
-  const style: CSSProperties & Record<"--i", number> = { "--i": rank };
-  return style;
-};
-
-// A stable hash in [0, 1) for the shuffled order.
-const jitter = (index: number) => {
-  const s = Math.sin(index * 78.233 + 12.9898) * 43_758.5453;
-  return s - Math.floor(s);
-};
-
-/** Each unit's place in the dissolve order, by its reading index. */
-const ranks = (count: number, order: DissolveOrder): number[] => {
-  const middle = (count - 1) / 2;
-  const indices = Array.from({ length: count }, (_, index) => index);
-  switch (order) {
-    case "start": {
-      return indices;
+  switch (set.kind) {
+    case "braille": {
+      return BRAILLE_RAMP;
     }
-    case "end": {
-      return indices.map((index) => count - 1 - index);
+    case "quadrants": {
+      return QUADRANT_RAMP;
     }
-    case "center": {
-      return indices.map((index) => Math.abs(index - middle));
-    }
-    case "edges": {
-      return indices.map((index) => middle - Math.abs(index - middle));
-    }
-    case "random": {
-      const shuffled = indices.toSorted((a, b) => jitter(a) - jitter(b));
-      const rank = Array.from({ length: count }, () => 0);
-      for (const [place, index] of shuffled.entries()) {
-        rank[index] = place;
-      }
-      return rank;
+    case "ramp":
+    case "edge": {
+      return set.glyphs;
     }
     default: {
-      const _exhaustive: never = order;
-      return _exhaustive;
+      const exhaustive: never = set.kind;
+      return exhaustive;
     }
   }
 };
 
-interface RootVars {
-  sheet: Sheet;
-  by: "char" | "word" | "line";
-  accent: AsciiColor | "none";
-  color: AsciiColor | undefined;
-  cell: number | undefined;
-  delay: number;
-  duration: number;
-  speed: number;
-  stagger: number | undefined;
-}
-
-/** The custom properties the stylesheet reads, timings scaled by `speed`. */
-const rootVars = ({
-  sheet,
-  by,
-  accent,
-  color,
-  cell,
-  delay,
-  duration,
-  speed,
-  stagger,
-}: RootVars) => {
-  const name = sheetName(sheet);
-  const pace = Math.max(0.05, speed);
-  const { size } = getThresholdMap(sheet.matrix);
-  const cellSize = cell === undefined ? "var(--ascii-cell)" : `${cell}px`;
-  const vars: CSSProperties & Record<`--${string}`, string> = {
-    "--dissolve-delay": `${delay / pace}ms`,
-    "--dissolve-duration": `${duration / pace}ms`,
-    "--dissolve-in": `dcn-dissolve-in-${name}`,
-    "--dissolve-out": `dcn-dissolve-out-${name}`,
-    "--dissolve-stagger": `${(stagger ?? (by === "word" ? 90 : 28)) / pace}ms`,
-    "--dissolve-tile": `calc(${cellSize} * ${size})`,
-    "--dissolve-tint": accent === "none" ? "none" : "dcn-dissolve-tint",
-    ...(accent === "none" ? {} : { "--dissolve-accent": cssColor(accent) }),
-    ...(color === undefined ? {} : { color: cssColor(color) }),
-  };
-  return vars;
+// A float hash in [0, 1): cheap, stable for integer inputs, no bitwise maths.
+const hash = (a: number): number => {
+  const value = Math.sin(a * 127.1 + 311.7) * 43_758.5453;
+  return value - Math.floor(value);
 };
 
-interface Unit {
-  text: string;
-  index: number;
-}
-
-/** Words with their characters, numbered in reading order. */
-const splitText = (text: string, by: "char" | "word") => {
-  let index = 0;
-  return text.split(/(\s+)/u).map((part) => {
-    if (part.trim() === "") {
-      return { space: part, units: [] satisfies Unit[] };
+/** Where in the sequence each slot starts, in stagger steps. */
+const startSteps = (
+  slots: readonly { word: number }[],
+  order: DissolveOrder,
+  by: "char" | "word"
+): number[] => {
+  const keys = slots.map((slot, index) => (by === "word" ? slot.word : index));
+  const count = Math.max(0, ...keys) + 1;
+  return keys.map((key) => {
+    switch (order) {
+      case "start": {
+        return key;
+      }
+      case "end": {
+        return count - 1 - key;
+      }
+      case "center": {
+        return Math.abs(key - (count - 1) / 2);
+      }
+      case "random": {
+        return hash(key + 1) * count;
+      }
+      default: {
+        const exhaustive: never = order;
+        return exhaustive;
+      }
     }
-    const pieces = by === "char" ? [...part] : [part];
-    const units = pieces.map((piece) => {
-      const unit = { index, text: piece };
-      index += 1;
-      return unit;
-    });
-    return { space: "", units };
   });
 };
 
 /**
- * Text that dissolves in through the levels of a Bayer matrix, one
- * character, word or line at a time, in any order, and optionally back
- * out. The letters stay real text; each one is masked by a dither that
- * fills in over `duration`, settling solid, at a dither level, or into a
- * dotted or hatched texture. Under reduced motion it appears and
- * disappears instantly.
+ * Text that assembles out of a glyph density ramp (empty, `·░▒▓█`, then
+ * the letter) and dissolves back into it, one character or word at a
+ * time in the order you pick. Set `show` to play it either way.
  */
 export const DissolveText = ({
-  as: Tag = "span",
   children,
-  by = "char",
-  direction = "start",
-  trigger = "in-view",
+  as: Tag = "span",
   show = true,
-  color,
-  accent = "none",
-  fill = "solid",
-  level = 0.625,
-  duration = MOTION.slow,
-  stagger,
+  trigger = "view",
+  charset = "blocks",
+  chars,
+  order = "start",
+  by = "char",
+  duration = 0.45,
+  stagger = 0.03,
   delay = 0,
-  speed = 1,
-  matrix = "bayer4",
-  cell,
+  color = "ink",
+  onComplete,
   className,
   style,
-  ...rest
+  ...props
 }: DissolveTextProps) => {
-  const ref = useRef<HTMLElement>(null);
-  const setRef = useCallback((node: HTMLElement | null) => {
-    ref.current = node;
+  const rootRef = useRef<HTMLElement | null>(null);
+  const setRoot = useCallback((node: HTMLElement | null) => {
+    rootRef.current = node;
   }, []);
-  const inView = useInView(ref, { rootMargin: "0px 0px -8% 0px" });
-  const reducedMotion = usePrefersReducedMotion();
-  const [seen, setSeen] = useState(trigger === "mount");
+  const slotsRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const frameRef = useRef(0);
+  // What was last played, so a re-render plays nothing but new text or a new `show` does.
+  const playedRef = useRef<{ show: boolean; text: string } | null>(null);
+  const reduced = usePrefersReducedMotion();
+  const inView = useInView(rootRef, { rootMargin: "0px" });
+  const ramp = rampFor(charset, chars);
+  const rampKey = ramp.join("");
 
+  const live = useRef({ by, delay, duration, onComplete, order, stagger });
   useEffect(() => {
-    if (inView) {
-      setSeen(true);
+    live.current = { by, delay, duration, onComplete, order, stagger };
+  });
+
+  // Words for the layout and a word index per letter slot.
+  const words = children.split(/(\s+)/);
+  const slotWords: { word: number }[] = [];
+  let wordCount = 0;
+  for (const word of words) {
+    if (word === "" || /^\s+$/.test(word)) {
+      continue;
     }
-  }, [inView]);
-
-  let state: DissolveState = "in";
-  if (!show) {
-    state = "out";
-  } else if (!(seen || reducedMotion)) {
-    state = "waiting";
+    for (const _letter of word) {
+      slotWords.push({ word: wordCount });
+    }
+    wordCount += 1;
   }
+  const layoutKey = slotWords.map((slot) => slot.word).join(",");
 
-  const sheet: Sheet = {
-    fill,
-    last: Math.max(
-      1,
-      Math.min(STEPS[matrix], Math.round(level * STEPS[matrix]))
-    ),
-    matrix,
-  };
-  const rootStyle = {
-    ...rootVars({
-      accent,
-      by,
-      cell,
-      color,
-      delay,
-      duration,
-      sheet,
-      speed,
-      stagger,
-    }),
-    ...style,
-  };
+  const settle = useCallback((visible: boolean) => {
+    for (const slot of slotsRef.current) {
+      if (!slot) {
+        continue;
+      }
+      if (visible) {
+        delete slot.dataset.g;
+      } else {
+        slot.dataset.g = "";
+      }
+    }
+  }, []);
 
-  const words = by === "line" ? [] : splitText(children, by);
-  const count = words.reduce((total, word) => total + word.units.length, 0);
-  const order = ranks(count, direction);
+  const run = useCallback(
+    (assemble: boolean) => {
+      cancelAnimationFrame(frameRef.current);
+      const glyphs = [...rampKey];
+      const levels = glyphs.length;
+      const slots = slotsRef.current;
+      const { by: unit, order: sequence } = live.current;
+      const steps = startSteps(
+        layoutKey.split(",").map((word) => ({ word: Number(word) })),
+        sequence,
+        unit
+      );
+      const start = performance.now();
+      const step = (now: number) => {
+        const { delay: wait, duration: span, stagger: gap } = live.current;
+        const elapsed = (now - start) / 1000 - wait;
+        let running = false;
+        for (const [index, slot] of slots.entries()) {
+          if (!slot) {
+            continue;
+          }
+          const progress = Math.min(
+            1,
+            Math.max(0, (elapsed - (steps[index] ?? 0) * gap) / span)
+          );
+          if (progress < 1) {
+            running = true;
+          }
+          // Assemble climbs the ramp to the letter; dissolve climbs down from it.
+          const level = assemble ? progress : 1 - progress;
+          if (level >= 1) {
+            delete slot.dataset.g;
+            continue;
+          }
+          const glyph =
+            glyphs[Math.min(levels - 1, Math.floor(level * levels))] ?? "";
+          const value = glyph === " " ? "" : glyph;
+          if (slot.dataset.g !== value) {
+            slot.dataset.g = value;
+          }
+        }
+        if (running) {
+          frameRef.current = requestAnimationFrame(step);
+        } else {
+          live.current.onComplete?.();
+        }
+      };
+      step(start);
+    },
+    [rampKey, layoutKey]
+  );
+
+  // The first assembly waits for the trigger; after that `show` drives it.
+  const armed = trigger === "mount" || inView;
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimationFrame(frameRef.current);
+      settle(show);
+      playedRef.current = { show, text: children };
+      return;
+    }
+    const played = playedRef.current;
+    if (played === null && !armed) {
+      return;
+    }
+    if (played?.show === show && played.text === children) {
+      return;
+    }
+    playedRef.current = { show, text: children };
+    run(show);
+    // An interrupted transition is replayed in full by the next run.
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      playedRef.current = null;
+    };
+  }, [armed, reduced, show, run, settle, children]);
+
+  const vars: DissolveVars = { "--dis-ink": cssColor(color) };
+  let slotIndex = 0;
 
   return (
     <Tag
-      {...rest}
-      ref={setRef}
-      data-state={state}
-      aria-hidden={show ? rest["aria-hidden"] : true}
-      className={cn("dcn-dissolve", className)}
-      style={rootStyle}
+      ref={setRoot}
+      data-slot="dissolve-text"
+      data-state={show ? "shown" : "hidden"}
+      className={cn("[font-variant-ligatures:none]", className)}
+      style={{ ...vars, ...style }}
+      {...props}
     >
-      <style href="dcn-dissolve" precedence="default">
-        {BASE_CSS}
+      <style href="asciicn-dissolve-text" precedence="asciicn">
+        {STYLES}
       </style>
-      <style href={`dcn-dissolve-${sheetName(sheet)}`} precedence="default">
-        {keyframesFor(sheet)}
-      </style>
-      <noscript>
-        <style>{NOSCRIPT_CSS}</style>
-      </noscript>
-      {by === "line" ? (
-        <span data-dissolve-unit="">{children}</span>
-      ) : (
-        words.map(({ space, units }, wordIndex) =>
-          space === "" ? (
-            <span key={wordIndex} className="whitespace-nowrap">
-              {units.map((unit) => (
-                <span
-                  key={unit.index}
-                  data-dissolve-unit=""
-                  style={unitStyle(order[unit.index] ?? unit.index)}
-                >
-                  {unit.text}
-                </span>
-              ))}
+      {show ? <span className="sr-only select-none">{children}</span> : null}
+      <span aria-hidden="true">
+        {words.map((word, wordIndex) => {
+          if (word === "") {
+            return null;
+          }
+          if (/^\s+$/.test(word)) {
+            // oxlint-disable-next-line no-array-index-key -- words are positional.
+            return <span key={wordIndex}>{word}</span>;
+          }
+          return (
+            // oxlint-disable-next-line no-array-index-key -- words are positional.
+            <span key={wordIndex} className="inline-block whitespace-pre">
+              {[...word].map((letter) => {
+                const slot = slotIndex;
+                slotIndex += 1;
+                return (
+                  <span
+                    key={slot}
+                    ref={(node) => {
+                      slotsRef.current[slot] = node;
+                    }}
+                    className="acn-dis-c"
+                    // Hidden until the first assembly, so text never flashes in first.
+                    data-g=""
+                  >
+                    {letter}
+                  </span>
+                );
+              })}
             </span>
-          ) : (
-            space
-          )
-        )
-      )}
+          );
+        })}
+      </span>
     </Tag>
   );
 };

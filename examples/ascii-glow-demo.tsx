@@ -5,19 +5,19 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-glow-controls";
 
 export default function AsciiGlowDemo() {
-  const tint = usePreviewValue(knobs.tint);
   const position = usePreviewValue(knobs.position);
-  const intensity = usePreviewValue(knobs.intensity);
+  const charset = usePreviewValue(knobs.charset);
+  const color = usePreviewValue(knobs.tint);
   const radius = usePreviewValue(knobs.radius);
-  const animate = usePreviewValue(knobs.animate);
+  const intensity = usePreviewValue(knobs.intensity);
 
   return (
     <AsciiGlow
-      palette={["--ascii-paper", tint]}
       position={position}
-      intensity={intensity}
+      charset={charset}
+      color={color}
       radius={radius}
-      animate={animate}
+      intensity={intensity}
       className="absolute inset-0"
     />
   );

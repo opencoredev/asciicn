@@ -1,55 +1,42 @@
-import { BLOOMS, ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, select, slider } from "@/lib/preview-controls";
+import { ASCII_TEXT_REVEALS } from "@/components/asciicn/ascii-text";
+import { CHARSET_NAMES } from "@/lib/ascii";
+import { segmented, select, slider } from "@/lib/preview-controls";
 
-// Knobs for the dither text's main demo, shared by the page and the demo.
+// Knobs for the ASCII text demo, shared by the page and the demo.
 
-export const fill = select({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: ["gradient", "noise", "dotted", "hatched", "solid"],
+export const charset = select({
+  default: "braille",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
 });
 
-export const direction = segmented({
-  default: "down",
-  id: "direction",
-  label: "Direction",
-  options: ["down", "up", "right", "left"],
-});
-
-export const tint = color({
-  default: "ink",
-  id: "color",
-  label: "Colour",
-  options: ASCII_COLOR_NAMES,
-});
-
-export const bloom = segmented({
-  default: "off",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
+export const reveal = segmented({
+  default: "decode",
+  id: "reveal",
+  label: "Reveal",
+  options: ASCII_TEXT_REVEALS,
 });
 
 export const cell = slider({
-  default: 3,
+  default: 8,
   id: "cell",
   label: "Cell",
-  max: 6,
-  min: 2,
+  max: 14,
+  min: 5,
   step: 1,
   unit: "px",
 });
 
-export const speed = slider({
-  default: 1,
-  id: "speed",
-  label: "Speed",
-  max: 3,
-  min: 0,
-  step: 0.5,
-  unit: "×",
+export const size = slider({
+  default: 120,
+  id: "size",
+  label: "Type size",
+  max: 200,
+  min: 48,
+  step: 4,
+  unit: "px",
 });
 
 /** Display order of the tray. */
-export const controls = [fill, direction, tint, bloom, cell, speed];
+export const controls = [charset, reveal, cell, size];

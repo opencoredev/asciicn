@@ -5,28 +5,24 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/dissolve-text-controls";
 
 export default function DissolveTextDemo() {
+  const charset = usePreviewValue(knobs.charset);
+  const order = usePreviewValue(knobs.order);
   const by = usePreviewValue(knobs.by);
-  const direction = usePreviewValue(knobs.direction);
-  const fill = usePreviewValue(knobs.fill);
-  const accent = usePreviewValue(knobs.accent);
-  const cell = usePreviewValue(knobs.cell);
-  const speed = usePreviewValue(knobs.speed);
+  const duration = usePreviewValue(knobs.duration);
+  const show = usePreviewValue(knobs.show);
 
   return (
     <DissolveText
-      // Remount on a knob change so the new settings play from the start.
-      key={`${by}-${direction}-${fill}-${accent}-${cell}-${speed}`}
-      as="h2"
-      by={by}
-      direction={direction}
-      fill={fill}
-      accent={accent}
-      cell={cell}
-      speed={speed}
+      as="h3"
+      show={show}
       trigger="mount"
-      className="max-w-2xl px-6 text-center text-5xl leading-[0.95] font-bold tracking-[-0.05em] text-balance sm:text-7xl"
+      charset={charset}
+      order={order}
+      by={by}
+      duration={duration / 1000}
+      className="max-w-xl text-center font-display text-3xl font-bold tracking-tight text-balance sm:text-5xl"
     >
-      Arrives one dot at a time
+      Signal resolves out of the noise floor
     </DissolveText>
   );
 }

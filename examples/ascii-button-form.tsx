@@ -1,39 +1,44 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 
 import { AsciiButton } from "@/components/asciicn/ascii-button";
 
 export default function AsciiButtonForm() {
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    window.setTimeout(() => {
+      setSaving(false);
+      setSaved(true);
+    }, 1800);
+  };
 
   return (
-    <form
-      className="bg-background ring-border flex w-full max-w-sm flex-col gap-5 rounded-xl p-5 ring-1"
-      onSubmit={(event) => {
-        event.preventDefault();
-        setSaving(true);
-        window.setTimeout(() => setSaving(false), 1800);
-      }}
-    >
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Delete project</span>
-        <span className="text-muted-foreground text-sm text-pretty">
-          This removes acme-web, its 14 deployments and every preview URL.
+    <form onSubmit={submit} className="flex w-full max-w-sm flex-col gap-4">
+      <label className="flex flex-col gap-1.5 font-mono text-sm">
+        <span className="text-muted-foreground">Project name</span>
+        <input
+          name="project"
+          defaultValue="northwind-api"
+          autoComplete="off"
+          className="h-9 rounded-md border bg-background px-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </label>
+      <div className="flex items-center justify-end gap-4">
+        <span role="status" className="font-mono text-xs text-muted-foreground">
+          {saved ? "saved" : ""}
         </span>
-      </div>
-      <div className="flex justify-end gap-2">
-        <AsciiButton variant="outline" color="grey" size="sm">
+        <AsciiButton type="button" variant="ghost" size="sm" disabled={saving}>
           Cancel
         </AsciiButton>
-        <AsciiButton
-          type="submit"
-          color="red"
-          fill="hatched"
-          size="sm"
-          loading={saving}
-        >
-          {saving ? "Deleting" : "Delete project"}
+        <AsciiButton type="submit" size="sm" loading={saving} spinner="orbit">
+          {saving ? "Saving" : "Save"}
         </AsciiButton>
       </div>
     </form>

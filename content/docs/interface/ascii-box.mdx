@@ -1,0 +1,149 @@
+---
+title: "ASCII box"
+description: "A box-drawing frame that wraps any content and snaps to the glyph cell grid, with labels in its borders and a shade-glyph shadow."
+---
+
+import AsciiBoxDemo from "@/examples/ascii-box-demo";
+import { controls as asciiBoxControls } from "@/examples/ascii-box-controls";
+import AsciiBoxPanels from "@/examples/ascii-box-panels";
+import AsciiBoxDialog from "@/examples/ascii-box-dialog";
+import AsciiBoxFit from "@/examples/ascii-box-fit";
+
+<ComponentPreview
+  src="examples/ascii-box-demo.tsx"
+  size="md"
+  controls={asciiBoxControls}
+>
+  <AsciiBoxDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-box" />
+
+## Usage
+
+```tsx
+import { AsciiBox } from "@/components/asciicn/ascii-box";
+
+export function BuildLog() {
+  return (
+    <AsciiBox title="build #4182" footer="exit 0" frame="rounded">
+      <p>compiled 214 modules in 1.8s</p>
+    </AsciiBox>
+  );
+}
+```
+
+`AsciiBox` draws its frame as real box-drawing text in the glyph font (`--ascii-font`): one cell for each corner and each side, in `light` (`┌─┐`), `heavy` (`┏━┓`), `double` (`╔═╗`), `rounded` (`╭─╮`) or `ascii` (`+-+`). The lines run through the middle of the outer cells, so the frame looks the same at any zoom and in any theme.
+
+After it mounts, the box measures its content, rounds its own width and height up to whole cells and pins them, so every glyph of the frame sits on the cell grid and the corners meet the sides exactly. It measures again whenever the content or the space around it changes size. When rounding up would overflow its container, it rounds down instead. Before it measures, and during server rendering, the frame is already drawn and closed.
+
+By default the box is as wide as its content (`w-fit`) and never wider than its container. Pass `className="w-full"` to fill the container. `padding` is in rows, and the columns are doubled, because a glyph cell is about half as wide as it is tall.
+
+`title` and `footer` are set into the borders as text, like `┌─ build #4182 ───┐`. A `title` also names the box as a `group` for screen readers. Long labels are cut short with an ellipsis rather than breaking the frame.
+
+## Examples
+
+### Nested panels
+
+Boxes inside a box, laid out with CSS grid. Each inner box fills its grid cell with `w-full` and snaps to whole cells inside it. The gap is one cell (`var(--box-ch)`).
+
+<ComponentPreview src="examples/ascii-box-panels.tsx" size="md">
+  <AsciiBoxPanels />
+</ComponentPreview>
+
+### Dialog
+
+A `double` frame with a centred title, a `medium` shade shadow, and `filled` so it covers whatever sits behind it. The buttons are [`AsciiButton`](/docs/interface/ascii-button).
+
+<ComponentPreview src="examples/ascii-box-dialog.tsx" size="md">
+  <AsciiBoxDialog />
+</ComponentPreview>
+
+### Sizes to its content
+
+Add lines and the box grows to fit them, one whole cell at a time.
+
+<ComponentPreview src="examples/ascii-box-fit.tsx" size="md">
+  <AsciiBoxFit />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "frame",
+      type: '"light" | "heavy" | "double" | "rounded" | "ascii"',
+      default: '"light"',
+      description: "Box-drawing set for the frame.",
+    },
+    {
+      name: "title",
+      type: "ReactNode",
+      description:
+        "A label set into the top border. Also names the box for screen readers.",
+    },
+    {
+      name: "footer",
+      type: "ReactNode",
+      description: "A label set into the bottom border.",
+    },
+    {
+      name: "labelAlign",
+      type: '"start" | "center" | "end"',
+      default: '"start"',
+      description: "Where the labels sit along their border.",
+    },
+    {
+      name: "shadow",
+      type: 'boolean | "light" | "medium" | "dark"',
+      default: "false",
+      description:
+        "A drop shadow of ░, ▒ or ▓ one cell right and one row down. true is light. The box reserves the space, so the shadow never overlaps its neighbours.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "Frame colour: a palette name, a CSS variable name or any CSS colour.",
+    },
+    {
+      name: "padding",
+      type: "number",
+      default: "1",
+      description:
+        "Space between the frame and the content in rows. Columns are doubled.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description: "Cell height in CSS pixels.",
+    },
+    {
+      name: "filled",
+      type: "boolean",
+      default: "false",
+      description:
+        "Paint --ascii-paper inside the frame, so the box hides what sits behind it.",
+    },
+    {
+      name: "backdrop",
+      type: "ReactNode",
+      description:
+        "Decoration drawn inside the frame and behind the content, such as AsciiGlow. It fills the inner cells exactly.",
+    },
+  ]}
+/>
+
+Other props pass through to the wrapping `<div>`. Inside the box, `var(--box-ch)` and `var(--box-cw)` hold the cell height and width, for spacing content on the same grid.
+
+## Notes
+
+- The frame glyphs are `aria-hidden` and can't be selected, so copying the box copies only its content and labels.
+- Snapping uses a `ResizeObserver` and a `MutationObserver` on the content. Nothing runs between changes.
+- The glyph font needs box-drawing coverage for the frame to join up. The `ascii-tokens` font stack has it.
+- `AsciiCard` and other asciicn pieces are built on this box.

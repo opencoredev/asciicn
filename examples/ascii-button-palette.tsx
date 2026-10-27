@@ -1,23 +1,32 @@
-import { AsciiButton } from "@/components/asciicn/ascii-button";
-import { FILL_VARIANTS } from "@/lib/ascii";
-import type { AsciiColorName } from "@/lib/ascii";
+import {
+  ASCII_BUTTON_FRAMES,
+  ASCII_BUTTON_VARIANTS,
+  AsciiButton,
+} from "@/components/asciicn/ascii-button";
 
-const COLORS: readonly AsciiColorName[] = ["blue", "green", "orange", "pink"];
+const COLORS = ["ink", "green", "orange", "red"] as const;
 
 export default function AsciiButtonPalette() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {FILL_VARIANTS.map((fill) =>
-        COLORS.map((color) => (
-          <AsciiButton key={`${fill}-${color}`} fill={fill} color={color}>
-            {fill}
-          </AsciiButton>
-        ))
-      )}
-      {COLORS.map((color) => (
-        <AsciiButton key={`outline-${color}`} variant="outline" color={color}>
-          outline
-        </AsciiButton>
+    <div className="flex flex-col items-center gap-6">
+      {ASCII_BUTTON_VARIANTS.map((variant) => (
+        <div key={variant} className="flex flex-wrap justify-center gap-4">
+          {COLORS.map((color, index) => (
+            <AsciiButton
+              key={color}
+              variant={variant}
+              color={color}
+              frame={
+                ASCII_BUTTON_FRAMES[
+                  (index + ASCII_BUTTON_VARIANTS.indexOf(variant)) %
+                    ASCII_BUTTON_FRAMES.length
+                ]
+              }
+            >
+              {variant}
+            </AsciiButton>
+          ))}
+        </div>
       ))}
     </div>
   );
