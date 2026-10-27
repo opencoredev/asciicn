@@ -1,0 +1,157 @@
+---
+title: "ASCII marquee"
+description: "A ticker framed in box-drawing rules that steps one glyph at a time, with bullet separators, coloured price changes and an optional second row in reverse."
+---
+
+import AsciiMarqueeDemo from "@/examples/ascii-marquee-demo";
+import { controls as asciiMarqueeControls } from "@/examples/ascii-marquee-controls";
+import AsciiMarqueeDepartures from "@/examples/ascii-marquee-departures";
+import AsciiMarqueeBanner from "@/examples/ascii-marquee-banner";
+
+<ComponentPreview
+  src="examples/ascii-marquee-demo.tsx"
+  size="sm"
+  controls={asciiMarqueeControls}
+>
+  <AsciiMarqueeDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-marquee" />
+
+## Usage
+
+```tsx
+import { AsciiMarquee } from "@/components/asciicn/ascii-marquee";
+
+const quotes = [
+  { label: "GLYF", value: "182.40", change: 2.41 },
+  { label: "BRLL", value: "41.06", change: -0.87 },
+];
+
+export function Ticker() {
+  return <AsciiMarquee label="MARKETS" status="LIVE" items={quotes} />;
+}
+```
+
+An item is a string or a quote. A quote draws its `label` in bold, its `value` after it, and its `change` as `▲` or `▼` with the percentage, in `upColor` or `downColor`. A glyph bullet sits between items.
+
+The row repeats the items end to end and moves by exactly one copy's width before it loops, so the seam never shows. With `motion="step"` it moves one glyph cell at a time, like an LED board; `smooth` glides. `speed` is in characters per second either way. `secondRow` adds a row under the first, behind a tee rule, moving the other way.
+
+## Examples
+
+### Departure board
+
+Two rows of plain strings in a double frame, tinted orange by the parent's text colour, with larger 20 px cells.
+
+<ComponentPreview src="examples/ascii-marquee-departures.tsx" size="sm">
+  <AsciiMarqueeDepartures />
+</ComponentPreview>
+
+### Announcement strip
+
+`frame="none"` and `motion="smooth"` for a quiet line of release notes at the top of a page.
+
+<ComponentPreview src="examples/ascii-marquee-banner.tsx" size="sm">
+  <AsciiMarqueeBanner />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "items",
+      type: "readonly (string | AsciiMarqueeQuote)[]",
+      description:
+        "What scrolls past. A quote is { label, value?, change? }, with change in percent.",
+    },
+    {
+      name: "secondRow",
+      type: "readonly (string | AsciiMarqueeQuote)[]",
+      description: "A second row under the first, scrolling the other way.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "8",
+      description: "Characters per second.",
+    },
+    {
+      name: "direction",
+      type: '"left" | "right"',
+      default: '"left"',
+      description: "Which way the first row moves.",
+    },
+    {
+      name: "motion",
+      type: '"step" | "smooth"',
+      default: '"step"',
+      description: "Move one glyph cell at a time, or glide.",
+    },
+    {
+      name: "pauseOnHover",
+      type: "boolean",
+      default: "true",
+      description: "Hold still while the pointer is over it.",
+    },
+    {
+      name: "frame",
+      type: '"light" | "heavy" | "double" | "rounded" | "ascii" | "none"',
+      default: '"light"',
+      description: "Box-drawing set for the frame, or none.",
+    },
+    {
+      name: "label",
+      type: "string",
+      description:
+        "A label set into the top rule. Also names the ticker for screen readers.",
+    },
+    {
+      name: "status",
+      type: "string",
+      description: "A label at the right end of the top rule, such as LIVE.",
+    },
+    {
+      name: "separator",
+      type: "string",
+      default: '"◆"',
+      description: "The glyph between items.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "16",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "frameColor",
+      type: "AsciiColor",
+      default: '"grey"',
+      description: "Colour of the frame and the status label.",
+    },
+    {
+      name: "upColor",
+      type: "AsciiColor",
+      default: '"green"',
+      description: "Colour of rising changes.",
+    },
+    {
+      name: "downColor",
+      type: "AsciiColor",
+      default: '"red"',
+      description: "Colour of falling changes.",
+    },
+  ]}
+/>
+
+Other props pass through to the root `div`.
+
+## Notes
+
+- Screen readers get each item once, as a visually hidden list inside an element with `role="marquee"`. The moving copies and the frame are `aria-hidden`, and changes read as "up 2.41%" rather than as arrow glyphs.
+- The motion is a CSS animation on a transform, so it costs no JavaScript per frame. It pauses on hover, while the ticker is offscreen and while the tab is hidden.
+- With reduced motion nothing moves. Each row becomes a horizontal scroller, so every item can still be read.
+- The row measures one copy of its items after fonts load and again when it resizes, then adds copies until the track is wider than the row.
+- The label and the items take the element's text colour; set `color` or a text class on the parent to tint them.

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "glitch-text",
+    "type": "registry:component",
+    "title": "Glitch text",
+    "description": "Text that glitches in short bursts, with slices jumping sideways, letters swapped for block and box glyphs and a colour split, then snaps back clean.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/glitch-text.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/glitch-text.tsx"
+      }
+    ]
+  },
+  {
+    "name": "typewriter-text",
+    "type": "registry:component",
+    "title": "Typewriter text",
+    "description": "Terminal typing with uneven keystrokes, a block, underscore or bar cursor, an optional prompt and backspacing through a list of phrases.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/typewriter-text.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/typewriter-text.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-marquee",
+    "type": "registry:component",
+    "title": "ASCII marquee",
+    "description": "A ticker framed in box-drawing rules that steps one glyph at a time, with bullet separators, coloured price changes and an optional second row in reverse.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-marquee.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-marquee.tsx"
+      }
+    ]
+  }
+]

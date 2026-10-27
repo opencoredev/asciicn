@@ -1,0 +1,164 @@
+---
+title: "Typewriter text"
+description: "Terminal typing with uneven keystrokes, a block, underscore or bar cursor, an optional prompt and backspacing through a list of phrases."
+---
+
+import TypewriterTextDemo from "@/examples/typewriter-text-demo";
+import { controls as typewriterTextControls } from "@/examples/typewriter-text-controls";
+import TypewriterTextHero from "@/examples/typewriter-text-hero";
+import TypewriterTextBoot from "@/examples/typewriter-text-boot";
+
+<ComponentPreview
+  src="examples/typewriter-text-demo.tsx"
+  size="sm"
+  controls={typewriterTextControls}
+>
+  <TypewriterTextDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="typewriter-text" />
+
+## Usage
+
+```tsx
+import { TypewriterText } from "@/components/asciicn/typewriter-text";
+
+export function Install() {
+  return (
+    <TypewriterText
+      as="p"
+      prompt="$ "
+      phrases={["pnpm add asciicn", "pnpm dev"]}
+      className="font-mono"
+    />
+  );
+}
+```
+
+Characters land one at a time, `speed` per second on average. `jitter` makes the gaps uneven: a little longer after a space, longer still after punctuation, and now and then a short hesitation. Each finished phrase holds for `pause` seconds, then backspaces at `backspaceSpeed` and the next one starts. After the last phrase it starts over, unless `loop` is `false`.
+
+The cursor is a glyph from the glyph font: `█`, `_` or `▏`. It stays solid while keys land and blinks in steps while it waits, as a terminal cursor does.
+
+## Examples
+
+### Rotating headline
+
+One `TypewriterText` on the second line of a heading, cycling phrases behind an orange underscore cursor. The element takes the size of its longest phrase, so the heading does not reflow while it types.
+
+<ComponentPreview src="examples/typewriter-text-hero.tsx" size="sm">
+  <TypewriterTextHero />
+</ComponentPreview>
+
+### Boot log
+
+Three log lines with `loop={false}` and staggered `delay`s, then a ready line. `showCursor="typing"` shows each log line's cursor only while it types. The ready line uses `"started"`, so its cursor appears with its first key and keeps blinking.
+
+<ComponentPreview src="examples/typewriter-text-boot.tsx" size="sm">
+  <TypewriterTextBoot />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "phrases",
+      type: "readonly string[]",
+      description:
+        "The lines to type, in order. Screen readers get all of them.",
+    },
+    {
+      name: "as",
+      type: '"h1" | "h2" | "h3" | "h4" | "p" | "span" | "div"',
+      default: '"span"',
+      description: "The element to render.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "16",
+      description: "Characters typed per second, on average.",
+    },
+    {
+      name: "backspaceSpeed",
+      type: "number",
+      default: "40",
+      description: "Characters erased per second when backspacing.",
+    },
+    {
+      name: "jitter",
+      type: "number",
+      default: "0.6",
+      description: "How uneven the typing is, from 0 (even) to 1.",
+    },
+    {
+      name: "pause",
+      type: "number",
+      default: "1.8",
+      description: "Seconds to hold a typed phrase before erasing it.",
+    },
+    {
+      name: "delay",
+      type: "number",
+      default: "0.2",
+      description: "Seconds to wait before the first key.",
+    },
+    {
+      name: "backspace",
+      type: "boolean",
+      default: "true",
+      description:
+        "Erase phrases one character at a time. false clears the line at once.",
+    },
+    {
+      name: "loop",
+      type: "boolean",
+      default: "true",
+      description:
+        "Start over after the last phrase. false stops on the last phrase.",
+    },
+    {
+      name: "cursor",
+      type: '"block" | "underscore" | "bar"',
+      default: '"block"',
+      description: "Cursor shape: █, _ or ▏.",
+    },
+    {
+      name: "showCursor",
+      type: '"always" | "started" | "typing"',
+      default: '"always"',
+      description:
+        "When the cursor shows: always, from the first key on, or only while keys land.",
+    },
+    {
+      name: "prompt",
+      type: "string",
+      description:
+        'Text before the typed line that is never erased, such as "$ ".',
+    },
+    {
+      name: "cursorColor",
+      type: "AsciiColor",
+      default: '"ink"',
+      description: "Cursor colour.",
+    },
+    {
+      name: "promptColor",
+      type: "AsciiColor",
+      default: '"grey"',
+      description: "Prompt colour.",
+    },
+  ]}
+/>
+
+Other props pass through to the element.
+
+## Notes
+
+- Every phrase is laid out invisibly in the same grid cell as the typed line, so the element always takes the size of its longest phrase. Typing and erasing never move the text around it.
+- Screen readers get every phrase once, from a visually hidden copy. The typed line is `aria-hidden`, so a screen reader does not read each keystroke.
+- With reduced motion nothing types and the cursor does not blink. The text shows in full: the first phrase when `loop` is on, the last phrase when it is off.
+- Typing stops while the text is offscreen or the tab is hidden, and carries on from the same character when it comes back.
+- Changing `phrases` starts over from the first phrase.

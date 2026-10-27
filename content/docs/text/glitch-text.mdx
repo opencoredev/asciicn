@@ -1,0 +1,130 @@
+---
+title: "Glitch text"
+description: "Text that glitches in short bursts, with slices jumping sideways, letters swapped for block and box glyphs and a colour split, then snaps back clean."
+---
+
+import GlitchTextDemo from "@/examples/glitch-text-demo";
+import { controls as glitchTextControls } from "@/examples/glitch-text-controls";
+import GlitchTextHover from "@/examples/glitch-text-hover";
+import GlitchTextMeltdown from "@/examples/glitch-text-meltdown";
+
+<ComponentPreview
+  src="examples/glitch-text-demo.tsx"
+  size="md"
+  controls={glitchTextControls}
+>
+  <GlitchTextDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="glitch-text" />
+
+## Usage
+
+```tsx
+import { GlitchText } from "@/components/asciicn/glitch-text";
+
+export function Headline() {
+  return (
+    <GlitchText as="h2" intensity={0.4} className="text-5xl font-bold">
+      Signal lost
+    </GlitchText>
+  );
+}
+```
+
+A burst lasts `duration` seconds and steps through a new frame about every 55 ms. Each frame cuts the text into seven horizontal bands at random heights and shifts some of them sideways, swaps a few letters for glyphs from `glyphs`, and pulls two coloured ghosts apart behind the text. A few frames in every burst are clean, so the text flickers rather than smears. When the burst ends, the text is exactly as it was.
+
+`intensity` scales all three at once. At the default 0.35 a burst is a quick twitch: small slips, one or two swapped letters and a thin colour fringe. At 1 the bands jump half a letter or more, close to half the letters turn to blocks, and the ghosts spread wide.
+
+## Examples
+
+### Links on hover
+
+`trigger="hover"` plays one short burst each time the pointer enters a link. Box glyphs suit thin monospace labels.
+
+<ComponentPreview src="examples/glitch-text-hover.tsx" size="sm">
+  <GlitchTextHover />
+</ComponentPreview>
+
+### Full intensity
+
+An error banner at `intensity={1}` with block glyphs, a longer burst and orange and purple ghosts. The eyebrow above it runs at half strength.
+
+<ComponentPreview src="examples/glitch-text-meltdown.tsx" size="sm">
+  <GlitchTextMeltdown />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "children",
+      type: "string",
+      description: "The text. It is what screen readers, search and copy get.",
+    },
+    {
+      name: "as",
+      type: '"h1" | "h2" | "h3" | "h4" | "p" | "span" | "div"',
+      default: '"span"',
+      description: "The element to render.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "0.35",
+      description:
+        "How hard a burst hits, 0 to 1: how far slices move, how many letters swap and how far the colours split.",
+    },
+    {
+      name: "interval",
+      type: "number",
+      default: "3",
+      description:
+        "auto only: average seconds between bursts. Each wait varies by up to a third either way.",
+    },
+    {
+      name: "duration",
+      type: "number",
+      default: "0.4",
+      description: "Seconds one burst lasts.",
+    },
+    {
+      name: "trigger",
+      type: '"auto" | "hover" | "inView"',
+      default: '"auto"',
+      description:
+        "auto bursts on a timer while the text is on screen, hover once per pointer enter, inView once each time it scrolls into view.",
+    },
+    {
+      name: "glyphs",
+      type: '"mixed" | "blocks" | "box" | "shades"',
+      default: '"mixed"',
+      description: "The glyph set swapped-in letters come from.",
+    },
+    {
+      name: "characters",
+      type: "string",
+      description: "Your own glyphs to swap in. Wins over glyphs.",
+    },
+    {
+      name: "split",
+      type: "[AsciiColor, AsciiColor]",
+      default: '["red", "blue"]',
+      description:
+        "Colours of the two ghosts that split left and right during a burst.",
+    },
+  ]}
+/>
+
+Other props pass through to the element.
+
+## Notes
+
+- Screen readers get the text once, from a visually hidden copy. The visible layers are `aria-hidden`. Selecting and copying the visible text copies the real string, because swapped glyphs are drawn by CSS pseudo-elements.
+- Every effect is a transform, a clip or a pseudo-element, so the text never changes size and nothing around it moves. Slices can reach past the element's edges during a burst; give the parent `overflow: hidden` if that matters.
+- With reduced motion there are no bursts: the text shows as is.
+- `auto` stops while the text is offscreen or the tab is hidden, and the first burst comes half a second after the text appears.
+- No React render per frame. A burst sets styles on its layers directly and stops its timer when it ends.
