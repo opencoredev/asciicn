@@ -138,7 +138,7 @@ export const SCENES: readonly SceneEntry[] = [
     title: "Woven Banner",
   },
   {
-    charset: "standard",
+    charset: "braille",
     description:
       "Circuit traces growing like vines out of chips, with electrons racing along them; the pointer powers new branches.",
     id: "circuit-bloom-scene",
@@ -160,7 +160,7 @@ export const SCENES: readonly SceneEntry[] = [
         await import("@/components/asciicn/scenes/orrery-scene");
       return OrreryScene;
     },
-    renderer: "canvas",
+    renderer: "gpu",
     title: "Clockwork Orrery",
   },
   {

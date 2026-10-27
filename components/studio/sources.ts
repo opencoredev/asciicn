@@ -257,7 +257,7 @@ const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
 
 /** Each scene's own charset, so the snippet and the stage agree. */
 const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
-  "circuit-bloom-scene": { charset: "standard", colorMode: "truecolor" },
+  "circuit-bloom-scene": { charset: "braille", colorMode: "truecolor" },
   "fluid-smoke-scene": { charset: "braille", colorMode: "truecolor" },
   "hourglass-scene": { charset: "dense", colorMode: "truecolor" },
   "morphogenesis-scene": { charset: "braille", colorMode: "truecolor" },

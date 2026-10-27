@@ -138,7 +138,7 @@
     "name": "circuit-bloom-scene",
     "type": "registry:component",
     "title": "Silicon Bloom",
-    "description": "Circuit traces growing like vines out of chips, with electrons racing along them; the pointer powers new branches.",
+    "description": "A circuit board that grows itself: copper traces vine out of chip pins and electrons race along them, and the pointer powers new branches.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -153,7 +153,10 @@
     "type": "registry:component",
     "title": "Clockwork Orrery",
     "description": "A brass orrery of meshing gears driving planets on their arms; drag to spin the clockwork faster.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/scenes/orrery-scene.tsx",
