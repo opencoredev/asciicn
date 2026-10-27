@@ -2,8 +2,8 @@ import type { ComponentType } from "react";
 
 import type { CharsetName } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { SCENES } from "@/lib/scenes";
-import type { SceneRenderer } from "@/lib/scenes";
+import { CITIES } from "@/lib/cities";
+import type { CityRenderer } from "@/lib/cities";
 
 /**
  * What the home page and /scenes can put on a stage: the 12 scenes, plus a
@@ -11,7 +11,7 @@ import type { SceneRenderer } from "@/lib/scenes";
  */
 
 /** `gpu` scenes draw through WebGL2 and count against the context budget. */
-export type Renderer = SceneRenderer;
+export type Renderer = CityRenderer;
 
 export interface StageSource {
   /** Registry name, docs slug and `?source=` value. */
@@ -35,7 +35,7 @@ const pascal = (id: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-export const SCENE_SOURCES: readonly StageSource[] = SCENES.map((scene) => ({
+export const SCENE_SOURCES: readonly StageSource[] = CITIES.map((scene) => ({
   charset: scene.charset,
   description: scene.description,
   exportName: pascal(scene.id),

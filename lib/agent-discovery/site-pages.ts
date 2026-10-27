@@ -6,7 +6,7 @@ import {
   isTrustPageSlug,
   trustPageMarkdown,
 } from "@/lib/trust-pages";
-import scenes from "@/registry/scenes.json";
+import scenes from "@/registry/cities.json";
 
 /**
  * The app pages outside /docs that answer `Accept: text/markdown` (and
@@ -37,7 +37,7 @@ const isSceneItem = (value: unknown): value is SceneItem =>
   typeof value.name === "string";
 
 // Read through `unknown`: scene agents edit this fragment while the site runs.
-const SCENES: readonly SceneItem[] = (scenes as readonly unknown[]).filter(
+const CITIES: readonly SceneItem[] = (scenes as readonly unknown[]).filter(
   isSceneItem
 );
 
@@ -91,7 +91,7 @@ const sceneLine = (base: string, scene: SceneItem) => {
 
 const scenesMarkdown = (base: string) => `# ASCII scenes
 
-> ${SCENES.length} animated ASCII scenes drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}/scenes.
+> ${CITIES.length} animated ASCII scenes drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}/scenes.
 
 ${AGENT_DOCS_DIRECTIVE_MARKDOWN}
 
@@ -99,7 +99,7 @@ Every scene renders on the WebGL2 glyph shader, follows the \`--ascii-*\` theme 
 
 ## Scenes
 
-${SCENES.map((scene) => sceneLine(base, scene)).join("\n")}
+${CITIES.map((scene) => sceneLine(base, scene)).join("\n")}
 
 ## Use one
 

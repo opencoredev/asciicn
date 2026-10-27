@@ -24,7 +24,7 @@ interface ModelContextApi {
 
 const STUDIO_PATH = ROUTES.STUDIO;
 // The app pages outside /docs an agent can be sent to.
-const APP_PAGES = [ROUTES.STUDIO, ROUTES.SCENES] as const;
+const APP_PAGES = [ROUTES.STUDIO, ROUTES.BACKGROUNDS] as const;
 
 const getPath = (input: unknown, fallback: string): string => {
   if (

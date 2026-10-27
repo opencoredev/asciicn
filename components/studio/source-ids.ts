@@ -17,20 +17,18 @@ export const FIELD_SOURCE_IDS = [
   "globe-3d",
 ] as const;
 
-/** The twelve scenes, matching `lib/scenes.ts`. */
+/** The city backgrounds, matching `lib/cities.ts`. */
 export const SCENE_SOURCE_IDS = [
-  "synthwave-horizon-scene",
-  "terminal-deck-scene",
-  "sacred-torus-scene",
-  "warp-tunnel-scene",
-  "tempest-storm-scene",
-  "fluid-smoke-scene",
-  "morphogenesis-scene",
-  "murmuration-scene",
-  "woven-banner-scene",
-  "circuit-bloom-scene",
-  "orrery-scene",
-  "hourglass-scene",
+  "miami",
+  "tokyo",
+  "new-york",
+  "paris",
+  "london",
+  "dubai",
+  "san-francisco",
+  "hong-kong",
+  "rio",
+  "sydney",
 ] as const;
 
 /** Sources sampled on the CPU from pixels. */

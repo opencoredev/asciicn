@@ -10,7 +10,7 @@ export const ROUTES = {
   DOCS_ENGINE: "/docs/engine/ascii-engine",
   DOCS_EXAMPLES: "/docs/examples",
   DOCS_INSTALLATION: "/docs/installation",
-  DOCS_SCENES: "/docs/scenes",
+  DOCS_BACKGROUNDS: "/docs/backgrounds",
   DOCS_THEMING: "/docs/theming",
   DOCS_WRITE_YOUR_OWN: "/docs/engine/write-your-own",
   HOME: "/",
@@ -24,7 +24,7 @@ export const ROUTES = {
   REGISTRY: "/r/registry.json",
   ROBOTS: "/robots.txt",
   RSS: "/rss.xml",
-  SCENES: "/scenes",
+  BACKGROUNDS: "/backgrounds",
   SITEMAP: "/sitemap.xml",
   STUDIO: "/studio",
 } as const;

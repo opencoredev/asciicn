@@ -17,7 +17,7 @@ import type { LookOverrides } from "@/components/studio/state";
 import type { AudioBands } from "@/lib/ascii/audio";
 import type { AsciiLook, Interaction } from "@/lib/ascii/look";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { SCENES } from "@/lib/scenes";
+import { CITIES } from "@/lib/cities";
 
 /**
  * Props the Studio hands every component source: the look plus motion and
@@ -83,7 +83,7 @@ export type StudioSource = FieldSource | SceneSource | MediaSource;
 export const SOURCE_GROUPS = [
   { id: "backgrounds", label: "Backgrounds" },
   { id: "objects", label: "3D objects" },
-  { id: "scenes", label: "Scenes" },
+  { id: "scenes", label: "Cities" },
   { id: "media", label: "Media" },
 ] as const;
 
@@ -241,44 +241,36 @@ const pascal = (id: string) =>
     .join("");
 
 const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
-  "circuit-bloom-scene": "Circuit bloom",
-  "fluid-smoke-scene": "Smoke",
-  "hourglass-scene": "Hourglass",
-  "morphogenesis-scene": "Morphogenesis",
-  "murmuration-scene": "Murmuration",
-  "orrery-scene": "Orrery",
-  "sacred-torus-scene": "Torus knot",
-  "synthwave-horizon-scene": "Synthwave",
-  "tempest-storm-scene": "Tempest",
-  "terminal-deck-scene": "Cyberdeck",
-  "warp-tunnel-scene": "Warp tunnel",
-  "woven-banner-scene": "Woven banner",
+  dubai: "Dubai",
+  "hong-kong": "Hong Kong",
+  london: "London",
+  miami: "Miami",
+  "new-york": "New York",
+  paris: "Paris",
+  rio: "Rio de Janeiro",
+  "san-francisco": "San Francisco",
+  sydney: "Sydney",
+  tokyo: "Tokyo",
 };
 
 /** Each scene's own charset, so the snippet and the stage agree. */
 const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
-  "circuit-bloom-scene": { charset: "braille", colorMode: "truecolor" },
-  "fluid-smoke-scene": { charset: "braille", colorMode: "truecolor" },
-  "hourglass-scene": { charset: "dense", colorMode: "truecolor" },
-  "morphogenesis-scene": { charset: "braille", colorMode: "truecolor" },
-  "murmuration-scene": { charset: "braille", colorMode: "truecolor" },
-  "orrery-scene": { charset: "standard", colorMode: "truecolor" },
-  "sacred-torus-scene": { charset: "standard", colorMode: "truecolor" },
-  "synthwave-horizon-scene": { charset: "braille", colorMode: "truecolor" },
-  "tempest-storm-scene": { charset: "standard", colorMode: "truecolor" },
-  "terminal-deck-scene": {
-    cell: 14,
-    charset: "braille",
-    colorMode: "truecolor",
-  },
-  "warp-tunnel-scene": { charset: "standard", colorMode: "truecolor" },
-  "woven-banner-scene": { charset: "standard", colorMode: "truecolor" },
+  dubai: { charset: "standard", colorMode: "truecolor" },
+  "hong-kong": { charset: "standard", colorMode: "truecolor" },
+  london: { charset: "standard", colorMode: "truecolor" },
+  miami: { charset: "standard", colorMode: "truecolor" },
+  "new-york": { charset: "standard", colorMode: "truecolor" },
+  paris: { charset: "standard", colorMode: "truecolor" },
+  rio: { charset: "standard", colorMode: "truecolor" },
+  "san-francisco": { charset: "standard", colorMode: "truecolor" },
+  sydney: { charset: "standard", colorMode: "truecolor" },
+  tokyo: { charset: "standard", colorMode: "truecolor" },
 };
 
 const isSceneId = (id: string): id is SceneSourceId =>
   Object.hasOwn(SCENE_TITLES, id);
 
-const SCENE_SOURCES: readonly SceneSource[] = SCENES.flatMap((scene) =>
+const SCENE_SOURCES: readonly SceneSource[] = CITIES.flatMap((scene) =>
   isSceneId(scene.id)
     ? [
         {
