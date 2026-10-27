@@ -49,6 +49,16 @@ const MIN_COLOURS = 2;
 
 const FALLBACK_COUNT = `document.querySelectorAll('[data-catalog-capture] [class~="group/ascii"][data-state="fallback"]').length`;
 
+// The dev server's portal holds the Next.js badge and any error dialog.
+// Remove it so neither reaches a tile, and report a dialog so a build error
+// elsewhere in the app fails the capture instead of being photographed.
+const DEV_OVERLAY = `(() => {
+  const portal = document.querySelector("nextjs-portal");
+  const dialog = portal?.shadowRoot?.querySelector("[data-nextjs-dialog], [data-nextjs-dialog-overlay]");
+  portal?.remove();
+  return dialog ? "error" : "clear";
+})()`;
+
 interface Target {
   group: string;
   slug: string;
@@ -122,6 +132,10 @@ const capture = async (target: Target, theme: string, scratch: string) => {
   }
   if (browser("console").includes("shader failed to compile")) {
     throw new Error(`${url} (${theme}): a shader failed to compile`);
+  }
+
+  if (browser("eval", DEV_OVERLAY).includes("error")) {
+    throw new Error(`${url} (${theme}) shows a Next.js error overlay`);
   }
 
   const png = path.join(scratch, `${target.group}-${target.slug}-${theme}.png`);
