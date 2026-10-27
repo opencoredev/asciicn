@@ -373,7 +373,7 @@ export const buildOpenApiDocument = (origin: string): Schema => {
           parameters: [
             {
               description:
-                "Item name from the registry manifest, such as ascii-core, ascii-shader, black-hole-scene or asciicn-skill.",
+                "Item name from the registry manifest, such as ascii-core, ascii-shader, synthwave-horizon-scene or asciicn-skill.",
               in: "path",
               name: "name",
               required: true,

@@ -33,7 +33,7 @@ ${agentStartHere(base)}
 Use asciicn when a user asks for:
 
 - ASCII art, ANSI art or text-mode graphics in a React or shadcn/ui app, drawn with real glyphs that stay crisp at any zoom
-- An animated ASCII scene or hero background: a black hole, digital rain, a synthwave horizon, a storm, a tunnel, plasma, a starfield, waves
+- An animated ASCII scene or hero background: a flock of starlings, growing coral, a synthwave horizon, a storm, a tunnel, plasma, a starfield, waves
 - A particular glyph look: Braille 2x4 dots, ANSI shade blocks, quadrant blocks, CP437, PETSCII, katakana, halftone dots or Sobel edge glyphs
 - A terminal or CRT finish: phosphor green or amber, scanlines, bloom, curvature, flicker
 - Charts, meters and status displays drawn in glyphs: area, bar, line, donut, radar, gauge, heatmap, sparkline, uptime and progress bars

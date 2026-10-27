@@ -121,22 +121,6 @@ const FIELD_SOURCES: readonly FieldSource[] = [
     seeded: true,
   },
   {
-    defaults: { cell: 14, charset: "katakana", colorMode: "truecolor" },
-    group: "backgrounds",
-    hint: "Digital rain in half-width katakana",
-    id: "matrix",
-    importName: "Matrix",
-    importPath: "@/components/asciicn/matrix",
-    kind: "field",
-    label: "Matrix",
-    load: async () => {
-      const { Matrix } = await import("@/components/asciicn/matrix");
-      return Matrix;
-    },
-    registry: "matrix",
-    seeded: false,
-  },
-  {
     defaults: { cell: 12, charset: "blocks", colorMode: "truecolor" },
     group: "backgrounds",
     hint: "Interfering sine blobs",
@@ -257,33 +241,28 @@ const pascal = (id: string) =>
     .join("");
 
 const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
-  "abyssal-jellyfish-scene": "Jellyfish",
-  "black-hole-scene": "Black hole",
-  "campfire-woods-scene": "Campfire",
-  "coastal-lighthouse-scene": "Lighthouse",
-  "cyberpunk-rain-scene": "Neon rain",
+  "circuit-bloom-scene": "Circuit bloom",
   "fluid-smoke-scene": "Smoke",
-  "matrix-cathedral-scene": "Rain vault",
+  "hourglass-scene": "Hourglass",
+  "morphogenesis-scene": "Morphogenesis",
+  "murmuration-scene": "Murmuration",
+  "orrery-scene": "Orrery",
   "sacred-torus-scene": "Torus knot",
   "synthwave-horizon-scene": "Synthwave",
   "tempest-storm-scene": "Tempest",
   "terminal-deck-scene": "Cyberdeck",
   "warp-tunnel-scene": "Warp tunnel",
+  "woven-banner-scene": "Woven banner",
 };
 
 /** Each scene's own charset, so the snippet and the stage agree. */
 const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
-  "abyssal-jellyfish-scene": { charset: "standard", colorMode: "truecolor" },
-  "black-hole-scene": { charset: "braille", colorMode: "truecolor" },
-  "campfire-woods-scene": { charset: "standard", colorMode: "truecolor" },
-  "coastal-lighthouse-scene": { charset: "standard", colorMode: "truecolor" },
-  "cyberpunk-rain-scene": { charset: "katakana", colorMode: "truecolor" },
+  "circuit-bloom-scene": { charset: "standard", colorMode: "truecolor" },
   "fluid-smoke-scene": { charset: "braille", colorMode: "truecolor" },
-  "matrix-cathedral-scene": {
-    cell: 14,
-    charset: "katakana",
-    colorMode: "truecolor",
-  },
+  "hourglass-scene": { charset: "dense", colorMode: "truecolor" },
+  "morphogenesis-scene": { charset: "braille", colorMode: "truecolor" },
+  "murmuration-scene": { charset: "braille", colorMode: "truecolor" },
+  "orrery-scene": { charset: "standard", colorMode: "truecolor" },
   "sacred-torus-scene": { charset: "standard", colorMode: "truecolor" },
   "synthwave-horizon-scene": { charset: "braille", colorMode: "truecolor" },
   "tempest-storm-scene": { charset: "standard", colorMode: "truecolor" },
@@ -293,6 +272,7 @@ const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
     colorMode: "truecolor",
   },
   "warp-tunnel-scene": { charset: "standard", colorMode: "truecolor" },
+  "woven-banner-scene": { charset: "standard", colorMode: "truecolor" },
 };
 
 const isSceneId = (id: string): id is SceneSourceId =>

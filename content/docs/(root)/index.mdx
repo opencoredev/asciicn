@@ -11,7 +11,7 @@ Every component draws real glyphs: letters, block elements, Braille dots, CP437 
 
 - **The engine.** `ascii-core` installs into `lib/ascii` as plain source: charsets, palettes, cell metrics, the `AsciiGrid` canvas and `mapTones`, which turns a grid of tones into glyphs. `ascii-shader` adds `AsciiShader`, a WebGL2 renderer that draws a GLSL field as glyphs from a glyph atlas, with colour modes, pointer interaction, audio input and CRT effects. `ascii-export` saves any frame as `.txt`, `.ans`, `.svg` or `.png`, and records `.webm`.
 - **The components.** Backgrounds, charts, interface pieces, text effects, and image and video converters, each installable with `npx shadcn add`. Browse them in the [catalog](/docs/examples).
-- **The scenes.** Twelve full animated pieces, from a black hole to digital rain in a cathedral. See them in the [scenes gallery](/scenes).
+- **The scenes.** Twelve full animated pieces, from a starling murmuration to a clockwork orrery. See them in the [scenes gallery](/scenes).
 - **The Studio.** [/studio](/studio) lets you pick a scene or component, change its charset, colours and CRT effects, and export the frame or the JSX.
 - **The agent skill.** A `SKILL.md` and references that teach Claude Code, Codex, Cursor and other agents the engine: which charset suits which picture, how to write a field, where to place it on a page, how to colour it from your theme, and how to check it in a browser. [Installation](/docs/installation) adds it to your project.
 
@@ -34,7 +34,7 @@ Colour is separate from the glyph. In `mono` every glyph uses `--ascii-ink`. `tr
 | `braille`   | `⠁⠃⠇⡇⣇⣧⣷⣿`, 2x4 dots per cell       | Fine lines, charts, wireframes       |
 | `cp437`     | `·•○◘♠♣♥♦▲▼☺☻░▒▓█` from the IBM PC  | BBS and DOS screens                  |
 | `petscii`   | `╱╲─│╭╮●◆▄▌█` from the Commodore 64 | Home computer art                    |
-| `katakana`  | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits             | Digital rain                         |
+| `katakana`  | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits             | Signage, glyph streams               |
 | `dots`      | ` ·•●`                              | Halftone print                       |
 | `edge`      | `-` `/` `\|` `\` on edges           | Outlines and line drawings           |
 

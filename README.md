@@ -33,7 +33,7 @@ npx shadcn@latest add https://asciicn.dev/r/asciicn-skill.json
 This adds the engine in `lib/ascii/`, the skill in `.agents/skills/asciicn/` and `.claude/skills/asciicn/`, and the `--ascii-*` CSS variables. Any component or scene installs the same way, by URL or through the `@asciicn` namespace:
 
 ```bash
-npx shadcn@latest add https://asciicn.dev/r/black-hole-scene.json
+npx shadcn@latest add https://asciicn.dev/r/synthwave-horizon-scene.json
 npx shadcn@latest add @asciicn/plasma
 ```
 
@@ -74,15 +74,15 @@ For grids you compute in JavaScript (3D, simulations, charts, terminal panes), d
 
 ## What's in the registry
 
-| Group            | Items                                                                                                                                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Engine           | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                                                             |
-| Scenes           | cyberpunk rain, black hole, synthwave horizon, coastal lighthouse, terminal deck, sacred torus, fluid smoke, matrix cathedral, campfire woods, warp tunnel, abyssal jellyfish, tempest storm                             |
-| Backgrounds      | aurora, beams, contours, eclipse, halftone, horizon, mesh gradient, metaballs, noise field, plasma, retro grid, ridgelines, ripples, silk, smoke, starfield, tunnel, waves, matrix, nebula, prism, ionize, squall, satin |
-| Images and video | ascii-image, ascii-video, image-compare, scroll-reveal-image, ascii-logo, ascii-globe, world-land, ascii-donut, ascii-orb                                                                                                |
-| Charts           | cartesian-chart, area-chart, bar-chart, line-chart, sparkline, heatmap, donut-chart, radar-chart, gauge, uptime-bar, dot-map                                                                                             |
-| Text             | ascii-text, scramble-text, dissolve-text, ascii-number                                                                                                                                                                   |
-| Interface        | ascii-button, ascii-card, ascii-box, ascii-fade, ascii-glow, avatar, divider, empty-state, loader, logo-marquee, not-found, progress-bar, skeleton, stat-card                                                            |
+| Group            | Items                                                                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine           | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                                                     |
+| Scenes           | synthwave horizon, terminal deck, sacred torus, warp tunnel, tempest storm, fluid smoke, morphogenesis, murmuration, woven banner, circuit bloom, orrery, hourglass                                              |
+| Backgrounds      | aurora, beams, contours, eclipse, halftone, horizon, mesh gradient, metaballs, noise field, plasma, retro grid, ridgelines, ripples, silk, smoke, starfield, tunnel, waves, nebula, prism, ionize, squall, satin |
+| Images and video | ascii-image, ascii-video, image-compare, scroll-reveal-image, ascii-logo, ascii-globe, world-land, ascii-donut, ascii-orb                                                                                        |
+| Charts           | cartesian-chart, area-chart, bar-chart, line-chart, sparkline, heatmap, donut-chart, radar-chart, gauge, uptime-bar, dot-map                                                                                     |
+| Text             | ascii-text, scramble-text, dissolve-text, ascii-number                                                                                                                                                           |
+| Interface        | ascii-button, ascii-card, ascii-box, ascii-fade, ascii-glow, avatar, divider, empty-state, loader, logo-marquee, not-found, progress-bar, skeleton, stat-card                                                    |
 
 The full, current list is at [`/r/registry.json`](https://asciicn.dev/r/registry.json) and in the [catalog](https://asciicn.dev/docs/examples).
 

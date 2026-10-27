@@ -1,39 +1,5 @@
 [
   {
-    "name": "cyberpunk-rain-scene",
-    "type": "registry:component",
-    "title": "Neon Rain Metropolis",
-    "description": "A layered cyberpunk skyline in the rain: glowing katakana holograms, wet street reflections and diagonal rain streaks, with pointer parallax across the depth layers.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/cyberpunk-rain-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/cyberpunk-rain-scene.tsx"
-      }
-    ]
-  },
-  {
-    "name": "black-hole-scene",
-    "type": "registry:component",
-    "title": "Gargantua Accretion Disk",
-    "description": "A black hole bending the starfield behind it: a lensed accretion disk, a Doppler-shifted photon ring and swirling infalling matter.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/black-hole-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/black-hole-scene.tsx"
-      }
-    ]
-  },
-  {
     "name": "synthwave-horizon-scene",
     "type": "registry:component",
     "title": "Outrun Wireframe Horizon",
@@ -47,23 +13,6 @@
         "path": "components/asciicn/scenes/synthwave-horizon-scene.tsx",
         "type": "registry:component",
         "target": "components/asciicn/scenes/synthwave-horizon-scene.tsx"
-      }
-    ]
-  },
-  {
-    "name": "coastal-lighthouse-scene",
-    "type": "registry:component",
-    "title": "Midnight Lighthouse & Storm Swell",
-    "description": "A lighthouse beam sweeping through fog over a breaking procedural sea and dark cliffs.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/coastal-lighthouse-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/coastal-lighthouse-scene.tsx"
       }
     ]
   },
@@ -96,37 +45,6 @@
     ]
   },
   {
-    "name": "matrix-cathedral-scene",
-    "type": "registry:component",
-    "title": "Digital Rain Vault",
-    "description": "Perspective columns built from falling half-width katakana and hex streams, fading into depth fog.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/matrix-cathedral-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/matrix-cathedral-scene.tsx"
-      }
-    ]
-  },
-  {
-    "name": "campfire-woods-scene",
-    "type": "registry:component",
-    "title": "Ember Woods & Fireflies",
-    "description": "A campfire's rising flame and drifting sparks among pine silhouettes, with softly pulsing fireflies.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/campfire-woods-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/campfire-woods-scene.tsx"
-      }
-    ]
-  },
-  {
     "name": "warp-tunnel-scene",
     "type": "registry:component",
     "title": "Relativistic Starfield Tunnel",
@@ -140,23 +58,6 @@
         "path": "components/asciicn/scenes/warp-tunnel-scene.tsx",
         "type": "registry:component",
         "target": "components/asciicn/scenes/warp-tunnel-scene.tsx"
-      }
-    ]
-  },
-  {
-    "name": "abyssal-jellyfish-scene",
-    "type": "registry:component",
-    "title": "Bioluminescent Abyss Aquarium",
-    "description": "Jellyfish drifting with sine-driven tentacles, rising bubbles and caustic light rays in the deep.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/scenes/abyssal-jellyfish-scene.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/scenes/abyssal-jellyfish-scene.tsx"
       }
     ]
   },
@@ -188,6 +89,90 @@
         "path": "components/asciicn/scenes/fluid-smoke-scene.tsx",
         "type": "registry:component",
         "target": "components/asciicn/scenes/fluid-smoke-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "morphogenesis-scene",
+    "type": "registry:component",
+    "title": "Glyph Morphogenesis",
+    "description": "Coral, fingerprint and labyrinth patterns growing out of a reaction-diffusion field; the pointer seeds new growth.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/morphogenesis-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/morphogenesis-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "murmuration-scene",
+    "type": "registry:component",
+    "title": "Starling Murmuration",
+    "description": "Thousands of starlings flocking at dusk, folding into ribbons and spheres; the pointer is a hawk they scatter from.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/murmuration-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/murmuration-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "woven-banner-scene",
+    "type": "registry:component",
+    "title": "Woven Banner",
+    "description": "A cloth banner woven from real words, rippling and folding in the wind; push or grab it with the pointer.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/woven-banner-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/woven-banner-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "circuit-bloom-scene",
+    "type": "registry:component",
+    "title": "Silicon Bloom",
+    "description": "Circuit traces growing like vines out of chips, with electrons racing along them; the pointer powers new branches.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/circuit-bloom-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/circuit-bloom-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "orrery-scene",
+    "type": "registry:component",
+    "title": "Clockwork Orrery",
+    "description": "A brass orrery of meshing gears driving planets on their arms; drag to spin the clockwork faster.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/orrery-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/orrery-scene.tsx"
+      }
+    ]
+  },
+  {
+    "name": "hourglass-scene",
+    "type": "registry:component",
+    "title": "Falling Sand Hourglass",
+    "description": "Grains of sand pouring through an hourglass that turns itself over; the pointer tilts the glass and the sand follows.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/scenes/hourglass-scene.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/scenes/hourglass-scene.tsx"
       }
     ]
   }

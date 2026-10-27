@@ -51,7 +51,7 @@ The Studio is an interactive editor for the asciicn engine. Every control in it 
 
 ## Sources
 
-- **GPU backgrounds:** \`silk\`, \`nebula\`, \`matrix\` (digital rain), \`plasma\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
+- **GPU backgrounds:** \`silk\`, \`nebula\`, \`plasma\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
 - **The 12 scenes** from the [scenes gallery](${base}/scenes.md).
 - **Media:** a sample image, a video URL, your webcam, or text you type, sampled on the CPU into glyphs. Files and camera frames stay in the browser and never enter the URL.
 
@@ -104,11 +104,11 @@ ${SCENES.map((scene) => sceneLine(base, scene)).join("\n")}
 ## Use one
 
 \`\`\`tsx
-import { BlackHoleScene } from "@/components/asciicn/scenes/black-hole-scene";
+import { SynthwaveHorizonScene } from "@/components/asciicn/scenes/synthwave-horizon-scene";
 
 export const Hero = () => (
   <section className="relative h-[70vh]">
-    <BlackHoleScene className="absolute inset-0" charset="braille" />
+    <SynthwaveHorizonScene className="absolute inset-0" charset="braille" />
     <h1 className="relative">Your headline</h1>
   </section>
 );

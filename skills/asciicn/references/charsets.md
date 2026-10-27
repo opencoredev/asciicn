@@ -13,7 +13,7 @@ The charset decides what the picture is made of; the colour mode decides how it 
 | `braille`   | 2x4              | `⠁` to `⣿`                             | Line charts, wireframes, contours, orbits, starfields, fine 3D               | Large filled areas (looks grey)              |
 | `cp437`     | 1x1              | `·•○◘♠♣♥♦▲▼☺☻░▒▓█`                     | DOS, BBS and retro-PC moods                                                  | Corporate UI                                 |
 | `petscii`   | 1x1              | `╱╲─│╭╮●◆▄▌█`                          | Commodore 64 moods, playful retro                                            | Photos                                       |
-| `katakana`  | 1x1              | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits                | Digital rain, cyberpunk signage                                              | Anything that should read as calm            |
+| `katakana`  | 1x1              | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits                | Signage, glyph streams                                                       | Anything that should read as calm            |
 | `dots`      | 1x1              | ` ·•●`                                 | Halftone print, newsprint, soft glows                                        | Text-like art                                |
 | `edge`      | 1x1              | `- / \| \` on edges, `standard` inside | Line drawings, outlines of a photo or a 3D shape, blueprints                 | Flat fields with no edges                    |
 
@@ -50,7 +50,6 @@ Duotone ramps: `mainframe`, `sodium`, `heliograph`, `infrared`, `outrun`, `orchi
 
 | Request                               | Charset               | Colour mode                             |
 | ------------------------------------- | --------------------- | --------------------------------------- |
-| "Matrix" or digital rain              | `katakana`            | `mono` with `p1`, or `palette`          |
 | A terminal or CRT panel               | `standard` + text     | `mono` with `p1` or `p3`, `fx={CRT_FX}` |
 | A photo turned to ASCII               | `standard` or `dense` | `truecolor`, or `mono` for print        |
 | A line chart or sparkline             | `braille`             | `mono` or `palette` per series          |

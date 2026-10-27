@@ -30,7 +30,7 @@ The hero effect should be something only this product would show. Take it from t
 | Space, science, research         | An eclipse, a starfield, orbits, a particle trace                           |
 | A developer tool or API          | The product's real output in a terminal pane: its CLI, its logs, its data   |
 
-A soft glow, plasma or digital rain fits almost any product, which is why it says nothing about this one. Use one only as a supporting layer.
+A soft glow or plasma fits almost any product, which is why it says nothing about this one. Use one only as a supporting layer.
 
 ## 3. Compose the page
 

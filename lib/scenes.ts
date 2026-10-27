@@ -8,7 +8,7 @@ export type SceneRenderer = "gpu" | "canvas";
 
 /** One scene in the gallery. Site-only: the registry ships the components, not this list. */
 export interface SceneEntry {
-  /** Registry name and docs slug, such as `"black-hole-scene"`. */
+  /** Registry name and docs slug, such as `"orrery-scene"`. */
   readonly id: string;
   readonly title: string;
   readonly description: string;
@@ -23,32 +23,6 @@ export const SCENES: readonly SceneEntry[] = [
   {
     charset: "braille",
     description:
-      "A layered cyberpunk skyline in the rain: glowing katakana holograms, wet street reflections and diagonal rain streaks, with pointer parallax across the depth layers.",
-    id: "cyberpunk-rain-scene",
-    load: async () => {
-      const { CyberpunkRainScene } =
-        await import("@/components/asciicn/scenes/cyberpunk-rain-scene");
-      return CyberpunkRainScene;
-    },
-    renderer: "gpu",
-    title: "Neon Rain Metropolis",
-  },
-  {
-    charset: "braille",
-    description:
-      "A black hole bending the starfield behind it: a lensed accretion disk, a Doppler-shifted photon ring and swirling infalling matter.",
-    id: "black-hole-scene",
-    load: async () => {
-      const { BlackHoleScene } =
-        await import("@/components/asciicn/scenes/black-hole-scene");
-      return BlackHoleScene;
-    },
-    renderer: "gpu",
-    title: "Gargantua Accretion Disk",
-  },
-  {
-    charset: "braille",
-    description:
       "Scrolling wireframe mountains under a segmented retro sun, with starlight and scanlines over a perspective grid.",
     id: "synthwave-horizon-scene",
     load: async () => {
@@ -58,19 +32,6 @@ export const SCENES: readonly SceneEntry[] = [
     },
     renderer: "gpu",
     title: "Outrun Wireframe Horizon",
-  },
-  {
-    charset: "braille",
-    description:
-      "A lighthouse beam sweeping through fog over a breaking procedural sea and dark cliffs.",
-    id: "coastal-lighthouse-scene",
-    load: async () => {
-      const { CoastalLighthouseScene } =
-        await import("@/components/asciicn/scenes/coastal-lighthouse-scene");
-      return CoastalLighthouseScene;
-    },
-    renderer: "gpu",
-    title: "Midnight Lighthouse & Storm Swell",
   },
   {
     charset: "braille",
@@ -99,32 +60,6 @@ export const SCENES: readonly SceneEntry[] = [
     title: "Sacred Geometry Torus Knot",
   },
   {
-    charset: "katakana",
-    description:
-      "Perspective columns built from falling half-width katakana and hex streams, fading into depth fog.",
-    id: "matrix-cathedral-scene",
-    load: async () => {
-      const { MatrixCathedralScene } =
-        await import("@/components/asciicn/scenes/matrix-cathedral-scene");
-      return MatrixCathedralScene;
-    },
-    renderer: "canvas",
-    title: "Digital Rain Vault",
-  },
-  {
-    charset: "standard",
-    description:
-      "A campfire's rising flame and drifting sparks among pine silhouettes, with softly pulsing fireflies.",
-    id: "campfire-woods-scene",
-    load: async () => {
-      const { CampfireWoodsScene } =
-        await import("@/components/asciicn/scenes/campfire-woods-scene");
-      return CampfireWoodsScene;
-    },
-    renderer: "gpu",
-    title: "Ember Woods & Fireflies",
-  },
-  {
     charset: "standard",
     description:
       "A high-speed wormhole of radially streaking glyphs, with a vanishing point you steer with the pointer.",
@@ -136,19 +71,6 @@ export const SCENES: readonly SceneEntry[] = [
     },
     renderer: "gpu",
     title: "Relativistic Starfield Tunnel",
-  },
-  {
-    charset: "standard",
-    description:
-      "Jellyfish drifting with sine-driven tentacles, rising bubbles and caustic light rays in the deep.",
-    id: "abyssal-jellyfish-scene",
-    load: async () => {
-      const { AbyssalJellyfishScene } =
-        await import("@/components/asciicn/scenes/abyssal-jellyfish-scene");
-      return AbyssalJellyfishScene;
-    },
-    renderer: "gpu",
-    title: "Bioluminescent Abyss Aquarium",
   },
   {
     charset: "standard",
@@ -175,6 +97,84 @@ export const SCENES: readonly SceneEntry[] = [
     },
     renderer: "canvas",
     title: "Interactive Curl-Noise Plume",
+  },
+  {
+    charset: "braille",
+    description:
+      "Coral, fingerprint and labyrinth patterns growing out of a reaction-diffusion field; the pointer seeds new growth.",
+    id: "morphogenesis-scene",
+    load: async () => {
+      const { MorphogenesisScene } =
+        await import("@/components/asciicn/scenes/morphogenesis-scene");
+      return MorphogenesisScene;
+    },
+    renderer: "canvas",
+    title: "Glyph Morphogenesis",
+  },
+  {
+    charset: "braille",
+    description:
+      "Thousands of starlings flocking at dusk, folding into ribbons and spheres; the pointer is a hawk they scatter from.",
+    id: "murmuration-scene",
+    load: async () => {
+      const { MurmurationScene } =
+        await import("@/components/asciicn/scenes/murmuration-scene");
+      return MurmurationScene;
+    },
+    renderer: "canvas",
+    title: "Starling Murmuration",
+  },
+  {
+    charset: "standard",
+    description:
+      "A cloth banner woven from real words, rippling and folding in the wind; push or grab it with the pointer.",
+    id: "woven-banner-scene",
+    load: async () => {
+      const { WovenBannerScene } =
+        await import("@/components/asciicn/scenes/woven-banner-scene");
+      return WovenBannerScene;
+    },
+    renderer: "canvas",
+    title: "Woven Banner",
+  },
+  {
+    charset: "standard",
+    description:
+      "Circuit traces growing like vines out of chips, with electrons racing along them; the pointer powers new branches.",
+    id: "circuit-bloom-scene",
+    load: async () => {
+      const { CircuitBloomScene } =
+        await import("@/components/asciicn/scenes/circuit-bloom-scene");
+      return CircuitBloomScene;
+    },
+    renderer: "canvas",
+    title: "Silicon Bloom",
+  },
+  {
+    charset: "standard",
+    description:
+      "A brass orrery of meshing gears driving planets on their arms; drag to spin the clockwork faster.",
+    id: "orrery-scene",
+    load: async () => {
+      const { OrreryScene } =
+        await import("@/components/asciicn/scenes/orrery-scene");
+      return OrreryScene;
+    },
+    renderer: "canvas",
+    title: "Clockwork Orrery",
+  },
+  {
+    charset: "dense",
+    description:
+      "Grains of sand pouring through an hourglass that turns itself over; the pointer tilts the glass and the sand follows.",
+    id: "hourglass-scene",
+    load: async () => {
+      const { HourglassScene } =
+        await import("@/components/asciicn/scenes/hourglass-scene");
+      return HourglassScene;
+    },
+    renderer: "canvas",
+    title: "Falling Sand Hourglass",
   },
 ];
 

@@ -116,7 +116,7 @@ const CHARSET_NOTES = {
   dense: "Seventy levels, for smooth gradients and photos.",
   dots: "Halftone dots that grow with the tone.",
   edge: "Sobel edges draw outlines with - / | \\ and fill the rest.",
-  katakana: "Half-width katakana and digits, the digital rain set.",
+  katakana: "Half-width katakana and digits, for signage and glyph streams.",
   petscii: "Commodore 64 shapes: diagonals, corners and solids.",
   quadrants: "Four sub-cells per glyph, so edges look twice as fine.",
   standard: "Ten levels of plain ASCII. Safe in any font.",

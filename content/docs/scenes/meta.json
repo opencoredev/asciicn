@@ -2,17 +2,17 @@
   "title": "Scenes",
   "description": "Animated, interactive ASCII art scenes: live procedural worlds drawn in glyphs.",
   "pages": [
-    "cyberpunk-rain-scene",
-    "black-hole-scene",
     "synthwave-horizon-scene",
-    "coastal-lighthouse-scene",
     "terminal-deck-scene",
     "sacred-torus-scene",
-    "matrix-cathedral-scene",
-    "campfire-woods-scene",
     "warp-tunnel-scene",
-    "abyssal-jellyfish-scene",
     "tempest-storm-scene",
-    "fluid-smoke-scene"
+    "fluid-smoke-scene",
+    "morphogenesis-scene",
+    "murmuration-scene",
+    "woven-banner-scene",
+    "circuit-bloom-scene",
+    "orrery-scene",
+    "hourglass-scene"
   ]
 }

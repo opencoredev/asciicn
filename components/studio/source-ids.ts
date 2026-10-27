@@ -8,7 +8,6 @@
 export const FIELD_SOURCE_IDS = [
   "silk",
   "nebula",
-  "matrix",
   "plasma",
   "prism",
   "ionize",
@@ -20,18 +19,18 @@ export const FIELD_SOURCE_IDS = [
 
 /** The twelve scenes, matching `lib/scenes.ts`. */
 export const SCENE_SOURCE_IDS = [
-  "cyberpunk-rain-scene",
-  "black-hole-scene",
   "synthwave-horizon-scene",
-  "coastal-lighthouse-scene",
   "terminal-deck-scene",
   "sacred-torus-scene",
-  "matrix-cathedral-scene",
-  "campfire-woods-scene",
   "warp-tunnel-scene",
-  "abyssal-jellyfish-scene",
   "tempest-storm-scene",
   "fluid-smoke-scene",
+  "morphogenesis-scene",
+  "murmuration-scene",
+  "woven-banner-scene",
+  "circuit-bloom-scene",
+  "orrery-scene",
+  "hourglass-scene",
 ] as const;
 
 /** Sources sampled on the CPU from pixels. */

@@ -35,7 +35,7 @@ import { Prompt } from "@/components/terminal/prompt";
 import { useSiteOrigin } from "@/hooks/use-site-origin";
 import type { AsciiHandle } from "@/lib/ascii";
 
-const FIRST_SOURCE = "black-hole-scene";
+const FIRST_SOURCE = "synthwave-horizon-scene";
 
 const HeroSource = createContext<StageSource | null>(null);
 

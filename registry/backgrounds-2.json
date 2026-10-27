@@ -17,23 +17,6 @@
     ]
   },
   {
-    "name": "matrix",
-    "type": "registry:component",
-    "title": "Matrix",
-    "description": "Digital rain: columns of katakana falling at their own speeds, with bright heads, fading tails and glyphs that change as they fall.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/matrix.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/matrix.tsx"
-      }
-    ]
-  },
-  {
     "name": "seed-field",
     "type": "registry:component",
     "title": "Seed field",
