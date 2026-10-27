@@ -49,8 +49,8 @@ export default function EngineFieldRipples() {
   return (
     <div className="relative isolate flex size-full items-end overflow-hidden">
       <Ripples
+        charset="braille"
         palette={["--ascii-paper", "blue"]}
-        matrix="bayer8"
         className="absolute inset-0 -z-10"
       />
       <p className="text-foreground p-6 text-2xl font-medium tracking-tight text-balance">

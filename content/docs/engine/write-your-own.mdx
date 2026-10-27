@@ -1,15 +1,16 @@
 ---
-title: "Write your own dither"
-description: "Build a dithered background from scratch on AsciiShader: a tone, a shape, then motion and props."
+title: "Write your own"
+description: "Build an ASCII background from scratch on AsciiShader: a tone, a shape, then motion, props and colour."
 ---
 
 import EngineFieldTone from "@/examples/engine-field-tone";
 import EngineFieldRings from "@/examples/engine-field-rings";
 import EngineFieldRipples from "@/examples/engine-field-ripples";
+import EngineGpuColor from "@/examples/engine-gpu-color";
 
-This guide builds a dithered ripple background in three steps. You write one GLSL function, the field, and `AsciiShader` does everything else: the dots, the colours, resizing, motion and reduced motion. The same steps make any background you can describe with a little math. Your agent follows them too, through the [asciicn skill](/docs/installation).
+This guide builds an ASCII ripple background in four steps. You write one GLSL function, the field, and `AsciiShader` does the rest: picking glyphs, colouring them, resizing, motion and reduced motion. The same steps make any background you can describe with a little math. Your agent follows them too, through the [asciicn skill](/docs/installation).
 
-You need the engine installed (see [Installation](/docs/installation)) and a section with a size to put the dither in.
+You need the engine installed (see [Installation](/docs/installation)) and a section with a size to put the background in.
 
 ## Have your agent write it
 
@@ -21,7 +22,7 @@ If the engine isn't installed yet, start with the [quick start prompt](/docs/ins
 
 ## 1. Return a tone
 
-The field runs once for every cell and returns a tone from 0 to 1: 0 is paper, 1 is ink. The engine turns that tone into dots, so a field that returns the height draws a gradient from bottom to top:
+The field runs once for every sample and returns a tone from 0 to 1: 0 is an empty cell, 1 the densest glyph in the charset. A field that returns the height draws a ramp of glyphs from bottom to top:
 
 ```tsx
 "use client";
@@ -38,6 +39,7 @@ export function Ripples() {
   return (
     <AsciiShader
       field={FIELD}
+      charset="standard"
       palette={["--ascii-paper", "blue"]}
       className="absolute inset-0"
     />
@@ -53,7 +55,9 @@ export function Ripples() {
   <EngineFieldTone />
 </ComponentPreview>
 
-`uv` is the cell's position from 0 to 1 on both axes, with y pointing up. `res` is the size of the canvas in cells, and `t` is time in seconds. Return smooth values and let the engine do the dithering.
+`uv` is the sample's position from 0 to 1 on both axes, with y pointing up. `t` is time in seconds. `res.y` is the number of sample rows and `res.x / res.y` is the box's true aspect ratio, so `1.0 / res.y` is the height of one sample row.
+
+A sample is usually one cell, but not always. Braille packs 2×4 samples into each glyph and quadrants 2×2, so the same field drawn in Braille has four times the vertical detail. Write fields in `uv` and never assume one sample per glyph, and they look right in every charset.
 
 ## 2. Draw a shape
 
@@ -79,11 +83,11 @@ float field(vec2 uv, vec2 res, float t) {
   <EngineFieldRings />
 </ComponentPreview>
 
-`cos` turns distance into repeating bands, and `exp` fades them out. Every tone between 0 and 1 becomes a different dot density, which is why the rings look soft rather than drawn.
+`cos` turns distance into repeating bands, and `exp` fades them out. Every tone between 0 and 1 picks a different glyph, so the rings shade from `.` to `@` instead of having hard edges. The engine measures how much ink each glyph in the font really uses and spaces the ramp to match, so a tone of 0.5 looks half as dense as 1.
 
 ## 3. Add motion and props
 
-Three changes finish it. Noise bends the rings so they look like water, `t` moves them outwards, and uniforms turn the fixed numbers into props:
+Three changes finish the shape. Noise bends the rings so they look like water, `t` moves them outwards, and uniforms turn the fixed numbers into props:
 
 ```tsx
 "use client";
@@ -140,10 +144,52 @@ export const Ripples = ({
   <EngineFieldRipples />
 </ComponentPreview>
 
-- `fbm` is one of three helpers every field gets, with `snoise` and `hash21`. It returns soft, cloudy noise from 0 to 1.
+- `fbm` is one of the helpers every field gets, with `snoise` and `hash21`. It returns soft, cloudy noise from 0 to 1.
 - Each key in `uniforms` is declared for you: a number becomes a `float`, a pair a `vec2`. Changing a prop updates the uniform without recompiling. Prefix the names (`ripple…`) so they never clash with another field.
 - `stillTime={4}` is the moment shown when the visitor prefers reduced motion. Pick one that looks finished.
-- The rest of `AsciiShaderProps` passes through, so `palette`, `matrix`, `cell` and `speed` work on `Ripples` as they do on every example.
+- The rest of `AsciiShaderProps` passes through, so `charset`, `colorMode`, `palette`, `cell`, `fx` and `speed` work on `Ripples` as they do on every background. The preview above passes `charset="braille"`.
+
+## 4. Colour it
+
+By default glyphs take the palette's ink. To colour each glyph on its own, add a `colorField`: the same arguments as `field`, returning an sRGB colour. Setting it switches the colour mode to `truecolor`; `colorMode="ansi16"` snaps the same colours to the 16 ANSI colours instead.
+
+```glsl
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  float aspect = res.x / res.y;
+  float d = length(vec2(uv.x * aspect, uv.y) - vec2(0.5 * aspect, 0.55));
+  return toSrgb(oklch(0.78, 0.14, d * 9.0 - t * 0.4));
+}
+```
+
+<ComponentPreview src="examples/engine-gpu-color.tsx" size="md" align="stretch">
+  <EngineGpuColor />
+</ComponentPreview>
+
+`oklch(L, C, h)` returns linear RGB for a lightness, chroma and hue in radians. Hues at the same lightness look equally bright, which a plain HSV rainbow doesn't. Pass the result through `toSrgb` before returning it. `field` and `colorField` compile into one shader, so a helper defined in `field` can be called from both.
+
+## GLSL reference
+
+Fields are GLSL ES 1.00, the dialect of WebGL1, so most shader snippets you find work as written.
+
+| Name                | What it is                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `u_time`            | Seconds of motion, scaled by `speed`. The same value as `t`.                               |
+| `u_resolution`      | The same value as `res`.                                                                   |
+| `u_pointer`         | `vec3`: the pointer in `uv` (y up), and `z` from 0 to 1 while it's over the box. Smoothed. |
+| `u_pointerVelocity` | `vec2`: how fast the pointer moves, in `uv` per second.                                    |
+| `u_click`           | `vec3`: where the last press landed in `uv`, and `z` the seconds since.                    |
+| `u_audio`           | `vec4`: bass, mid, treble and level from the `audio` prop, each 0 to 1.                    |
+| `u_seed`            | The `seed` prop, for seeded variations.                                                    |
+| `hash21(p)`         | A stable random value in [0, 1) for a `vec2`.                                              |
+| `snoise(p)`         | 2D simplex noise in [-1, 1].                                                               |
+| `fbm(p)`            | Four octaves of noise in [0, 1].                                                           |
+| `spectrum(h)`       | A saturated rainbow; 0 is red and it wraps at 1.                                           |
+| `paletteColor(x)`   | The palette's inks as a ramp from 0 to 1.                                                  |
+| `oklch(L, C, h)`    | An OKLCH colour as linear RGB, `h` in radians.                                             |
+| `toSrgb(c)`         | Linear RGB to sRGB.                                                                        |
+| `aces(c)`           | The ACES filmic tone map, for colours brighter than 1.                                     |
+
+Names starting with `u_` and `ascii_` are reserved. When a field doesn't compile, the console names the line of your `field` or `colorField` that failed, and the shader shows its `fallback`.
 
 ## Put it on the page
 
@@ -151,17 +197,18 @@ export const Ripples = ({
 <section className="relative isolate overflow-hidden rounded-3xl">
   <Ripples
     className="absolute inset-0 -z-10"
+    charset="dense"
     palette={["--ascii-paper", "blue"]}
-    matrix="bayer8"
   />
   <div className="px-8 py-32">…</div>
 </section>
 ```
 
-The shader fills its positioned parent and ignores the pointer, so your content sits in a sibling on top. Keep the tone low where text sits; here `strength` caps it at 0.85, and the rings fade before they reach the edges.
+The shader fills its positioned parent and ignores pointer clicks, so your content sits in a sibling on top. Keep the tone low where text sits; here `strength` caps it at 0.85, and the rings fade before they reach the edges.
 
 ## Where to go next
 
-- [Dither engine](/docs/engine/ascii-engine) covers matrices and levels, and the static fills for charts and blocks.
-- [Palettes](/docs/engine/palettes) covers colour, including a `colorField` that colours the dots on its own, for rainbows and a hue per shape. [Pixel scale](/docs/engine/pixel-scale) and [Motion](/docs/engine/motion) cover the other shared props.
-- The examples in the [catalog](/docs/examples) are all built this way. Open any background's source for a field to start from.
+- [Charsets](/docs/engine/charsets) and [Colour modes](/docs/engine/color-modes) cover every glyph set and colour mapping a field can use.
+- [Post effects](/docs/engine/post-effects) adds the CRT finish, pointer interaction and audio input.
+- [Motion](/docs/engine/motion) and [Performance](/docs/engine/performance) cover pausing, reduced motion and what a shader costs.
+- Every background in the [catalog](/docs/examples) is built this way. Open any background's source for a field to start from.

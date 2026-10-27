@@ -1,42 +1,51 @@
 ---
 title: "Performance"
-description: "What a dither costs to draw, and how ascii-core keeps a page of them cheap."
+description: "What an ASCII renderer costs to draw, and how the engine keeps a page of them cheap."
 ---
 
-Dithers look heavy and draw light. Each technique has a predictable cost, and the expensive parts happen once.
+Glyphs look heavy and draw light. Each renderer has a predictable cost, and the expensive parts happen once.
 
-## What each technique costs
+## What each renderer costs
 
-| Technique                        | Cost                                                                                                                    |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `AsciiShader`                    | One draw call per frame, at one pixel per cell, capped at 30 fps. No allocations per frame.                             |
-| `AsciiPattern`, `asciiMaskStyle` | One small SVG, built once per level and matrix and cached. No JavaScript after the first paint.                         |
-| `ditherImage`                    | One pass over the image, with no DOM. Error diffusion visits every pixel in order, so run large images in a Web Worker. |
+| Renderer      | Cost                                                                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AsciiShader` | Three small GPU passes per frame (field, cells, glyphs), plus two tiny blur passes with bloom. Capped at 30 fps by default. No allocations per frame. |
+| `AsciiGrid`   | Your `draw` function, then one glyph per non-empty cell on a 2D canvas. Cost grows with the number of cells.                                          |
+| `AsciiPre`    | Server-rendered text. No JavaScript at all.                                                                                                           |
 
-A full-width hero at 3px cells shades about 110,000 pixels a frame. A 1080p video frame is two million.
+## How the shader spends a frame
+
+1. **Field.** Your GLSL runs once per sample: one per cell for ramps, four for quadrants, eight for Braille. A 1440×900 box at 12px cells is about 200 columns by 75 rows, so 15,000 samples for ramps and 120,000 for Braille. That's tiny for any GPU.
+2. **Cells.** One fragment per cell reads its samples and picks a glyph and a colour. Sobel edges read nine.
+3. **Glyphs.** One fragment per device pixel reads its cell and one texel of the glyph atlas. This is the only pass that scales with screen resolution, and it does almost no maths.
+
+Your field is the part to watch. It runs per sample, so a field with a 64-step raymarch costs 64 times a simple one, and Braille multiplies that by eight. Expensive scenes look best in ramp charsets at larger cells anyway.
+
+## Crisp at any DPR
+
+The glyph atlas is drawn at the exact device size of one cell, and cells are whole device pixels, so every glyph lands pixel for pixel on the screen with no scaling. Block, shade, quadrant, Braille and box-drawing glyphs are drawn as shapes rather than font text, so they tile without seams.
+
+The canvas renders at the device pixel ratio, up to 3. Above about 8.3 million device pixels (a 1440×900 box at DPR 3 is 11.7 million) it drops to DPR 2, which keeps 60 fps within reach on integrated GPUs.
 
 ## Pausing
 
-A shader stops drawing when it scrolls out of view or the tab is hidden, and holds a still frame under reduced motion. Its uniforms can still change while paused, and it redraws once when they do.
+A shader stops drawing when it scrolls out of view or the tab is hidden, and holds a still frame under reduced motion. Its props can still change while paused, and it redraws once when they do. Charset, colour, theme and effect changes never recompile the shader; only a new `field`, `colorField` or uniform name does.
 
 ## The WebGL context budget
 
-Browsers cap how many WebGL contexts a page can hold. Chrome drops the oldest past 16, and phones can run out of GPU memory sooner. `ascii-core` shares a budget between every `AsciiShader` on the page:
+Browsers cap how many WebGL contexts a page can hold. Chrome drops the oldest past 16, and phones can run out of GPU memory sooner. The engine shares a budget between every `AsciiShader` on the page:
 
 - A shader holds a context only while it is within 200px of the viewport. Further away, it releases the context and shows its `fallback`.
-- At most 8 contexts are live at once (`MAX_LIVE_CONTEXTS`). When a ninth shader comes on screen, it takes the context of one just outside the viewport. It never takes one from a shader that is still on screen, so scrolling doesn't make visible dithers flicker; it waits for the next free context instead.
+- At most 8 contexts are live at once (`MAX_LIVE_CONTEXTS`). When a ninth shader comes on screen, it takes the context of one just outside the viewport. It never takes one from a shader that is still on screen, so scrolling doesn't make visible backgrounds flicker; it waits for the next free context instead.
 - When a shader scrolls back, it gets a fresh context and fades its canvas in over the fallback.
+- If the GPU drops a context (a driver reset, a backgrounded phone), the shader rebuilds everything when the browser restores it.
 
-So a long docs page with a dozen backgrounds keeps at most 8 contexts, and normally only the two or three on screen. Give each shader a `fallback` that resembles it, such as the CSS gradient `AsciiGradient` uses, and a released one is hard to spot.
+So a long docs page with a dozen backgrounds keeps at most 8 contexts, and normally only the two or three on screen. Give each shader a `fallback` that resembles it, such as a CSS gradient in its colours, and a released one is hard to spot.
 
 ## Galleries and thumbnails
 
-A grid of 30 live backgrounds would spend its budget on the first 8. For catalog pages and galleries, show a static image or a `asciiMaskStyle` composition instead, and mount the live shader on the detail page. The docs on this site do the same: each preview mounts its demo only when it nears the viewport.
+A grid of 30 live backgrounds would spend its budget on the first 8. For catalog pages and galleries, show a static image or an `AsciiPre` capture instead, and mount the live shader on the detail page. The docs on this site do the same: each preview mounts its demo only when it nears the viewport.
 
-## Images
+## Capture
 
-`ditherImage` is synchronous. A 512×512 image takes 10 to 30 ms; a 4K photo, 32 times the pixels, can block the main thread for half a second or more. Dither at the size you display, after scaling the image down to one pixel per cell, and move larger jobs to a Web Worker. The function is pure and has no DOM dependency beyond `ImageData`, so the same import works there.
-
-## Blue noise in masks
-
-The blue-noise tile is 64×64 cells, against 4×4 for `bayer4`. Its SVG mask is correspondingly larger, 15 to 20 KB per level against about 100 bytes. Use it in shaders freely, where it is a single texture. For CSS masks, prefer a Bayer matrix unless you need only a level or two.
+`handle.current.capture()` reads back eight bytes per cell (glyph and colour), not the whole canvas, so exporting a frame as text or ANSI is cheap enough to do on every click. It returns exactly the glyphs on screen.

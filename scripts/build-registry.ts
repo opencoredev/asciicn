@@ -47,7 +47,9 @@ const FORBIDDEN_IMPORTS = [
 // Modules that belong to the ascii-shader item rather than ascii-core.
 const GPU_MODULES: readonly string[] = [
   "@/lib/ascii/shader",
+  "@/lib/ascii/gpu",
   "@/lib/ascii/glsl",
+  "@/lib/ascii/audio",
   "@/lib/ascii/seed",
 ];
 

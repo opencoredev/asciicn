@@ -19,6 +19,7 @@ export default function EngineFieldRings() {
   return (
     <AsciiShader
       field={FIELD}
+      charset="dense"
       animate={false}
       palette={["--ascii-paper", "blue"]}
       className="absolute inset-0"

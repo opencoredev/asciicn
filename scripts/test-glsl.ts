@@ -1,9 +1,26 @@
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 
-import { withoutSharedHelpers } from "../lib/ascii/glsl";
+import { createJiti } from "jiti";
+
+import type * as AtlasModule from "../lib/ascii/atlas";
+import {
+  describeCompileLog,
+  fieldShader,
+  withoutSharedHelpers,
+} from "../lib/ascii/glsl";
+
+// atlas.ts imports through the `@/` alias, which plain jiti doesn't know.
+const root = fileURLToPath(new URL("..", import.meta.url));
+const jiti = createJiti(import.meta.url, { alias: { "@/": root } });
+const { rampLevel, rampPositions } = await jiti.import<typeof AtlasModule>(
+  "../lib/ascii/atlas.ts"
+);
 
 // `field` and `colorField` compile into one shader. These cases pin down
-// which definitions the engine may drop from `colorField` as duplicates.
+// which definitions the engine may drop from `colorField` as duplicates,
+// how compile errors point back at the caller's code, and the ramp
+// mapping the GPU shares with `mapTones`.
 // Run with `pnpm test`.
 
 const cases: [string, () => void][] = [];
@@ -124,6 +141,70 @@ test("ends line comments at a carriage return", () => {
     withoutSharedHelpers("float q(){return 1.0;}", `// note\r${COLOR}`),
     COLOR
   );
+});
+
+test("even ramp positions match the mapTones rule", () => {
+  for (const count of [2, 4, 10, 70]) {
+    const positions = rampPositions(() => 0, count);
+    for (let step = 0; step <= 200; step += 1) {
+      const tone = step / 200;
+      for (const cut of [0.5, 0.1, 0.9]) {
+        // Float32 positions may round differently exactly on a boundary.
+        const level = tone * (count - 1) + cut;
+        if (Math.abs(level - Math.round(level)) < 1e-4) {
+          continue;
+        }
+        assert.equal(
+          rampLevel(tone, positions, cut),
+          Math.min(count - 1, Math.floor(tone * (count - 1) + cut)),
+          `n=${count} tone=${tone} cut=${cut}`
+        );
+      }
+    }
+  }
+});
+
+test("calibrated ramp positions rise strictly and span 0 to 1", () => {
+  // A font where two neighbours ink the same and one inks less than the last.
+  const coverage = [0, 0.05, 0.05, 0.3, 0.2, 0.45];
+  const positions = rampPositions((index) => coverage[index] ?? 0, 6);
+  assert.equal(positions[0], 0);
+  assert.equal(positions[5], 1);
+  for (let index = 1; index < positions.length; index += 1) {
+    assert.ok((positions[index] ?? 0) > (positions[index - 1] ?? 0));
+  }
+  // Every glyph is still reachable.
+  const seen = new Set<number>();
+  for (let step = 0; step <= 1000; step += 1) {
+    seen.add(rampLevel(step / 1000, positions));
+  }
+  assert.equal(seen.size, 6);
+});
+
+test("compile errors point at the field's own line", () => {
+  const field = "float field(vec2 uv, vec2 res, float t) {\n  return oops;\n}";
+  const { fieldLine, colorLine } = fieldShader({
+    colorField: undefined,
+    field,
+    uniforms: "",
+  });
+  const message = describeCompileLog({
+    colorField: undefined,
+    colorLine,
+    field,
+    fieldLine,
+    log: `ERROR: 0:${fieldLine + 2}: 'oops' : undeclared identifier`,
+  });
+  assert.match(message, /field line 2: 'oops'/);
+  assert.match(message, /> return oops;/);
+});
+
+test("the field source starts on the reported line", () => {
+  const field = "float field(vec2 uv, vec2 res, float t) { return 0.5; }";
+  const built = fieldShader({ colorField: COLOR, field, uniforms: "" });
+  const lines = built.source.split("\n");
+  assert.equal(lines[built.fieldLine], field);
+  assert.equal(lines[built.colorLine], COLOR);
 });
 
 let failed = 0;

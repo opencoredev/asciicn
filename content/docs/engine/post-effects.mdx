@@ -1,0 +1,166 @@
+---
+title: "Post effects"
+description: "The CRT finish, pointer interaction and audio input every AsciiShader can take."
+---
+
+import EngineGpuFx from "@/examples/engine-gpu-fx";
+import { controls as fxControls } from "@/examples/engine-gpu-fx-controls";
+import EngineGpuInteraction from "@/examples/engine-gpu-interaction";
+import { controls as interactionControls } from "@/examples/engine-gpu-interaction-controls";
+import EngineGpuParallax from "@/examples/engine-gpu-parallax";
+import EngineGpuAudio from "@/examples/engine-gpu-audio";
+
+`AsciiShader` draws every glyph on the GPU, so it can finish the frame the way a monitor would: scanlines, glow, curved glass. It can also react to the pointer and to sound. All of it is off by default, and none of it changes your field.
+
+## CRT effects
+
+Pass `fx` with any of six effects, each from 0 (off) to 1 (strong):
+
+```tsx
+<AsciiShader
+  field={FIELD}
+  phosphor="p1"
+  fx={{ scanlines: 0.5, bloom: 0.6, curvature: 0.35, vignette: 0.45 }}
+/>
+```
+
+<ComponentPreview
+  src="examples/engine-gpu-fx.tsx"
+  size="full"
+  align="stretch"
+  controls={fxControls}
+>
+  <EngineGpuFx />
+</ComponentPreview>
+
+| Effect      | What it does                                                                                               |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `scanlines` | Darkens every third CSS pixel row, like a CRT raster.                                                      |
+| `bloom`     | Bright glyphs glow into their neighbours. Scaled by the theme's `--ascii-glow`.                            |
+| `curvature` | Bends the frame like curved glass. The corners go black (or transparent, with `background="transparent"`). |
+| `vignette`  | Darkens toward the corners.                                                                                |
+| `flicker`   | Varies the brightness slightly from frame to frame.                                                        |
+| `glitch`    | On random frames, a band of rows jumps sideways, a few glyphs flip and the colour channels split.          |
+
+`CRT_FX` from `@/lib/ascii` is a ready-made full CRT look; spread it and override what you like: `fx={{ ...CRT_FX, glitch: 0.2 }}`. `NO_FX` turns everything off.
+
+The effects run in the same pass that draws the glyphs, so they cost almost nothing. Bloom adds two small blur passes at one pixel per cell.
+
+## Pointer interaction
+
+`interaction` makes the pointer push the field around. Move over the preview, and click it for `ripple`:
+
+```tsx
+<AsciiShader field={FIELD} interaction="repel" fps={60} />
+```
+
+<ComponentPreview
+  src="examples/engine-gpu-interaction.tsx"
+  size="full"
+  align="stretch"
+  controls={interactionControls}
+>
+  <EngineGpuInteraction />
+</ComponentPreview>
+
+- `repel` pushes glyphs away from the pointer and clears a small hole under it.
+- `ripple` sends a ring out from each click or tap, displacing and brightening the glyphs it passes.
+- `trail` leaves a fading wake of ink behind the pointer.
+
+The canvas still ignores clicks (`pointer-events: none`), so buttons and links on top of it keep working; the engine watches the pointer on the window instead. Pointer motion is smoothed, so glyphs glide after it. Interaction is motion: under reduced motion the shader holds its still frame and ignores the pointer. Raise `fps` to 60 for interactive backgrounds, so the response feels immediate.
+
+### Reading the pointer in a field
+
+Fields can read the pointer directly for parallax and steering. `u_pointer.xy` is the pointer in `uv` and `u_pointer.z` fades from 0 to 1 while it's over the box, so multiplying by it eases the effect in and out. This one slides three layers of rings by different amounts:
+
+```glsl
+float parallaxRings(vec2 p, float scale) {
+  return smoothstep(0.12, 0.0, abs(fract(length(p) * scale) - 0.5));
+}
+
+float field(vec2 uv, vec2 res, float t) {
+  vec2 p = (uv - 0.5) * vec2(res.x / res.y, 1.0);
+  vec2 tilt = (u_pointer.xy - 0.5) * u_pointer.z;
+  float far = parallaxRings(p - tilt * 0.03, 6.0) * 0.3;
+  float mid = parallaxRings(p - tilt * 0.08 + vec2(0.2, 0.0), 4.0) * 0.6;
+  float near = parallaxRings(p - tilt * 0.16 - vec2(0.25, 0.1), 2.5);
+  return max(far, max(mid, near));
+}
+```
+
+<ComponentPreview
+  src="examples/engine-gpu-parallax.tsx"
+  size="md"
+  align="stretch"
+>
+  <EngineGpuParallax />
+</ComponentPreview>
+
+The engine only tracks the pointer when `interaction` is set or the field mentions `u_pointer`, `u_pointerVelocity` or `u_click`.
+
+## Audio input
+
+`useAudioBands` from `@/lib/ascii/audio` listens to a source and keeps smoothed bass, mid, treble and level values from 0 to 1. Pass the result to `audio`, and fields read it as `u_audio`:
+
+```tsx
+"use client";
+
+import { useAudioBands } from "@/lib/ascii/audio";
+import { AsciiShader } from "@/lib/ascii/shader";
+
+export function Visualizer({ track }: { track: HTMLAudioElement | null }) {
+  const bands = useAudioBands(track);
+  return <AsciiShader field={FIELD} audio={bands} fps={60} />;
+}
+```
+
+<ComponentPreview src="examples/engine-gpu-audio.tsx" size="md" align="stretch">
+  <EngineGpuAudio />
+</ComponentPreview>
+
+The source can be:
+
+- an `<audio>` or `<video>` element, which keeps playing through the speakers;
+- a `MediaStream`, such as a WebRTC call;
+- `"mic"`, the microphone, after the visitor allows it;
+- `"synth"`, a silent built-in tone for demos that needs no permission;
+- `null`, which stops listening.
+
+The hook returns the same object on every render. Its band values change every frame without re-rendering your component, and `bands.status` (`idle`, `running`, `denied` or `unavailable`) re-renders it when it changes. Browsers only offer the microphone on secure pages (https or localhost); elsewhere the status is `unavailable` rather than an error. Audio starts on the first click or tap on the page, since browsers block sound before one.
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "fx",
+      type: "PostFx",
+      description:
+        "CRT effects, each 0 to 1: scanlines, bloom, curvature, glitch, flicker, vignette.",
+      default: "all 0",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      description: "What the pointer does to the field.",
+      default: '"none"',
+    },
+    {
+      name: "audio",
+      type: "AudioInput | null",
+      description: "Bands from useAudioBands, read by fields as u_audio.",
+      default: "null",
+    },
+    {
+      name: "seed",
+      type: "number",
+      description: "A number fields read as u_seed.",
+      default: "0",
+    },
+  ]}
+/>
+
+## Notes
+
+- Canvas2D components (`AsciiGrid`) can't run these effects in a shader. They take the same `fx` prop and approximate it with a CSS overlay, `<CrtOverlay fx />`.
+- `capture()` on the shader's `handle` returns the glyphs the effects are drawn over, so exported text is never curved or blurred. A capture taken on a glitch frame includes the flipped glyphs.

@@ -3,392 +3,52 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 
+import { getGlyphAtlas, rampPositions } from "@/lib/ascii/atlas";
+import type { GlyphAtlas } from "@/lib/ascii/atlas";
+import { EDGE_GLYPHS, resolveCharset } from "@/lib/ascii/charsets";
+import type { Charset } from "@/lib/ascii/charsets";
+import { resolveColor, subscribeToTheme } from "@/lib/ascii/color";
+import type { AsciiFrame, AsciiHandle } from "@/lib/ascii/frame";
+import { COLOR_CODES, KIND_CODES } from "@/lib/ascii/glsl";
 import {
-  readAsciiCell,
-  resolveColor,
-  subscribeToTheme,
-} from "@/lib/ascii/color";
-import { withoutSharedHelpers } from "@/lib/ascii/glsl";
+  createAsciiRenderer,
+  createFrameInput,
+  uniformSpecs,
+} from "@/lib/ascii/gpu";
+import type { AsciiRenderer, AsciiUniforms, FrameInput } from "@/lib/ascii/gpu";
+import { INTERACTIONS } from "@/lib/ascii/look";
+import type { AsciiLook, Interaction, PostFx } from "@/lib/ascii/look";
 import { getThresholdMap } from "@/lib/ascii/matrices";
-import type { DitherMatrix, ThresholdMap } from "@/lib/ascii/matrices";
+import type { DitherMatrix } from "@/lib/ascii/matrices";
+import { gridSize, measureCell, readCell, readFont } from "@/lib/ascii/measure";
+import type { CellMetrics } from "@/lib/ascii/measure";
 import { useFrameLoop, usePrefersReducedMotion } from "@/lib/ascii/motion";
+import {
+  ANSI16,
+  hexToRgb,
+  PHOSPHORS,
+  RAMPS,
+  rgbToOklab,
+} from "@/lib/ascii/palettes";
+import type { ColorMode, Rgb8 } from "@/lib/ascii/palettes";
+import { trackPointer } from "@/lib/ascii/pointer";
+import type { PointerTracker } from "@/lib/ascii/pointer";
 import { cssColor, DEFAULT_PALETTE } from "@/lib/ascii/tokens";
-import type { AsciiPalette, Rgba } from "@/lib/ascii/tokens";
+import type { AsciiColor, AsciiPalette, Rgba } from "@/lib/ascii/tokens";
 import { cn } from "@/lib/utils";
 
-export type ShaderUniformValue =
-  | number
-  | readonly [number, number]
-  | readonly [number, number, number]
-  | readonly [number, number, number, number];
-
-export type AsciiUniforms = Readonly<Record<string, ShaderUniformValue>>;
+export type { AsciiUniforms, ShaderUniformValue } from "@/lib/ascii/gpu";
+export { GLSL_HELPERS } from "@/lib/ascii/glsl";
 
 export type AsciiShaderState = "fallback" | "running" | "paused" | "static";
 
-/**
- * GLSL helpers available to every field. Names starting with `u_` are
- * reserved for the core's own uniforms, and `ascii_` for its helpers.
- *
- * - `float hash21(vec2 p)`: a stable pseudo-random value in [0, 1).
- * - `float snoise(vec2 p)`: 2D simplex noise in [-1, 1].
- * - `float fbm(vec2 p)`: four octaves of simplex noise, in [0, 1].
- * - `vec3 spectrum(float h)`: a saturated rainbow. 0 is red, then yellow,
- *   green, cyan, blue and magenta, back to red at 1; it wraps.
- * - `vec4 paletteColor(float x)`: the palette's ink colours, every entry
- *   after the paper, as a smooth ramp from x = 0 to 1.
- */
-const GLSL_HELPERS = `
-float hash21(vec2 p) {
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
+/** Audio input as `useAudioBands` returns it: each band 0 to 1. */
+export interface AudioInput {
+  readonly bass: number;
+  readonly mid: number;
+  readonly treble: number;
+  readonly level: number;
 }
-
-vec3 ascii_permute(vec3 x) {
-  return mod(((x * 34.0) + 1.0) * x, 289.0);
-}
-
-float snoise(vec2 v) {
-  const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-  vec2 i = floor(v + dot(v, C.yy));
-  vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  vec4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
-  i = mod(i, 289.0);
-  vec3 p = ascii_permute(ascii_permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
-  m = m * m;
-  m = m * m;
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
-  vec3 h = abs(x) - 0.5;
-  vec3 ox = floor(x + 0.5);
-  vec3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
-  vec3 g;
-  g.x = a0.x * x0.x + h.x * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
-}
-
-float fbm(vec2 p) {
-  float sum = 0.0;
-  float amp = 0.5;
-  mat2 rotate = mat2(0.8, -0.6, 0.6, 0.8);
-  for (int i = 0; i < 4; i++) {
-    sum += amp * snoise(p);
-    p = rotate * p * 2.02 + vec2(11.3, 4.7);
-    amp *= 0.5;
-  }
-  return clamp(0.5 + 0.5 * sum / 0.9375, 0.0, 1.0);
-}
-
-vec3 spectrum(float h) {
-  vec3 rgb = clamp(abs(mod(fract(h) * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-  return rgb * rgb * (3.0 - 2.0 * rgb);
-}
-
-vec4 ascii_paletteEntry(float index) {
-  return texture2D(u_palette, vec2((index + 0.5) / u_paletteSize, 0.5));
-}
-
-vec4 paletteColor(float x) {
-  float last = u_paletteSize - 1.0;
-  float scaled = clamp(x, 0.0, 1.0) * (last - 1.0);
-  float index = floor(scaled);
-  vec4 from = ascii_paletteEntry(1.0 + index);
-  vec4 to = ascii_paletteEntry(min(2.0 + index, last));
-  return mix(from, to, scaled - index);
-}
-
-vec4 ascii_rgba(vec3 color) {
-  return vec4(color, 1.0);
-}
-
-vec4 ascii_rgba(vec4 color) {
-  return color;
-}
-`;
-
-const VERTEX_SHADER = `
-attribute vec2 a_position;
-void main() {
-  gl_Position = vec4(a_position, 0.0, 1.0);
-}
-`;
-
-interface UniformSpec {
-  readonly name: string;
-  readonly size: 1 | 2 | 3 | 4;
-}
-
-const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]*$/;
-const GLSL_TYPES = { 1: "float", 2: "vec2", 3: "vec3", 4: "vec4" } as const;
-
-const uniformSize = (value: ShaderUniformValue): UniformSpec["size"] =>
-  typeof value === "number" ? 1 : value.length;
-
-const uniformSpecs = (uniforms: AsciiUniforms): UniformSpec[] =>
-  Object.keys(uniforms)
-    .toSorted()
-    .flatMap((name) => {
-      const value = uniforms[name];
-      if (value === undefined) {
-        return [];
-      }
-      if (!IDENTIFIER.test(name) || name.startsWith("u_")) {
-        // Reserved or invalid names would break the shader; say which.
-        console.error(
-          `[ascii-core] uniform "${name}" skipped: names must be GLSL identifiers and not start with "u_"`
-        );
-        return [];
-      }
-      return [{ name, size: uniformSize(value) }];
-    });
-
-// With a colour field, a cell is either paper or the colour field's colour
-// there, chosen by the same tone and threshold as a two-colour palette.
-const PALETTE_COLOR = `
-  float scaled = tone * (u_paletteSize - 1.0);
-  float index = floor(scaled);
-  index = min(index + step(threshold, scaled - index), u_paletteSize - 1.0);
-  vec4 color = ascii_paletteEntry(index);`;
-
-const FIELD_COLOR = `
-  float ink = min(floor(tone) + step(threshold, fract(tone)), 1.0);
-  vec4 color = ink > 0.5
-    ? ascii_rgba(colorField(uv, u_resolution, u_time))
-    : ascii_paletteEntry(0.0);
-  color = clamp(color, 0.0, 1.0);`;
-
-const fragmentShader = (
-  field: string,
-  colorField: string | undefined,
-  specs: readonly UniformSpec[]
-) => `
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-
-uniform vec2 u_resolution;
-uniform float u_time;
-uniform float u_levels;
-uniform sampler2D u_thresholds;
-uniform float u_matrixSize;
-uniform float u_rankStep;
-uniform sampler2D u_palette;
-uniform float u_paletteSize;
-${specs.map(({ name, size }) => `uniform ${GLSL_TYPES[size]} ${name};`).join("\n")}
-${GLSL_HELPERS}
-${field}
-${colorField === undefined ? "" : withoutSharedHelpers(field, colorField)}
-
-void main() {
-  vec2 cell = floor(gl_FragCoord.xy);
-  vec2 uv = (cell + 0.5) / u_resolution;
-  float tone = clamp(field(uv, u_resolution, u_time), 0.0, 1.0);
-  float steps = u_levels - 1.0;
-  tone = floor(tone * steps + 0.5) / steps;
-
-  // Ranks are stored as rank * (256 / steps), so this threshold is exactly
-  // (rank + 0.5) / steps, halfway between two tones.
-  vec2 at = (mod(cell, u_matrixSize) + 0.5) / u_matrixSize;
-  float stored = floor(texture2D(u_thresholds, at).r * 255.0 + 0.5);
-  float threshold = (stored + 0.5 * u_rankStep) / 256.0;
-
-${colorField === undefined ? PALETTE_COLOR : FIELD_COLOR}
-  gl_FragColor = vec4(color.rgb * color.a, color.a);
-}
-`;
-
-interface DrawInput {
-  readonly columns: number;
-  readonly rows: number;
-  readonly time: number;
-  readonly levels: number;
-  readonly uniforms: AsciiUniforms;
-}
-
-interface Renderer {
-  readonly setMatrix: (map: ThresholdMap) => void;
-  readonly setPalette: (colors: readonly Rgba[]) => void;
-  readonly draw: (input: DrawInput) => void;
-  readonly dispose: () => void;
-}
-
-const compile = (gl: WebGLRenderingContext, type: GLenum, source: string) => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    return null;
-  }
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    if (!gl.isContextLost()) {
-      // A broken `field` is a bug in the calling component; say why.
-      const log = gl.getShaderInfoLog(shader) ?? "";
-      console.error("[ascii-core] shader failed to compile", log);
-      if (log.includes("already has a body")) {
-        console.error(
-          "[ascii-core] a function is defined twice. `field` and `colorField` compile into one shader: give helpers different names, or define a shared helper once, in `field`, and call it from both."
-        );
-      }
-    }
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-};
-
-const createTexture = (gl: WebGLRenderingContext) => {
-  const texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  return texture;
-};
-
-const createRenderer = (
-  gl: WebGLRenderingContext,
-  {
-    field,
-    colorField,
-    specs,
-  }: {
-    field: string;
-    colorField: string | undefined;
-    specs: readonly UniformSpec[];
-  }
-): Renderer | null => {
-  const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-  const fragment = compile(
-    gl,
-    gl.FRAGMENT_SHADER,
-    fragmentShader(field, colorField, specs)
-  );
-  const program = gl.createProgram();
-  if (!vertex || !fragment || !program) {
-    return null;
-  }
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    gl.deleteProgram(program);
-    return null;
-  }
-  gl.useProgram(program);
-
-  // One triangle that covers the viewport.
-  const buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 3, -1, -1, 3]),
-    gl.STATIC_DRAW
-  );
-  const position = gl.getAttribLocation(program, "a_position");
-  gl.enableVertexAttribArray(position);
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-
-  const location = (name: string) => gl.getUniformLocation(program, name);
-  const uResolution = location("u_resolution");
-  const uTime = location("u_time");
-  const uLevels = location("u_levels");
-  const uMatrixSize = location("u_matrixSize");
-  const uRankStep = location("u_rankStep");
-  const uPaletteSize = location("u_paletteSize");
-  gl.uniform1i(location("u_thresholds"), 0);
-  gl.uniform1i(location("u_palette"), 1);
-  const custom = specs.map((spec) => ({
-    ...spec,
-    location: location(spec.name),
-  }));
-
-  const thresholds = createTexture(gl);
-  const palette = createTexture(gl);
-  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-
-  return {
-    dispose: () => {
-      gl.deleteTexture(thresholds);
-      gl.deleteTexture(palette);
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-    },
-    draw: ({ columns, rows, time, levels, uniforms }) => {
-      gl.viewport(0, 0, columns, rows);
-      gl.uniform2f(uResolution, columns, rows);
-      gl.uniform1f(uTime, time);
-      gl.uniform1f(uLevels, levels);
-      for (const spec of custom) {
-        const value = uniforms[spec.name];
-        if (value === undefined) {
-          continue;
-        }
-        if (typeof value === "number") {
-          gl.uniform1f(spec.location, value);
-        } else if (value.length === 2) {
-          gl.uniform2f(spec.location, value[0], value[1]);
-        } else if (value.length === 3) {
-          gl.uniform3f(spec.location, value[0], value[1], value[2]);
-        } else {
-          gl.uniform4f(spec.location, value[0], value[1], value[2], value[3]);
-        }
-      }
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    },
-    setMatrix: (map) => {
-      const rankStep = 256 / map.steps;
-      const bytes = Uint8Array.from(map.ranks, (rank) => rank * rankStep);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, thresholds);
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.LUMINANCE,
-        map.size,
-        map.size,
-        0,
-        gl.LUMINANCE,
-        gl.UNSIGNED_BYTE,
-        bytes
-      );
-      gl.uniform1f(uMatrixSize, map.size);
-      gl.uniform1f(uRankStep, rankStep);
-    },
-    setPalette: (colors) => {
-      const bytes = new Uint8Array(colors.length * 4);
-      for (const [index, color] of colors.entries()) {
-        bytes.set(
-          color.map((channel) => Math.round(channel * 255)),
-          index * 4
-        );
-      }
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, palette);
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        colors.length,
-        1,
-        0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        bytes
-      );
-      gl.uniform1f(uPaletteSize, colors.length);
-    },
-  };
-};
 
 /**
  * Browsers cap live WebGL contexts (Chrome drops the oldest past 16), so
@@ -513,43 +173,44 @@ const useContextSlot = (ref: RefObject<Element | null>): boolean => {
   return active;
 };
 
-export interface AsciiShaderProps extends Omit<
-  ComponentProps<"div">,
-  "children"
-> {
+export interface AsciiShaderProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
   /**
-   * GLSL that defines `float field(vec2 uv, vec2 res, float t)`, returning
-   * the tone in [0, 1] for one cell: 0 is paper, 1 is ink. `uv` is the
-   * cell centre in [0, 1] with y pointing up, `res` the size in cells, `t`
-   * the time in seconds (scaled by `speed`). May define helpers too.
+   * GLSL (ES 1.00) that defines `float field(vec2 uv, vec2 res, float t)`,
+   * returning the tone in [0, 1] at one sample: 0 is empty, 1 the densest
+   * glyph. `uv` is the sample centre in [0, 1] with y up. `res.y` is the
+   * number of sample rows and `res.x / res.y` the box's true aspect ratio,
+   * so `1.0 / res.y` is one sample row. Braille samples 2x4 per cell and
+   * quadrants 2x2, so don't assume one sample per glyph. `t` is seconds
+   * scaled by `speed`. May define helpers too.
    */
   field: string;
   /**
    * GLSL that defines `colorField(vec2 uv, vec2 res, float t)`, returning
-   * the ink colour for one cell as `vec3` or `vec4` RGB(A) in [0, 1], with
-   * the same arguments as `field`. Set it when colour should vary on its
-   * own: a rainbow, a hue per shape. The field's tone still decides where
-   * the dots go, and each dot takes this colour; cells without a dot are
-   * paper (`palette[0]`). `spectrum(h)` and `paletteColor(x)` help.
+   * an sRGB colour as `vec3` or `vec4` in [0, 1], with the same arguments
+   * as `field`. Each glyph takes the mean colour of its samples in
+   * `truecolor` and the nearest ANSI colour in `ansi16`. Setting it makes
+   * `truecolor` the default colour mode.
    */
   colorField?: string;
   /**
    * Extra uniforms, declared for you by name: numbers become `float`,
-   * tuples `vec2` to `vec4`. Names must not start with `u_`.
+   * tuples `vec2` to `vec4`. Names must not start with `u_` or `ascii_`.
+   * Changing values never recompiles; adding a name does.
    */
   uniforms?: AsciiUniforms;
-  /** Threshold matrix. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /** Tones the field snaps to before dithering, 2 to 256. Default: every tone the matrix can draw. */
-  levels?: number;
-  /** Cell size in CSS pixels. Default: `--ascii-cell`, or 3. */
-  cell?: number;
   /**
-   * Colours from paper (tone 0) to ink (tone 1). Default
-   * `["--ascii-paper", "--ascii-ink"]`. With `colorField`, the first is
-   * the paper and the rest are what `paletteColor` reads.
+   * Colours from paper to ink. Default `["--ascii-paper", "--ascii-ink"]`.
+   * The first is the paper behind the glyphs; in `palette` mode glyphs are
+   * coloured by tone along the rest (`paletteColor(x)` reads them too).
    */
   palette?: AsciiPalette;
+  /** Glyph colour in `mono`. Default: the phosphor's ink, else the last palette colour. */
+  ink?: AsciiColor;
+  /** Paper behind glyphs. Default: the phosphor's paper, else `palette[0]`. */
+  paper?: AsciiColor;
+  /** Glyph cell height in CSS pixels. Default `--ascii-cell`, or 12. */
+  cell?: number;
   /** Time multiplier. Default 1. */
   speed?: number;
   /**
@@ -561,40 +222,243 @@ export interface AsciiShaderProps extends Omit<
   fps?: number;
   /** The moment shown when motion is off or reduced, in field seconds. Default 0. */
   stillTime?: number;
+  /** A number fields read as `u_seed`, for seeded variations. Default 0. */
+  seed?: number;
+  /** What the pointer does to the field. Default `"none"`. */
+  interaction?: Interaction;
+  /** Audio bands from `useAudioBands`, read by fields as `u_audio`. Default none. */
+  audio?: AudioInput | null;
+  /** Filled with a handle for export: `capture()` returns the glyphs on screen. */
+  handle?: RefObject<AsciiHandle | null>;
   /**
    * Painted until the first WebGL frame, while the shader is far offscreen,
-   * and whenever WebGL is unavailable. Default: flat paper.
+   * and whenever WebGL2 is unavailable. Default: flat paper.
    */
   fallback?: ReactNode;
+  /** @deprecated Use `dither`. Mapped to `dither` when that isn't set. */
+  matrix?: DitherMatrix;
+  /** @deprecated Tones snap to this many steps before glyph choice, 2 to 256. */
+  levels?: number;
 }
 
 const NO_UNIFORMS: AsciiUniforms = {};
 
-const clampLevels = (levels: number) =>
-  Math.min(256, Math.max(2, Math.round(levels)));
+// Above this many device pixels the canvas drops to DPR 2: a 1440x900 box
+// at DPR 3 is 11.7M pixels, too many for integrated GPUs at 60fps.
+const PIXEL_BUDGET = 8_300_000;
 
 const CANVAS_CLASS =
-  "absolute top-0 left-0 block opacity-100 transition-opacity duration-700 ease-out [image-rendering:pixelated] group-data-[state=fallback]/ascii:opacity-0 group-data-[state=fallback]/ascii:duration-0 motion-reduce:transition-none";
+  "absolute top-0 left-0 block opacity-100 transition-opacity duration-700 ease-out group-data-[state=fallback]/ascii:opacity-0 group-data-[state=fallback]/ascii:duration-0 motion-reduce:transition-none";
+
+const clamp01 = (value: number | undefined) =>
+  value === undefined || !Number.isFinite(value)
+    ? 0
+    : Math.min(1, Math.max(0, value));
+
+const POINTER_UNIFORMS = /\bu_(pointer|pointerVelocity|click)\b/;
+
+const ANSI_TABLES = Object.fromEntries(
+  Object.entries(ANSI16).map(([name, table]) => {
+    const rgb = new Float32Array(48);
+    const lab = new Float32Array(48);
+    for (const [index, color] of table.entries()) {
+      rgb.set(
+        color.map((channel) => channel / 255),
+        index * 3
+      );
+      lab.set(rgbToOklab(color), index * 3);
+    }
+    return [name, { lab, rgb }];
+  })
+) as Record<keyof typeof ANSI16, { rgb: Float32Array; lab: Float32Array }>;
+
+/** `mono` with a phosphor, `truecolor` with a colour field, else `palette`. */
+const defaultColorMode = ({
+  phosphor,
+  colorField,
+}: {
+  phosphor: AsciiLook["phosphor"];
+  colorField: string | undefined;
+}): ColorMode => {
+  if (phosphor) {
+    return "mono";
+  }
+  return colorField === undefined ? "palette" : "truecolor";
+};
+
+interface Resolved {
+  charset: Charset;
+  colorMode: ColorMode;
+  colorKey: string;
+}
+
+/** The charset and colour mode the props ask for, and a key for the colours they need. */
+const resolveLook = (props: {
+  charset: AsciiLook["charset"];
+  chars: string | undefined;
+  colorMode: ColorMode | undefined;
+  phosphor: AsciiLook["phosphor"];
+  colorField: string | undefined;
+  palette: AsciiPalette;
+  ink: AsciiColor | undefined;
+  paper: AsciiColor | undefined;
+  ramp: AsciiLook["ramp"];
+  ansi: AsciiLook["ansi"];
+  background: AsciiLook["background"];
+}): Resolved => {
+  const charset = resolveCharset(props.charset ?? "standard", props.chars);
+  const colorMode = props.colorMode ?? defaultColorMode(props);
+  const rampKey =
+    typeof props.ramp === "string" ? props.ramp : props.ramp?.join(",");
+  const colorKey = [
+    colorMode,
+    props.palette.join(","),
+    props.ink,
+    props.paper,
+    props.phosphor,
+    rampKey,
+    props.ansi,
+    props.background,
+  ].join("|");
+  return { charset, colorKey, colorMode };
+};
+
+const writeRgb = (into: Float32Array, at: number, [r, g, b]: Rgba) => {
+  into[at] = r;
+  into[at + 1] = g;
+  into[at + 2] = b;
+};
+
+const toCss = ([r, g, b, a]: Rgba) =>
+  `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+
+/** Ramp stops: duotone reads a named or custom ramp, palette the inks. */
+const writeStops = (
+  input: FrameInput,
+  {
+    colorMode,
+    palette,
+    ramp,
+  }: {
+    colorMode: ColorMode;
+    palette: readonly Rgba[];
+    ramp: AsciiLook["ramp"];
+  }
+) => {
+  const last = palette.at(-1) ?? [1, 1, 1, 1];
+  let stops: readonly Rgba[] = palette.length > 1 ? palette.slice(1) : [last];
+  if (colorMode === "duotone") {
+    const source =
+      typeof ramp === "string" || ramp === undefined
+        ? RAMPS[ramp ?? "mainframe"]
+        : ramp;
+    stops = source.map((hex): Rgba => {
+      const [r, g, b]: Rgb8 = hexToRgb(hex);
+      return [r / 255, g / 255, b / 255, 1];
+    });
+  }
+  const count = Math.min(8, Math.max(1, stops.length));
+  for (let index = 0; index < count; index += 1) {
+    writeRgb(input.stops, index * 3, stops[index] ?? last);
+  }
+  input.stopCount = count;
+};
+
+/** `--ascii-glow`, the theme's bloom strength; 0.7 when unset. */
+const readGlow = (root: Element): number => {
+  const glow = Number.parseFloat(
+    getComputedStyle(root).getPropertyValue("--ascii-glow")
+  );
+  return Number.isFinite(glow) ? Math.max(0, glow) : 0.7;
+};
+
+const writeAudio = (
+  input: FrameInput,
+  bands: AudioInput | null | undefined
+) => {
+  input.audio[0] = bands?.bass ?? 0;
+  input.audio[1] = bands?.mid ?? 0;
+  input.audio[2] = bands?.treble ?? 0;
+  input.audio[3] = bands?.level ?? 0;
+};
+
+const writeLook = (
+  input: FrameInput,
+  state: {
+    levels: number | undefined;
+    mode: Interaction;
+    grade: AsciiLook["grade"];
+    invert: boolean | undefined;
+    threshold: number | undefined;
+    edgeThreshold: number | undefined;
+    colorMode: ColorMode;
+  }
+) => {
+  input.levels =
+    state.levels === undefined
+      ? 0
+      : Math.min(256, Math.max(2, Math.round(state.levels)));
+  input.interaction = INTERACTIONS.indexOf(state.mode);
+  input.grade[0] = state.grade?.brightness ?? 0;
+  input.grade[1] = state.grade?.contrast ?? 1;
+  input.grade[2] = state.grade?.gamma ?? 1;
+  input.grade[3] = state.grade?.saturation ?? 1;
+  input.invert = state.invert ?? false;
+  input.threshold = state.threshold ?? 0.5;
+  input.edgeThreshold = state.edgeThreshold ?? 0.22;
+  input.colorMode = COLOR_CODES[state.colorMode];
+};
+
+const writeFx = (input: FrameInput, fx: PostFx | undefined, glow: number) => {
+  input.scanlines = clamp01(fx?.scanlines);
+  input.bloom = clamp01(fx?.bloom) * glow;
+  input.curvature = clamp01(fx?.curvature);
+  input.glitch = clamp01(fx?.glitch);
+  input.flicker = clamp01(fx?.flicker);
+  input.vignette = clamp01(fx?.vignette);
+};
 
 /**
- * A dithered full-bleed canvas driven by a GLSL `field`. Renders one pixel
- * per dither cell, scaled up with crisp edges. Pauses offscreen and in
- * hidden tabs, holds a still frame under reduced motion, follows the theme,
- * and shows `fallback` without WebGL or while far offscreen. `data-state`
- * reports `fallback`, `running`, `paused` or `static`.
+ * A WebGL2 canvas that draws a GLSL `field` as real glyphs: any charset
+ * (ramps, Braille 2x4, quadrants, Sobel edges), any colour mode, CRT post
+ * effects, pointer interaction and audio input. Glyphs come from an atlas
+ * drawn at the exact device size of a cell, so they stay crisp at any DPR.
+ * Pauses offscreen and in hidden tabs, holds a still frame under reduced
+ * motion, follows the theme, and shows `fallback` without WebGL2 or while
+ * far offscreen. `data-state` reports `fallback`, `running`, `paused` or
+ * `static`.
  */
 export const AsciiShader = ({
   field,
   colorField,
   uniforms = NO_UNIFORMS,
-  matrix = "bayer4",
+  palette = DEFAULT_PALETTE,
+  ink,
+  paper,
+  charset,
+  chars,
+  colorMode,
+  phosphor,
+  ramp,
+  ansi,
+  grade,
+  invert,
+  threshold,
+  edgeThreshold,
+  dither,
+  background,
+  fx,
+  matrix,
   levels,
   cell,
-  palette = DEFAULT_PALETTE,
   speed = 1,
   animate = true,
-  fps = 30,
+  fps,
   stillTime = 0,
+  seed,
+  interaction,
+  audio,
+  handle,
   fallback,
   className,
   "aria-hidden": ariaHidden = true,
@@ -612,18 +476,43 @@ export const AsciiShader = ({
       ref.current = node;
     }
   };
-  const rendererRef = useRef<Renderer | null>(null);
-  const sizeRef = useRef({ columns: 0, rows: 0 });
+  const rendererRef = useRef<AsciiRenderer | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const metricsRef = useRef<CellMetrics | null>(null);
+  const atlasRef = useRef<GlyphAtlas | null>(null);
+  const inputRef = useRef<FrameInput | null>(null);
+  inputRef.current ??= createFrameInput();
+  const pointerRef = useRef<PointerTracker | null>(null);
+  const cssColorsRef = useRef({ ink: "#ffffff", paper: null as string | null });
   const timeRef = useRef(stillTime);
+  const deltaRef = useRef(0);
   const [hasFrame, setHasFrame] = useState(false);
   const hasFrameRef = useRef(false);
   const hasContext = useContextSlot(rootRef);
 
-  const map = getThresholdMap(matrix);
-  const resolvedLevels = clampLevels(levels ?? map.steps + 1);
-  const paletteKey = palette.join("|");
+  const look = resolveLook({
+    ansi,
+    background,
+    chars,
+    charset,
+    colorField,
+    colorMode,
+    ink,
+    palette,
+    paper,
+    phosphor,
+    ramp,
+  });
+  const charsetId = `${look.charset.kind}:${look.charset.glyphs.join("")}`;
+  const ditherMatrix = dither ?? matrix ?? "none";
   const specs = uniformSpecs(uniforms);
   const specKey = specs.map(({ name, size }) => `${name}:${size}`).join(",");
+  const mode: Interaction =
+    interaction && INTERACTIONS.includes(interaction) ? interaction : "none";
+  const tracksPointer =
+    mode !== "none" ||
+    POINTER_UNIFORMS.test(field) ||
+    (colorField !== undefined && POINTER_UNIFORMS.test(colorField));
 
   const markFrame = (drawn: boolean) => {
     if (hasFrameRef.current !== drawn) {
@@ -634,28 +523,77 @@ export const AsciiShader = ({
 
   // Everything a draw reads, kept current without restarting effects.
   const live = useRef({
-    levels: resolvedLevels,
-    map,
-    paletteKey,
+    audio,
+    charset: look.charset,
+    colorKey: look.colorKey,
+    colorMode: look.colorMode,
+    edgeThreshold,
+    fx,
+    grade,
+    invert,
+    levels,
+    mode,
     speed,
+    threshold,
     uniforms,
   });
+  const resolveColorsRef = useRef<(() => void) | null>(null);
+  const relayoutRef = useRef<(() => void) | null>(null);
   const drawRef = useRef<(() => void) | null>(null);
+  const settings = {
+    ansi,
+    background,
+    ink,
+    palette,
+    paper,
+    phosphor,
+    ramp,
+  };
+  const settingsRef = useRef(settings);
+  const glowRef = useRef(1);
+  const cellRef = useRef(cell);
+  const ditherRef = useRef(ditherMatrix);
+
   useEffect(() => {
-    live.current = { levels: resolvedLevels, map, paletteKey, speed, uniforms };
+    live.current = {
+      audio,
+      charset: look.charset,
+      colorKey: look.colorKey,
+      colorMode: look.colorMode,
+      edgeThreshold,
+      fx,
+      grade,
+      invert,
+      levels,
+      mode,
+      speed,
+      threshold,
+      uniforms,
+    };
+    settingsRef.current = settings;
     drawRef.current = () => {
       const renderer = rendererRef.current;
-      const { columns, rows } = sizeRef.current;
-      if (!renderer || columns === 0 || rows === 0) {
+      const input = inputRef.current;
+      if (!(renderer && input && metricsRef.current)) {
         return;
       }
-      renderer.draw({
-        columns,
-        levels: live.current.levels,
-        rows,
-        time: timeRef.current,
-        uniforms: live.current.uniforms,
-      });
+      const state = live.current;
+      const tracker = pointerRef.current;
+      if (tracker) {
+        tracker.update(deltaRef.current);
+        input.pointer.set(tracker.pointer);
+        input.pointerVelocity.set(tracker.velocity);
+        input.click.set(tracker.click);
+      }
+      writeAudio(input, state.audio);
+      input.time = timeRef.current;
+      input.delta = deltaRef.current;
+      input.frame += 1;
+      input.seed = seed ?? 0;
+      input.uniforms = state.uniforms;
+      writeLook(input, state);
+      writeFx(input, state.fx, glowRef.current);
+      renderer.draw(input);
       markFrame(true);
     };
   });
@@ -671,6 +609,7 @@ export const AsciiShader = ({
 
   const loopState = useFrameLoop(
     (time, delta) => {
+      deltaRef.current = delta;
       if (delta > 0) {
         // Accumulate so a change of `speed` never jumps the motion.
         timeRef.current += delta * live.current.speed;
@@ -683,67 +622,163 @@ export const AsciiShader = ({
     { enabled: animate, fps, stillTime, target: rootRef }
   );
 
-  // Context, program, size and theme. A fresh canvas per context, so a
-  // released context never has to be restored.
+  // Context, renderer, field program, size, theme and fonts. A fresh canvas
+  // per context, so a released context never has to be restored.
   useEffect(() => {
     const root = rootRef.current;
-    if (!root || !hasContext) {
+    if (!(root && hasContext)) {
       return;
     }
     const canvas = document.createElement("canvas");
     canvas.className = CANVAS_CLASS;
-    const gl = canvas.getContext("webgl", {
+    const gl = canvas.getContext("webgl2", {
       alpha: true,
       antialias: false,
       depth: false,
       powerPreference: "low-power",
       premultipliedAlpha: true,
+      // PNG export and video capture read the canvas after the frame.
+      preserveDrawingBuffer: true,
       stencil: false,
     });
     if (!gl) {
       return;
     }
     root.append(canvas);
+    canvasRef.current = canvas;
+    let fieldSize = { columns: 0, rows: 0 };
 
-    const resolvePalette = () =>
-      live.current.paletteKey
-        .split("|")
-        .map((color) => resolveColor(color, root));
+    const resolveColors = () => {
+      const input = inputRef.current;
+      if (!input) {
+        return;
+      }
+      const s = settingsRef.current;
+      const preset = s.phosphor ? PHOSPHORS[s.phosphor] : undefined;
+      const resolvedPalette = s.palette.map((color) =>
+        resolveColor(color, root)
+      );
+      rendererRef.current?.setPalette(resolvedPalette);
+      const last = resolvedPalette.at(-1) ?? [1, 1, 1, 1];
+      const inkColor = s.ink ?? preset?.ink;
+      const paperColor = s.paper ?? preset?.paper;
+      const inkRgba = inkColor ? resolveColor(inkColor, root) : last;
+      const paperRgba = paperColor
+        ? resolveColor(paperColor, root)
+        : (resolvedPalette[0] ?? [0, 0, 0, 1]);
+      writeRgb(input.ink, 0, inkRgba);
+      const transparent = s.background === "transparent";
+      const alpha = transparent ? 0 : paperRgba[3];
+      input.paper[0] = paperRgba[0] * alpha;
+      input.paper[1] = paperRgba[1] * alpha;
+      input.paper[2] = paperRgba[2] * alpha;
+      input.paper[3] = alpha;
+      cssColorsRef.current = {
+        ink: toCss(inkRgba),
+        paper: transparent ? null : toCss(paperRgba),
+      };
+      writeStops(input, {
+        colorMode: live.current.colorMode,
+        palette: resolvedPalette,
+        ramp: s.ramp,
+      });
+      const table = ANSI_TABLES[s.ansi ?? "vga"];
+      input.ansi.set(table.rgb);
+      input.ansiLab.set(table.lab);
+      glowRef.current = readGlow(root);
+    };
+
+    // Metrics, atlas and grid size: on mount, resize, a new charset or cell.
+    const relayout = () => {
+      const renderer = rendererRef.current;
+      if (!renderer) {
+        return;
+      }
+      const style = getComputedStyle(root);
+      // Layout size, not the painted box, so a scaled parent (a zoom-in
+      // animation, a thumbnail) doesn't shrink the grid.
+      const width = Number.parseFloat(style.width) || root.offsetWidth;
+      const height = Number.parseFloat(style.height) || root.offsetHeight;
+      const device = window.devicePixelRatio || 1;
+      const dpr =
+        width * height * device * device > PIXEL_BUDGET
+          ? Math.min(device, 2)
+          : Math.min(device, 3);
+      const metrics = measureCell({
+        cell: cellRef.current ?? readCell(root),
+        dpr,
+        font: readFont(root),
+      });
+      const { charset: current } = live.current;
+      const glyphs =
+        current.kind === "edge"
+          ? [...current.glyphs, ...EDGE_GLYPHS]
+          : current.glyphs;
+      const atlas = getGlyphAtlas({ glyphs, metrics });
+      const isRamp = current.kind === "ramp" || current.kind === "edge";
+      const count = current.glyphs.length;
+      renderer.setAtlas(atlas, {
+        count,
+        grid: current.grid,
+        kind: KIND_CODES[current.kind],
+        positions: isRamp
+          ? rampPositions((index) => atlas.slotCoverage(index), count)
+          : null,
+      });
+      atlasRef.current = atlas;
+      metricsRef.current = metrics;
+      const { columns, rows } = gridSize(metrics, width, height);
+      fieldSize = { columns, rows };
+      canvas.width = columns * metrics.deviceWidth;
+      canvas.height = rows * metrics.deviceHeight;
+      canvas.style.width = `${columns * metrics.width}px`;
+      canvas.style.height = `${rows * metrics.height}px`;
+      renderer.resize({
+        canvasHeight: canvas.height,
+        canvasWidth: canvas.width,
+        columns,
+        dpr,
+        rows,
+      });
+      drawRef.current?.();
+    };
 
     const build = () => {
       rendererRef.current?.dispose();
-      const renderer = createRenderer(gl, { colorField, field, specs });
+      const renderer = createAsciiRenderer(gl);
       rendererRef.current = renderer;
-      renderer?.setMatrix(live.current.map);
-      renderer?.setPalette(resolvePalette());
+      if (!renderer) {
+        return;
+      }
+      if (!renderer.setField({ colorField, field, specs })) {
+        renderer.dispose();
+        rendererRef.current = null;
+        return;
+      }
+      const map =
+        ditherRef.current === "none"
+          ? null
+          : getThresholdMap(ditherRef.current);
+      renderer.setMatrix(map);
+      resolveColors();
+      relayout();
     };
 
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const cssCell = cell ?? readAsciiCell(root);
-      // Whole device pixels per cell, so every cell is the same size.
-      const deviceCell = Math.max(1, Math.round(cssCell * dpr));
-      const snapped = deviceCell / dpr;
-      // Layout size, not the painted box, so a scaled parent (a zoom-in
-      // animation, a thumbnail) doesn't shrink the grid. The computed size
-      // keeps fractions that offsetWidth rounds away, so the last column
-      // still reaches the edge of a 300.4px box.
-      const style = getComputedStyle(root);
-      const width = Number.parseFloat(style.width) || root.offsetWidth;
-      const height = Number.parseFloat(style.height) || root.offsetHeight;
-      const columns = Math.max(1, Math.ceil(width / snapped));
-      const rows = Math.max(1, Math.ceil(height / snapped));
-      sizeRef.current = { columns, rows };
-      canvas.width = columns;
-      canvas.height = rows;
-      canvas.style.width = `${columns * snapped}px`;
-      canvas.style.height = `${rows * snapped}px`;
+    resolveColorsRef.current = () => {
+      resolveColors();
       drawRef.current?.();
     };
+    relayoutRef.current = relayout;
 
     const onThemeChange = () => {
-      rendererRef.current?.setPalette(resolvePalette());
+      resolveColors();
       drawRef.current?.();
+    };
+    let fontFrame = 0;
+    const onFontsLoaded = () => {
+      // Let the atlas cache redraw first, then re-measure ramps.
+      cancelAnimationFrame(fontFrame);
+      fontFrame = requestAnimationFrame(relayout);
     };
     const onContextLost = (event: Event) => {
       event.preventDefault();
@@ -752,44 +787,104 @@ export const AsciiShader = ({
     };
     const onContextRestored = () => {
       build();
-      drawRef.current?.();
     };
 
     build();
-    resize();
-    const resizeObserver = new ResizeObserver(resize);
+    const resizeObserver = new ResizeObserver(relayout);
     resizeObserver.observe(root);
+    // Browser zoom and moving to another screen change the DPR, not the box.
+    window.addEventListener("resize", relayout);
     const unsubscribe = subscribeToTheme(onThemeChange);
+    document.fonts?.addEventListener?.("loadingdone", onFontsLoaded);
     canvas.addEventListener("webglcontextlost", onContextLost);
     canvas.addEventListener("webglcontextrestored", onContextRestored);
 
+    if (handle) {
+      handle.current = {
+        get canvas() {
+          return canvasRef.current;
+        },
+        capture: (): AsciiFrame | null => {
+          const renderer = rendererRef.current;
+          const atlas = atlasRef.current;
+          if (!(renderer && atlas && hasFrameRef.current)) {
+            return null;
+          }
+          const cells = renderer.readCells();
+          if (!cells || cells.columns !== fieldSize.columns) {
+            return null;
+          }
+          const braille = live.current.charset.kind === "braille";
+          const glyphs = Array.from(cells.slots, (slot) =>
+            // An empty Braille cell is a space, as `mapTones` writes it.
+            braille && slot === 0 ? " " : (atlas.glyphs[slot] ?? " ")
+          );
+          const colors =
+            live.current.colorMode === "mono"
+              ? null
+              : new Uint8ClampedArray(cells.colors);
+          return { colors, columns: cells.columns, glyphs, rows: cells.rows };
+        },
+        colors: () => cssColorsRef.current,
+        metrics: () => metricsRef.current,
+      };
+    }
+
     return () => {
       resizeObserver.disconnect();
+      window.removeEventListener("resize", relayout);
       unsubscribe();
+      cancelAnimationFrame(fontFrame);
+      document.fonts?.removeEventListener?.("loadingdone", onFontsLoaded);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       rendererRef.current?.dispose();
       rendererRef.current = null;
+      resolveColorsRef.current = null;
+      relayoutRef.current = null;
+      if (handle?.current) {
+        handle.current = null;
+      }
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
+      canvasRef.current = null;
       markFrame(false);
     };
-    // `specs` is described by `specKey`; a new `cell` re-measures.
+    // `specs` is described by `specKey`; charset and colours update live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field, colorField, specKey, cell, hasContext]);
+  }, [field, colorField, specKey, hasContext, handle]);
+
+  // A new charset or cell size re-measures and rebuilds the atlas, no recompile.
+  useEffect(() => {
+    cellRef.current = cell;
+    relayoutRef.current?.();
+  }, [cell, charsetId]);
 
   useEffect(() => {
-    rendererRef.current?.setMatrix(map);
-  }, [map]);
+    ditherRef.current = ditherMatrix;
+    rendererRef.current?.setMatrix(
+      ditherMatrix === "none" ? null : getThresholdMap(ditherMatrix)
+    );
+  }, [ditherMatrix]);
 
+  // New colours resolve without recompiling.
+  useEffect(() => {
+    resolveColorsRef.current?.();
+  }, [look.colorKey]);
+
+  // Pointer tracking only while something reads it.
   useEffect(() => {
     const root = rootRef.current;
-    if (root) {
-      rendererRef.current?.setPalette(
-        paletteKey.split("|").map((color) => resolveColor(color, root))
-      );
+    if (!(root && tracksPointer)) {
+      return;
     }
-  }, [paletteKey]);
+    const tracker = trackPointer(root);
+    pointerRef.current = tracker;
+    return () => {
+      tracker.dispose();
+      pointerRef.current = null;
+    };
+  }, [tracksPointer]);
 
   // Props changed while nothing is animating: redraw the held frame.
   useEffect(() => {
@@ -818,7 +913,15 @@ export const AsciiShader = ({
         {fallback ?? (
           <div
             className="absolute inset-0"
-            style={{ backgroundColor: cssColor(palette[0]) }}
+            style={{
+              backgroundColor:
+                background === "transparent"
+                  ? "transparent"
+                  : cssColor(
+                      paper ??
+                        (phosphor ? PHOSPHORS[phosphor].paper : palette[0])
+                    ),
+            }}
           />
         )}
       </div>
