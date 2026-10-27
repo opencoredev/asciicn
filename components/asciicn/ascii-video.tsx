@@ -193,8 +193,12 @@ export const AsciiVideo = (props: AsciiVideoProps) => {
   const media = useMediaElement(usingCamera ? cameraStream : (src ?? null), {
     kind: "video",
   });
+  // No DOM classes exist while the page prerenders on the server.
   const video =
-    media.element instanceof HTMLVideoElement ? media.element : null;
+    typeof HTMLVideoElement !== "undefined" &&
+    media.element instanceof HTMLVideoElement
+      ? media.element
+      : null;
 
   // Play state follows the element, so pausing elsewhere stays in sync.
   const [playing, setPlaying] = useState(false);
