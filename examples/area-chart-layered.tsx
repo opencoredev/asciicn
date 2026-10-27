@@ -35,27 +35,28 @@ const data = HOURS.map(([cached, origin], hour) => ({
 
 export default function AreaChartLayered() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-5 flex flex-col gap-1">
-        <span className="text-muted-foreground text-sm">
-          Requests per second, last 24 hours
-        </span>
-        <span className="text-3xl font-semibold tracking-tight">
-          78%{" "}
-          <span className="text-muted-foreground text-base font-normal">
-            served from cache
-          </span>
-        </span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>edge · requests/s</span>
+        <span>24h</span>
       </div>
-      <AreaChart
-        data={data}
-        x="hour"
-        series={[
-          { label: "Cached", value: "cached" },
-          { label: "Origin", value: "origin" },
-        ]}
-        height={220}
-      />
+      <div className="p-4 sm:p-5">
+        <p className="mb-4 text-sm">
+          <span className="text-2xl font-semibold tracking-tight">78%</span>{" "}
+          <span className="text-muted-foreground">served from cache</span>
+        </p>
+        <AreaChart
+          data={data}
+          x="hour"
+          stack="stacked"
+          fill="pattern"
+          series={[
+            { label: "Cached", value: "cached" },
+            { color: "orange", label: "Origin", value: "origin" },
+          ]}
+          height={228}
+        />
+      </div>
     </div>
   );
 }

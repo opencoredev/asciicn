@@ -3,7 +3,7 @@
     "name": "cartesian-chart",
     "type": "registry:component",
     "title": "Cartesian chart",
-    "description": "The shared frame behind the area, line and bar charts: scales, axes, the hover readout, the legend and an accessible data table.",
+    "description": "The base the area, line and bar charts share: lines, areas and bars on one category axis, drawn in Braille, eighth blocks or ASCII.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -17,7 +17,7 @@
     "name": "area-chart",
     "type": "registry:component",
     "title": "Area chart",
-    "description": "One or more series drawn as a crisp line over a dithered fill that is densest under the line.",
+    "description": "One or more series drawn as eighth-block columns over a body that fades from full block to light shade, or in Braille dots or ASCII.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
@@ -34,7 +34,7 @@
     "name": "bar-chart",
     "type": "registry:component",
     "title": "Bar chart",
-    "description": "Vertical bars, grouped or stacked, each filled with a dither and capped with a solid edge.",
+    "description": "Vertical or horizontal bars ending in eighth blocks, grouped or stacked, with the highlighted bar drawn solid and its value in mono text.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
@@ -51,7 +51,7 @@
     "name": "line-chart",
     "type": "registry:component",
     "title": "Line chart",
-    "description": "Lines for one or more series, with optional dithered range bands and point markers.",
+    "description": "Lines plotted on a Braille dot grid, four times finer than the text, with dashes, range bands and a marker glyph per series.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/cartesian-chart.json"
@@ -68,7 +68,7 @@
     "name": "sparkline",
     "type": "registry:component",
     "title": "Sparkline",
-    "description": "A tiny inline trend for tables and stat cards: a line, a dithered area and a dot on the latest value.",
+    "description": "A tiny trend set as real text in eighth blocks, Braille or ASCII, sized in character cells to sit inside a sentence or a table.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -82,8 +82,11 @@
     "name": "heatmap",
     "type": "registry:component",
     "title": "Heatmap",
-    "description": "A calendar or matrix heatmap built from dither cells: each square steps from a few dots to solid, with a readout and a level scale.",
-    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "description": "A calendar or matrix heatmap of glyph squares that step from light shade to full block, with a bracket cursor, a readout and a level scale.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/cartesian-chart.json"
+    ],
     "files": [
       {
         "path": "components/asciicn/heatmap.tsx",

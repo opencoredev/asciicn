@@ -12,22 +12,24 @@ const data = [
 
 export default function BarChartStacked() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-5 flex flex-col gap-1">
-        <span className="text-muted-foreground text-sm">Signups this week</span>
-        <span className="text-3xl font-semibold tracking-tight">2,098</span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>signups · this week</span>
+        <span>2,098</span>
       </div>
-      <BarChart
-        data={data}
-        x="day"
-        layout="stacked"
-        highlight="max"
-        series={[
-          { label: "Paid", value: "paid" },
-          { label: "Trial", value: "trial" },
-        ]}
-        format={{ maximumFractionDigits: 0 }}
-      />
+      <div className="p-4 sm:p-5">
+        <BarChart
+          data={data}
+          x="day"
+          layout="stacked"
+          highlight="max"
+          series={[
+            { label: "Paid", value: "paid" },
+            { color: "orange", label: "Trial", value: "trial" },
+          ]}
+          format={{ maximumFractionDigits: 0 }}
+        />
+      </div>
     </div>
   );
 }

@@ -4,67 +4,43 @@ import { Sparkline } from "@/components/asciicn/sparkline";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/sparkline-controls";
 
-const STATS = [
-  {
-    data: [41, 43, 42, 46, 48, 47, 51, 54, 53, 57, 60, 63],
-    delta: "+11.9%",
-    label: "Recurring revenue",
-    value: "$63.2K",
-  },
-  {
-    data: [8.1, 8.4, 8.2, 8.9, 9.6, 9.3, 10.4, 10.9, 10.6, 11.4, 11.9, 12.4],
-    delta: "+8.1%",
-    label: "Weekly active users",
-    value: "12.4K",
-  },
-  {
-    data: [3.9, 3.7, 3.8, 3.4, 3.5, 3.1, 3.2, 2.9, 2.8, 2.9, 2.6, 2.4],
-    delta: "−0.4 pts",
-    label: "Monthly churn",
-    value: "2.4%",
-  },
-] as const;
+// Thirty days of signups with a mid-month launch spike.
+const SIGNUPS = [
+  212, 224, 219, 231, 228, 240, 236, 251, 247, 262, 258, 271, 266, 412, 538,
+  471, 402, 371, 352, 344, 338, 351, 347, 362, 358, 371, 366, 384, 379, 396,
+];
 
 export default function SparklineDemo() {
+  const glyphs = usePreviewValue(knobs.glyphs);
+  const rows = usePreviewValue(knobs.rows);
   const color = usePreviewValue(knobs.tint);
   const fill = usePreviewValue(knobs.fill);
-  const bloom = usePreviewValue(knobs.bloom);
-  const area = usePreviewValue(knobs.area);
-  const dot = usePreviewValue(knobs.dot);
   const interactive = usePreviewValue(knobs.interactive);
 
   return (
-    <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-3">
-      {STATS.map((stat) => (
-        <div
-          key={stat.label}
-          className="bg-background border-border flex flex-col gap-1 rounded-2xl border p-4 [--ascii-paper:var(--background)]"
-        >
-          <span className="text-muted-foreground truncate text-sm">
-            {stat.label}
+    <div className="border-border bg-background w-full max-w-sm border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>signups · 30d</span>
+        <span className="text-foreground">▲ 87%</span>
+      </div>
+      <div className="flex items-end justify-between gap-4 p-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-3xl font-semibold tracking-tight tabular-nums">
+            396
           </span>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-2xl font-semibold tracking-tight">
-              {stat.value}
-            </span>
-            <span className="text-foreground text-xs font-medium">
-              {stat.delta}
-            </span>
-          </div>
-          <Sparkline
-            data={stat.data}
-            label={`${stat.label}, last 12 months`}
-            height={40}
-            color={color}
-            fill={fill}
-            bloom={bloom}
-            area={area}
-            dot={dot}
-            interactive={interactive}
-            className="mt-3"
-          />
+          <span className="text-muted-foreground text-xs">today</span>
         </div>
-      ))}
+        <Sparkline
+          data={SIGNUPS}
+          label="Daily signups, last 30 days"
+          glyphs={glyphs}
+          rows={rows}
+          color={color}
+          fill={fill}
+          interactive={interactive}
+          className="text-base"
+        />
+      </div>
     </div>
   );
 }

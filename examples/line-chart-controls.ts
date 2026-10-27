@@ -1,13 +1,14 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, toggle } from "@/lib/preview-controls";
+import { CHART_GLYPHS } from "@/components/asciicn/cartesian-chart";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the line chart's main demo, shared by the page and the demo.
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Band fill",
-  options: FILL_VARIANTS,
+export const glyphs = segmented({
+  default: "braille",
+  id: "glyphs",
+  label: "Glyphs",
+  options: CHART_GLYPHS,
 });
 
 export const tint = color({
@@ -15,13 +16,6 @@ export const tint = color({
   id: "color",
   label: "Colour",
   options: ASCII_COLOR_NAMES,
-});
-
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
 });
 
 export const markers = segmented({
@@ -38,6 +32,22 @@ export const curve = segmented({
   options: ["smooth", "linear"],
 });
 
+export const cell = slider({
+  default: 12,
+  id: "cell",
+  label: "Cell",
+  max: 18,
+  min: 8,
+  step: 1,
+  unit: "px",
+});
+
+export const glow = toggle({
+  default: false,
+  id: "glow",
+  label: "Glow",
+});
+
 export const interactive = toggle({
   default: true,
   id: "interactive",
@@ -45,4 +55,4 @@ export const interactive = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [fill, tint, bloom, markers, curve, interactive];
+export const controls = [glyphs, tint, markers, curve, cell, glow, interactive];

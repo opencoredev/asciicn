@@ -24,47 +24,53 @@ const data = P50.map((p50, index) => {
 });
 
 export default function LineChartDemo() {
-  const fill = usePreviewValue(knobs.fill);
+  const glyphs = usePreviewValue(knobs.glyphs);
   const color = usePreviewValue(knobs.tint);
-  const bloom = usePreviewValue(knobs.bloom);
   const markers = usePreviewValue(knobs.markers);
   const curve = usePreviewValue(knobs.curve);
+  const cell = usePreviewValue(knobs.cell);
+  const glow = usePreviewValue(knobs.glow);
   const interactive = usePreviewValue(knobs.interactive);
 
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-sm">
-            API latency, median
-          </span>
-          <span className="text-3xl font-semibold tracking-tight">182 ms</span>
-        </div>
-        <span className="text-muted-foreground text-sm">Band: p10 to p90</span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>api · latency p50</span>
+        <span>band p10–p90</span>
       </div>
-      <LineChart
-        data={data}
-        x="time"
-        series={[
-          {
-            color,
-            label: "p50",
-            range: { high: "p90", low: "p10" },
-            value: "p50",
-          },
-        ]}
-        fill={fill}
-        bloom={bloom}
-        markers={markers}
-        curve={curve}
-        interactive={interactive}
-        format={{
-          maximumFractionDigits: 0,
-          style: "unit",
-          unit: "millisecond",
-          unitDisplay: "narrow",
-        }}
-      />
+      <div className="p-4 sm:p-5">
+        <p className="mb-4 text-3xl font-semibold tracking-tight tabular-nums">
+          182
+          <span className="text-muted-foreground ml-1 text-sm font-normal">
+            ms
+          </span>
+        </p>
+        <LineChart
+          data={data}
+          x="time"
+          series={[
+            {
+              color,
+              label: "p50",
+              range: { high: "p90", low: "p10" },
+              value: "p50",
+            },
+          ]}
+          glyphs={glyphs}
+          markers={markers}
+          curve={curve}
+          cell={cell}
+          glow={glow}
+          interactive={interactive}
+          height={252}
+          format={{
+            maximumFractionDigits: 0,
+            style: "unit",
+            unit: "millisecond",
+            unitDisplay: "narrow",
+          }}
+        />
+      </div>
     </div>
   );
 }

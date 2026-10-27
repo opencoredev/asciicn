@@ -11,13 +11,18 @@ import {
 import type { ComponentProps, KeyboardEvent, PointerEvent } from "react";
 
 import {
-  BloomGroup,
-  cssColor,
-  MOTION,
-  readAsciiCell,
-  useFrameLoop,
-} from "@/lib/ascii";
-import type { Bloom, AsciiColor } from "@/lib/ascii";
+  FURNITURE,
+  GlyphFrame,
+  GlyphSvg,
+  GlyphSwatch,
+  INK,
+  seriesInk,
+  useCellGrid,
+  useReveal,
+} from "@/components/asciicn/cartesian-chart";
+import type { InkPaint } from "@/components/asciicn/cartesian-chart";
+import { cssColor, EIGHTHS_UP } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
 export interface HeatmapDatum {
@@ -27,28 +32,37 @@ export interface HeatmapDatum {
   value: number;
 }
 
+/**
+ * `shades`: light to full shade (`░▒▓█`). `blocks`: a bar inside each
+ * square that rises with the value (`▂▄▆█`). `ascii`: plain characters
+ * from `-` to `#`.
+ */
+export type HeatmapGlyphs = "shades" | "blocks" | "ascii";
+
+export const HEATMAP_GLYPHS = [
+  "shades",
+  "blocks",
+  "ascii",
+] as const satisfies readonly HeatmapGlyphs[];
+
 interface HeatmapShared {
-  /**
-   * How many densities values map to, above empty, 2 to 6. With 4 the
-   * squares step through dots, a checkerboard, a hollow frame and solid.
-   * Default 4.
-   */
+  /** How many levels values map to, above empty, 2 to 6. Default 4. */
   steps?: number;
-  /** The value drawn solid; larger values draw solid too. Default: the largest value. */
+  /** The value drawn at the top level; larger values draw there too. Default: the largest value. */
   max?: number;
   /** What a value counts, for the readout: `"deploy"` or `{ one: "deploy", other: "deploys" }`. */
   unit?: string | { one: string; other: string };
-  /** Ink colour: a palette name or any CSS colour. Default `ink`. */
+  /** The glyph ladder for the levels. Default `shades`. */
+  glyphs?: HeatmapGlyphs;
+  /** Ink colour: a palette name or any CSS colour. Lower levels mix toward the paper. Default `ink`. */
   color?: AsciiColor;
-  /** Soft glow in the ink colour behind the densest squares: `off`, `low` or `high`. Default `off`. */
-  bloom?: Bloom;
-  /** Largest dither cell in CSS px; each square is 4×4 cells. Shrinks to 2 to fit. Default `--ascii-cell`. */
+  /** Glyph cell height in px. Shrinks to fit when the grid is too wide. Default `--ascii-cell` (12). */
   cell?: number;
-  /** Show the Less/More scale. Default true. */
+  /** Show the Less to More level scale. Default true. */
   legend?: boolean;
   /** Hover and keyboard readout, and the legend spotlight. `false` for decoration. Default true. */
   interactive?: boolean;
-  /** Squares ripple in from the left on first view. Default true; off under reduced motion. */
+  /** Squares sweep in from the top left on first view. Default true; off under reduced motion. */
   animate?: boolean;
 }
 
@@ -82,16 +96,6 @@ export type HeatmapProps = Omit<ComponentProps<"div">, "children"> &
   (CalendarHeatmapProps | MatrixHeatmapProps);
 
 const DAY_MS = 86_400_000;
-/** A square is 4×4 cells with one cell of gap: exactly one Bayer tile. */
-const SQUARE = 4;
-const PITCH = 5;
-const TOP = 20;
-const MIN_CELL = 2;
-const DIMMED = 0.18;
-const REVEAL_SECONDS = (MOTION.slow + MOTION.base * 2) / 1000;
-const REVEAL_STEPS = 30;
-const GLIDE =
-  "transition-[transform,opacity] duration-200 ease-(--ease-out) motion-reduce:transition-none data-[glide=false]:transition-[opacity]";
 
 const count = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 const longDate = new Intl.DateTimeFormat("en", {
@@ -315,515 +319,6 @@ const buildMatrix = ({
   };
 };
 
-/**
- * Hand-picked 4×4 masks, sparse to solid. A plain Bayer level cut to a
- * square reads as a glyph at three quarters, so the dense end uses a
- * hollow frame instead: every level keeps the square's outline crisp.
- */
-const MASKS = {
-  checker: ["#.#.", ".#.#", "#.#.", ".#.#"],
-  dots: ["#.#.", "....", "#.#.", "...."],
-  frame: ["####", "#..#", "#..#", "####"],
-  pinhole: ["####", "#.##", "##.#", "####"],
-  solid: ["####", "####", "####", "####"],
-  sparse: ["....", ".#..", "..#.", "...."],
-} as const satisfies Record<string, readonly [string, string, string, string]>;
-
-type MaskName = keyof typeof MASKS;
-
-/** The masks for 2 to 6 steps, lightest first. */
-const STEP_MASKS: Readonly<Record<number, readonly MaskName[]>> = {
-  2: ["checker", "solid"],
-  3: ["dots", "checker", "solid"],
-  4: ["dots", "checker", "frame", "solid"],
-  5: ["sparse", "dots", "checker", "frame", "solid"],
-  6: ["sparse", "dots", "checker", "frame", "pinhole", "solid"],
-};
-
-/** Whether cell (x, y) of a square is inked at `bucket` (1 to `steps`). */
-const squareInked = (x: number, y: number, bucket: number, steps: number) => {
-  const name = STEP_MASKS[steps]?.[bucket - 1];
-  return name !== undefined && MASKS[name][y]?.[x] === "#";
-};
-
-/**
- * Paths in cell units: one faint backing path for every in-range square,
- * then one ink path per bucket. Squares past `reveal` (a 0..1 sweep that
- * runs as a diagonal from the top left) are left out.
- */
-const gridPaths = ({
-  squares,
-  columns,
-  rows,
-  steps,
-  reveal,
-}: {
-  squares: readonly Square[];
-  columns: number;
-  rows: number;
-  steps: number;
-  reveal: number;
-}) => {
-  const ink = Array.from({ length: steps + 1 }, () => "");
-  let backing = "";
-  const span = columns + rows * 0.8;
-  for (const square of squares) {
-    if ((square.column + square.row * 0.8) / span <= reveal) {
-      const left = square.column * PITCH;
-      const top = square.row * PITCH;
-      backing += `M${left} ${top}h${SQUARE}v${SQUARE}h${-SQUARE}z`;
-      for (let y = 0; y < SQUARE && square.bucket > 0; y += 1) {
-        for (let x = 0; x < SQUARE; x += 1) {
-          if (squareInked(x, y, square.bucket, steps)) {
-            ink[square.bucket] += `M${left + x} ${top + y}h1v1h-1z`;
-          }
-        }
-      }
-    }
-  }
-  return { backing, ink };
-};
-
-const snapDown = (px: number) => {
-  const dpr = window.devicePixelRatio || 1;
-  return Math.max(1, Math.floor(px * dpr)) / dpr;
-};
-
-/** Width of the box and the largest cell that fits, 0 until measured. */
-const useFit = (
-  ref: { current: HTMLDivElement | null },
-  cell: number | undefined
-) => {
-  const [box, setBox] = useState({ base: cell ?? 3, width: 0 });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) => {
-      setBox({
-        base: cell ?? readAsciiCell(el),
-        width: Math.floor(entry?.contentRect.width ?? 0),
-      });
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref, cell]);
-  return box;
-};
-
-/** 0 → 1 over the entrance once on screen; 1 at once when off or reduced. */
-const useReveal = (target: { current: Element | null }, enabled: boolean) => {
-  const [progress, setProgress] = useState(enabled ? 0 : 1);
-  useFrameLoop(
-    (time) => {
-      const linear = Math.min(1, time / REVEAL_SECONDS);
-      setProgress(
-        Math.round((1 - (1 - linear) ** 2) * REVEAL_STEPS) / REVEAL_STEPS
-      );
-    },
-    { enabled: enabled && progress < 1, stillTime: REVEAL_SECONDS, target }
-  );
-  return progress;
-};
-
-interface Layout {
-  cell: number;
-  /** Columns that fit; calendars drop their oldest weeks to get here. */
-  columns: number;
-  left: number;
-  /** Show every nth column label. */
-  labelEvery: number;
-}
-
-const AXIS_CHAR = 6.1;
-
-/** The cell size and visible columns for a box `width` px wide. */
-const fitLayout = ({
-  width,
-  base,
-  columns,
-  rowLabels,
-  columnLabels,
-}: {
-  width: number;
-  base: number;
-  columns: number;
-  rowLabels: readonly string[];
-  columnLabels: readonly string[];
-}): Layout => {
-  const left =
-    Math.ceil(
-      Math.max(0, ...rowLabels.map((text) => text.length)) * AXIS_CHAR
-    ) + 8;
-  const room = Math.max(0, width - left);
-  const ideal = room / (columns * PITCH - 1);
-  const cell = Math.max(MIN_CELL, Math.min(base, snapDown(ideal)));
-  const fits = Math.max(1, Math.floor((room / cell + 1) / PITCH));
-  const widest = Math.max(0, ...columnLabels.map((text) => text.length));
-  return {
-    cell,
-    columns: Math.min(columns, fits),
-    labelEvery:
-      widest === 0
-        ? 1
-        : Math.max(1, Math.ceil((widest * AXIS_CHAR + 6) / (cell * PITCH))),
-    left,
-  };
-};
-
-const ARROWS: Readonly<Record<string, readonly [number, number]>> = {
-  ArrowDown: [0, 1],
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-  ArrowUp: [0, -1],
-};
-
-interface Active {
-  column: number;
-  row: number;
-  glide: boolean;
-  visible: boolean;
-}
-
-/** The pointed or focused square, with rAF-throttled pointer moves. */
-const useActiveSquare = ({
-  model,
-  layout,
-  onEscape,
-}: {
-  model: GridModel;
-  layout: Layout;
-  onEscape: () => void;
-}) => {
-  const [active, setActive] = useState<Active | null>(null);
-  const frame = useRef(0);
-  const pointer = useRef<{ x: number; y: number } | null>(null);
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-  const pitch = layout.cell * PITCH;
-
-  const point = (x: number, y: number) => {
-    const column = Math.floor((x - layout.left) / pitch);
-    const row = Math.floor((y - TOP) / pitch);
-    if (model.at(column, row) === undefined) {
-      setActive((current) =>
-        current === null ? null : { ...current, glide: false, visible: false }
-      );
-      return;
-    }
-    setActive((current) =>
-      current?.column === column && current.row === row && current.visible
-        ? current
-        : { column, glide: current?.visible === true, row, visible: true }
-    );
-  };
-
-  const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
-    const box = event.currentTarget.getBoundingClientRect();
-    pointer.current = {
-      x: event.clientX - box.left,
-      y: event.clientY - box.top,
-    };
-    if (frame.current !== 0) {
-      return;
-    }
-    frame.current = requestAnimationFrame(() => {
-      frame.current = 0;
-      if (pointer.current !== null) {
-        point(pointer.current.x, pointer.current.y);
-      }
-    });
-  };
-
-  const hide = () =>
-    setActive((current) =>
-      current === null ? null : { ...current, glide: false, visible: false }
-    );
-
-  const onPointerLeave = () => {
-    pointer.current = null;
-    cancelAnimationFrame(frame.current);
-    frame.current = 0;
-    hide();
-  };
-
-  const last = model.squares.at(-1);
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      hide();
-      onEscape();
-      return;
-    }
-    const from = active ?? { column: last?.column ?? 0, row: last?.row ?? 0 };
-    const step = ARROWS[event.key];
-    let target: Square | undefined;
-    if (step !== undefined) {
-      target = model.at(from.column + step[0], from.row + step[1]);
-    } else if (event.key === "Home") {
-      [target] = model.squares;
-    } else if (event.key === "End") {
-      target = last;
-    } else {
-      return;
-    }
-    event.preventDefault();
-    // The docs bind the arrows to prev/next page; the grid owns them while focused.
-    event.stopPropagation();
-    if (target !== undefined) {
-      setActive({
-        column: target.column,
-        glide: false,
-        row: target.row,
-        visible: true,
-      });
-    }
-  };
-
-  const onFocus = () =>
-    setActive((current) =>
-      current?.visible === true
-        ? current
-        : {
-            column: current?.column ?? last?.column ?? 0,
-            glide: false,
-            row: current?.row ?? last?.row ?? 0,
-            visible: true,
-          }
-    );
-
-  return {
-    active,
-    handlers: { onBlur: hide, onFocus, onKeyDown },
-    pointerHandlers: { onPointerLeave, onPointerMove },
-  };
-};
-
-/** The readout card, placed over the active square by transform. */
-const Readout = ({
-  square,
-  anchor,
-  width,
-  visible,
-  glide,
-  unit,
-}: {
-  square: Square | undefined;
-  anchor: { x: number; y: number };
-  width: number;
-  visible: boolean;
-  glide: boolean;
-  unit: HeatmapShared["unit"];
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) {
-      return;
-    }
-    const left = Math.min(
-      Math.max(0, anchor.x - el.offsetWidth / 2),
-      Math.max(0, width - el.offsetWidth)
-    );
-    const above = anchor.y - el.offsetHeight - 8;
-    el.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(above)}px, 0)`;
-  });
-  return (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      data-glide={String(glide)}
-      className={cn(
-        "bg-popover/95 text-popover-foreground border-border pointer-events-none absolute top-0 left-0 z-10 rounded-lg border px-2.5 py-2 whitespace-nowrap shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm",
-        GLIDE
-      )}
-      style={{ opacity: visible ? 1 : 0 }}
-    >
-      {square === undefined ? null : (
-        <>
-          <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wide uppercase">
-            {square.label}
-          </div>
-          <div className="font-mono text-xs font-medium tabular-nums">
-            {square.value > 0 ? withUnit(square.value, unit) : "None"}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-/** A 4×4 swatch of one bucket, drawn exactly like a square in the grid. */
-const Swatch = ({
-  bucket,
-  steps,
-  cell,
-  color,
-}: {
-  bucket: number;
-  steps: number;
-  cell: number;
-  color: AsciiColor;
-}) => {
-  let path = "";
-  for (let y = 0; y < SQUARE; y += 1) {
-    for (let x = 0; x < SQUARE; x += 1) {
-      if (squareInked(x, y, bucket, steps)) {
-        path += `M${x} ${y}h1v1h-1z`;
-      }
-    }
-  }
-  const side = SQUARE * cell;
-  return (
-    <svg aria-hidden="true" width={side} height={side} className="block">
-      <g transform={`scale(${cell})`} shapeRendering="crispEdges">
-        <rect
-          width={SQUARE}
-          height={SQUARE}
-          className="fill-foreground/[0.07]"
-        />
-        <path d={path} fill={cssColor(color)} />
-      </g>
-    </svg>
-  );
-};
-
-/** Upper bound of each bucket, for the legend's labels. */
-const bucketText = ({
-  bucket,
-  steps,
-  max,
-  unit,
-}: {
-  bucket: number;
-  steps: number;
-  max: number;
-  unit: HeatmapShared["unit"];
-}) => {
-  if (bucket === 0) {
-    return "None";
-  }
-  const low = (max * (bucket - 1)) / steps;
-  if (bucket === steps) {
-    return `More than ${withUnit(low, unit)}`;
-  }
-  return `Up to ${withUnit((max * bucket) / steps, unit)}`;
-};
-
-/** Less … More: one toggle per density that spotlights its squares. */
-const Legend = ({
-  steps,
-  cell,
-  color,
-  focus,
-  locked,
-  interactive,
-  max,
-  unit,
-  onHover,
-  onLock,
-}: {
-  steps: number;
-  cell: number;
-  color: AsciiColor;
-  focus: number | null;
-  locked: number | null;
-  interactive: boolean;
-  max: number;
-  unit: HeatmapShared["unit"];
-  onHover: (bucket: number | null) => void;
-  onLock: (bucket: number | null) => void;
-}) => (
-  <div className="text-muted-foreground mt-3 flex items-center justify-end gap-1.5 font-mono text-[10px]">
-    <span className="mr-0.5">Less</span>
-    <div
-      className="flex items-center gap-0.5"
-      {...(interactive
-        ? { "aria-label": "Levels", role: "group" }
-        : { "aria-hidden": true })}
-    >
-      {Array.from({ length: steps + 1 }, (_, bucket) => {
-        const swatch = (
-          <Swatch bucket={bucket} steps={steps} cell={cell} color={color} />
-        );
-        const dim = focus !== null && focus !== bucket && "opacity-35";
-        if (!interactive) {
-          return (
-            <span key={bucket} className={cn("p-1", dim)}>
-              {swatch}
-            </span>
-          );
-        }
-        return (
-          <button
-            key={bucket}
-            type="button"
-            aria-pressed={locked === bucket}
-            aria-label={bucketText({ bucket, max, steps, unit })}
-            title={bucketText({ bucket, max, steps, unit })}
-            onPointerEnter={() => onHover(bucket)}
-            onPointerLeave={() => onHover(null)}
-            onFocus={() => onHover(bucket)}
-            onBlur={() => onHover(null)}
-            onClick={() => onLock(locked === bucket ? null : bucket)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                onLock(null);
-              }
-            }}
-            className={cn(
-              "focus-visible:ring-ring/60 aria-pressed:ring-foreground/40 cursor-pointer rounded-[3px] p-1 transition-opacity duration-150 ease-out outline-none focus-visible:ring-2 aria-pressed:ring-1",
-              dim
-            )}
-          >
-            {swatch}
-          </button>
-        );
-      })}
-    </div>
-    <span className="ml-0.5">More</span>
-  </div>
-);
-
-/** Month or column labels above the grid, and row labels to its left. */
-const AxisLabels = ({
-  model,
-  layout,
-  offset,
-}: {
-  model: GridModel;
-  layout: Layout;
-  offset: number;
-}) => {
-  const pitch = layout.cell * PITCH;
-  return (
-    <g
-      aria-hidden="true"
-      className="fill-muted-foreground font-mono text-[10px]"
-    >
-      {model.columnLabels.map(({ column, text }) => {
-        const shown = column - offset;
-        return shown >= 0 &&
-          shown < layout.columns &&
-          shown % layout.labelEvery === 0 ? (
-          <text key={column} x={layout.left + shown * pitch} y={TOP - 7}>
-            {text}
-          </text>
-        ) : null;
-      })}
-      {model.rowLabels.map(({ row, text }) => (
-        <text
-          key={row}
-          x={0}
-          y={TOP + row * pitch + (SQUARE * layout.cell) / 2}
-          dy="0.34em"
-        >
-          {text}
-        </text>
-      ))}
-    </g>
-  );
-};
-
 /** The model for either mode. */
 const buildModel = (props: HeatmapProps, steps: number) =>
   props.mode === "matrix"
@@ -855,6 +350,9 @@ const shiftModel = (model: GridModel, offset: number): GridModel => {
   return {
     ...model,
     at: indexSquares(squares, model.rows),
+    columnLabels: model.columnLabels
+      .filter(({ column }) => column >= offset)
+      .map((label) => ({ ...label, column: label.column - offset })),
     columns: model.columns - offset,
     squares,
   };
@@ -872,14 +370,425 @@ const withoutModeProps = ({
 }: Omit<HeatmapProps, keyof HeatmapShared | "className" | "aria-label">) =>
   props;
 
-/** A focusable group labelled with the summary and the key help. */
-const groupProps = (uid: string, label: string) => ({
-  "aria-describedby": `${uid}-keys`,
-  "aria-label": label,
-  "aria-roledescription": "heatmap",
-  role: "group",
-  tabIndex: 0,
-});
+// ---------------------------------------------------------------------------
+// Glyphs
+// ---------------------------------------------------------------------------
+
+/** Level glyphs, lightest first. A ladder of `steps` takes the densest end. */
+const LADDERS = {
+  ascii: [".", ":", "-", "+", "*", "#"],
+  shades: ["·", "∙", "░", "▒", "▓", "█"],
+} as const;
+
+/** The glyph for level `bucket` (1 to `steps`); 0 is an empty square. */
+const levelGlyph = (glyphs: HeatmapGlyphs, bucket: number, steps: number) => {
+  if (bucket === 0) {
+    return glyphs === "blocks" ? "▁" : "·";
+  }
+  if (glyphs === "blocks") {
+    return EIGHTHS_UP[Math.max(2, Math.round((bucket / steps) * 8))] ?? "█";
+  }
+  const ladder = LADDERS[glyphs];
+  return ladder[ladder.length - steps + bucket - 1] ?? "█";
+};
+
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
+
+interface Fit {
+  /** Cells from one square to the next: 3 (two-cell squares) or 2 (one-cell). */
+  pitch: number;
+  /** Cells per square. */
+  width: number;
+  /** Squares across. Calendars drop their oldest weeks to get here. */
+  columns: number;
+  /** Cells before the first square, for row labels. */
+  gutter: number;
+  /** Cell size multiplier, below 1 when a matrix only fits smaller. */
+  scale: number;
+}
+
+const MIN_SCALE = 2 / 3;
+
+/**
+ * The widest layout that fits: two-cell squares with a gap, then one-cell
+ * squares with a gap. Past that, calendars drop their oldest weeks and
+ * matrices shrink their cells (down to two thirds).
+ */
+const fitGrid = ({
+  available,
+  gutter,
+  columns,
+  matrix,
+}: {
+  available: number;
+  gutter: number;
+  columns: number;
+  matrix: boolean;
+}): Fit => {
+  for (const [pitch, width] of [
+    [3, 2],
+    [2, 1],
+  ] as const) {
+    if (gutter + columns * pitch - 1 <= available) {
+      return { columns, gutter, pitch, scale: 1, width };
+    }
+  }
+  if (matrix) {
+    const need = gutter + columns * 2 - 1;
+    return {
+      columns,
+      gutter,
+      pitch: 2,
+      scale: Math.max(MIN_SCALE, available / need),
+      width: 1,
+    };
+  }
+  return {
+    columns: Math.max(1, Math.floor((available - gutter + 1) / 2)),
+    gutter,
+    pitch: 2,
+    scale: 1,
+    width: 1,
+  };
+};
+
+/** Frame column of square column `column`. */
+const squareX = (fit: Fit, column: number) => fit.gutter + column * fit.pitch;
+
+/** The frame: column labels on top, row labels to the left, then squares. */
+const drawHeatmap = ({
+  model,
+  fit,
+  glyphs,
+  steps,
+  reveal,
+  active,
+}: {
+  model: GridModel;
+  fit: Fit;
+  glyphs: HeatmapGlyphs;
+  steps: number;
+  reveal: number;
+  active: { column: number; row: number } | null;
+}) => {
+  const frame = new GlyphFrame(
+    fit.gutter + model.columns * fit.pitch,
+    model.rows + 1
+  );
+  let end = Number.NEGATIVE_INFINITY;
+  for (const { column, text } of model.columnLabels) {
+    const x = squareX(fit, column);
+    if (x > end + 1 && x + text.length <= frame.columns) {
+      frame.write(x, 0, text, INK.label);
+      end = x + text.length;
+    }
+  }
+  for (const { row, text } of model.rowLabels) {
+    frame.write(fit.gutter - 1 - text.length, row + 1, text, INK.label);
+  }
+  const span = model.columns + model.rows * 0.8;
+  for (const square of model.squares) {
+    if ((square.column + square.row * 0.8) / span <= reveal) {
+      const glyph = levelGlyph(glyphs, square.bucket, steps);
+      const ink = square.bucket === 0 ? INK.grid : seriesInk(square.bucket);
+      for (let offset = 0; offset < fit.width; offset += 1) {
+        frame.put(
+          squareX(fit, square.column) + offset,
+          square.row + 1,
+          glyph,
+          ink
+        );
+      }
+    }
+  }
+  if (active !== null) {
+    const x = squareX(fit, active.column);
+    frame.put(x - 1, active.row + 1, "[", INK.strong);
+    frame.put(x + fit.width, active.row + 1, "]", INK.strong);
+  }
+  return frame;
+};
+
+// ---------------------------------------------------------------------------
+// Interaction
+// ---------------------------------------------------------------------------
+
+const ARROWS: Readonly<Record<string, readonly [number, number]>> = {
+  ArrowDown: [0, 1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+};
+
+interface Active {
+  column: number;
+  row: number;
+  visible: boolean;
+}
+
+/** The pointed or focused square, with pointer moves throttled to frames. */
+const useActiveSquare = ({
+  model,
+  squareAt,
+  onEscape,
+}: {
+  model: GridModel;
+  squareAt: (x: number, y: number) => { column: number; row: number };
+  onEscape: () => void;
+}) => {
+  const [active, setActive] = useState<Active | null>(null);
+  const frame = useRef(0);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  const hide = () =>
+    setActive((current) =>
+      current === null ? null : { ...current, visible: false }
+    );
+
+  const point = (x: number, y: number) => {
+    const { column, row } = squareAt(x, y);
+    if (model.at(column, row) === undefined) {
+      hide();
+      return;
+    }
+    setActive((current) =>
+      current?.column === column && current.row === row && current.visible
+        ? current
+        : { column, row, visible: true }
+    );
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    pointer.current = {
+      x: event.clientX - box.left,
+      y: event.clientY - box.top,
+    };
+    if (frame.current !== 0) {
+      return;
+    }
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      if (pointer.current !== null) {
+        point(pointer.current.x, pointer.current.y);
+      }
+    });
+  };
+
+  const onPointerLeave = () => {
+    pointer.current = null;
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    hide();
+  };
+
+  const last = model.squares.at(-1);
+  const targetOf = (key: string, from: { column: number; row: number }) => {
+    const step = ARROWS[key];
+    if (step !== undefined) {
+      return model.at(from.column + step[0], from.row + step[1]) ?? null;
+    }
+    if (key === "Home") {
+      return model.squares[0] ?? null;
+    }
+    return key === "End" ? (last ?? null) : undefined;
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      hide();
+      onEscape();
+      return;
+    }
+    const target = targetOf(
+      event.key,
+      active ?? { column: last?.column ?? 0, row: last?.row ?? 0 }
+    );
+    if (target === undefined) {
+      return;
+    }
+    event.preventDefault();
+    // The docs bind the arrows to prev/next page; the grid owns them while focused.
+    event.stopPropagation();
+    if (target !== null) {
+      setActive({ column: target.column, row: target.row, visible: true });
+    }
+  };
+
+  const onFocus = () =>
+    setActive((current) =>
+      current?.visible === true
+        ? current
+        : {
+            column: current?.column ?? last?.column ?? 0,
+            row: current?.row ?? last?.row ?? 0,
+            visible: true,
+          }
+    );
+
+  return {
+    active: active?.visible === true ? active : null,
+    handlers: {
+      onBlur: hide,
+      onFocus,
+      onKeyDown,
+      onPointerLeave,
+      onPointerMove,
+    },
+  };
+};
+
+/** The readout card over (or under) the active square. */
+const Readout = ({
+  square,
+  anchor,
+  unit,
+}: {
+  square: Square | undefined;
+  anchor: { x: number; top: number; bottom: number; width: number } | null;
+  unit: HeatmapShared["unit"];
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || anchor === null) {
+      return;
+    }
+    const left = Math.min(
+      Math.max(0, anchor.x - el.offsetWidth / 2),
+      Math.max(0, anchor.width - el.offsetWidth)
+    );
+    const above = anchor.top - el.offsetHeight - 6;
+    const top = above >= 0 ? above : anchor.bottom + 6;
+    el.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+  });
+  return (
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className="bg-popover/95 text-popover-foreground border-border pointer-events-none absolute top-0 left-0 z-10 border font-mono text-[11px] leading-4 whitespace-nowrap shadow-[0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm transition-opacity duration-150 ease-out motion-reduce:transition-none"
+      style={{ opacity: anchor === null || square === undefined ? 0 : 1 }}
+    >
+      {square === undefined ? null : (
+        <>
+          <div className="border-border text-muted-foreground border-b px-2 py-1 tracking-wide uppercase">
+            {square.label}
+          </div>
+          <div className="px-2 py-1 font-medium tabular-nums">
+            {square.value > 0 ? withUnit(square.value, unit) : "None"}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/** Upper bound of each level, for the legend's labels. */
+const bucketText = ({
+  bucket,
+  steps,
+  max,
+  unit,
+}: {
+  bucket: number;
+  steps: number;
+  max: number;
+  unit: HeatmapShared["unit"];
+}) => {
+  if (bucket === 0) {
+    return "None";
+  }
+  if (bucket === steps) {
+    return `More than ${withUnit((max * (bucket - 1)) / steps, unit)}`;
+  }
+  return `Up to ${withUnit((max * bucket) / steps, unit)}`;
+};
+
+/** Less … More: one toggle per level that spotlights its squares. */
+const Legend = ({
+  steps,
+  glyphs,
+  paint,
+  focus,
+  locked,
+  interactive,
+  max,
+  unit,
+  onHover,
+  onLock,
+}: {
+  steps: number;
+  glyphs: HeatmapGlyphs;
+  paint: (ink: number) => InkPaint | undefined;
+  focus: number | null;
+  locked: number | null;
+  interactive: boolean;
+  max: number;
+  unit: HeatmapShared["unit"];
+  onHover: (bucket: number | null) => void;
+  onLock: (bucket: number | null) => void;
+}) => (
+  <div className="text-muted-foreground mt-2 flex items-center justify-end gap-1 font-mono text-[11px]">
+    <span className="mr-1">Less</span>
+    <div
+      className="flex items-center"
+      {...(interactive
+        ? { "aria-label": "Levels", role: "group" }
+        : { "aria-hidden": true })}
+    >
+      {Array.from({ length: steps + 1 }, (_, bucket) => {
+        const glyph = levelGlyph(glyphs, bucket, steps);
+        const swatch = (
+          <GlyphSwatch
+            glyphs={`${glyph}${glyph}`}
+            color={
+              paint(bucket === 0 ? INK.grid : seriesInk(bucket))?.color ??
+              "currentColor"
+            }
+          />
+        );
+        const dim = focus !== null && focus !== bucket && "opacity-35";
+        const text = bucketText({ bucket, max, steps, unit });
+        if (!interactive) {
+          return (
+            <span key={bucket} className={cn("p-1", dim)}>
+              {swatch}
+            </span>
+          );
+        }
+        return (
+          <button
+            key={bucket}
+            type="button"
+            aria-pressed={locked === bucket}
+            aria-label={text}
+            title={text}
+            onPointerEnter={() => onHover(bucket)}
+            onPointerLeave={() => onHover(null)}
+            onFocus={() => onHover(bucket)}
+            onBlur={() => onHover(null)}
+            onClick={() => onLock(locked === bucket ? null : bucket)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                onLock(null);
+              }
+            }}
+            className={cn(
+              "focus-visible:ring-ring/60 aria-pressed:bg-muted cursor-pointer rounded-sm p-1 transition-opacity duration-150 ease-out outline-none focus-visible:ring-2",
+              dim
+            )}
+          >
+            {swatch}
+          </button>
+        );
+      })}
+    </div>
+    <span className="ml-1">More</span>
+  </div>
+);
 
 /** Key help and a live readout for screen readers. */
 const ScreenReaderStatus = ({ id, text }: { id: string; text: string }) => (
@@ -894,155 +803,81 @@ const ScreenReaderStatus = ({ id, text }: { id: string; text: string }) => (
   </>
 );
 
-/** The grid itself: labels, squares, the hover outline and the readout. */
-const Grid = ({
-  model,
-  layout,
-  offset,
-  paths,
-  steps,
+/** Ink per level: the colour mixed toward the paper for lower levels. */
+const usePaint = ({
   color,
-  bloom,
-  focusBucket,
-  interactive,
-  scrub,
-  unit,
-  label,
-  uid,
+  steps,
+  focus,
 }: {
-  model: GridModel;
-  layout: Layout;
-  offset: number;
-  paths: { backing: string; ink: readonly string[] };
-  steps: number;
   color: AsciiColor;
-  bloom: Bloom;
-  focusBucket: number | null;
-  interactive: boolean;
-  scrub: ReturnType<typeof useActiveSquare>;
-  unit: HeatmapShared["unit"];
-  label: string;
-  uid: string;
-}) => {
-  const pitch = layout.cell * PITCH;
-  const width = layout.left + model.columns * pitch - layout.cell;
-  const height = TOP + model.rows * pitch - layout.cell;
-  const {
-    column,
-    row,
-    glide,
-    visible: shown,
-  } = scrub.active ?? { column: 0, glide: false, row: 0, visible: false };
-  const square = model.at(column, row);
-  const visible = interactive && shown && square !== undefined;
-  const ink = cssColor(color);
-  return (
-    <div
-      {...(interactive
-        ? {
-            ...scrub.handlers,
-            ...groupProps(uid, label),
-          }
-        : { "aria-label": label, role: "img" })}
-      className="focus-visible:ring-ring/60 relative rounded-sm outline-none focus-visible:ring-2"
-      style={{ height, width }}
-    >
-      <svg
-        aria-hidden="true"
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="block overflow-visible select-none"
-        {...(interactive ? scrub.pointerHandlers : {})}
-      >
-        <AxisLabels model={model} layout={layout} offset={offset} />
-        <g transform={`translate(${layout.left} ${TOP})`}>
-          <g transform={`scale(${layout.cell})`} shapeRendering="crispEdges">
-            <path d={paths.backing} className="fill-foreground/[0.07]" />
-            <BloomGroup bloom={bloom}>
-              <path
-                d={`${paths.ink[steps] ?? ""}${paths.ink[steps - 1] ?? ""}`}
-                fill={ink}
-              />
-            </BloomGroup>
-            {paths.ink.map((path, bucket) =>
-              bucket === 0 ? null : (
-                <path
-                  // oxlint-disable-next-line react/no-array-index-key -- the bucket is the identity.
-                  key={bucket}
-                  d={path}
-                  fill={ink}
-                  className="transition-opacity duration-150 ease-out motion-reduce:transition-none"
-                  style={{
-                    opacity:
-                      focusBucket === null || focusBucket === bucket
-                        ? 1
-                        : DIMMED,
-                  }}
-                />
-              )
-            )}
-          </g>
-          {interactive ? (
-            <rect
-              data-glide={String(glide)}
-              x={-1.5}
-              y={-1.5}
-              width={SQUARE * layout.cell + 3}
-              height={SQUARE * layout.cell + 3}
-              rx={1}
-              fill="none"
-              className={cn("stroke-foreground", GLIDE)}
-              strokeWidth={1}
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: `translate(${column * pitch}px, ${row * pitch}px)`,
-              }}
-            />
-          ) : null}
-        </g>
-      </svg>
-      {interactive ? (
-        <Readout
-          square={square}
-          anchor={{
-            x: layout.left + column * pitch + (SQUARE * layout.cell) / 2,
-            y: TOP + row * pitch - 2,
-          }}
-          width={width}
-          visible={visible}
-          glide={glide}
-          unit={unit}
-        />
-      ) : null}
-      {interactive ? (
-        <ScreenReaderStatus
-          id={`${uid}-keys`}
-          text={
-            visible
-              ? `${square.label}: ${square.value > 0 ? withUnit(square.value, unit) : "none"}`
-              : ""
-          }
-        />
-      ) : null}
-    </div>
-  );
+  steps: number;
+  focus: number | null;
+}) =>
+  useMemo(() => {
+    const css = cssColor(color);
+    return (ink: number): InkPaint | undefined => {
+      const bucket = ink - seriesInk(0);
+      const dim = focus !== null && focus !== Math.max(0, bucket);
+      if (ink === INK.grid) {
+        return { ...FURNITURE[INK.grid], opacity: dim ? 0.3 : 1 };
+      }
+      if (bucket < 1 || bucket > steps) {
+        return FURNITURE[ink];
+      }
+      return {
+        color: `color-mix(in oklab, ${css} ${Math.round(45 + (55 * bucket) / steps)}%, var(--ascii-paper))`,
+        opacity: dim ? 0.2 : 1,
+      };
+    };
+  }, [color, steps, focus]);
+
+/** Where the readout sits for the active square, in px; `pitch` is one row. */
+const readoutAnchor = (
+  active: { column: number; row: number } | null,
+  fit: Fit,
+  cw: number,
+  pitch: number,
+  width: number
+) =>
+  active === null
+    ? null
+    : {
+        bottom: (active.row + 2) * pitch,
+        top: (active.row + 1) * pitch,
+        width,
+        x: (squareX(fit, active.column) + fit.width / 2) * cw,
+      };
+
+// ---------------------------------------------------------------------------
+// The heatmap
+// ---------------------------------------------------------------------------
+
+const useSpotlight = (interactive: boolean) => {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [locked, setLocked] = useState<number | null>(null);
+  return {
+    focus: interactive ? (hovered ?? locked) : null,
+    locked,
+    setHovered,
+    setLocked,
+  };
 };
 
 /**
- * A heatmap built from dither cells. Every square is a 4×4 block of
- * cells, so its density steps cleanly from dots to solid. Calendar mode
- * draws a day per square and a week per column; matrix mode draws any
- * grid, such as weekday by hour. Hover or arrow through squares for a
- * readout; hover a legend level to spotlight its squares.
+ * A heatmap drawn in glyphs. Every square is two cells of one level glyph,
+ * from light shade to full block (or a rising eighth block, or ASCII),
+ * mixed toward the paper at lower levels. Calendar mode draws a day per
+ * square and a week per column; matrix mode draws any grid, such as
+ * weekday by hour. Hover or arrow through squares for a readout, and
+ * hover a legend level to spotlight its squares.
  */
 export const Heatmap = (allProps: HeatmapProps) => {
   const {
     steps: rawSteps = 4,
     max,
     unit,
+    glyphs = "shades",
     color = "ink",
-    bloom = "off",
     cell,
     legend = true,
     interactive = true,
@@ -1054,81 +889,95 @@ export const Heatmap = (allProps: HeatmapProps) => {
   const steps = Math.min(6, Math.max(2, Math.round(rawSteps)));
   const ref = useRef<HTMLDivElement>(null);
   const uid = useId().replaceAll(":", "");
-  const box = useFit(ref, cell);
+  const box = useCellGrid(ref, cell);
   const reveal = useReveal(ref, animate);
-  const [hoveredBucket, setHoveredBucket] = useState<number | null>(null);
-  const [lockedBucket, setLockedBucket] = useState<number | null>(null);
-  const focusBucket = interactive ? (hoveredBucket ?? lockedBucket) : null;
+  const { focus, locked, setHovered, setLocked } = useSpotlight(interactive);
 
   const full = useMemo(() => buildModel(allProps, steps), [allProps, steps]);
-  const layout = fitLayout({
-    base: box.base,
-    // Month labels are spaced already; matrix labels thin out to fit.
-    columnLabels:
-      allProps.mode === "matrix"
-        ? full.columnLabels.map(({ text }) => text)
-        : [],
+  const fit = fitGrid({
+    available: Math.floor(box.width / box.cw),
     columns: full.columns,
-    rowLabels: full.rowLabels.map(({ text }) => text),
-    width: box.width,
+    gutter: Math.max(0, ...full.rowLabels.map(({ text }) => text.length)) + 2,
+    matrix: allProps.mode === "matrix",
   });
-  const offset = full.columns - layout.columns;
+  const offset = full.columns - fit.columns;
   const model = useMemo(() => shiftModel(full, offset), [full, offset]);
-  const paths = useMemo(
-    () =>
-      gridPaths({
-        columns: model.columns,
-        reveal,
-        rows: model.rows,
-        squares: model.squares,
-        steps,
-      }),
-    [model, reveal, steps]
-  );
-  const scrub = useActiveSquare({
-    layout,
-    model,
-    onEscape: () => setLockedBucket(null),
+  const cw = box.cw * fit.scale;
+  const ch = box.ch * fit.scale;
+  // A quarter-cell gutter between rows keeps every square a separate tile.
+  const gap = Math.max(1, Math.round(ch / 4));
+  const pitch = ch + gap;
+  const squareAt = (x: number, y: number) => ({
+    column: Math.floor(
+      (x / cw - fit.gutter + (fit.pitch - fit.width) / 2) / fit.pitch
+    ),
+    row: Math.floor(y / pitch) - 1,
   });
+  const { active, handlers } = useActiveSquare({
+    model,
+    onEscape: () => setLocked(null),
+    squareAt,
+  });
+  const frame = useMemo(
+    () => drawHeatmap({ active, fit, glyphs, model, reveal, steps }),
+    [active, fit, glyphs, model, reveal, steps]
+  );
+  const paint = usePaint({ color, focus, steps });
+  const square =
+    active === null ? undefined : model.at(active.column, active.row);
+  const label = ariaLabel ?? model.summary;
 
   return (
     <div
       {...withoutModeProps(rest)}
       className={cn("relative w-full", className)}
     >
-      <div ref={ref} className="relative w-full">
-        {box.width === 0 ? (
-          <div style={{ height: TOP + model.rows * PITCH * layout.cell }} />
-        ) : (
-          <Grid
-            model={model}
-            layout={layout}
-            offset={offset}
-            paths={paths}
-            steps={steps}
-            color={color}
-            bloom={bloom}
-            focusBucket={focusBucket}
-            interactive={interactive}
-            scrub={scrub}
+      <div
+        ref={ref}
+        {...(interactive
+          ? {
+              ...handlers,
+              "aria-describedby": `${uid}-keys`,
+              "aria-label": label,
+              "aria-roledescription": "heatmap",
+              role: "group",
+              tabIndex: 0,
+            }
+          : { "aria-label": label, role: "img" })}
+        className="focus-visible:ring-ring/60 relative w-full rounded-sm outline-none focus-visible:ring-2"
+        style={{ height: frame.rows * pitch - gap }}
+      >
+        <GlyphSvg frame={frame} cw={cw} ch={ch} rowGap={gap} paint={paint} />
+        {interactive ? (
+          <Readout
+            square={square}
+            anchor={readoutAnchor(active, fit, cw, pitch, frame.columns * cw)}
             unit={unit}
-            label={ariaLabel ?? model.summary}
-            uid={uid}
           />
-        )}
+        ) : null}
       </div>
       {legend ? (
         <Legend
           steps={steps}
-          cell={layout.cell}
-          color={color}
-          focus={focusBucket}
-          locked={lockedBucket}
+          glyphs={glyphs}
+          paint={paint}
+          focus={focus}
+          locked={locked}
           interactive={interactive}
           max={max ?? Math.max(1, ...model.squares.map(({ value }) => value))}
           unit={unit}
-          onHover={setHoveredBucket}
-          onLock={setLockedBucket}
+          onHover={setHovered}
+          onLock={setLocked}
+        />
+      ) : null}
+      {interactive ? (
+        <ScreenReaderStatus
+          id={`${uid}-keys`}
+          text={
+            square === undefined
+              ? ""
+              : `${square.label}: ${square.value > 0 ? withUnit(square.value, unit) : "none"}`
+          }
         />
       ) : null}
     </div>

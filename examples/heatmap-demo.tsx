@@ -27,40 +27,35 @@ const data = Array.from({ length: 26 * 7 }, (_, index) => {
 const total = data.reduce((sum, day) => sum + day.value, 0);
 
 export default function HeatmapDemo() {
+  const glyphs = usePreviewValue(knobs.glyphs);
   const color = usePreviewValue(knobs.tint);
   const steps = usePreviewValue(knobs.steps);
-  const bloom = usePreviewValue(knobs.bloom);
   const cell = usePreviewValue(knobs.cell);
   const weekStart = usePreviewValue(knobs.weekStart);
   const animate = usePreviewValue(knobs.animate);
 
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-[0.08em] uppercase">
-            Deploys, last 26 weeks
-          </span>
-          <span className="text-3xl font-semibold tracking-tight tabular-nums">
-            {total.toLocaleString("en")}
-          </span>
-        </div>
-        <span className="text-muted-foreground text-sm">
-          <span className="text-foreground font-medium">3.2</span> a day on
-          average
-        </span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>deploys · 26 weeks</span>
+        <span>3.2/day</span>
       </div>
-      <Heatmap
-        data={data}
-        weeks={26}
-        unit={{ one: "deploy", other: "deploys" }}
-        color={color}
-        steps={steps}
-        bloom={bloom}
-        cell={cell}
-        weekStart={weekStart === "Mon" ? 1 : 0}
-        animate={animate}
-      />
+      <div className="p-4 sm:p-5">
+        <p className="mb-4 text-3xl font-semibold tracking-tight tabular-nums">
+          {total.toLocaleString("en")}
+        </p>
+        <Heatmap
+          data={data}
+          weeks={26}
+          unit={{ one: "deploy", other: "deploys" }}
+          color={color}
+          steps={steps}
+          glyphs={glyphs}
+          cell={cell}
+          weekStart={weekStart === "Mon" ? 1 : 0}
+          animate={animate}
+        />
+      </div>
     </div>
   );
 }

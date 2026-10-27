@@ -17,45 +17,48 @@ const data = Array.from({ length: 30 }, (_, index) => {
 });
 
 export default function AreaChartDemo() {
-  const fill = usePreviewValue(knobs.fill);
+  const glyphs = usePreviewValue(knobs.glyphs);
   const stack = usePreviewValue(knobs.stack);
-  const bloom = usePreviewValue(knobs.bloom);
+  const fill = usePreviewValue(knobs.fill);
   const color = usePreviewValue(knobs.firstColor);
   const cell = usePreviewValue(knobs.cell);
+  const glow = usePreviewValue(knobs.glow);
   const interactive = usePreviewValue(knobs.interactive);
 
   return (
-    <div className="w-full max-w-2xl">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-[0.08em] uppercase">
-            Visitors, September
-          </span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>visitors · september</span>
+        <span>30d</span>
+      </div>
+      <div className="p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <span className="text-3xl font-semibold tracking-tight tabular-nums">
             1,258
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
               today
             </span>
           </span>
+          <span className="text-muted-foreground text-xs">
+            <span className="text-foreground">▲ 109%</span> since Sep 1
+          </span>
         </div>
-        <span className="text-muted-foreground text-sm">
-          <span className="text-foreground font-medium">+109%</span> since Sep 1
-        </span>
+        <AreaChart
+          data={data}
+          x="day"
+          series={[
+            { color, label: "Search", value: "search" },
+            { label: "Direct", value: "direct" },
+          ]}
+          glyphs={glyphs}
+          stack={stack}
+          fill={fill}
+          cell={cell}
+          glow={glow}
+          interactive={interactive}
+          height={264}
+        />
       </div>
-      <AreaChart
-        data={data}
-        x="day"
-        series={[
-          { color, label: "Search", value: "search" },
-          { label: "Direct", value: "direct" },
-        ]}
-        fill={fill}
-        stack={stack}
-        bloom={bloom}
-        cell={cell}
-        interactive={interactive}
-        height={260}
-      />
     </div>
   );
 }

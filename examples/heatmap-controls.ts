@@ -1,7 +1,15 @@
-import { BLOOMS, ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { HEATMAP_GLYPHS } from "@/components/asciicn/heatmap";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the heatmap's main demo, shared by the page and the demo.
+
+export const glyphs = segmented({
+  default: "shades",
+  id: "glyphs",
+  label: "Glyphs",
+  options: HEATMAP_GLYPHS,
+});
 
 export const tint = color({
   default: "green",
@@ -19,19 +27,12 @@ export const steps = slider({
   step: 1,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
-
 export const cell = slider({
-  default: 3,
+  default: 12,
   id: "cell",
-  label: "Largest cell",
-  max: 4,
-  min: 2,
+  label: "Cell",
+  max: 16,
+  min: 8,
   step: 1,
   unit: "px",
 });
@@ -46,8 +47,8 @@ export const weekStart = segmented({
 export const animate = toggle({
   default: true,
   id: "animate",
-  label: "Ripple in",
+  label: "Sweep in",
 });
 
 /** Display order of the tray. */
-export const controls = [tint, steps, bloom, cell, weekStart, animate];
+export const controls = [glyphs, tint, steps, cell, weekStart, animate];

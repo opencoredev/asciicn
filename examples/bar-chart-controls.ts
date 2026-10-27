@@ -1,13 +1,31 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
+import {
+  CHART_FILLS,
+  CHART_GLYPHS,
+} from "@/components/asciicn/cartesian-chart";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the bar chart's main demo, shared by the page and the demo.
+
+export const glyphs = segmented({
+  default: "blocks",
+  id: "glyphs",
+  label: "Glyphs",
+  options: CHART_GLYPHS,
+});
+
+export const orientation = segmented({
+  default: "vertical",
+  id: "orientation",
+  label: "Orientation",
+  options: ["vertical", "horizontal"],
+});
 
 export const fill = segmented({
   default: "gradient",
   id: "fill",
   label: "Fill",
-  options: FILL_VARIANTS,
+  options: CHART_FILLS,
 });
 
 export const tint = color({
@@ -15,13 +33,6 @@ export const tint = color({
   id: "color",
   label: "Colour",
   options: ASCII_COLOR_NAMES,
-});
-
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
 });
 
 export const highlight = segmented({
@@ -32,11 +43,11 @@ export const highlight = segmented({
 });
 
 export const cell = slider({
-  default: 3,
+  default: 12,
   id: "cell",
   label: "Cell",
-  max: 6,
-  min: 2,
+  max: 18,
+  min: 8,
   step: 1,
   unit: "px",
 });
@@ -48,4 +59,12 @@ export const interactive = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [fill, tint, bloom, highlight, cell, interactive];
+export const controls = [
+  glyphs,
+  orientation,
+  fill,
+  tint,
+  highlight,
+  cell,
+  interactive,
+];

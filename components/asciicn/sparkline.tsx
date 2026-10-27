@@ -1,17 +1,35 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ComponentProps, KeyboardEvent, PointerEvent } from "react";
 
 import {
-  BloomGroup,
+  BRAILLE_DOT_BITS,
+  brailleChar,
   cssColor,
-  AsciiPattern,
-  FillPattern,
-  readAsciiCell,
+  EIGHTHS_UP,
+  isInked,
+  MOTION,
+  useFrameLoop,
 } from "@/lib/ascii";
-import type { Bloom, AsciiColor, DitherMatrix, FillVariant } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
+
+// Braille glyphs are bit masks.
+/* oxlint-disable no-bitwise */
+
+/**
+ * `eighths`: one bar per value in eighth blocks (`▁▃▅▇`). `braille`: a
+ * line on a 2x4 dot grid, two values per cell. `ascii`: plain characters
+ * (`_.-~'^`) that sit at the value's height.
+ */
+export type SparklineGlyphs = "eighths" | "braille" | "ascii";
+
+export const SPARKLINE_GLYPHS = [
+  "eighths",
+  "braille",
+  "ascii",
+] as const satisfies readonly SparklineGlyphs[];
 
 export interface SparklineProps extends Omit<
   ComponentProps<"span">,
@@ -21,390 +39,181 @@ export interface SparklineProps extends Omit<
   data: readonly number[];
   /** What the trend shows, such as "Revenue, last 30 days". Starts the accessible summary. */
   label: string;
-  /** Height in px. Default 32. The width follows the element, so size it with `className`. */
-  height?: number;
+  /** The glyphs it draws with. Default `eighths`. */
+  glyphs?: SparklineGlyphs;
+  /**
+   * Width in cells (characters). Default: one cell per value for
+   * `eighths` and `ascii`, one per two values for `braille`. Values are
+   * averaged or repeated to fit.
+   */
+  width?: number;
+  /** Height in text rows. Default 1, so it sits on a line of text. */
+  rows?: number;
   /** Colour: a palette name (`"green"`) or any CSS colour. Default `ink`. */
   color?: AsciiColor;
-  /** Fill under the line. Default true. */
-  area?: boolean;
-  /** Texture of the fill. `gradient` is densest just under the line. Default `gradient`. */
-  fill?: FillVariant;
-  /** Soft glow in `color` under the line and fill: `off`, `low` or `high`. Default `off`. */
-  bloom?: Bloom;
-  /**
-   * Scrub with the pointer or arrow keys to read single values. Default
-   * false: a sparkline is usually a glance, not a tool.
-   */
-  interactive?: boolean;
-  /** Entrance motion. Default true; always off under reduced motion. */
-  animate?: boolean;
-  /** Dot on the latest value. Default true. */
+  /** Draw the latest value at full strength and the rest a step quieter. Default true. */
   dot?: boolean;
-  /** Gradient only: coverage of the fill just under the line, 0 to 1. Default 0.5. */
-  level?: number;
-  /** Threshold matrix. Default `bayer4`. */
-  matrix?: DitherMatrix;
-  /** Dither cell in px. Default 2, a step finer than `--ascii-cell`. */
-  cell?: number;
+  /** Braille only: fill under the line with sparse dots. Default false. */
+  fill?: boolean;
   /**
    * The value range the height covers, as `[min, max]`. Default: the
    * data's own range. Give a row of sparklines one domain to compare them.
    */
   domain?: readonly [number, number];
+  /**
+   * Scrub with the pointer or arrow keys to read single values. Default
+   * false: a sparkline is usually a glance, not a tool.
+   */
+  interactive?: boolean;
+  /** Cells fill in from the left on first view. Default true; off under reduced motion. */
+  animate?: boolean;
   /** Formats values in the summary and the readout. Default compact (1.2K). */
   format?: Intl.NumberFormatOptions;
 }
 
-const STROKE = 1.5;
-const DOT = 2.5;
-
-/** Snap a length to whole device pixels so dither cells stay sharp. */
-const snapToDevice = (px: number) => {
-  const dpr = window.devicePixelRatio || 1;
-  return Math.max(1, Math.round(px * dpr)) / dpr;
-};
-
-const useWidth = (ref: { current: HTMLElement | null }) => {
-  const [width, setWidth] = useState<number | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) {
-        setWidth(Math.floor(entry.contentRect.width));
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-  return width;
-};
-
-interface SparkPoint {
-  x: number;
-  y: number;
-}
-
-/** Points, the line through them and the closed fill below it, in px. */
-const sparkGeometry = ({
-  data,
-  width,
-  height,
-  inset,
-  domain,
-}: {
-  data: readonly number[];
-  width: number | null;
-  height: number;
-  inset: number;
-  domain: readonly [number, number];
-}) => {
-  const [floor, ceiling] = domain;
-  const span = ceiling - floor || 1;
-  const points: SparkPoint[] =
-    width === null
-      ? []
-      : data.map((value, index) => ({
-          x:
-            data.length === 1
-              ? width / 2
-              : inset + (index / (data.length - 1)) * (width - inset * 2),
-          y: inset + (1 - (value - floor) / span) * (height - inset * 2),
-        }));
-  const line = points
-    .map(({ x, y }, index) => `${index === 0 ? "M" : "L"}${x} ${y}`)
-    .join("");
-  const [start] = points;
-  const end = points.at(-1);
-  const area =
-    start === undefined || end === undefined
-      ? ""
-      : `${line}L${end.x} ${height}L${start.x} ${height}Z`;
-  return { area, end, line, points };
-};
-
-interface SparkScrub {
-  index: number;
-  glide: boolean;
-}
-
-const SPARK_STEPS: Readonly<Record<string, number>> = {
-  ArrowLeft: -1,
-  ArrowRight: 1,
-};
-
-/** Pointer and arrow-key scrubbing over `count` points. */
-const useSparkScrub = (count: number) => {
-  const [active, setActive] = useState<SparkScrub | null>(null);
-  const pick = (index: number, glide: boolean) =>
-    setActive((current) =>
-      current?.index === index
-        ? current
-        : { glide: glide && current !== null, index }
-    );
-  const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
-    if (count === 0) {
-      return;
-    }
-    const rect = event.currentTarget.getBoundingClientRect();
-    const share = (event.clientX - rect.left) / Math.max(1, rect.width);
-    pick(Math.round(share * (count - 1)), true);
-  };
-  const onKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
-    if (event.key === "Escape") {
-      setActive(null);
-      return;
-    }
-    const step = SPARK_STEPS[event.key];
-    if (step === undefined || count === 0) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    const current = active?.index ?? count - 1;
-    pick(Math.min(count - 1, Math.max(0, current + step)), false);
-  };
-  return {
-    active,
-    handlers: {
-      onBlur: () => setActive(null),
-      onKeyDown,
-      onPointerLeave: () => setActive(null),
-      onPointerMove,
-    },
-  };
-};
-
-/** The textured fill under the line. `gradient` is densest near the line. */
-const SparkFill = ({
-  uid,
-  area,
-  variant,
-  color,
-  level,
-  matrix,
-  cell,
-  width,
-  height,
-  animate,
-}: {
-  uid: string;
-  area: string;
-  variant: FillVariant;
-  color: AsciiColor;
-  level: number;
-  matrix: DitherMatrix;
-  cell: number;
-  width: number;
-  height: number;
-  animate: boolean;
-}) => (
-  <>
-    <defs>
-      {variant === "gradient" ? (
-        <>
-          <AsciiPattern
-            id={`${uid}-low`}
-            level={Math.round(level * 8) / 16}
-            matrix={matrix}
-            cell={cell}
-            color={color}
-          />
-          <AsciiPattern
-            id={`${uid}-high`}
-            level={Math.round(level * 16) / 16}
-            matrix={matrix}
-            cell={cell}
-            color={color}
-          />
-          <mask id={`${uid}-near`}>
-            <rect width={width} height={height} fill="white" />
-            <path
-              d={area}
-              transform={`translate(0 ${Math.max(cell * 2, height * 0.3)})`}
-              fill="black"
-              shapeRendering="crispEdges"
-            />
-          </mask>
-        </>
-      ) : (
-        <FillPattern
-          id={`${uid}-low`}
-          fill={variant}
-          color={color}
-          cell={cell}
-        />
-      )}
-    </defs>
-    <g
-      className={
-        animate
-          ? "ease-(--ease-out) transition-opacity duration-500 motion-reduce:transition-none starting:opacity-0"
-          : undefined
-      }
-    >
-      <path
-        d={area}
-        fill={`url(#${uid}-low)`}
-        opacity={variant === "solid" ? 0.35 : 1}
-        shapeRendering="crispEdges"
-      />
-      {variant === "gradient" ? (
-        <path
-          d={area}
-          fill={`url(#${uid}-high)`}
-          mask={`url(#${uid}-near)`}
-          shapeRendering="crispEdges"
-        />
-      ) : null}
-    </g>
-  </>
-);
-
-const DRAW_IN =
-  "ease-(--ease-out) [stroke-dashoffset:0] transition-[stroke-dashoffset] duration-700 motion-reduce:transition-none starting:[stroke-dashoffset:1]";
-
-type SparkStyle = Pick<
-  SparklineProps,
-  "color" | "area" | "fill" | "bloom" | "animate" | "level" | "matrix"
->;
-
-/** The SVG: bloom, fill, line and the (scrubbed or latest) dot. */
-const SparkSvg = ({
-  uid,
-  width,
-  height,
-  cell,
-  geometry,
-  marker,
-  glide,
-  emphasis,
-  look: {
-    color = "ink",
-    area = true,
-    fill: variant = "gradient",
-    bloom = "off",
-    animate = true,
-    level = 0.5,
-    matrix = "bayer4",
-  },
-}: {
-  uid: string;
-  width: number;
-  height: number;
-  cell: number;
-  geometry: ReturnType<typeof sparkGeometry>;
-  marker: SparkPoint | null;
-  glide: string;
-  /** The dot marks a scrubbed point, so it draws a touch larger. */
-  emphasis: boolean;
-  look: SparkStyle;
-}) => {
-  const ink = cssColor(color);
-  return (
-    <svg
-      aria-hidden="true"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className="block overflow-visible"
-    >
-      <BloomGroup bloom={bloom}>
-        <path
-          d={area ? geometry.area : geometry.line}
-          fill={area ? ink : "none"}
-          stroke={ink}
-          strokeWidth={4}
-        />
-      </BloomGroup>
-      {area ? (
-        <SparkFill
-          uid={uid}
-          area={geometry.area}
-          variant={variant}
-          color={color}
-          level={level}
-          matrix={matrix}
-          cell={cell}
-          width={width}
-          height={height}
-          animate={animate}
-        />
-      ) : null}
-      <path
-        d={geometry.line}
-        pathLength={1}
-        fill="none"
-        stroke={ink}
-        strokeWidth={STROKE}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        strokeDasharray={1}
-        className={animate ? DRAW_IN : undefined}
-      />
-      {marker === null ? null : (
-        <circle
-          data-glide={glide}
-          r={emphasis ? DOT + 0.5 : DOT}
-          fill={ink}
-          stroke="var(--ascii-paper)"
-          strokeWidth={1.5}
-          style={{ transform: `translate(${marker.x}px, ${marker.y}px)` }}
-          className="ease-(--ease-out) transition-[transform,opacity] duration-200 motion-reduce:transition-none data-[glide=false]:transition-none starting:opacity-0"
-        />
-      )}
-    </svg>
-  );
-};
-
-/** The value label over the scrubbed point, and its live announcement. */
-const SparkReadout = ({
-  x,
-  text,
-  glide,
-}: {
-  x: number | undefined;
-  text: string;
-  glide: string;
-}) => (
-  <>
-    {x === undefined ? null : (
-      <span
-        aria-hidden="true"
-        data-glide={glide}
-        className="bg-popover text-popover-foreground border-border pointer-events-none absolute bottom-full left-0 mb-1.5 rounded-md border px-1.5 py-0.5 font-mono text-[10px] whitespace-nowrap tabular-nums transition-transform duration-200 ease-(--ease-out) motion-reduce:transition-none data-[glide=false]:transition-none"
-        style={{ transform: `translateX(calc(${x}px - 50%))` }}
-      >
-        {text}
-      </span>
-    )}
-    <span aria-live="polite" className="sr-only">
-      {text}
-    </span>
-  </>
-);
-
-/** The dot: on the scrubbed point, else on the latest one when `dot` is on. */
-const markerAt = ({
-  scrubbed,
-  latest,
-  dot,
-}: {
-  scrubbed: SparkPoint | undefined;
-  latest: SparkPoint | undefined;
-  dot: boolean;
-}): SparkPoint | null => {
-  if (scrubbed !== undefined) {
-    return scrubbed;
-  }
-  return dot && latest !== undefined ? latest : null;
-};
-
 const COMPACT: Intl.NumberFormatOptions = {
   maximumFractionDigits: 1,
   notation: "compact",
+};
+
+/** ASCII marks from low to high within one row. */
+const ASCII_LEVELS = ["_", ".", "-", "~", "'", "^"] as const;
+
+/** `data` resampled to `count` values: bucket means, or repeats. */
+const resample = (data: readonly number[], count: number) => {
+  if (data.length === 0 || count <= 0) {
+    return [];
+  }
+  return Array.from({ length: count }, (_, index) => {
+    const from = Math.floor((index * data.length) / count);
+    const to = Math.max(
+      from + 1,
+      Math.floor(((index + 1) * data.length) / count)
+    );
+    const bucket = data.slice(from, to);
+    return bucket.reduce((sum, value) => sum + value, 0) / bucket.length;
+  });
+};
+
+/** 0 to 1 for a value inside the domain. */
+const normalise = (value: number, [low, high]: readonly [number, number]) =>
+  Math.min(1, Math.max(0, (value - low) / (high - low || 1)));
+
+/** Rows of text, top first, for each glyph style. */
+const plotEighths = (
+  values: readonly number[],
+  rows: number,
+  domain: readonly [number, number]
+) =>
+  Array.from({ length: rows }, (_, fromTop) => {
+    const row = rows - 1 - fromTop;
+    return values
+      .map((value) => {
+        // At least one eighth, so the lowest value still shows.
+        const height = Math.max(
+          1,
+          Math.round(normalise(value, domain) * rows * 8)
+        );
+        return EIGHTHS_UP[Math.min(8, Math.max(0, height - row * 8))] ?? " ";
+      })
+      .join("");
+  });
+
+const plotAscii = (
+  values: readonly number[],
+  rows: number,
+  domain: readonly [number, number]
+) => {
+  const lines = Array.from({ length: rows }, () =>
+    Array.from(values, () => " ")
+  );
+  const levels = ASCII_LEVELS.length;
+  for (const [column, value] of values.entries()) {
+    const step = Math.min(
+      rows * levels - 1,
+      Math.floor(normalise(value, domain) * rows * levels)
+    );
+    const row = rows - 1 - Math.floor(step / levels);
+    lines[row][column] = ASCII_LEVELS[step % levels];
+  }
+  return lines.map((line) => line.join(""));
+};
+
+const plotBraille = (
+  values: readonly number[],
+  rows: number,
+  columns: number,
+  domain: readonly [number, number],
+  fill: boolean
+) => {
+  const height = rows * 4;
+  const masks = Array.from({ length: rows * columns }, () => 0);
+  const set = (x: number, y: number) => {
+    if (x >= 0 && x < columns * 2 && y >= 0 && y < height) {
+      const at = Math.floor(y / 4) * columns + Math.floor(x / 2);
+      const bit = BRAILLE_DOT_BITS[y % 4][x % 2];
+      // Add each dot's bit once, so the sum is the mask.
+      if ((masks[at] & bit) === 0) {
+        masks[at] += bit;
+      }
+    }
+  };
+  let previous: number | null = null;
+  for (const [x, value] of values.entries()) {
+    const y = Math.round((1 - normalise(value, domain)) * (height - 1));
+    // Join steep steps so the line never breaks.
+    const from = previous ?? y;
+    for (let step = Math.min(from, y); step <= Math.max(from, y); step += 1) {
+      set(x, step);
+    }
+    if (fill) {
+      for (let below = y + 1; below < height; below += 1) {
+        if (isInked("bayer4", x, below, 0.3)) {
+          set(x, below);
+        }
+      }
+    }
+    previous = y;
+  }
+  return Array.from({ length: rows }, (_, row) =>
+    masks
+      .slice(row * columns, (row + 1) * columns)
+      .map((mask) => (mask === 0 ? " " : brailleChar(mask)))
+      .join("")
+  );
+};
+
+/** The rows of text for any glyph style, top first. */
+const plotLines = ({
+  glyphs,
+  values,
+  rows,
+  columns,
+  domain,
+  fill,
+}: {
+  glyphs: SparklineGlyphs;
+  values: readonly number[];
+  rows: number;
+  columns: number;
+  domain: readonly [number, number];
+  fill: boolean;
+}) => {
+  switch (glyphs) {
+    case "braille": {
+      return plotBraille(values, rows, columns, domain, fill);
+    }
+    case "ascii": {
+      return plotAscii(values, rows, domain);
+    }
+    case "eighths": {
+      return plotEighths(values, rows, domain);
+    }
+    default: {
+      const exhaustive: never = glyphs;
+      return exhaustive;
+    }
+  }
 };
 
 /** "Revenue: 1.2K to 3.4K, low 1K, high 3.6K". */
@@ -421,56 +230,156 @@ const describe = (
   return `${label}: ${numbers.format(first)} to ${numbers.format(last)}, low ${numbers.format(Math.min(...data))}, high ${numbers.format(Math.max(...data))}`;
 };
 
+/** How many cells have filled in, stepping once per cell over the entrance. */
+const useSweep = (
+  target: { current: Element | null },
+  cells: number,
+  enabled: boolean
+) => {
+  const [shown, setShown] = useState(enabled ? 0 : cells);
+  const duration = MOTION.slow / 1000;
+  useFrameLoop(
+    (time) => {
+      const linear = Math.min(1, time / duration);
+      setShown(Math.ceil((1 - (1 - linear) ** 2) * cells));
+    },
+    { enabled: enabled && shown < cells, stillTime: duration, target }
+  );
+  return enabled ? Math.min(shown, cells) : cells;
+};
+
+const STEPS: Readonly<Record<string, number>> = {
+  ArrowLeft: -1,
+  ArrowRight: 1,
+};
+
+/** Pointer and arrow-key scrubbing over `count` cells. */
+const useSparkScrub = (count: number) => {
+  const [active, setActive] = useState<number | null>(null);
+  const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const share = (event.clientX - box.left) / Math.max(1, box.width);
+    setActive(Math.min(count - 1, Math.max(0, Math.floor(share * count))));
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Escape") {
+      setActive(null);
+      return;
+    }
+    const step = STEPS[event.key];
+    if (step === undefined || count === 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setActive((current) =>
+      Math.min(count - 1, Math.max(0, (current ?? count - 1) + step))
+    );
+  };
+  return {
+    active,
+    handlers: {
+      onBlur: () => setActive(null),
+      onFocus: () => setActive(count - 1),
+      onKeyDown,
+      onPointerLeave: () => setActive(null),
+      onPointerMove,
+    },
+  };
+};
+
+/** One line of glyphs, with the emphasised cell split out. */
+const SparkRow = ({
+  text,
+  strong,
+}: {
+  text: string;
+  strong: number | null;
+}) => {
+  const chars = [...text];
+  if (strong === null || strong >= chars.length) {
+    return <span className="block">{text}</span>;
+  }
+  return (
+    <span className="block">
+      <span className="opacity-60">{chars.slice(0, strong).join("")}</span>
+      {chars[strong]}
+      <span className="opacity-60">{chars.slice(strong + 1).join("")}</span>
+    </span>
+  );
+};
+
+/** The value over the scrubbed cell, and its live announcement. */
+const SparkReadout = ({
+  active,
+  text,
+}: {
+  active: number | null;
+  text: string;
+}) => (
+  <>
+    {active === null || text === "" ? null : (
+      <span
+        aria-hidden="true"
+        className="bg-popover text-popover-foreground border-border pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 border px-1 font-mono text-[10px] leading-4 whitespace-nowrap tabular-nums"
+        style={{ left: `${active + 0.5}ch` }}
+      >
+        {text}
+      </span>
+    )}
+    <span aria-live="polite" className="sr-only">
+      {text}
+    </span>
+  </>
+);
+
 /**
- * A tiny trend line for tables and stat cards: a line, a dithered fill
- * that is densest just under it, and a dot on the latest value. Its
+ * A tiny trend drawn as real text in glyphs, sized in character cells so
+ * it sits inside a sentence, a table cell or a stat card and takes the
+ * surrounding font size. The latest value draws at full strength. Its
  * accessible name summarises the trend in words.
  */
 export const Sparkline = ({
   data,
   label,
-  height = 32,
-  interactive = false,
+  glyphs = "eighths",
+  width,
+  rows: rowsProp = 1,
+  color = "ink",
   dot = true,
-  cell,
-  domain,
+  fill = false,
+  domain: domainProp,
+  interactive = false,
+  animate = true,
   format = COMPACT,
-  color,
-  area,
-  fill,
-  bloom,
-  animate,
-  level,
-  matrix,
   className,
   style,
   ...props
 }: SparklineProps) => {
-  const uid = useId().replaceAll(":", "");
   const ref = useRef<HTMLSpanElement>(null);
-  const width = useWidth(ref);
-  const [px, setPx] = useState(2);
-  const { active, handlers } = useSparkScrub(data.length);
-
-  useEffect(() => {
-    setPx(snapToDevice(cell ?? Math.max(1, readAsciiCell(ref.current) - 1)));
-  }, [cell]);
-
+  const rows = Math.max(1, Math.round(rowsProp));
+  const perCell = glyphs === "braille" ? 2 : 1;
+  const columns = Math.max(
+    1,
+    Math.round(width ?? Math.ceil(data.length / perCell))
+  );
+  const values = resample(data, columns * perCell);
+  const domain = domainProp ?? [Math.min(...data), Math.max(...data)];
+  const shown = useSweep(ref, columns, animate);
+  const { active, handlers } = useSparkScrub(columns);
   const numbers = new Intl.NumberFormat("en", format);
   const summary = describe(label, data, numbers);
-  // Leave room for the stroke and the dot so neither is clipped.
-  const geometry = sparkGeometry({
-    data,
-    domain: domain ?? [Math.min(...data), Math.max(...data)],
-    height,
-    inset: (dot ? DOT : 0) + STROKE,
-    width,
-  });
-  const scrubbed = active === null ? undefined : geometry.points[active.index];
-  const scrubbedValue = active === null ? undefined : data[active.index];
-  const glide = String(active?.glide ?? false);
-  const readout =
-    scrubbedValue === undefined ? "" : numbers.format(scrubbedValue);
+
+  const lines = plotLines({ columns, domain, fill, glyphs, rows, values });
+  // Cells not yet swept in stay blank, so the width never changes.
+  const visible = lines.map((line) =>
+    [...line].map((glyph, index) => (index < shown ? glyph : " ")).join("")
+  );
+  const strong = active ?? (dot && shown === columns ? columns - 1 : null);
+  const activeValue =
+    active === null
+      ? undefined
+      : values.slice(active * perCell, (active + 1) * perCell).at(-1);
 
   return (
     <span
@@ -480,28 +389,29 @@ export const Sparkline = ({
         ? { ...handlers, "aria-label": summary, role: "group", tabIndex: 0 }
         : { "aria-label": summary, role: "img" })}
       className={cn(
-        "relative inline-block w-full align-middle",
+        "relative inline-block align-middle leading-[1.2] tracking-normal whitespace-pre",
         interactive &&
-          "focus-visible:ring-ring/60 rounded-sm outline-none focus-visible:ring-2",
+          "focus-visible:ring-ring/60 cursor-crosshair rounded-[2px] outline-none focus-visible:ring-2",
         className
       )}
-      style={{ height, ...style }}
+      style={{
+        color: cssColor(color),
+        fontFamily: "var(--ascii-font, ui-monospace, monospace)",
+        fontVariantLigatures: "none",
+        ...style,
+      }}
     >
-      {width === null || geometry.end === undefined ? null : (
-        <SparkSvg
-          uid={uid}
-          width={width}
-          height={height}
-          cell={px}
-          geometry={geometry}
-          marker={markerAt({ dot, latest: geometry.end, scrubbed })}
-          glide={glide}
-          emphasis={scrubbed !== undefined}
-          look={{ animate, area, bloom, color, fill, level, matrix }}
-        />
-      )}
+      <span aria-hidden="true" className="block">
+        {visible.map((line, row) => (
+          // oxlint-disable-next-line react/no-array-index-key -- rows have no identity but their position.
+          <SparkRow key={row} text={line} strong={strong} />
+        ))}
+      </span>
       {interactive ? (
-        <SparkReadout x={scrubbed?.x} text={readout} glide={glide} />
+        <SparkReadout
+          active={active}
+          text={activeValue === undefined ? "" : numbers.format(activeValue)}
+        />
       ) : null}
     </span>
   );

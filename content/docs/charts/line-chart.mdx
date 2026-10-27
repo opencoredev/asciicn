@@ -1,6 +1,6 @@
 ---
 title: "Line chart"
-description: "Crisp lines with dithered range bands and point markers, for latency, conversion and period-over-period comparisons."
+description: "Lines plotted on a Braille dot grid, four times finer than the text, with dashes, range bands and a marker glyph per series."
 ---
 
 import LineChartDemo from "@/examples/line-chart-demo";
@@ -26,9 +26,9 @@ import LineChartPoints from "@/examples/line-chart-points";
 import { LineChart } from "@/components/asciicn/line-chart";
 
 const data = [
-  { time: "12:00", p10: 160, p50: 188, p90: 238 },
-  { time: "12:30", p10: 164, p50: 184, p90: 230 },
-  { time: "13:00", p10: 167, p50: 191, p90: 245 },
+  { time: "12:00", p50: 188, p10: 166, p90: 238 },
+  { time: "12:30", p50: 184, p10: 164, p90: 230 },
+  { time: "13:00", p50: 191, p10: 167, p90: 245 },
 ];
 
 export function Latency() {
@@ -44,21 +44,21 @@ export function Latency() {
 }
 ```
 
-Each series is a 2px line. Give it a `range` and the space between `low` and `high` fills with a light dither, which suits percentiles, forecasts and min/max envelopes. The readout lists the value with its range.
+Every line is plotted on the 2x4 dots of Braille cells and rasterised dot by dot between points, so a curve is four times finer than the text around it. Where two lines cross, the one drawn last owns the cell. LineChart is a preset of [Cartesian chart](/docs/charts/cartesian-chart).
 
 ## Examples
 
-### This week against last week
+### Two periods
 
-A `dashed` series reads as a reference: a previous period or a target. The legend repeats the dash, so the two lines never rely on colour alone. Here this week's `range` runs from last week's value to its own, so the dither fills exactly the gap between the two.
+`dashed` draws a line in dashes, for a previous period or a target. `markers="all"` puts each series' marker glyph on every point: `●` for the first series, `◆` for the second.
 
 <ComponentPreview src="examples/line-chart-compare.tsx" size="lg">
   <LineChartCompare />
 </ComponentPreview>
 
-### Few points, every one marked
+### Plain ASCII
 
-With sparse data, `markers="all"` puts a dot on each point and `curve="linear"` keeps straight segments between them, so nobody reads a curve the data does not have. The band is a sector benchmark in its own `color`, and `zero` starts the axis at 0 because a score's distance from zero matters here.
+`glyphs="ascii"` draws the line in `_ - ¯ / \`, the band in dots and the axes in `| + -`. It reads in any font and copies cleanly into a terminal or a commit message.
 
 <ComponentPreview src="examples/line-chart-points.tsx">
   <LineChartPoints />
@@ -78,33 +78,28 @@ With sparse data, `markers="all"` puts a dot on each point and `curve="linear"` 
       name: "x",
       type: "keyof T | ((datum: T) => string | number)",
       required: true,
-      description: "The field (or function) holding each point's x axis label.",
+      description:
+        "The field (or function) holding each datum's category label.",
     },
     {
       name: "series",
       type: "[LineSeries<T>, ...LineSeries<T>[]]",
       required: true,
       description:
-        "Each series is { label, value, color?, range?: { low, high, color? }, dashed? }. value, low and high are numeric fields of T or functions.",
+        "Each line is { label, value, color?, dashed?, range? }. range is { low, high }, two numeric fields (or functions) drawn as a band of sparse dots around the line.",
     },
     {
       name: "markers",
       type: '"all" | "last" | "none"',
       default: '"last"',
-      description: "Which points get a dot.",
+      description:
+        "Marker glyphs on every point, on the last one, or none. Each series has its own glyph: \u25cf \u25c6 \u25a0 \u25b2 \u25bc \u25cb \u25c7 \u25a1 (o x + * # in ASCII).",
     },
     {
       name: "zero",
       type: "boolean",
       default: "false",
-      description:
-        "Start the value axis at zero. By default it fits the data, so small changes stay visible.",
-    },
-    {
-      name: "height",
-      type: "number",
-      default: "240",
-      description: "Height in px, axes included.",
+      description: "Start the value axis at zero. By default it fits the data.",
     },
     {
       name: "curve",
@@ -114,63 +109,46 @@ With sparse data, `markers="all"` puts a dot on each point and `curve="linear"` 
         "smooth is a monotone curve that never overshoots a data point.",
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
+      name: "glyphs",
+      type: '"braille" | "blocks" | "ascii"',
+      default: '"braille"',
       description:
-        "Texture of the range bands. gradient is one even dither level, set by level; solid draws a translucent band.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description:
-        "A soft glow in each series' colour behind its fill. Its strength follows --ascii-bloom, lower in light mode.",
+        "braille: 2x4 dots per cell. blocks: chunkier 2x2 quadrant blocks. ascii: plain characters.",
     },
     {
       name: "colors",
       type: "readonly AsciiColor[]",
-      default: "ink, orange, green, pink, …",
+      default: "ink, orange, green, pink, \u2026",
       description:
         'Colours by series position: palette names such as "green" or any CSS colour. A series\' own color wins.',
     },
     {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Scrubbing, the readout and the legend spotlight. false makes a decorative chart: no focus stop, no readout, just an image with a summary.",
-    },
-    {
-      name: "animate",
-      type: "boolean",
-      default: "true",
-      description: "Entrance motion. Always off under reduced motion.",
-    },
-    {
-      name: "level",
+      name: "height",
       type: "number",
-      default: "0.25",
-      description: "Gradient only: coverage of the range bands, from 0 to 1.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Gradient only: the dither texture of the bands.",
+      default: "240",
+      description:
+        "Height in px, axes included. The chart draws as many whole cell rows as fit.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
+      default: "--ascii-cell (12)",
       description:
-        "Size of one dither cell in px, rounded to whole device pixels.",
+        "Glyph cell height in px. The width follows the font's advance; both snap to whole device pixels.",
     },
     {
       name: "axes",
       type: "boolean",
       default: "true",
-      description: "Show the value and category axes.",
+      description:
+        'Show the value axis, the category axis and their labels, in box drawing (plain ASCII with glyphs="ascii").',
+    },
+    {
+      name: "grid",
+      type: "boolean",
+      default: "true",
+      description:
+        "Dotted gridlines at each value tick, placed to a quarter of a cell.",
     },
     {
       name: "tooltip",
@@ -183,22 +161,43 @@ With sparse data, `markers="all"` puts a dot on each point and `curve="linear"` 
       type: "boolean",
       default: "Two or more series",
       description:
-        "Show the legend under the chart. Its entries spotlight a series on hover and lock it on click.",
+        "Show the legend. Its entries spotlight a series on hover and lock it on click.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer and keyboard scrubbing, the readout and the legend spotlight. false makes a decorative chart: no focus stop, just an image with a summary.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "Entrance motion: lines and areas sweep in from the left, bars grow one after another. Always off under reduced motion.",
+    },
+    {
+      name: "glow",
+      type: "boolean",
+      default: "false",
+      description:
+        "A soft glow in each series' colour, scaled by --ascii-glow.",
     },
     {
       name: "format",
       type: "Intl.NumberFormatOptions | ((value: number) => string)",
       default: "Compact, as in 1.2K",
       description:
-        "How values are written on the axis, in the readout and in the table.",
+        "How values are written on the axis, in the readout and in the data table. Options work from Server Components.",
     },
   ]}
 />
 
-Series colours follow the palette: ink, then orange, green, pink, purple, blue, red and grey. Pass `colors`, or `color` on one series, with a palette name or any CSS colour.
-
 ## Notes
 
-- The chart is a focusable group with a short summary, and every value, including ranges, is in a visually hidden table. The arrow keys, Home and End move the readout without easing, a polite live region reads out each stop, and Escape clears the readout and any locked series. With `bloom`, each line gets a soft glow in its colour.
-- On entrance solid lines draw from left to right, dashed lines fade in, and bands step up through the dither levels. With reduced motion the finished chart appears at once.
-- Markers carry a 2px ring in `--ascii-paper` so they stay legible where lines cross. Set `--ascii-paper` to your card's background if it differs from the page.
+- The chart is a focusable group labelled with a short summary, and every value sits in a visually hidden table, so screen readers get the data. Arrow keys, Page Up, Page Down, Home and End move the cursor without easing, a polite live region reads the values at each stop, and Escape clears the cursor and any locked series. Legend entries are toggle buttons.
+- Colour is never the only signal: each series has its own marker glyph (`● ◆ ■ ▲`), dashes or texture, and the legend and readout show the same key.
+- The glyphs render as SVG built from the engine's glyph geometry (`@/lib/ascii/glyphs`), so blocks and shades meet without seams, the chart stays sharp at any zoom, and the server renders it at a default width before the first measurement. Cells snap to whole device pixels and the chart re-plots when its box or the device pixel ratio changes.
+- Colours come from the `--ascii-*` tokens: data in `--ascii-color-*` or `--ascii-ink`, axes and labels in `--ascii-ink` mixed toward `--ascii-paper`. The chart follows the theme and the site palette with no JavaScript.
+- A gap in the data (a missing or non-numeric value) breaks the line instead of dropping it to zero.

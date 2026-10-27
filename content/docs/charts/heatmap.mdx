@@ -1,6 +1,6 @@
 ---
 title: "Heatmap"
-description: "A calendar or matrix heatmap built from dither cells, where every square steps cleanly from a few dots to solid."
+description: "A calendar or matrix heatmap of glyph squares that step from light shade to full block, with a bracket cursor, a readout and a level scale."
 ---
 
 import HeatmapDemo from "@/examples/heatmap-demo";
@@ -38,25 +38,21 @@ export function Deploys() {
 
 Each column is a week and each row a weekday. The grid ends with the latest day in `data` and goes back `weeks` weeks, 53 by default. Days missing from `data` count as 0, and entries for the same day add up. Dates are read in UTC, so a square never moves with the visitor's time zone.
 
-Every square is 4×4 dither cells. With the default four `steps` a square is dotted, a checkerboard, a hollow frame or solid, and an empty day is a faint backing square. Each level is a fixed mask rather than a raw threshold, so every square keeps a crisp outline and the levels stay distinct even at 2px cells. The scale goes up to six steps.
-
-The grid fills its container. Cells shrink from `cell` down to 2px to fit every week; below that the oldest weeks drop off, so a phone shows the most recent months.
-
-Hover a square, or focus the grid and use the arrow keys, for a readout above it. Hover a level in the scale to spotlight every square at that level, and click to keep it lit.
+Every square is two cells of one level glyph. Values map to `steps` levels; with 4 they draw `░ ▒ ▓ █`, and lower levels also mix the colour toward the paper. Empty days are a faint `··`. When the grid is too wide for its box, squares narrow to one cell, then a calendar drops its oldest weeks and a matrix shrinks its cells.
 
 ## Examples
 
-### A year of activity
+### A year in ASCII
 
-A full year with weeks starting on Monday, in `color="purple"`. On a narrow screen it keeps the latest weeks that fit.
+`glyphs="ascii"` draws the levels as `- + * #`. `weekStart={1}` puts Monday on the first row.
 
 <ComponentPreview src="examples/heatmap-year.tsx" size="lg">
   <HeatmapYear />
 </ComponentPreview>
 
-### Weekday by hour
+### Matrix
 
-`mode="matrix"` takes a grid of values with row and column labels instead of dates. Here pushes by weekday and hour, with `cell={4}` for larger squares and `steps={5}`. Column labels thin out when they would collide.
+`mode="matrix"` draws any grid from `data[row][column]`, labelled by `rows` and `columns`. `glyphs="blocks"` puts a rising eighth block in each square, so a level reads as a height.
 
 <ComponentPreview src="examples/heatmap-matrix.tsx" size="lg">
   <HeatmapMatrix />
@@ -67,23 +63,25 @@ A full year with weeks starting on Monday, in `color="purple"`. On a narrow scre
 <PropsTable
   rows={[
     {
+      name: "data",
+      type: "readonly HeatmapDatum[] | readonly (readonly number[])[]",
+      required: true,
+      description:
+        'Calendar: { date, value } entries, where date is "YYYY-MM-DD" or a Date. Matrix: values by row, then column.',
+    },
+    {
       name: "mode",
       type: '"calendar" | "matrix"',
       default: '"calendar"',
-      description: "A day per square, or any grid of values.",
-    },
-    {
-      name: "data",
-      type: "{ date: string | Date; value: number }[] | number[][]",
-      required: true,
       description:
-        'Calendar: values by day, date as "YYYY-MM-DD" or a Date read in UTC. Matrix: data[row][column].',
+        "calendar draws a day per square and a week per column. matrix draws data[row][column].",
     },
     {
       name: "weeks",
       type: "number",
       default: "53",
-      description: "Calendar only: weeks shown, ending with the latest day.",
+      description:
+        "Calendar only: weeks shown, ending with the latest day. On narrow screens the oldest drop off.",
     },
     {
       name: "weekStart",
@@ -94,76 +92,84 @@ A full year with weeks starting on Monday, in `color="purple"`. On a narrow scre
     },
     {
       name: "rows",
-      type: "string[]",
-      description: "Matrix only, required: row labels, top to bottom.",
+      type: "readonly string[]",
+      default: "Required in matrix mode",
+      description: "Matrix only: row labels, top to bottom.",
     },
     {
       name: "columns",
-      type: "string[]",
-      description: "Matrix only, required: column labels, left to right.",
+      type: "readonly string[]",
+      default: "Required in matrix mode",
+      description:
+        "Matrix only: column labels, left to right. Only as many as fit are shown.",
+    },
+    {
+      name: "glyphs",
+      type: '"shades" | "blocks" | "ascii"',
+      default: '"shades"',
+      description:
+        "The level ladder. shades: \u00b7 \u2219 \u2591 \u2592 \u2593 \u2588. blocks: a rising eighth block. ascii: . : - + * #. A ladder of n steps takes its n densest glyphs.",
     },
     {
       name: "steps",
       type: "number",
       default: "4",
-      description: "Densities above empty, 2 to 6. The last is solid.",
+      description: "How many levels values map to, above empty, from 2 to 6.",
     },
     {
       name: "max",
       type: "number",
       default: "The largest value",
       description:
-        "The value drawn solid. Larger values draw solid too, so one outlier doesn't wash out the rest.",
+        "The value drawn at the top level. Larger values draw there too.",
     },
     {
       name: "unit",
       type: "string | { one: string; other: string }",
+      default: "None",
       description:
-        'What a value counts, for the readout and summary: "min" or { one: "deploy", other: "deploys" }.',
+        'What a value counts, for the readout and the summary: "min" or { one: "deploy", other: "deploys" }.',
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description: "Ink colour, a palette name or any CSS colour.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow behind the two densest levels.",
+      description:
+        'A palette name such as "green" or any CSS colour. Lower levels mix toward --ascii-paper.',
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
+      default: "--ascii-cell (12)",
       description:
-        "Largest dither cell in CSS pixels. Shrinks to 2 to fit the container.",
+        "Glyph cell height in px. A matrix too wide for its box shrinks it, down to two thirds.",
     },
     {
       name: "legend",
       type: "boolean",
       default: "true",
-      description: "Show the Less to More scale.",
+      description:
+        "Show the Less to More scale. Each level is a toggle that spotlights its squares.",
     },
     {
       name: "interactive",
       type: "boolean",
       default: "true",
       description:
-        "Readout, keyboard and the scale spotlight. false draws a static image.",
+        "Pointer and keyboard readout and the legend spotlight. false makes a decorative image with a summary.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Squares ripple in from the top left on first view.",
+      description:
+        "Squares sweep in from the top left on first view. Always off under reduced motion.",
     },
   ]}
 />
 
 ## Notes
 
-- The grid is a focusable group labelled with a summary: the range, the total and the busiest square. Arrow keys move a square at a time (left and right move a week in calendar mode), Home and End jump to the ends, and a live region reads each square. Each step in the scale is a toggle button with its range as its name.
-- The ripple plays once when the grid scrolls into view. With reduced motion the grid appears finished and the readout moves without easing.
-- It is one SVG: a backing path and one path per level, built from whole cells snapped to device pixels. Hover only moves an outline and the readout by transform.
+- The heatmap is a focusable group labelled with a summary (the range, the total and the busiest square). Arrow keys move a `[ ]` cursor between squares, Home and End jump to the first and last, Escape clears it, and a polite live region reads each square's date and value.
+- Each level has its own glyph, so the scale reads without colour; colour strength adds a second cue.
+- The glyphs render as SVG built from the engine's glyph geometry (`@/lib/ascii/glyphs`), so blocks and shades meet without seams, the chart stays sharp at any zoom, and the server renders it at a default width before the first measurement. Cells snap to whole device pixels and the chart re-plots when its box or the device pixel ratio changes.

@@ -11,25 +11,25 @@ const data = USERS.map((value, index) => ({
 
 export default function AreaChartCompact() {
   return (
-    <div className="bg-background border-border flex w-full max-w-xs flex-col overflow-hidden rounded-2xl border [--ascii-paper:var(--background)]">
-      <div className="flex flex-col gap-1 p-5 pb-3">
-        <span className="text-muted-foreground text-sm">
-          Weekly active users
+    <div className="border-border bg-background flex w-full max-w-xs flex-col overflow-hidden border font-mono">
+      <div className="flex flex-col gap-1 p-4 pb-3">
+        <span className="text-muted-foreground text-[11px] tracking-[0.08em] uppercase">
+          weekly active users
         </span>
         <span className="text-3xl font-semibold tracking-tight">12.4K</span>
         <span className="text-muted-foreground text-xs">
-          <span className="text-foreground font-medium">+8.1%</span> on last
-          week
+          <span className="text-foreground">▲ 8.1%</span> on last week
         </span>
       </div>
       <AreaChart
         data={data}
         x="week"
-        series={[{ label: "Active users", value: "users" }]}
+        series={[{ color: "green", label: "Active users", value: "users" }]}
+        glyphs="braille"
         axes={false}
-        fill="dotted"
+        grid={false}
         curve="linear"
-        height={96}
+        height={84}
       />
     </div>
   );

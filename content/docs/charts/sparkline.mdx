@@ -1,12 +1,12 @@
 ---
 title: "Sparkline"
-description: "A tiny inline trend with a dithered fill and a dot on the latest value, for stat cards and table rows."
+description: "A tiny trend set as real text in eighth blocks, Braille or ASCII, sized in character cells to sit inside a sentence or a table."
 ---
 
 import SparklineDemo from "@/examples/sparkline-demo";
 import { controls as sparklineControls } from "@/examples/sparkline-controls";
-import SparklineTable from "@/examples/sparkline-table";
 import SparklineLine from "@/examples/sparkline-line";
+import SparklineTable from "@/examples/sparkline-table";
 
 <ComponentPreview
   src="examples/sparkline-demo.tsx"
@@ -24,37 +24,34 @@ import SparklineLine from "@/examples/sparkline-line";
 ```tsx
 import { Sparkline } from "@/components/asciicn/sparkline";
 
-export function RevenueTrend() {
+export function Signups() {
   return (
     <Sparkline
-      data={[41, 43, 42, 46, 48, 47, 51, 54]}
-      label="Revenue, last 8 weeks"
-      className="w-24"
+      data={[212, 224, 219, 231, 262, 538, 402, 396]}
+      label="Daily signups"
     />
   );
 }
 ```
 
-A sparkline takes a plain array of numbers, oldest first. Its height is a prop and its width follows the element, so set it with `className` or let it fill a table cell. By default the value range fits the data, because a sparkline shows the shape of a trend. Pass the same `domain` to every sparkline in a column when the rows should be compared.
-
-`label` is required. Screen readers hear it followed by a summary of the data, such as "Revenue, last 8 weeks: 41 to 54, low 41, high 54".
+A sparkline is text: one line of glyphs in `--ascii-font` that takes the surrounding font size and sits on the text baseline. By default it draws one eighth block per value (`▁▂▃▅▇`), so eight values take eight characters. Set `width` in cells to fit a column; values are averaged or repeated to fit. The latest value draws at full strength and the rest a step quieter.
 
 ## Examples
 
-### In a table
+### Inside a sentence
 
-Each row's trend sits in its own cell at 24px high. `dot={false}` keeps a column of sparklines quiet.
-
-<ComponentPreview src="examples/sparkline-table.tsx">
-  <SparklineTable />
-</ComponentPreview>
-
-### Line only, one in ink
-
-`area={false}` drops the fill. Each row shares `domain={[0, 180]}`, so a flat service draws flat instead of stretching its small wobble to full height, and the one spike drawn in ink is the first thing you see.
+`glyphs="braille"` packs two values into each character as a line of dots. Both sparklines below are inline text, so they wrap with the paragraph and copy with it.
 
 <ComponentPreview src="examples/sparkline-line.tsx">
   <SparklineLine />
+</ComponentPreview>
+
+### In a table
+
+One cell per value keeps every row the same width, so trends line up down the column.
+
+<ComponentPreview src="examples/sparkline-table.tsx">
+  <SparklineTable />
 </ComponentPreview>
 
 ## Props
@@ -72,96 +69,78 @@ Each row's trend sits in its own cell at 24px high. `dot={false}` keeps a column
       type: "string",
       required: true,
       description:
-        "What the trend shows. Starts the accessible summary of the data.",
+        'What the trend shows, such as "Revenue, last 30 days". Starts the accessible summary.',
     },
     {
-      name: "height",
+      name: "glyphs",
+      type: '"eighths" | "braille" | "ascii"',
+      default: '"eighths"',
+      description:
+        "eighths: one bar per value. braille: a line of dots, two values per cell. ascii: _ . - ~ ' ^ at the value's height.",
+    },
+    {
+      name: "width",
       type: "number",
-      default: "32",
-      description: "Height in px. The width follows the element.",
+      default: "One cell per value (two per cell in braille)",
+      description: "Width in cells. Values are averaged or repeated to fit.",
+    },
+    {
+      name: "rows",
+      type: "number",
+      default: "1",
+      description: "Height in text rows.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description: 'A palette name such as "green", or any CSS colour.',
+      description: 'A palette name such as "green" or any CSS colour.',
     },
     {
-      name: "area",
+      name: "dot",
       type: "boolean",
       default: "true",
-      description: "Fill under the line, densest just below it.",
+      description:
+        "Draw the latest value at full strength and the rest a step quieter.",
     },
     {
       name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the fill. gradient is densest just under the line.",
+      type: "boolean",
+      default: "false",
+      description: "Braille only: fill under the line with sparse dots.",
     },
     {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "A soft glow in the line's colour behind it.",
+      name: "domain",
+      type: "readonly [number, number]",
+      default: "The data's range",
+      description:
+        "The values the height covers. Give a row of sparklines one domain to compare them.",
     },
     {
       name: "interactive",
       type: "boolean",
       default: "false",
       description:
-        "Scrub with the pointer or arrow keys to read single values in a small label.",
+        "Scrub with the pointer or the arrow keys to read single values in a small readout.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Entrance motion. Always off under reduced motion.",
-    },
-    {
-      name: "dot",
-      type: "boolean",
-      default: "true",
-      description: "Mark the latest value with a dot.",
-    },
-    {
-      name: "level",
-      type: "number",
-      default: "0.5",
       description:
-        "Gradient only: coverage of the fill just under the line, from 0 to 1.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The dither texture.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "--ascii-cell minus 1",
-      description:
-        "Size of one dither cell in px, rounded to whole device pixels. Smaller than other charts so the texture reads at small sizes.",
-    },
-    {
-      name: "domain",
-      type: "[min: number, max: number]",
-      default: "The data's range",
-      description:
-        "The value range the height covers. Share one across a column so rows compare.",
+        "Cells fill in from the left on first view. Always off under reduced motion.",
     },
     {
       name: "format",
       type: "Intl.NumberFormatOptions",
       default: "Compact, as in 1.2K",
-      description: "How values are written in the accessible summary.",
+      description: "Formats values in the summary and the readout.",
     },
   ]}
 />
 
 ## Notes
 
-- By default the sparkline is a single image to assistive technology, named by `label` and a summary of its first, last, lowest and highest values, with no readout; show the exact number next to it. With `interactive` it becomes a focusable group: the arrow keys move a gliding dot and a polite live region reads each value.
-- On entrance the line draws in, the fill fades up and the dot appears last. With reduced motion it appears finished.
-- It runs no animation loop and costs one small SVG, so a table with dozens of rows stays cheap.
+- The glyphs are `aria-hidden`; the sparkline is an image (or, when interactive, a focusable group) whose name summarises the trend in words: first and last value, low and high.
+- It is plain text in a `<span>`, so it renders on the server, can be selected and copied, and stays sharp at any zoom. It needs a font with block elements and Braille: the `ascii-tokens` font stack covers both. With `rows` above 1, some fonts leave a hairline between rows of blocks.
+- Under reduced motion, or with `animate={false}`, the whole sparkline shows at once.

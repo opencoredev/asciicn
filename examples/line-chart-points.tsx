@@ -12,36 +12,34 @@ const data = [
 
 export default function LineChartPoints() {
   return (
-    <div className="bg-background border-border w-full max-w-sm rounded-2xl border p-5 [--ascii-paper:var(--background)]">
-      <div className="mb-4 flex flex-col gap-1">
-        <span className="text-muted-foreground text-sm">
-          Net promoter score
-        </span>
-        <span className="text-3xl font-semibold tracking-tight">47</span>
-        <span className="text-muted-foreground text-xs">
-          <span className="text-foreground font-medium">+16</span> since April,
-          now above the sector benchmark
-        </span>
+    <div className="border-border bg-background w-full max-w-md border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>net promoter score</span>
+        <span>6 mo</span>
       </div>
-      <LineChart
-        data={data}
-        x="month"
-        markers="all"
-        curve="linear"
-        height={180}
-        zero
-        series={[
-          {
-            label: "NPS",
-            range: {
-              color: "--muted-foreground",
-              high: "high",
-              low: "low",
+      <div className="p-4">
+        <p className="mb-1 text-3xl font-semibold tracking-tight">47</p>
+        <p className="text-muted-foreground mb-4 text-xs">
+          <span className="text-foreground">+16</span> since April, now above
+          the sector band
+        </p>
+        <LineChart
+          data={data}
+          x="month"
+          glyphs="ascii"
+          markers="all"
+          curve="linear"
+          height={168}
+          zero
+          series={[
+            {
+              label: "NPS",
+              range: { high: "high", low: "low" },
+              value: "score",
             },
-            value: "score",
-          },
-        ]}
-      />
+          ]}
+        />
+      </div>
     </div>
   );
 }

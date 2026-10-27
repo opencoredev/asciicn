@@ -1,38 +1,43 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, toggle } from "@/lib/preview-controls";
+import { SPARKLINE_GLYPHS } from "@/components/asciicn/sparkline";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the sparkline's main demo, shared by the page and the demo.
 
+export const glyphs = segmented({
+  default: "eighths",
+  id: "glyphs",
+  label: "Glyphs",
+  options: SPARKLINE_GLYPHS,
+});
+
+export const rows = slider({
+  default: 1,
+  id: "rows",
+  label: "Rows",
+  max: 3,
+  min: 1,
+  step: 1,
+});
+
 export const tint = color({
-  default: "ink",
+  default: "green",
   id: "color",
   label: "Colour",
   options: ASCII_COLOR_NAMES,
 });
 
-export const fill = segmented({
-  default: "gradient",
+export const fill = toggle({
+  default: false,
   id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+  label: "Braille fill",
 });
-
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
-
-export const area = toggle({ default: true, id: "area", label: "Area" });
-
-export const dot = toggle({ default: true, id: "dot", label: "Latest dot" });
 
 export const interactive = toggle({
-  default: false,
+  default: true,
   id: "interactive",
   label: "Interactive",
 });
 
 /** Display order of the tray. */
-export const controls = [tint, fill, bloom, area, dot, interactive];
+export const controls = [glyphs, rows, tint, fill, interactive];

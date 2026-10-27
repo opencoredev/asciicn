@@ -16,7 +16,7 @@ const PAGES = [
     views: "5,963",
   },
   {
-    path: "/blog/dithering",
+    path: "/blog/glyph-charts",
     trend: [80, 96, 141, 388, 512, 446, 371, 302, 265, 231, 214, 198, 187, 176],
     views: "4,107",
   },
@@ -31,20 +31,20 @@ const PAGES = [
 
 export default function SparklineTable() {
   return (
-    <div className="bg-background border-border w-full max-w-xl overflow-hidden rounded-2xl border [--ascii-paper:var(--background)]">
-      <table className="w-full text-sm">
-        <caption className="text-muted-foreground px-4 pt-4 pb-2 text-left text-sm">
-          Top pages, last 14 days
+    <div className="border-border bg-background w-full max-w-xl overflow-hidden border font-mono">
+      <table className="w-full text-xs">
+        <caption className="border-border text-muted-foreground border-b px-3 py-1.5 text-left text-[11px] tracking-[0.08em] uppercase">
+          top pages · 14d
         </caption>
         <thead>
-          <tr className="text-muted-foreground border-border border-b text-xs">
-            <th scope="col" className="px-4 py-2 text-left font-normal">
+          <tr className="text-muted-foreground border-border border-b">
+            <th scope="col" className="px-3 py-2 text-left font-normal">
               Page
             </th>
-            <th scope="col" className="px-4 py-2 text-left font-normal">
+            <th scope="col" className="px-3 py-2 text-left font-normal">
               Trend
             </th>
-            <th scope="col" className="px-4 py-2 text-right font-normal">
+            <th scope="col" className="px-3 py-2 text-right font-normal">
               Views
             </th>
           </tr>
@@ -55,16 +55,15 @@ export default function SparklineTable() {
               key={page.path}
               className="border-border border-b last:border-0"
             >
-              <td className="px-4 py-3 font-mono text-xs">{page.path}</td>
-              <td className="w-28 px-4 py-2 sm:w-36">
+              <td className="px-3 py-2.5">{page.path}</td>
+              <td className="px-3 py-2.5">
                 <Sparkline
                   data={page.trend}
                   label={`Daily views of ${page.path}`}
-                  height={24}
-                  dot={false}
+                  className="text-sm"
                 />
               </td>
-              <td className="px-4 py-3 text-right tabular-nums">
+              <td className="px-3 py-2.5 text-right tabular-nums">
                 {page.views}
               </td>
             </tr>

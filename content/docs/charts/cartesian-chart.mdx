@@ -1,0 +1,245 @@
+---
+title: "Cartesian chart"
+description: "The base the area, line and bar charts share: lines, areas and bars on one category axis, drawn in Braille, eighth blocks or ASCII."
+---
+
+import CartesianChartDemo from "@/examples/cartesian-chart-demo";
+import { controls as cartesianChartControls } from "@/examples/cartesian-chart-controls";
+import CartesianChartForecast from "@/examples/cartesian-chart-forecast";
+
+<ComponentPreview
+  src="examples/cartesian-chart-demo.tsx"
+  size="lg"
+  controls={cartesianChartControls}
+>
+  <CartesianChartDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="cartesian-chart" />
+
+## Usage
+
+Use `CartesianChart` directly when one chart needs more than one kind of mark: bars with a target line, an area with a forecast line. Each series picks its mark with `type`.
+
+```tsx
+import { CartesianChart } from "@/components/asciicn/cartesian-chart";
+
+const data = [
+  { month: "Jan", revenue: 38400, plan: 42000 },
+  { month: "Feb", revenue: 41900, plan: 44000 },
+  { month: "Mar", revenue: 47300, plan: 46000 },
+];
+
+export function RevenueVsPlan() {
+  return (
+    <CartesianChart
+      data={data}
+      x="month"
+      series={[
+        { type: "bar", label: "Revenue", value: "revenue" },
+        { type: "line", label: "Plan", value: "plan", dashed: true },
+      ]}
+    />
+  );
+}
+```
+
+`AreaChart`, `LineChart` and `BarChart` are presets of this component with their own defaults. They install it as a dependency, so everything on this page applies to them too.
+
+### How it draws
+
+Everything sits on a grid of glyph cells, `cell` px tall and one font advance wide.
+
+- **Lines** are plotted on a dot grid inside the cells: 2x4 Braille dots with `glyphs="braille"`, 2x2 quadrant blocks with `blocks`. Each step between points is rasterised dot by dot, so curves are four times finer than the text around them. Where two series cross, the one drawn last owns the cell. `ascii` draws lines in `_ - ¯ / \`.
+- **Areas and bars** end in an eighth block (`▁▂▃▄▅▆▇`), so a height is exact to an eighth of a cell, over a body that fades `█ ▓ ▒ ░` away from the edge. Horizontal bars end in left eighths (`▏▎▍▌▋▊▉`). With `braille`, bodies are ordered dithering on the dots.
+- **Axes** are box drawing (`│ ┤ └ ─ ┬`) and gridlines are dots on the exact quarter-cell row of each tick.
+- **Cells shared by two marks** keep both: where a lower layer ends part way up a cell, the layer above fills the rest of it, and a line crossing a bar leaves the bar beneath it.
+
+Missing values (`null`, `NaN`, anything not a finite number) are gaps: lines and areas break there and bars are left out.
+
+## Examples
+
+### Forecast with an interval
+
+An area for the actual values and a dashed line with a `range` for the forecast. The actual series stops where its data does, and the range draws as a band of sparse dots in a quieter tone of the line's colour.
+
+<ComponentPreview src="examples/cartesian-chart-forecast.tsx" size="lg">
+  <CartesianChartForecast />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "data",
+      type: "readonly T[]",
+      required: true,
+      description: "One entry per point or bar along the x axis, in order.",
+    },
+    {
+      name: "x",
+      type: "keyof T | ((datum: T) => string | number)",
+      required: true,
+      description:
+        "The field (or function) holding each datum's category label.",
+    },
+    {
+      name: "series",
+      type: "[CartesianSeries<T>, ...CartesianSeries<T>[]]",
+      required: true,
+      description:
+        'Each series is { type, label, value, color? }, where type is "line", "area" or "bar" and value is a numeric field of T or a function. Lines also take dashed and range: { low, high }. Later series draw on top.',
+    },
+    {
+      name: "stack",
+      type: '"none" | "stacked" | "percent"',
+      default: '"none"',
+      description:
+        "How areas combine with areas, and bars with bars. none overlaps areas and sets bars side by side. stacked sits each on the ones before it. percent stacks and scales every datum to 100%; the readout adds each share.",
+    },
+    {
+      name: "curve",
+      type: '"smooth" | "linear"',
+      default: '"smooth"',
+      description:
+        "smooth is a monotone curve that never overshoots a data point.",
+    },
+    {
+      name: "markers",
+      type: '"all" | "last" | "none"',
+      default: '"last"',
+      description:
+        "Marker glyphs on lines and areas: on every point, on the last one, or none.",
+    },
+    {
+      name: "zero",
+      type: "boolean",
+      default: "true with bars or areas",
+      description:
+        "Start the value axis at zero. Without bars or areas the axis fits the data.",
+    },
+    {
+      name: "highlight",
+      type: 'number | "last" | "max" | "none"',
+      default: '"last"',
+      description:
+        "The bar drawn solid, with its value over it, while nothing is scrubbed.",
+    },
+    {
+      name: "orientation",
+      type: '"vertical" | "horizontal"',
+      default: '"vertical"',
+      description:
+        "horizontal draws bar series growing to the right, with labels on the left and values at their ends. The chart is as tall as its rows and ignores height.",
+    },
+    {
+      name: "summary",
+      type: "string",
+      default: "Built from the series",
+      description:
+        'Short description read before the data table, such as "Bar chart of Revenue and Plan, Jan to Dec."',
+    },
+    {
+      name: "glyphs",
+      type: '"braille" | "blocks" | "ascii"',
+      default: '"blocks"',
+      description:
+        "The glyph family: braille dot-matrix lines and fills, blocks (eighth blocks, shades and quadrant lines) or plain ascii.",
+    },
+    {
+      name: "fill",
+      type: '"gradient" | "solid" | "pattern"',
+      default: '"gradient", or "pattern" with two or more bar series',
+      description:
+        "How area and bar bodies fill. gradient fades from full block (or dense dots) at the edge to light shade. solid is a full block. pattern gives each series its own texture: full, dark, medium, then light shade.",
+    },
+    {
+      name: "colors",
+      type: "readonly AsciiColor[]",
+      default: "ink, orange, green, pink, \u2026",
+      description:
+        'Colours by series position: palette names such as "green" or any CSS colour. A series\' own color wins.',
+    },
+    {
+      name: "height",
+      type: "number",
+      default: "240",
+      description:
+        "Height in px, axes included. The chart draws as many whole cell rows as fit.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "--ascii-cell (12)",
+      description:
+        "Glyph cell height in px. The width follows the font's advance; both snap to whole device pixels.",
+    },
+    {
+      name: "axes",
+      type: "boolean",
+      default: "true",
+      description:
+        'Show the value axis, the category axis and their labels, in box drawing (plain ASCII with glyphs="ascii").',
+    },
+    {
+      name: "grid",
+      type: "boolean",
+      default: "true",
+      description:
+        "Dotted gridlines at each value tick, placed to a quarter of a cell.",
+    },
+    {
+      name: "tooltip",
+      type: "boolean",
+      default: "true",
+      description: "Show the readout while scrubbing.",
+    },
+    {
+      name: "legend",
+      type: "boolean",
+      default: "Two or more series",
+      description:
+        "Show the legend. Its entries spotlight a series on hover and lock it on click.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer and keyboard scrubbing, the readout and the legend spotlight. false makes a decorative chart: no focus stop, just an image with a summary.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "Entrance motion: lines and areas sweep in from the left, bars grow one after another. Always off under reduced motion.",
+    },
+    {
+      name: "glow",
+      type: "boolean",
+      default: "false",
+      description:
+        "A soft glow in each series' colour, scaled by --ascii-glow.",
+    },
+    {
+      name: "format",
+      type: "Intl.NumberFormatOptions | ((value: number) => string)",
+      default: "Compact, as in 1.2K",
+      description:
+        "How values are written on the axis, in the readout and in the data table. Options work from Server Components.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The chart is a focusable group labelled with a short summary, and every value sits in a visually hidden table, so screen readers get the data. Arrow keys, Page Up, Page Down, Home and End move the cursor without easing, a polite live region reads the values at each stop, and Escape clears the cursor and any locked series. Legend entries are toggle buttons.
+- Colour is never the only signal: each series has its own marker glyph (`● ◆ ■ ▲`), dashes or texture, and the legend and readout show the same key.
+- The glyphs render as SVG built from the engine's glyph geometry (`@/lib/ascii/glyphs`), so blocks and shades meet without seams, the chart stays sharp at any zoom, and the server renders it at a default width before the first measurement. Cells snap to whole device pixels and the chart re-plots when its box or the device pixel ratio changes.
+- Colours come from the `--ascii-*` tokens: data in `--ascii-color-*` or `--ascii-ink`, axes and labels in `--ascii-ink` mixed toward `--ascii-paper`. The chart follows the theme and the site palette with no JavaScript.
+- Scrubbing updates once a frame at most and redraws only when the scrubbed datum changes. The entrance redraws about 24 times.
+- The renderer is exported for your own charts: `GlyphFrame` (a grid of glyph cells with an underlay), `GlyphSvg` (draws a frame) and `useCellGrid` (measures a box in cells).

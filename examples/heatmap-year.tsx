@@ -25,16 +25,20 @@ const hours = Math.round(data.reduce((sum, day) => sum + day.value, 0) / 60);
 
 export default function HeatmapYear() {
   return (
-    <div className="flex w-full max-w-3xl flex-col gap-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h3 className="text-lg font-semibold tracking-tight">
-          {hours.toLocaleString("en")} hours of writing this year
-        </h3>
-        <span className="text-muted-foreground font-mono text-xs">
-          Oct 2025 to Oct 2026
-        </span>
+    <div className="border-border bg-background w-full max-w-3xl border font-mono">
+      <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-x-4 border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>writing · {hours.toLocaleString("en")} h this year</span>
+        <span>oct 2025 – oct 2026</span>
       </div>
-      <Heatmap data={data} weekStart={1} color="purple" unit="min" />
+      <div className="p-4 sm:p-5">
+        <Heatmap
+          data={data}
+          weekStart={1}
+          glyphs="ascii"
+          color="purple"
+          unit="min"
+        />
+      </div>
     </div>
   );
 }

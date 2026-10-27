@@ -1,12 +1,13 @@
 ---
 title: "Bar chart"
-description: "Dithered bars with a solid cap, grouped or stacked, for weekly counts and period comparisons."
+description: "Vertical or horizontal bars ending in eighth blocks, grouped or stacked, with the highlighted bar drawn solid and its value in mono text."
 ---
 
 import BarChartDemo from "@/examples/bar-chart-demo";
 import { controls as barChartControls } from "@/examples/bar-chart-controls";
-import BarChartStacked from "@/examples/bar-chart-stacked";
 import BarChartGrouped from "@/examples/bar-chart-grouped";
+import BarChartStacked from "@/examples/bar-chart-stacked";
+import BarChartHorizontal from "@/examples/bar-chart-horizontal";
 
 <ComponentPreview
   src="examples/bar-chart-demo.tsx"
@@ -42,24 +43,32 @@ export function Deploys() {
 }
 ```
 
-Each bar is a dithered body under a solid 2px cap. One bar is drawn solid, the last by default, with its value above it. When the pointer or keyboard focus moves to another bar, that one fills in instead. `x` and each series' `value` name fields of your data, or take a function when you render from a Client Component.
+Each bar ends in an eighth block (`▁▂▃▄▅▆▇`), so its height is exact to an eighth of a cell. Below the cap the body fades `█ ▓ ▒ ░` toward the axis. The highlighted bar, and the one under the cursor, draw solid. BarChart is a preset of [Cartesian chart](/docs/charts/cartesian-chart).
 
 ## Examples
 
+### Grouped
+
+With two or more series, bars of one category sit side by side and each series gets its own texture, so the groups read apart without colour.
+
+<ComponentPreview src="examples/bar-chart-grouped.tsx">
+  <BarChartGrouped />
+</ComponentPreview>
+
 ### Stacked
 
-`layout="stacked"` puts the series on top of each other with a 2px gap between segments, and the axis covers the totals. `highlight="max"` picks the tallest stack.
+`layout="stacked"` sits each series on the one before it. `highlight="max"` draws the busiest day solid with its total over it.
 
 <ComponentPreview src="examples/bar-chart-stacked.tsx" size="lg">
   <BarChartStacked />
 </ComponentPreview>
 
-### Grouped comparison
+### Horizontal
 
-Grouped bars sit side by side, one per series. `highlight="none"` leaves every bar dithered until you scrub to one, and `fill="hatched"` gives each bar diagonal lines instead of the gradient.
+`orientation="horizontal"` grows bars to the right in left eighths (`▏▎▍▌▋▊▉`), with category labels on the left and values at the end of each bar. The chart is as tall as its rows; the up and down arrows move the cursor.
 
-<ComponentPreview src="examples/bar-chart-grouped.tsx" size="lg">
-  <BarChartGrouped />
+<ComponentPreview src="examples/bar-chart-horizontal.tsx">
+  <BarChartHorizontal />
 </ComponentPreview>
 
 ## Props
@@ -70,13 +79,15 @@ Grouped bars sit side by side, one per series. `highlight="none"` leaves every b
       name: "data",
       type: "readonly T[]",
       required: true,
-      description: "One entry per bar or group of bars, in order.",
+      description:
+        "One entry per bar (or group of bars) along the x axis, in order.",
     },
     {
       name: "x",
       type: "keyof T | ((datum: T) => string | number)",
       required: true,
-      description: "The field (or function) holding each bar's category label.",
+      description:
+        "The field (or function) holding each datum's category label.",
     },
     {
       name: "series",
@@ -90,80 +101,70 @@ Grouped bars sit side by side, one per series. `highlight="none"` leaves every b
       type: '"grouped" | "stacked" | "percent"',
       default: '"grouped"',
       description:
-        "How several series share a category: side by side, on top of each other, or stacked and scaled to 100%.",
+        "grouped sets series side by side. stacked sits them on top of each other. percent stacks and scales every bar to 100%.",
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
+      name: "orientation",
+      type: '"vertical" | "horizontal"',
+      default: '"vertical"',
       description:
-        "gradient is densest at the top of each bar and thins toward the axis. dotted is a sparse lattice, hatched diagonal lines, solid flat colour.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description:
-        "A soft glow in each series' colour behind its fill. Its strength follows --ascii-bloom, lower in light mode.",
-    },
-    {
-      name: "colors",
-      type: "readonly AsciiColor[]",
-      default: "ink, orange, green, pink, …",
-      description:
-        'Colours by series position: palette names such as "green" or any CSS colour. A series\' own color wins.',
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Scrubbing, the readout and the legend spotlight. false makes a decorative chart: no focus stop, no readout, just an image with a summary.",
-    },
-    {
-      name: "animate",
-      type: "boolean",
-      default: "true",
-      description: "Entrance motion. Always off under reduced motion.",
+        "horizontal grows bars to the right with labels on the left and values at their ends. The chart is as tall as its rows and ignores height.",
     },
     {
       name: "highlight",
       type: 'number | "last" | "max" | "none"',
       default: '"last"',
       description:
-        "The bar drawn solid, with its value, while nothing is scrubbed.",
+        "The bar drawn solid, with its value over it, while nothing is scrubbed: an index, the last bar, the tallest, or none.",
+    },
+    {
+      name: "glyphs",
+      type: '"braille" | "blocks" | "ascii"',
+      default: '"blocks"',
+      description:
+        "blocks: eighth-block caps over a shade body. braille: bars of dots, densest at the top. ascii: # = + : characters.",
+    },
+    {
+      name: "fill",
+      type: '"gradient" | "solid" | "pattern"',
+      default: '"gradient", or "pattern" with two or more bar series',
+      description:
+        "How area and bar bodies fill. gradient fades from full block (or dense dots) at the edge to light shade. solid is a full block. pattern gives each series its own texture: full, dark, medium, then light shade.",
+    },
+    {
+      name: "colors",
+      type: "readonly AsciiColor[]",
+      default: "ink, orange, green, pink, \u2026",
+      description:
+        'Colours by series position: palette names such as "green" or any CSS colour. A series\' own color wins.',
     },
     {
       name: "height",
       type: "number",
       default: "240",
-      description: "Height in px, axes included.",
-    },
-    {
-      name: "level",
-      type: "number",
-      default: "0.75",
       description:
-        "Gradient only: coverage at the top of each bar, from 0 to 1.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Gradient only: the dither texture.",
+        "Height in px, axes included. The chart draws as many whole cell rows as fit.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
+      default: "--ascii-cell (12)",
       description:
-        "Size of one dither cell in px, rounded to whole device pixels.",
+        "Glyph cell height in px. The width follows the font's advance; both snap to whole device pixels.",
     },
     {
       name: "axes",
       type: "boolean",
       default: "true",
-      description: "Show the value and category axes.",
+      description:
+        'Show the value axis, the category axis and their labels, in box drawing (plain ASCII with glyphs="ascii").',
+    },
+    {
+      name: "grid",
+      type: "boolean",
+      default: "true",
+      description:
+        "Dotted gridlines at each value tick, placed to a quarter of a cell.",
     },
     {
       name: "tooltip",
@@ -176,22 +177,43 @@ Grouped bars sit side by side, one per series. `highlight="none"` leaves every b
       type: "boolean",
       default: "Two or more series",
       description:
-        "Show the legend under the chart. Its entries spotlight a series on hover and lock it on click.",
+        "Show the legend. Its entries spotlight a series on hover and lock it on click.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "Pointer and keyboard scrubbing, the readout and the legend spotlight. false makes a decorative chart: no focus stop, just an image with a summary.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "Entrance motion: lines and areas sweep in from the left, bars grow one after another. Always off under reduced motion.",
+    },
+    {
+      name: "glow",
+      type: "boolean",
+      default: "false",
+      description:
+        "A soft glow in each series' colour, scaled by --ascii-glow.",
     },
     {
       name: "format",
       type: "Intl.NumberFormatOptions | ((value: number) => string)",
       default: "Compact, as in 1.2K",
       description:
-        "How values are written on the axis, in the readout and in the table.",
+        "How values are written on the axis, in the readout and in the data table. Options work from Server Components.",
     },
   ]}
 />
 
-Series colours follow the palette: ink, then orange, green, pink, purple, blue, red and grey. Pass `colors`, or `color` on one series, with a palette name or any CSS colour.
-
 ## Notes
 
-- The chart is a focusable group with a short summary, and every value is in a visually hidden table. The arrow keys, Home and End move between bars, a polite live region reads out each stop, and Escape clears the readout and any locked series. The scrubbed column gets a soft band and fills in solid.
-- Bars rise from the baseline one after another on entrance. With reduced motion they appear in place.
-- Bars are capped at 36px wide and snapped to whole pixels, and the dither cell to whole device pixels, so edges and cells stay sharp.
+- The chart is a focusable group labelled with a short summary, and every value sits in a visually hidden table, so screen readers get the data. Arrow keys, Page Up, Page Down, Home and End move the cursor without easing, a polite live region reads the values at each stop, and Escape clears the cursor and any locked series. Legend entries are toggle buttons.
+- Colour is never the only signal: each series has its own marker glyph (`● ◆ ■ ▲`), dashes or texture, and the legend and readout show the same key.
+- The glyphs render as SVG built from the engine's glyph geometry (`@/lib/ascii/glyphs`), so blocks and shades meet without seams, the chart stays sharp at any zoom, and the server renders it at a default width before the first measurement. Cells snap to whole device pixels and the chart re-plots when its box or the device pixel ratio changes.
+- Colours come from the `--ascii-*` tokens: data in `--ascii-color-*` or `--ascii-ink`, axes and labels in `--ascii-ink` mixed toward `--ascii-paper`. The chart follows the theme and the site palette with no JavaScript.
+- Negative values hang below the zero line and end in the nearest glyph that fills a cell from the top (`▔`, `▀` or `█`).

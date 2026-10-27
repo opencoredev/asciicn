@@ -30,23 +30,26 @@ const data = DAYS.map((_, day) =>
 
 export default function HeatmapMatrix() {
   return (
-    <div className="bg-background border-border w-full max-w-2xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-6 flex flex-col gap-1">
-        <span className="font-medium">When the team pushes to main</span>
-        <span className="text-muted-foreground text-sm">
-          Last 90 days, by weekday and hour (UTC). Fridays go quiet after 3pm.
-        </span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>pushes to main · weekday × hour utc</span>
+        <span>90d</span>
       </div>
-      <Heatmap
-        mode="matrix"
-        data={data}
-        rows={DAYS}
-        columns={HOURS}
-        cell={4}
-        steps={5}
-        color="orange"
-        unit={{ one: "push", other: "pushes" }}
-      />
+      <div className="p-4 sm:p-5">
+        <p className="text-muted-foreground mb-4 text-xs">
+          Office hours, a lunch dip, and Fridays go quiet after 15:00.
+        </p>
+        <Heatmap
+          mode="matrix"
+          data={data}
+          rows={DAYS}
+          columns={HOURS}
+          steps={5}
+          glyphs="blocks"
+          color="orange"
+          unit={{ one: "push", other: "pushes" }}
+        />
+      </div>
     </div>
   );
 }

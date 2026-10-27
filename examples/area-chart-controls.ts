@@ -1,13 +1,17 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
+import {
+  CHART_FILLS,
+  CHART_GLYPHS,
+} from "@/components/asciicn/cartesian-chart";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the area chart's main demo, shared by the page and the demo.
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const glyphs = segmented({
+  default: "blocks",
+  id: "glyphs",
+  label: "Glyphs",
+  options: CHART_GLYPHS,
 });
 
 export const stack = segmented({
@@ -17,11 +21,11 @@ export const stack = segmented({
   options: ["none", "stacked", "percent"],
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
+export const fill = segmented({
+  default: "gradient",
+  id: "fill",
+  label: "Fill",
+  options: CHART_FILLS,
 });
 
 export const firstColor = color({
@@ -32,13 +36,19 @@ export const firstColor = color({
 });
 
 export const cell = slider({
-  default: 3,
+  default: 12,
   id: "cell",
   label: "Cell",
-  max: 6,
-  min: 2,
+  max: 18,
+  min: 8,
   step: 1,
   unit: "px",
+});
+
+export const glow = toggle({
+  default: false,
+  id: "glow",
+  label: "Glow",
 });
 
 export const interactive = toggle({
@@ -48,4 +58,12 @@ export const interactive = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [fill, stack, bloom, firstColor, cell, interactive];
+export const controls = [
+  glyphs,
+  stack,
+  fill,
+  firstColor,
+  cell,
+  glow,
+  interactive,
+];

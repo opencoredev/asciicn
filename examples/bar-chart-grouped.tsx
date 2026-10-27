@@ -9,34 +9,30 @@ const data = [
 
 export default function BarChartGrouped() {
   return (
-    <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-5 flex flex-col gap-1">
-        <span className="text-muted-foreground text-sm">
-          Net revenue by quarter
-        </span>
-        <span className="text-3xl font-semibold tracking-tight">$1.99M</span>
-        <span className="text-muted-foreground text-xs">
-          <span className="text-foreground font-medium">+16.6%</span> on last
-          year
-        </span>
+    <div className="border-border bg-background w-full max-w-md border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>net revenue · by quarter</span>
+        <span className="text-foreground">▲ 16.6%</span>
       </div>
-      <BarChart
-        data={data}
-        x="quarter"
-        highlight="none"
-        fill="hatched"
-        height={200}
-        series={[
-          { label: "2026", value: "current" },
-          { label: "2025", value: "previous" },
-        ]}
-        format={{
-          currency: "USD",
-          maximumFractionDigits: 0,
-          notation: "compact",
-          style: "currency",
-        }}
-      />
+      <div className="p-4">
+        <p className="mb-4 text-3xl font-semibold tracking-tight">$1.99M</p>
+        <BarChart
+          data={data}
+          x="quarter"
+          highlight="none"
+          height={204}
+          series={[
+            { label: "2026", value: "current" },
+            { color: "grey", label: "2025", value: "previous" },
+          ]}
+          format={{
+            currency: "USD",
+            maximumFractionDigits: 0,
+            notation: "compact",
+            style: "currency",
+          }}
+        />
+      </div>
     </div>
   );
 }

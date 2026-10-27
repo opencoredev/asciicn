@@ -12,30 +12,29 @@ const data = [
 
 export default function LineChartCompare() {
   return (
-    <div className="bg-background border-border w-full max-w-xl rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-sm">Checkouts</span>
-          <span className="text-3xl font-semibold tracking-tight">10,020</span>
-        </div>
-        <span className="text-muted-foreground text-sm">
-          <span className="text-foreground font-medium">+13.4%</span> on last
-          week
-        </span>
+    <div className="border-border bg-background w-full max-w-2xl border font-mono">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-[11px] tracking-[0.08em] uppercase">
+        <span>checkouts · this week vs last</span>
+        <span className="text-foreground">▲ 13.4%</span>
       </div>
-      <LineChart
-        data={data}
-        x="day"
-        height={220}
-        series={[
-          {
-            label: "This week",
-            range: { high: "thisWeek", low: "lastWeek" },
-            value: "thisWeek",
-          },
-          { dashed: true, label: "Last week", value: "lastWeek" },
-        ]}
-      />
+      <div className="p-4 sm:p-5">
+        <LineChart
+          data={data}
+          x="day"
+          height={216}
+          markers="all"
+          series={[
+            { color: "green", label: "This week", value: "thisWeek" },
+            {
+              color: "grey",
+              dashed: true,
+              label: "Last week",
+              value: "lastWeek",
+            },
+          ]}
+          format={{ maximumFractionDigits: 0 }}
+        />
+      </div>
     </div>
   );
 }
