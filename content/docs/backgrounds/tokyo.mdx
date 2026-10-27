@@ -1,12 +1,13 @@
 ---
 title: "Tokyo"
-description: "Tokyo on a clear night: Tokyo Tower lit among towers of windows, vertical neon signs, a train on a curving elevated line and Mount Fuji on the horizon."
+description: "Tokyo at night: Tokyo Tower in orange and white with both decks lit, a dense skyline of lit windows, a train on an elevated line and Mount Fuji in the distance."
 ---
 
 import TokyoDemo from "@/examples/tokyo-demo";
 import { controls as demoControls } from "@/examples/tokyo-controls";
 import TokyoHero from "@/examples/tokyo-hero";
 import TokyoPhosphor from "@/examples/tokyo-phosphor";
+import TokyoQuadrants from "@/examples/tokyo-quadrants";
 
 <ComponentPreview
   src="examples/tokyo-demo.tsx"
@@ -36,19 +37,19 @@ export function Hero() {
 }
 ```
 
-The scene is built in layers. A few stars and the snowy cone of Mount Fuji sit at the back, then a low far skyline, Tokyo Tower in red-orange and white with its two observation decks, mid towers with lit window grids, and near blocks hung with vertical neon signs. In front, a train runs along a curving elevated line, and cars pass on the street below.
+The view looks across Minato at night. Tokyo Tower stands on the right, drawn to the real tower's proportions: legs that flare out like the Eiffel Tower's, an open lattice with X bracing below the Main Deck, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna. It is painted in international orange and white bands, and both decks are lit. Mount Fuji sits far off on the left, a symmetric cone with a snow cap, dimmer than the city. A dense row of high-rises fills the bottom with grids of amber, white-cyan and gold windows, and an elevated railway runs in front of them.
 
-Windows switch on and off slowly, the signs flicker now and then, and the red lights on the tower and the rooftop antennas blink. With `interactive` on, the pointer shifts the layers by different amounts, so near blocks slide further than the horizon.
+The buildings, the tower and Fuji never move, and the pointer does nothing. Only lights change: a few windows switch on or off at a time, each fading over a few seconds; red beacons on the tower and the tallest roofs pulse about once every 1.8 seconds; stars twinkle faintly; and one train crosses the elevated line slowly as a row of lit windows.
 
-It draws in `braille` by default, which keeps the tower's lattice and the window grids fine. In `braille` and `quadrants` it dithers with `bayer4`, so the dim facades and Fuji show as sparse dots instead of vanishing below the dot threshold. `standard` and `dense` give a typed look, and `blocks` gives solid shapes. In `truecolor`, the default, glyphs take the scene's red, white and electric blue on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+Every building edge and window sits on whole samples, so the window grids stay regular in every charset. It draws in `braille` by default at a 9px cell, which keeps the tower's lattice fine. In `braille` and `quadrants` it uses `bayer4` dithering, which turns Fuji's slopes and the gaps in the lattice into even grids of dots. `quadrants` and `blocks` give bolder solid shapes, and `standard` and `dense` a typed look. In `truecolor`, the default, glyphs take the scene's own colours on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
 
-`intensity` scales every glyph's tone. Lower it to keep a headline on top easy to read.
+`intensity` dims the colours and thins the glyphs. Lower it to keep a headline on top easy to read.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.55}` and `neon={0.7}` push the city back so the headline reads first.
+`intensity={0.55}` pushes the city back so the headline reads first.
 
 <ComponentPreview src="examples/tokyo-hero.tsx" size="lg" align="stretch">
   <TokyoHero />
@@ -60,6 +61,14 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
 
 <ComponentPreview src="examples/tokyo-phosphor.tsx">
   <TokyoPhosphor />
+</ComponentPreview>
+
+### In quadrants
+
+`charset="quadrants"` at `cell={10}` draws the city in solid 2x2 blocks: bolder shapes and stronger colour, with a little less detail in the lattice.
+
+<ComponentPreview src="examples/tokyo-quadrants.tsx">
+  <TokyoQuadrants />
 </ComponentPreview>
 
 ## Props
@@ -74,24 +83,16 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
         "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
     },
     {
-      name: "neon",
-      type: "number",
-      default: "1",
-      description:
-        "How many vertical neon signs glow, and how brightly, from 0 (none) to 1.",
-    },
-    {
-      name: "traffic",
-      type: "number",
-      default: "1",
-      description:
-        "Speed of the train and the street traffic, from 0 (parked) to 2.",
-    },
-    {
       name: "fuji",
       type: "boolean",
       default: "true",
-      description: "Draws Mount Fuji on the horizon.",
+      description: "Draws Mount Fuji in the distance on the left.",
+    },
+    {
+      name: "train",
+      type: "boolean",
+      default: "true",
+      description: "Draws the train that crosses the elevated line.",
     },
     {
       name: "charset",
@@ -163,7 +164,7 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
       default: '"bayer4" in braille and quadrants, "none" otherwise',
       description:
-        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to draw Fuji's slopes and the lattice gaps as even dot grids.",
     },
     {
       name: "background",
@@ -180,22 +181,16 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "An engine pointer effect on top of the parallax.",
-    },
-    {
       name: "interactive",
       type: "boolean",
-      default: "true",
+      default: "–",
       description:
-        "Pointer parallax: near layers slide further than far ones. false turns it off, and interaction with it.",
+        "Accepted so any stage can pass it, and ignored: the city does not respond to the pointer.",
     },
     {
       name: "cell",
       type: "number",
-      default: "10",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -220,7 +215,7 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
     {
       name: "stillTime",
       type: "number",
-      default: "4",
+      default: "6",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -259,4 +254,5 @@ It draws in `braille` by default, which keeps the tower's lattice and the window
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dark night gradient.
+- Nothing responds to the pointer, and there is no `interaction` prop.
 - The whole scene is one GPU pass with no loops over buildings, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).

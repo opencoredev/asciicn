@@ -24,28 +24,16 @@ export const phosphor = segmented({
   options: ["none", ...PHOSPHOR_NAMES],
 });
 
-export const neon = slider({
-  default: 1,
-  id: "neon",
-  label: "Neon",
-  max: 1,
-  min: 0,
-  step: 0.05,
-});
-
-export const traffic = slider({
-  default: 1,
-  id: "traffic",
-  label: "Traffic",
-  max: 2,
-  min: 0,
-  step: 0.1,
-});
-
 export const fuji = toggle({
   default: true,
   id: "fuji",
   label: "Mount Fuji",
+});
+
+export const train = toggle({
+  default: true,
+  id: "train",
+  label: "Train",
 });
 
 export const intensity = slider({
@@ -58,7 +46,7 @@ export const intensity = slider({
 });
 
 export const cell = slider({
-  default: 10,
+  default: 9,
   id: "cell",
   label: "Cell",
   max: 20,
@@ -78,9 +66,8 @@ export const controls = [
   charset,
   colorMode,
   phosphor,
-  neon,
-  traffic,
   fuji,
+  train,
   intensity,
   cell,
   animate,

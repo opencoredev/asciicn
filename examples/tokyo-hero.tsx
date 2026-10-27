@@ -3,7 +3,7 @@ import { Tokyo } from "@/components/asciicn/tokyo";
 export default function TokyoHero() {
   return (
     <section className="relative isolate flex size-full flex-col items-center justify-start gap-3 overflow-hidden bg-[#03050d] px-6 pt-14 text-center text-white">
-      <Tokyo intensity={0.55} neon={0.7} className="absolute inset-0 -z-10" />
+      <Tokyo intensity={0.55} className="absolute inset-0 -z-10" />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance sm:text-4xl">
         Last train from Hamamatsucho
       </h3>
