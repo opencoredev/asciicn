@@ -1,33 +1,48 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The asciicn mark: a 4x4 dot grid whose columns hold 1, 2, 3 and 4 lit
- * dots, a stepped ramp at the smallest size that still reads.
+ * The asciicn mark: a `>_` prompt drawn as a 6x6 pixel glyph, the way a
+ * terminal font would set it. Each row lists its lit cells; whole rows
+ * merge into one rect so the mark has no seams at fractional scales.
  */
-const LIT_CELLS = [
-  [0, 0],
-  [2, 0],
-  [3, 0],
-  [1, 1],
-  [3, 1],
-  [2, 2],
-  [3, 2],
-  [1, 3],
-  [2, 3],
-  [3, 3],
-] as const satisfies readonly (readonly [x: number, y: number])[];
+const GLYPH = [
+  "##....",
+  ".##...",
+  "..##..",
+  ".##...",
+  "##....",
+  "...###",
+] as const satisfies readonly string[];
 
-const CELL = 6;
-const DOT = 5;
+const CELL = 4;
+const SIZE = GLYPH.length * CELL;
+
+interface Run {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+}
+
+/** Lit cells as horizontal runs, in glyph cells. */
+export const LOGO_RUNS: readonly Run[] = GLYPH.flatMap((row, y) =>
+  [...row.matchAll(/#+/g)].map((match) => ({
+    width: match[0].length,
+    x: match.index,
+    y,
+  }))
+);
+
+/** The glyph grid in cells, for callers that draw the runs themselves. */
+export const LOGO_CELLS = GLYPH.length;
 
 const rects = (fill: string) =>
-  LIT_CELLS.map(
-    ([x, y]) =>
-      `<rect x="${x * CELL}" y="${y * CELL}" width="${DOT}" height="${DOT}" fill="${fill}"/>`
+  LOGO_RUNS.map(
+    ({ x, y, width }) =>
+      `<rect x="${x * CELL}" y="${y * CELL}" width="${width * CELL}" height="${CELL}" fill="${fill}"/>`
   ).join("");
 
 export const getLogoMarkSVG = (color: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" shape-rendering="crispEdges">${rects(color)}</svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" shape-rendering="crispEdges">${rects(color)}</svg>`;
 
 export const LogoMark = ({
   className,
@@ -35,20 +50,20 @@ export const LogoMark = ({
 }: React.ComponentProps<"svg">) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 23 23"
+    viewBox={`0 0 ${SIZE} ${SIZE}`}
     shapeRendering="crispEdges"
     fill="currentColor"
     aria-hidden="true"
     className={cn("size-4", className)}
     {...props}
   >
-    {LIT_CELLS.map(([x, y]) => (
+    {LOGO_RUNS.map(({ x, y, width }) => (
       <rect
         key={`${x}-${y}`}
         x={x * CELL}
         y={y * CELL}
-        width={DOT}
-        height={DOT}
+        width={width * CELL}
+        height={CELL}
       />
     ))}
   </svg>

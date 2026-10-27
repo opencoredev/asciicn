@@ -1,47 +1,76 @@
+import { LOGO_CELLS, LOGO_RUNS } from "@/components/logo";
 import { SITE } from "@/constants/site";
 
 /** Satori markup shared by /og and /og/docs/*. Hex colours only. */
 const INK = "#000000";
 const PAPER = "#fafafa";
-const BLUE = "#9aa3ff";
+const AMBER = "#fcb442";
 const MUTED = "#a3a3a3";
 
-const BAYER_4 = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-] as const;
+// A glyph ramp along the bottom edge: density rises left to right, with a
+// little per-row jitter so it reads as type, not a gradient.
+const RAMP = " .:-=+*#%@";
+const COLS = 50;
+const ROWS = 4;
+const GLYPH_W = 1200 / COLS;
+const GLYPH_H = 24;
 
-const DOT = 6;
-const LEVELS = 17;
-const STEP_WIDTH = 1200 / LEVELS;
+const rampGlyph = (col: number, row: number) => {
+  const jitter = (((col * 7 + row * 13) % 5) - 2) * 0.04;
+  const level = Math.min(Math.max(col / (COLS - 1) + jitter, 0), 1);
+  return RAMP[Math.round(level * (RAMP.length - 1))];
+};
 
 const Ramp = () => (
-  <svg
-    width="1200"
-    height="96"
-    viewBox="0 0 1200 96"
-    style={{ bottom: 0, left: 0, position: "absolute" }}
+  <div
+    style={{
+      bottom: 0,
+      color: AMBER,
+      display: "flex",
+      flexDirection: "column",
+      fontSize: 20,
+      left: 0,
+      position: "absolute",
+      width: 1200,
+    }}
   >
-    {Array.from({ length: LEVELS }, (_, level) => {
-      const x0 = Math.round(level * STEP_WIDTH);
-      const cols = Math.floor(STEP_WIDTH / DOT) - 1;
-      return Array.from({ length: 96 / DOT }, (_row, y) =>
-        Array.from({ length: cols }, (_col, x) =>
-          BAYER_4[y % 4][x % 4] < level ? (
-            <rect
-              key={`${level}-${x}-${y}`}
-              x={x0 + x * DOT}
-              y={y * DOT}
-              width={DOT}
-              height={DOT}
-              fill={BLUE}
-            />
-          ) : null
-        )
-      );
-    })}
+    {Array.from({ length: ROWS }, (_row, row) => (
+      <div key={row} style={{ display: "flex", height: GLYPH_H }}>
+        {Array.from({ length: COLS }, (_col, col) => (
+          <div
+            key={col}
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              width: GLYPH_W,
+            }}
+          >
+            {rampGlyph(col, row)}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+);
+
+const MARK_CELL = 6;
+
+const Mark = () => (
+  <svg
+    width={LOGO_CELLS * MARK_CELL}
+    height={LOGO_CELLS * MARK_CELL}
+    viewBox={`0 0 ${LOGO_CELLS} ${LOGO_CELLS}`}
+  >
+    {LOGO_RUNS.map(({ x, y, width }) => (
+      <rect
+        key={`${x}-${y}`}
+        x={x}
+        y={y}
+        width={width}
+        height="1"
+        fill={AMBER}
+      />
+    ))}
   </svg>
 );
 
@@ -67,37 +96,13 @@ export const OgCard = ({
     <div
       style={{
         alignItems: "center",
-        color: BLUE,
+        color: AMBER,
         display: "flex",
         fontSize: 32,
         gap: 16,
       }}
     >
-      <svg width="34" height="34" viewBox="0 0 23 23">
-        {(
-          [
-            [0, 0],
-            [2, 0],
-            [3, 0],
-            [1, 1],
-            [3, 1],
-            [2, 2],
-            [3, 2],
-            [1, 3],
-            [2, 3],
-            [3, 3],
-          ] as const
-        ).map(([x, y]) => (
-          <rect
-            key={`${x}-${y}`}
-            x={x * 6}
-            y={y * 6}
-            width="5"
-            height="5"
-            fill={BLUE}
-          />
-        ))}
-      </svg>
+      <Mark />
       {SITE.NAME}
     </div>
     <div

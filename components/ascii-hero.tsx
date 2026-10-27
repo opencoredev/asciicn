@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Site illustration, not a registry piece: the city backgrounds behind the
- * landing hero. Each visit opens on a random city, then the next one fades
- * in over it every HOLD_MS. Rotation pauses offscreen and in hidden tabs,
+ * landing hero. It opens on San Francisco, whose orange bridge sits with
+ * the amber accent, then the next city fades in over it every HOLD_MS. Rotation pauses offscreen and in hidden tabs,
  * and never runs under reduced motion, where the city holds a still frame.
  *
  * Cities load one at a time, so the page only pays for the one on screen.
@@ -37,8 +37,10 @@ interface Layer {
   readonly key: number;
 }
 
-const randomCity = (): CityEntry | undefined =>
-  CITIES[Math.floor(Math.random() * CITIES.length)];
+const FIRST_CITY = "san-francisco";
+
+const firstCity = (): CityEntry | undefined =>
+  CITIES.find((city) => city.id === FIRST_CITY) ?? CITIES[0];
 
 const nextCity = (city: CityEntry): CityEntry | undefined =>
   CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];
@@ -105,17 +107,12 @@ export const AsciiHero = ({ className }: { className?: string }) => {
   const inView = useInView(rootRef, { rootMargin: "0px" });
   const visible = useDocumentVisible();
   const reducedMotion = usePrefersReducedMotion();
-  const [layers, setLayers] = useState<readonly Layer[]>([]);
+  const [layers, setLayers] = useState<readonly Layer[]>(() => {
+    const city = firstCity();
+    return city ? [{ city, key: 0 }] : [];
+  });
   const [settled, setSettled] = useState(false);
   const current = layers.at(-1);
-
-  // Picked on the client, so the server render and hydration agree.
-  useEffect(() => {
-    const city = randomCity();
-    if (city) {
-      setLayers([{ city, key: 0 }]);
-    }
-  }, []);
 
   const rotating =
     settled && !reducedMotion && inView && visible && CITIES.length > 1;
