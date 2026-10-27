@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 /*
  * Direction: a contact sheet. Every component is a small print of its docs
  * demo on the same #141414 plate the docs stage uses, two to a row, name
- * underneath in plain text, group headings with a mono count. The dither is
- * the only colour on the page. Avoiding: card chrome, badges, descriptions
+ * underneath in plain text, group headings with a mono count. The glyphs
+ * are the only colour on the page. Avoiding: card chrome, badges, descriptions
  * under every tile, and hover motion.
  *
  * The prints are screenshots in both site themes, made by

@@ -54,7 +54,7 @@ const ITEM_CLS =
 const KEY_CLS =
   "border-rule text-foreground/70 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-xs border border-b-2 px-1 font-mono text-[10px]";
 
-// Docs pages have no print: their group's icon on a faint dither of the ink.
+// Docs pages have no print: their group's icon on a faint glyph texture of the ink.
 const PLATE_GRAIN = asciiMaskStyle(0.125, { cell: 2 });
 
 /** Docs pages without a print get their group's icon instead. */

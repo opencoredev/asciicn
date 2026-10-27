@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import type { CharsetName } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
 import { SCENES } from "@/lib/scenes";
+import type { SceneRenderer } from "@/lib/scenes";
 
 /**
  * What the home page and /scenes can put on a stage: the 12 scenes, plus a
@@ -10,7 +11,7 @@ import { SCENES } from "@/lib/scenes";
  */
 
 /** `gpu` scenes draw through WebGL2 and count against the context budget. */
-export type Renderer = "gpu" | "canvas";
+export type Renderer = SceneRenderer;
 
 export interface StageSource {
   /** Registry name, docs slug and `?source=` value. */
@@ -28,54 +29,23 @@ export interface StageSource {
   readonly load: () => Promise<ComponentType<AsciiSceneProps>>;
 }
 
-/**
- * Renderer and default charset per scene. `lib/scenes.ts` doesn't carry
- * them yet, so they live here; keep them in step with the scene files.
- */
-const SCENE_META = {
-  "abyssal-jellyfish-scene": { charset: "standard", renderer: "gpu" },
-  "black-hole-scene": { charset: "braille", renderer: "gpu" },
-  "campfire-woods-scene": { charset: "standard", renderer: "gpu" },
-  "coastal-lighthouse-scene": { charset: "standard", renderer: "gpu" },
-  "cyberpunk-rain-scene": { charset: "katakana", renderer: "gpu" },
-  "fluid-smoke-scene": { charset: "braille", renderer: "canvas" },
-  "matrix-cathedral-scene": { charset: "katakana", renderer: "canvas" },
-  "sacred-torus-scene": { charset: "standard", renderer: "canvas" },
-  "synthwave-horizon-scene": { charset: "braille", renderer: "gpu" },
-  "tempest-storm-scene": { charset: "standard", renderer: "gpu" },
-  "terminal-deck-scene": { charset: "braille", renderer: "canvas" },
-  "warp-tunnel-scene": { charset: "standard", renderer: "gpu" },
-} as const satisfies Record<
-  string,
-  { charset: CharsetName; renderer: Renderer }
->;
-
-type SceneId = keyof typeof SCENE_META;
-
-const isSceneId = (id: string): id is SceneId => Object.hasOwn(SCENE_META, id);
-
 const pascal = (id: string) =>
   id
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-export const SCENE_SOURCES: readonly StageSource[] = SCENES.map((scene) => {
-  const meta = isSceneId(scene.id)
-    ? SCENE_META[scene.id]
-    : ({ charset: "standard", renderer: "gpu" } as const);
-  return {
-    charset: meta.charset,
-    description: scene.description,
-    exportName: pascal(scene.id),
-    href: `/docs/scenes/${scene.id}`,
-    id: scene.id,
-    kind: "scene",
-    load: scene.load,
-    renderer: meta.renderer,
-    title: scene.title,
-  };
-});
+export const SCENE_SOURCES: readonly StageSource[] = SCENES.map((scene) => ({
+  charset: scene.charset,
+  description: scene.description,
+  exportName: pascal(scene.id),
+  href: `/docs/scenes/${scene.id}`,
+  id: scene.id,
+  kind: "scene",
+  load: scene.load,
+  renderer: scene.renderer,
+  title: scene.title,
+}));
 
 // The background components take the shader's props. Spreading the scene
 // props through keeps the look switches working as the shader learns them.
