@@ -13,8 +13,8 @@ export default function TunnelHeadline() {
         Further in
       </h3>
       <p className="text-muted-foreground max-w-[16rem] text-sm text-pretty">
-        The rings fade out before they reach the middle, which leaves a clear
-        space for a few words.
+        A fog of 2.6 fades the rings out well before the middle, which leaves
+        room for a few words.
       </p>
     </section>
   );

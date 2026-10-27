@@ -15,8 +15,8 @@ export default function SilkHeadline() {
         The autumn collection
       </h3>
       <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        A lower intensity keeps the brightest crest below full ink, so the text
-        reads on top.
+        At an intensity of 0.45 the brightest crest stops at a mid-ramp glyph,
+        so the text stays readable.
       </p>
     </section>
   );

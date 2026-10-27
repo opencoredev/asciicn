@@ -1,17 +1,26 @@
 "use client";
 
 import { cssColor } from "@/lib/ascii";
-import type { AsciiPalette } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiPalette,
+  AsciiSceneProps,
+  Interaction,
+} from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
-import type { AsciiShaderProps } from "@/lib/ascii/shader";
 
 /** A point relative to the box: x from the left, y from the top. */
 export type TunnelCenter = readonly [number, number];
 
-export type TunnelProps = Omit<
-  AsciiShaderProps,
-  "field" | "uniforms" | "fallback"
-> & {
+export interface TunnelProps extends AsciiSceneProps {
+  /** The colour of the near rings. Default `"--ascii-ink"`. */
+  ink?: AsciiColor;
+  /** The colour the rings take deep in the tunnel, in `truecolor` and `palette` modes. Default `"purple"`. */
+  farColor?: AsciiColor;
+  /** The surface behind the glyphs. Default `"--ascii-paper"`. */
+  paper?: AsciiColor;
+  /** Every colour at once, paper first and the nearest rings last. Wins over `ink`, `farColor` and `paper`. */
+  palette?: AsciiPalette;
   /** The cross-section of the tunnel. Default `"circle"`. */
   shape?: "circle" | "square";
   /** How close together the rings are. 1 is the default spacing; 2 packs twice as many in. */
@@ -27,35 +36,41 @@ export type TunnelProps = Omit<
   sway?: number;
   /** Size of the empty fog in the middle. 2 doubles it to clear room for text. Default 1. */
   fog?: number;
-};
+  /** What the pointer does to the glyphs. `interactive={false}` turns it off. Default `"none"`. */
+  interaction?: Interaction;
+}
 
+/**
+ * Depth goes as 1 / r from the vanishing point, so equal steps in depth
+ * bunch up towards the centre. Line widths are measured in sample rows,
+ * so a ring stays at least one glyph thick at any size. `tunnelView`
+ * returns the tone in x and how near the wall is in y (0 deep, 1 close).
+ */
 const FIELD = `
-float tunnelLine(float offset, float perCell, float width) {
-  // offset and width are in ring steps; perCell is one cell in ring steps.
-  float d = offset / perCell;
-  float w = max(width / perCell, 0.55);
+float tunnelLine(float offset, float perSample, float width) {
+  // offset and width are in ring steps; perSample is one sample in ring steps.
+  float d = offset / perSample;
+  float w = max(width / perSample, 0.55);
   return 1.0 - smoothstep(w - 0.5, w + 0.5, d);
 }
 
-float field(vec2 uv, vec2 res, float t) {
+vec2 tunnelView(vec2 uv, vec2 res, float t) {
   float aspect = res.x / res.y;
   vec2 o = vec2(tunnelCenter.x * aspect, 1.0 - tunnelCenter.y);
   o += tunnelSway * vec2(sin(t * 0.07) * 0.05, cos(t * 0.053) * 0.035);
   vec2 c = vec2(uv.x * aspect, uv.y) - o;
-  float cellSize = 1.0 / res.y;
+  float unit = 1.0 / res.y;
 
   // Distance from the vanishing point: round, or square with max().
   float r = tunnelShape < 0.5 ? length(c) : max(abs(c.x), abs(c.y));
-  r = max(r, cellSize * 0.5);
+  r = max(r, unit * 0.5);
 
-  // Depth goes as 1 / r, so equal steps in depth bunch up towards the centre.
   float density = 7.0 * tunnelRings;
   float depth = 0.32 / r;
   float u = depth * density + t * 0.36;
-  float perCell = 0.32 * density / (r * r) * cellSize;
-  float ring = tunnelLine(abs(fract(u + 0.5) - 0.5), perCell, 0.045);
+  float perSample = 0.32 * density / (r * r) * unit;
+  float ring = tunnelLine(abs(fract(u + 0.5) - 0.5), perSample, 0.05);
 
-  // Spokes along the walls, turning slowly.
   float spoke = 0.0;
   float tile = 0.0;
   if (tunnelSpokes > 0.5) {
@@ -73,69 +88,128 @@ float field(vec2 uv, vec2 res, float t) {
     float v = a * tunnelSpokes;
     // Every other panel between rings and spokes is lit, like tiles on the walls.
     tile = mod(floor(u) + floor(v), 2.0);
-    float perCellA = tunnelSpokes / (mix(6.28318531, 8.0, tunnelShape) * r) * cellSize;
-    spoke = tunnelLine(abs(fract(v + 0.5) - 0.5), perCellA, 0.004) * 0.8;
+    float perSampleA = tunnelSpokes / (mix(6.28318531, 8.0, tunnelShape) * r) * unit;
+    spoke = tunnelLine(abs(fract(v + 0.5) - 0.5), perSampleA, 0.004) * 0.75;
   }
 
-  // Far away the rings crowd closer than a cell: fade them into the fog.
-  float fog = smoothstep(0.04 * tunnelFog, 0.4 * tunnelFog, r) * (1.0 - smoothstep(0.25, 0.6, perCell));
-  // The walls catch more light as they come closer.
-  float wall = tile * 0.2 * smoothstep(0.12, 0.8, r);
-  float tone = max(ring * mix(0.5, 1.0, smoothstep(0.1, 0.5, r)), spoke);
-  return clamp(max(tone, wall) * fog, 0.0, 1.0);
+  // Far away the rings crowd closer than a sample: fade them into the fog.
+  float fog = smoothstep(0.04 * tunnelFog, 0.4 * tunnelFog, r) * (1.0 - smoothstep(0.25, 0.6, perSample));
+  float near = smoothstep(0.08, 0.7, r);
+  // The walls catch more light as they come closer; lit tiles sit a few
+  // glyph steps below the rings so the rings stay the strongest lines.
+  float wall = tile * 0.22 * near;
+  float tone = max(ring * mix(0.5, 1.0, near), spoke);
+  return vec2(clamp(max(tone, wall) * fog, 0.0, 1.0), near);
+}
+
+float field(vec2 uv, vec2 res, float t) {
+  return tunnelView(uv, res, t).x;
 }
 `;
 
+// Deep rings take the far colour, near ones climb to the last colour.
+const COLOR_FIELD = `
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  vec2 v = tunnelView(uv, res, t);
+  return paletteColor(clamp(v.y * 0.8 + v.x * 0.25, 0.0, 1.0)).rgb;
+}
+`;
+
+/** Ink and paper for the shader, unless a phosphor brings its own. */
+const glass = (
+  phosphor: string | undefined,
+  ink: AsciiColor,
+  paper: AsciiColor
+): { ink?: AsciiColor; paper?: AsciiColor } =>
+  phosphor === undefined ? { ink, paper } : {};
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+/** `color` mixed into `base` at `share` percent. */
+const mix = (color: AsciiColor, share: number, base: AsciiColor) =>
+  `color-mix(in oklch, ${cssColor(color)} ${share}%, ${cssColor(base)})`;
+
 /** Concentric CSS rings fading to the middle, shown without WebGL. */
-const fallbackImage = (
-  palette: AsciiPalette,
-  center: TunnelCenter,
-  shape: "circle" | "square"
-) => {
+const TunnelFallback = ({
+  palette,
+  center,
+  shape,
+}: {
+  palette: AsciiPalette;
+  center: TunnelCenter;
+  shape: "circle" | "square";
+}) => {
   const ink = cssColor(palette.at(-1) ?? palette[1]);
   const at = `${(center[0] * 100).toFixed(1)}% ${(center[1] * 100).toFixed(1)}%`;
   const line = `color-mix(in oklab, ${ink} 30%, transparent)`;
   const gradient = shape === "square" ? "closest-side" : "circle";
-  return `repeating-radial-gradient(${gradient} at ${at}, transparent 0 22px, ${line} 23px 24px)`;
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        backgroundColor: cssColor(palette[0]),
+        backgroundImage: `repeating-radial-gradient(${gradient} at ${at}, transparent 0 22px, ${line} 23px 24px)`,
+      }}
+    />
+  );
 };
 
 /**
- * A slow flight down a tunnel of rings, drawn as a dither. The rings come
- * out of the fog at the vanishing point and grow as they pass. Decorative
- * and full-bleed: size it with `className`, usually `absolute inset-0`.
+ * A slow flight down a tunnel of glyph rings. The rings come out of the
+ * fog at the vanishing point, change colour as they near and grow as they
+ * pass. Decorative and full-bleed: size it with `className`, usually
+ * `absolute inset-0`.
  */
 export const Tunnel = ({
+  ink = "--ascii-ink",
+  farColor = "purple",
+  paper = "--ascii-paper",
+  palette,
   shape = "circle",
   rings = 1,
   spokes = 12,
   center = [0.5, 0.5],
   sway = 1,
   fog = 1,
-  palette = ["--ascii-paper", "--ascii-ink"],
+  charset = "standard",
+  colorMode = "truecolor",
+  cell = 12,
+  interaction = "none",
+  interactive = true,
   stillTime = 6,
   ...props
-}: TunnelProps) => (
-  <AsciiShader
-    {...props}
-    field={FIELD}
-    palette={palette}
-    stillTime={stillTime}
-    uniforms={{
-      tunnelCenter: center,
-      tunnelFog: Math.max(0.1, fog),
-      tunnelRings: Math.max(0.25, rings),
-      tunnelShape: shape === "square" ? 1 : 0,
-      tunnelSpokes: Math.min(32, Math.max(0, Math.round(spokes))),
-      tunnelSway: Math.max(0, sway),
-    }}
-    fallback={
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: cssColor(palette[0]),
-          backgroundImage: fallbackImage(palette, center, shape),
-        }}
-      />
-    }
-  />
-);
+}: TunnelProps) => {
+  const colors = palette ?? [
+    paper,
+    mix(farColor, 70, paper),
+    mix(ink, 50, farColor),
+    ink,
+  ];
+
+  return (
+    <AsciiShader
+      {...props}
+      cell={cell}
+      charset={charset}
+      colorMode={colorMode}
+      {...glass(props.phosphor, colors.at(-1) ?? ink, colors[0])}
+      interaction={interactive ? interaction : "none"}
+      field={FIELD}
+      colorField={COLOR_FIELD}
+      palette={colors}
+      stillTime={stillTime}
+      uniforms={{
+        tunnelCenter: center,
+        tunnelFog: Math.max(0.1, fog),
+        tunnelRings: Math.max(0.25, rings),
+        tunnelShape: shape === "square" ? 1 : 0,
+        tunnelSpokes: clamp(Math.round(spokes), 0, 32),
+        tunnelSway: Math.max(0, sway),
+      }}
+      fallback={
+        <TunnelFallback palette={colors} center={center} shape={shape} />
+      }
+    />
+  );
+};

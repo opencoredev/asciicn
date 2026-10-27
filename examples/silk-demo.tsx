@@ -2,21 +2,21 @@
 
 import { Silk } from "@/components/asciicn/silk";
 import { usePreviewValue } from "@/components/preview-controls";
-import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/silk-controls";
 
 export default function SilkDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const folds = usePreviewValue(knobs.folds);
-  const sheen = usePreviewValue(knobs.sheen);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <Silk
-      palette={["--ascii-paper", toward(tint, 30), toward(tint, 70), tint]}
-      folds={folds}
-      sheen={sheen}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
+      shadeColor={usePreviewValue(knobs.shade)}
+      folds={usePreviewValue(knobs.folds)}
+      angle={usePreviewValue(knobs.angle)}
+      sheen={usePreviewValue(knobs.sheen)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

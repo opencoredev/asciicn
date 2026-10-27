@@ -1,10 +1,10 @@
 ---
 title: "Tunnel"
-description: "A slow flight down a tunnel of round or square rings, drawn as a dither."
+description: "A slow flight down a tunnel of glyph rings with spokes along the walls, fading into fog at the vanishing point."
 ---
 
 import TunnelDemo from "@/examples/tunnel-demo";
-import { controls as tunnelControls } from "@/examples/tunnel-controls";
+import { controls as demoControls } from "@/examples/tunnel-controls";
 import TunnelHeadline from "@/examples/tunnel-headline";
 import TunnelSquare from "@/examples/tunnel-square";
 
@@ -12,7 +12,7 @@ import TunnelSquare from "@/examples/tunnel-square";
   src="examples/tunnel-demo.tsx"
   size="full"
   align="stretch"
-  controls={tunnelControls}
+  controls={demoControls}
 >
   <TunnelDemo />
 </ComponentPreview>
@@ -36,23 +36,27 @@ export function Hero() {
 }
 ```
 
-Rings come out of the fog at the vanishing point and grow as they pass you. Spokes run along the walls, and every other panel between them is lit, like tiles. The middle stays empty, so a headline fits there.
+Depth goes as one over the distance from the vanishing point, so equal steps in depth bunch up towards the centre and the rings grow as they pass. Spokes run along the walls and every other panel between rings and spokes is lit, like tiles. Far away the rings crowd closer than a glyph, so they fade into the fog. Line widths are measured in sample rows, so a ring stays at least one glyph thick at any size.
+
+It draws in the `standard` ramp by default. `quadrants` gives thinner lines, `petscii` a home-computer look.
+
+In `truecolor` mode, the default, the rings change colour as they near: `farColor` deep in the tunnel, `ink` up close.
 
 ## Examples
 
-### Behind a headline
+### Around a headline
 
-`spokes={0}` leaves only the rings, and fewer `rings` spread them out. A larger `fog` widens the empty middle so the text sits clear of the rings.
+No spokes, wider rings and a `fog` of 2.6 leave a clear space in the middle for a few words.
 
 <ComponentPreview src="examples/tunnel-headline.tsx" size="lg" align="stretch">
   <TunnelHeadline />
 </ComponentPreview>
 
-### Square corridor
+### Square, in ANSI colours
 
-`shape="square"` turns the rings into frames. Moving the `center` up a little and lowering the `sway` gives a steadier corridor, and a three-colour palette lights the near walls.
+A square tunnel with 16 spokes in `petscii` glyphs, snapped to the 16 VGA colours with `colorMode="ansi16"`.
 
-<ComponentPreview src="examples/tunnel-square.tsx" size="lg" align="stretch">
+<ComponentPreview src="examples/tunnel-square.tsx" size="full" align="stretch">
   <TunnelSquare />
 </ComponentPreview>
 
@@ -60,6 +64,32 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
 
 <PropsTable
   rows={[
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The colour of the near rings.",
+    },
+    {
+      name: "farColor",
+      type: "AsciiColor",
+      default: '"purple"',
+      description:
+        "The colour the rings take deep in the tunnel, in truecolor and palette modes.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, tints of farColor and ink, then ink",
+      description:
+        "Every colour at once: paper first, the nearest rings last. Wins over ink, farColor and paper.",
+    },
     {
       name: "shape",
       type: '"circle" | "square"',
@@ -78,11 +108,11 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
       type: "number",
       default: "12",
       description:
-        "Lines along the walls, from 0 to 32. 0 leaves only the rings and drops the tiles.",
+        "Lines along the walls, from 0 to 32. 0 leaves only the rings.",
     },
     {
       name: "center",
-      type: "[number, number]",
+      type: "readonly [number, number]",
       default: "[0.5, 0.5]",
       description:
         "The vanishing point, as fractions of the box from the top left.",
@@ -101,23 +131,108 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
         "Size of the empty fog in the middle. 2 doubles it to clear room for text.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: '["--ascii-paper", "--ascii-ink"]',
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor shades from farColor to ink by depth; palette maps tone to the palette; mono uses ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
@@ -133,9 +248,29 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
-      default: "–",
+      default: "\u2013",
       description: "Size and position. The background fills this box.",
     },
   ]}
@@ -144,6 +279,6 @@ Rings come out of the fog at the vanishing point and grow as they pass you. Spok
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows concentric CSS rings in the same colours.
-- It costs one small draw per frame at 30 fps, at one pixel per dither cell. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows concentric CSS rings.
+- One square root and one arctangent per sample. See [Performance](/docs/engine/performance).

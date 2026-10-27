@@ -6,7 +6,7 @@ export default function StarfieldSignIn() {
       <Starfield
         angle={200}
         drift={1}
-        nebula={0.8}
+        haze={0.8}
         className="absolute inset-0 -z-10"
       />
       <form className="bg-background/80 flex w-full max-w-xs flex-col gap-3 rounded-2xl border p-5 backdrop-blur-sm">

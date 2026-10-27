@@ -1,10 +1,10 @@
 ---
 title: "Smoke"
-description: "Soft smoke that billows upward and thins out, lit from above, drawn as a dither."
+description: "Smoke billowing upward and thinning out in the classic ASCII ramp, lit from above and stirred by the pointer."
 ---
 
 import SmokeDemo from "@/examples/smoke-demo";
-import { controls as smokeControls } from "@/examples/smoke-controls";
+import { controls as demoControls } from "@/examples/smoke-controls";
 import SmokeHeadline from "@/examples/smoke-headline";
 import SmokeEmbers from "@/examples/smoke-embers";
 
@@ -12,7 +12,7 @@ import SmokeEmbers from "@/examples/smoke-embers";
   src="examples/smoke-demo.tsx"
   size="full"
   align="stretch"
-  controls={smokeControls}
+  controls={demoControls}
 >
   <SmokeDemo />
 </ComponentPreview>
@@ -26,22 +26,27 @@ import SmokeEmbers from "@/examples/smoke-embers";
 ```tsx
 import { Smoke } from "@/components/asciicn/smoke";
 
-export function Footer() {
+export function Hero() {
   return (
-    <footer className="relative isolate min-h-[360px]">
+    <section className="relative isolate min-h-[480px]">
       <Smoke className="absolute inset-0 -z-10" />
-    </footer>
+      <h1>Your headline</h1>
+    </section>
   );
 }
 ```
 
-The smoke is thickest at the bottom and thins out as it climbs. Light from the upper left catches one side of each plume and leaves the other in shadow. The thickest parts stop short of solid ink, so the dither always shows.
+Rising, curling noise gives the billows; a slow warp curls the plumes as they climb. The smoke is thick at the bottom and thins out towards `height`, and its top edge follows the plumes so it never reads as a straight line. Smoke that thins towards the upper left is lit, the far side of a billow sits in shadow, and the lit edge of each billow gets one glyph step brighter so its outline reads.
+
+It draws in the `standard` ramp (` .:-=+*#%@`) by default. With `interaction="trail"`, the default, the pointer leaves a fading wake through the smoke.
+
+In `palette` mode, the default, tone runs from `shadowColor` up to `ink`. In `truecolor` mode colour follows the light instead, so the shadowed side of a dense billow stays dark.
 
 ## Examples
 
-### Behind a headline
+### Under a headline
 
-A lower `height` keeps the smoke in the bottom half, and a lower `density` makes it lighter. Negative `wind` blows it to the left.
+A `height` of 0.5 keeps the smoke in the lower half, under the copy. The pointer wake is off.
 
 <ComponentPreview src="examples/smoke-headline.tsx" size="lg" align="stretch">
   <SmokeHeadline />
@@ -49,9 +54,9 @@ A lower `height` keeps the smoke in the bottom half, and a lower `density` makes
 
 ### Embers
 
-Four warm colours turn the smoke into the glow above a fire. Blue noise gives an even grain instead of the Bayer grid.
+Smaller billows blown to the left in the `cp437` charset, in `truecolor` through deep red, orange and a hot yellow.
 
-<ComponentPreview src="examples/smoke-embers.tsx" size="lg" align="stretch">
+<ComponentPreview src="examples/smoke-embers.tsx" size="full" align="stretch">
   <SmokeEmbers />
 </ComponentPreview>
 
@@ -60,10 +65,37 @@ Four warm colours turn the smoke into the glow above a fire. Blue noise gives an
 <PropsTable
   rows={[
     {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The colour of the lit smoke.",
+    },
+    {
+      name: "shadowColor",
+      type: "AsciiColor",
+      default: '"grey"',
+      description:
+        "The colour of the smoke in shadow, in truecolor and palette modes.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, tints of shadowColor and ink, then ink",
+      description:
+        "Every colour at once: paper first, the lit edge last. Wins over ink, shadowColor and paper.",
+    },
+    {
       name: "scale",
       type: "number",
       default: "1",
-      description: "Size of the plumes. Higher values make more, smaller ones.",
+      description:
+        "Size of the billows. Higher values make more, smaller ones.",
     },
     {
       name: "height",
@@ -76,7 +108,7 @@ Four warm colours turn the smoke into the glow above a fire. Blue noise gives an
       name: "wind",
       type: "number",
       default: "0.2",
-      description: "Sideways drift. Negative blows left, positive right.",
+      description: "Sideways wind. Negative blows left, positive right.",
     },
     {
       name: "density",
@@ -85,23 +117,108 @@ Four warm colours turn the smoke into the glow above a fire. Blue noise gives an
       description: "How thick the smoke is, from 0 to 1.5.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: '["--ascii-paper", "--ascii-ink"]',
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"palette"',
+      description:
+        "How glyphs are coloured. palette maps tone to the palette; truecolor colours by the light; mono uses ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"trail"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
@@ -117,9 +234,29 @@ Four warm colours turn the smoke into the glow above a fire. Blue noise gives an
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "12",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
-      default: "–",
+      default: "\u2013",
       description: "Size and position. The background fills this box.",
     },
   ]}
@@ -128,6 +265,6 @@ Four warm colours turn the smoke into the glow above a fire. Blue noise gives an
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a soft CSS haze in the same colours.
-- It costs one small draw per frame at 30 fps, at one pixel per dither cell. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a soft CSS haze rising from the bottom.
+- The smoke samples its noise twice per glyph sample, once for density and once for the light. See [Performance](/docs/engine/performance).

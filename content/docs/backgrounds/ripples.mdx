@@ -1,10 +1,10 @@
 ---
 title: "Ripples"
-description: "Concentric rings spreading from one to four points and crossing like drops on still water, drawn as a dither."
+description: "Rings of glyphs spreading from one to four points and crossing like drops on still water. A click drops another."
 ---
 
 import RipplesDemo from "@/examples/ripples-demo";
-import { controls as ripplesControls } from "@/examples/ripples-controls";
+import { controls as demoControls } from "@/examples/ripples-controls";
 import RipplesDrop from "@/examples/ripples-drop";
 import RipplesRain from "@/examples/ripples-rain";
 
@@ -12,7 +12,7 @@ import RipplesRain from "@/examples/ripples-rain";
   src="examples/ripples-demo.tsx"
   size="full"
   align="stretch"
-  controls={ripplesControls}
+  controls={demoControls}
 >
   <RipplesDemo />
 </ComponentPreview>
@@ -36,21 +36,25 @@ export function Hero() {
 }
 ```
 
-Each point in `sources` sends out rings that fade with distance. A lone ring stops at the middle colour; where rings from two points cross, they add up to full ink, so the interference pattern shows up as bright knots. A slow swell bends the rings slightly so they don't look drawn with a compass.
+Each source sends out a train of rings that fade with distance. A crest has a bright core and a dimmer shoulder on either side, so it reads as a line with a soft edge. Where crests from two sources cross they add up to the densest glyphs. A slow swell bends every ring a little, as on real water.
+
+It draws in `braille` by default, so each ring is a line of fine dots. With `interaction="ripple"`, the default, a click or tap sends a ring out from the pointer on top of the field's own.
+
+In `palette` mode, the default, tone runs from `secondColor` up to `ink`. In `truecolor` mode the first source keeps `ink` and the other sources take `secondColor`, so you can tell the rings apart where they cross.
 
 ## Examples
 
-### One drop
+### Below a headline
 
-A single source just below the frame sends rings up the box. They fade out before they reach the text at the top, and a little less `intensity` keeps the nearest ones soft.
+One source just under the frame sends rings up behind the text in `mono`. Click anywhere to drop another.
 
 <ComponentPreview src="examples/ripples-drop.tsx" size="lg" align="stretch">
   <RipplesDrop />
 </ComponentPreview>
 
-### Rain
+### Rain on a pond
 
-Four sources, tighter rings and a faster `decay` through the chart colours. The 8×8 matrix gives the fading rings a finer grain.
+Four sources, tight rings and a fast `decay` in halftone `dots`, coloured through the `glacier` ramp in `duotone` mode.
 
 <ComponentPreview src="examples/ripples-rain.tsx" size="full" align="stretch">
   <RipplesRain />
@@ -62,15 +66,41 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
   rows={[
     {
       name: "sources",
-      type: "[x: number, y: number][]",
+      type: "readonly [number, number][]",
       default: "[[0.28, 0.38], [0.74, 0.66]]",
       description:
-        "Where the rings start, as fractions of the box from the top left. One to four points; values outside 0 to 1 put a point out of frame.",
+        "Where the rings start, as fractions of the box from the top left. One to four points, which may sit outside the box.",
+    },
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The colour of the crests.",
+    },
+    {
+      name: "secondColor",
+      type: "AsciiColor",
+      default: '"blue"',
+      description:
+        "The low end of the palette, and the rings of the second and later sources in truecolor mode.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, tints of secondColor and ink, then ink",
+      description:
+        "Every colour at once: paper first, the brightest crest last. Wins over ink, secondColor and paper.",
     },
     {
       name: "rings",
       type: "number",
-      default: "12",
+      default: "10",
       description: "How many rings fit in the height of the box.",
     },
     {
@@ -78,7 +108,7 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
       type: "number",
       default: "1",
       description:
-        "How quickly the rings fade away from their source. 0 keeps them strong across the box.",
+        "How quickly rings fade away from their source. 0 keeps them strong across the box.",
     },
     {
       name: "intensity",
@@ -88,29 +118,114 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
         "The brightest tone, from 0 to 1. Lower it to put text on top.",
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "Paper, a tint of --ascii-ink, then --ascii-ink",
-      description:
-        'Colours from paper to ink: palette names such as "blue", CSS variable names, or any CSS colour.',
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones. See Charsets.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern. See Dither engine.",
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"palette"',
+      description:
+        "How glyphs are coloured. palette maps tone to the palette; truecolor tells sources apart; mono uses ink.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"ripple"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the rings travel outwards.",
+      description: "How fast it moves.",
     },
     {
       name: "animate",
@@ -120,10 +235,30 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
         "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
     },
     {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "5",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
       name: "className",
       type: "string",
-      default: "–",
-      description: "Size and position. The rings fill this box.",
+      default: "\u2013",
+      description: "Size and position. The background fills this box.",
     },
   ]}
 />
@@ -131,5 +266,6 @@ Four sources, tighter rings and a faster `decay` through the chart colours. The 
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows rings drawn with CSS gradients.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows rings around each source in CSS.
+- Each source adds one distance and one cosine per sample, so four sources cost about the same as one. See [Performance](/docs/engine/performance).

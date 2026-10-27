@@ -8,14 +8,15 @@ export default function RipplesDrop() {
         rings={9}
         decay={1.4}
         intensity={0.85}
+        colorMode="mono"
         className="absolute inset-0 -z-10"
       />
       <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance">
         Every change spreads
       </h3>
       <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        One source just below the frame sends rings up towards the text and
-        fades before it reaches it.
+        One source sits just below the frame. Click anywhere to drop another
+        ring.
       </p>
     </section>
   );

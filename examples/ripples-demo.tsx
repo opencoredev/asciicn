@@ -1,30 +1,21 @@
 "use client";
 
 import { Ripples } from "@/components/asciicn/ripples";
-import type { RipplesSource } from "@/components/asciicn/ripples";
 import { usePreviewValue } from "@/components/preview-controls";
-import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/ripples-controls";
 
-const POINTS: readonly RipplesSource[] = [
-  [0.28, 0.38],
-  [0.74, 0.66],
-  [0.62, 0.18],
-  [0.18, 0.86],
-];
-
 export default function RipplesDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const sources = usePreviewValue(knobs.sources);
-  const rings = usePreviewValue(knobs.rings);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <Ripples
-      palette={["--ascii-paper", toward(tint, 45), tint]}
-      sources={POINTS.slice(0, sources)}
-      rings={rings}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
+      secondColor={usePreviewValue(knobs.second)}
+      rings={usePreviewValue(knobs.rings)}
+      decay={usePreviewValue(knobs.decay)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

@@ -2,26 +2,21 @@
 
 import { Waves } from "@/components/asciicn/waves";
 import { usePreviewValue } from "@/components/preview-controls";
-import { toward } from "@/examples/background-tint";
 import * as knobs from "@/examples/waves-controls";
 
 export default function WavesDemo() {
-  const tint = usePreviewValue(knobs.tint);
-  const variant = usePreviewValue(knobs.variant);
-  const amplitude = usePreviewValue(knobs.amplitude);
-  const animate = usePreviewValue(knobs.animate);
-
   return (
     <Waves
-      variant={variant}
-      palette={[
-        "--ascii-paper",
-        toward(tint, 35),
-        tint,
-        toward(tint, 45, "--foreground"),
-      ]}
-      amplitude={amplitude}
-      animate={animate}
+      charset={usePreviewValue(knobs.charset)}
+      colorMode={usePreviewValue(knobs.colorMode)}
+      ink={usePreviewValue(knobs.ink)}
+      farColor={usePreviewValue(knobs.far)}
+      variant={usePreviewValue(knobs.variant)}
+      layers={usePreviewValue(knobs.layers)}
+      amplitude={usePreviewValue(knobs.amplitude)}
+      interaction={usePreviewValue(knobs.interaction)}
+      cell={usePreviewValue(knobs.cell)}
+      animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
   );

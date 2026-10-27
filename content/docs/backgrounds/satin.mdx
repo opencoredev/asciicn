@@ -1,0 +1,252 @@
+---
+title: "Satin"
+description: "Deep magenta satin: a few wide folds that turn slowly and catch the light along their edges, in ANSI shade blocks."
+---
+
+import SatinDemo from "@/examples/satin-demo";
+import { controls as demoControls } from "@/examples/satin-controls";
+import SatinCta from "@/examples/satin-cta";
+import SatinSeeds from "@/examples/satin-seeds";
+
+<ComponentPreview
+  src="examples/satin-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <SatinDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="satin" />
+
+## Usage
+
+```tsx
+import { Satin } from "@/components/asciicn/satin";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Satin seed="orchid" className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+Each seed rolls a set of ribbons: how many, how they swing, how much slow noise bends them, how wide they are and how often they twist. A ribbon's width follows its twist, so where it turns edge-on it narrows to a bright line, like a strip of film turning in the light. Its rims are the brightest part, a soft halo surrounds it, and the ribbons further back sit a little dimmer. In `truecolor` each ribbon takes its own hue along the palette.
+
+Satin stays in deep magenta and leans slightly towards purple. It rolls three or four wide ribbons with gentle folds and slow twists. It draws in `blocks` by default (` ░▒▓█`), which gives the folds a woven, soft finish.
+
+Each seed gets its own palette, built in OKLCH: a first hue, then a turn of up to 120 degrees that never runs through the olive and khaki hues that turn muddy at glyph sizes. The palette comes in two versions, deep to bright on dark paper and pale to deep on light paper, and switches with the theme, so the densest glyphs always have the most contrast.
+
+The parts are in `lib/ascii/seed.ts` (shipped with the `ascii-shader` item) if you want your own preset: `seedParams(seed, kind, options)` rolls the parameters, `seedField(seed, kind)` returns `{ field, colorField, uniforms }` for `AsciiShader`, and the `SeedField` component wraps both.
+
+## Examples
+
+### Behind a call to action
+
+A lower intensity behind a heading and a button.
+
+<ComponentPreview src="examples/satin-cta.tsx" size="lg" align="stretch">
+  <SatinCta />
+</ComponentPreview>
+
+### Three seeds
+
+Three `seed` strings, three drapes of the same satin.
+
+<ComponentPreview src="examples/satin-seeds.tsx" size="lg" align="stretch">
+  <SatinSeeds />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "seed",
+      type: "string",
+      default: '"satin"',
+      description:
+        "Any string. The same seed always draws the same field; each new one rolls a different shape, palette and motion in the same family.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "Scales the exposure the seed settled on, from 0 to 1.5. Lower it to put text on top.",
+    },
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "The glyph colour in mono mode.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, then the seed's four colours",
+      description: "Colours for palette mode, paper first.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor uses the seed's own OKLCH palette; palette maps tone to it; mono, duotone and ansi16 work as everywhere else.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "8",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "\u2013",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows soft CSS glows in the seed's colours.
+- A seed is rolled once, on the CPU, in a few milliseconds: a small exposure check samples the field at 40×22 at three moments and re-rolls (up to eight times) until between a quarter and three fifths of the box carries a glyph, then sets the gain so the brightest glyphs reach the top of the ramp. Changing `seed` re-rolls; changing the look props does not. See [Performance](/docs/engine/performance).

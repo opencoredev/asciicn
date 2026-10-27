@@ -3,14 +3,17 @@ import { Silk } from "@/components/asciicn/silk";
 export default function SilkChampagne() {
   return (
     <Silk
-      angle={135}
       folds={8}
-      sheen={0.9}
+      angle={135}
+      sheen={0.85}
+      charset="blocks"
+      colorMode="truecolor"
       palette={[
-        "oklch(0.2 0.02 60)",
-        "oklch(0.42 0.06 65)",
-        "oklch(0.68 0.09 75)",
-        "oklch(0.93 0.05 90)",
+        "--ascii-paper",
+        "oklch(0.36 0.06 60)",
+        "oklch(0.62 0.11 75)",
+        "oklch(0.8 0.1 85)",
+        "oklch(0.95 0.04 95)",
       ]}
       className="absolute inset-0"
     />

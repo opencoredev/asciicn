@@ -1,0 +1,273 @@
+---
+title: "Matrix"
+description: "Digital rain: columns of katakana falling at their own speeds, with bright heads, fading tails and glyphs that change as they fall."
+---
+
+import MatrixDemo from "@/examples/matrix-demo";
+import { controls as demoControls } from "@/examples/matrix-controls";
+import MatrixTerminal from "@/examples/matrix-terminal";
+import MatrixAmber from "@/examples/matrix-amber";
+import MatrixBraille from "@/examples/matrix-braille";
+
+<ComponentPreview
+  src="examples/matrix-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <MatrixDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="matrix" />
+
+## Usage
+
+```tsx
+import { Matrix } from "@/components/asciicn/matrix";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Matrix className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+Every glyph column has its own stream with a random speed and length. The head is the brightest glyph; the tail behind it fades and its characters keep flipping to neighbours on the ramp, each on its own clock. After a pass a column goes quiet for a while, then rolls again whether it rains. A second, slower layer falls behind the first and shows only between near streams.
+
+It draws in `katakana` by default. Heads land at the top of the ramp (digits and `Z`), tails in the katakana. It works in any charset: `standard` and `dense` give a typed rain, `cp437` a DOS one, and `braille` streams of fine dots, two dot-columns per glyph.
+
+In `truecolor` mode, the default, tails fade through tints of `color` and heads take a pale version of it. The far layer stays at the dim end. The default `color` is the theme's green, which is darker in light mode so the rain still reads on white.
+
+## Examples
+
+### Behind a terminal
+
+Sparser rain and a stronger far layer behind a login message.
+
+<ComponentPreview src="examples/matrix-terminal.tsx" size="lg" align="stretch">
+  <MatrixTerminal />
+</ComponentPreview>
+
+### Amber DOS
+
+`cp437` glyphs in P3 amber `mono`, with longer, faster-changing streams, bloom and scanlines.
+
+<ComponentPreview src="examples/matrix-amber.tsx" size="full" align="stretch">
+  <MatrixAmber />
+</ComponentPreview>
+
+### Braille drizzle
+
+`braille` at 10px cells in blue: each stream is a column of falling dots.
+
+<ComponentPreview src="examples/matrix-braille.tsx" size="full" align="stretch">
+  <MatrixBraille />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"green"',
+      description: "The rain colour. The default is the theme's green token.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs.",
+    },
+    {
+      name: "palette",
+      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
+      default: "Paper, two tints of color, color, then a pale head colour",
+      description:
+        "Every colour at once: paper first, the stream heads last. Wins over color and paper.",
+    },
+    {
+      name: "density",
+      type: "number",
+      default: "0.7",
+      description:
+        "Share of columns with a stream falling at any moment, from 0 to 1.",
+    },
+    {
+      name: "length",
+      type: "number",
+      default: "16",
+      description: "Average stream length in glyphs.",
+    },
+    {
+      name: "mutation",
+      type: "number",
+      default: "4",
+      description:
+        "How often a glyph changes as it falls, in changes per second.",
+    },
+    {
+      name: "depth",
+      type: "number",
+      default: "0.5",
+      description:
+        "Strength of the slower far layer behind the main rain, from 0 to 1. 0 turns it off.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"katakana"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor fades tails through tints of color; palette maps tone to the palette; mono uses ink or a phosphor.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description: "What the pointer does to the glyphs.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description:
+        "false turns pointer interaction off whatever interaction says.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "14",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "9",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "\u2013",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows faint vertical streaks in CSS.
+- Two layers of a few hash lookups per sample; streams are computed per column, not simulated, so it costs the same at any density. See [Performance](/docs/engine/performance).

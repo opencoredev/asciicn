@@ -3,17 +3,15 @@ import { Waves } from "@/components/asciicn/waves";
 export default function WavesDusk() {
   return (
     <Waves
-      horizon={0.5}
-      layers={8}
-      amplitude={0.7}
-      speed={0.6}
-      matrix="bayer8"
-      cell={4}
+      horizon={0.55}
+      layers={7}
+      amplitude={1.3}
+      speed={0.8}
       palette={[
         "--ascii-paper",
-        "oklch(0.35 0.1 300)",
-        "oklch(0.58 0.17 20)",
-        "oklch(0.8 0.14 60)",
+        "oklch(0.38 0.11 300)",
+        "oklch(0.6 0.17 20)",
+        "oklch(0.82 0.14 60)",
       ]}
       className="absolute inset-0"
     />

@@ -1,26 +1,9 @@
 [
   {
-    "name": "ripples",
-    "type": "registry:component",
-    "title": "Ripples",
-    "description": "Concentric rings spreading from one to four points and crossing like drops on still water.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-shader.json"
-    ],
-    "files": [
-      {
-        "path": "components/asciicn/ripples.tsx",
-        "type": "registry:component",
-        "target": "components/asciicn/ripples.tsx"
-      }
-    ]
-  },
-  {
     "name": "silk",
     "type": "registry:component",
     "title": "Silk",
-    "description": "Folds of silk catching the light, with a bright highlight along each crest.",
+    "description": "Folds of silk catching the light, drawn in ANSI shade blocks, with a bright highlight along each crest.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -34,10 +17,151 @@
     ]
   },
   {
+    "name": "matrix",
+    "type": "registry:component",
+    "title": "Matrix",
+    "description": "Digital rain: columns of katakana falling at their own speeds, with bright heads, fading tails and glyphs that change as they fall.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/matrix.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/matrix.tsx"
+      }
+    ]
+  },
+  {
+    "name": "seed-field",
+    "type": "registry:component",
+    "title": "Seed field",
+    "description": "Any string drawn as a field of glyphs: folded ribbons of light or warped gas, each seed with its own OKLCH palette, shape and motion. The base of Prism, Ionize, Squall, Satin and Nebula.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/seed-field.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/seed-field.tsx"
+      }
+    ]
+  },
+  {
+    "name": "nebula",
+    "type": "registry:component",
+    "title": "Nebula",
+    "description": "Cosmic gas drawn in glyphs: warped clouds with bright filaments, dark dust lanes and a few stars. Every seed is a different nebula.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/nebula.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/nebula.tsx"
+      }
+    ]
+  },
+  {
+    "name": "prism",
+    "type": "registry:component",
+    "title": "Prism",
+    "description": "Layered glass folds in violet and teal, drawn in glyphs. Each seed bends the ribbons differently and shifts both hues.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/prism.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/prism.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ionize",
+    "type": "registry:component",
+    "title": "Ionize",
+    "description": "Electric blue plasma ribbons: thin, bright, quick and tightly twisted, drawn in Braille dots.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ionize.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ionize.tsx"
+      }
+    ]
+  },
+  {
+    "name": "squall",
+    "type": "registry:component",
+    "title": "Squall",
+    "description": "Stormy bands of teal and slate that churn and fold across the box, in the classic ASCII ramp.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/squall.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/squall.tsx"
+      }
+    ]
+  },
+  {
+    "name": "satin",
+    "type": "registry:component",
+    "title": "Satin",
+    "description": "Deep magenta satin: a few wide folds that turn slowly and catch the light along their edges, in ANSI shade blocks.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json",
+      "{{REGISTRY_URL}}/seed-field.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/satin.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/satin.tsx"
+      }
+    ]
+  },
+  {
+    "name": "waves",
+    "type": "registry:component",
+    "title": "Waves",
+    "description": "Rows of glyph swells rolling under a glowing horizon, or thin lines that swell like a sound wave.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/waves.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/waves.tsx"
+      }
+    ]
+  },
+  {
     "name": "smoke",
     "type": "registry:component",
     "title": "Smoke",
-    "description": "Soft smoke billowing upward and thinning out, lit from above, with props for scale, height, wind and density.",
+    "description": "Smoke billowing upward and thinning out in the classic ASCII ramp, lit from above and stirred by the pointer.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -51,19 +175,19 @@
     ]
   },
   {
-    "name": "starfield",
+    "name": "ripples",
     "type": "registry:component",
-    "title": "Starfield",
-    "description": "Dithered stars in three parallax layers that twinkle and drift slowly.",
+    "title": "Ripples",
+    "description": "Rings of glyphs spreading from one to four points and crossing like drops on still water. A click drops another.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
     ],
     "files": [
       {
-        "path": "components/asciicn/starfield.tsx",
+        "path": "components/asciicn/ripples.tsx",
         "type": "registry:component",
-        "target": "components/asciicn/starfield.tsx"
+        "target": "components/asciicn/ripples.tsx"
       }
     ]
   },
@@ -71,7 +195,7 @@
     "name": "tunnel",
     "type": "registry:component",
     "title": "Tunnel",
-    "description": "A slow flight down a tunnel of round or square rings, with spokes along the walls and fog at the vanishing point.",
+    "description": "A slow flight down a tunnel of glyph rings with spokes along the walls, fading into fog at the vanishing point.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -85,19 +209,19 @@
     ]
   },
   {
-    "name": "waves",
+    "name": "starfield",
     "type": "registry:component",
-    "title": "Waves",
-    "description": "Layered swells under a glowing horizon, or thin lines like a sound wave.",
+    "title": "Starfield",
+    "description": "A night sky of glyph stars in three parallax layers that twinkle and drift, each star with its own colour temperature.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
     ],
     "files": [
       {
-        "path": "components/asciicn/waves.tsx",
+        "path": "components/asciicn/starfield.tsx",
         "type": "registry:component",
-        "target": "components/asciicn/waves.tsx"
+        "target": "components/asciicn/starfield.tsx"
       }
     ]
   }
