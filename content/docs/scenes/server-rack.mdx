@@ -1,0 +1,181 @@
+---
+title: "Server rack"
+description: "A data-centre rack in box-drawing glyphs, with drive LEDs that flicker in busy spells, a slow heartbeat, port lights and light pulses running along the fibres."
+---
+
+import ServerRackDemo from "@/examples/server-rack-demo";
+import { controls as serverRackControls } from "@/examples/server-rack-controls";
+import ServerRackIncident from "@/examples/server-rack-incident";
+import ServerRackTerminal from "@/examples/server-rack-terminal";
+
+<ComponentPreview
+  src="examples/server-rack-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={serverRackControls}
+>
+  <ServerRackDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="server-rack" />
+
+## Usage
+
+```tsx
+import { ServerRack } from "@/components/asciicn/server-rack";
+
+export function StatusHero() {
+  return (
+    <section className="relative isolate min-h-[520px]">
+      <ServerRack intensity={0.5} className="absolute inset-0 -z-10" />
+      <h1>All systems nominal</h1>
+    </section>
+  );
+}
+```
+
+The rack is seen from the front. A fibre patch panel and a 48-port core switch sit at the top, a UPS at the bottom, and between them a mix of 1U web servers, 2U GPU nodes with fans turning behind the grille, 2U storage shelves and blanking plates. Rack numbers run up the left rail and a power strip with one outlet per unit runs beside it.
+
+Every light keeps its own rhythm. Drive LEDs go quiet, then flicker fast for a second or two, the way real disk I/O comes in spells. Each machine's health LED beats twice and rests. Switch ports stay green while their link is up and blink dark with traffic. The locator LED turns blue now and then. Each machine's uplink fibre runs out to the cable channel on the right and climbs out through the roof, and pulses of light travel along it both ways.
+
+`activity` sets how busy it all looks. At 0 the drives sit still and only the heartbeats and steady links remain. At 1 the drives chatter and the fibres carry three streams each. `alert` flashes one unit amber: its bezel, name and status LED. Pass `true` to flag the first storage shelf, or a rack position counted from the bottom, like the numbers on the rail.
+
+It draws in `cp437` by default: box drawing for the cabinet and bezels, shades for the drive sleds, `≡` for vents, and doubled lines where a pulse passes. `standard` swaps every glyph for plain ASCII, for fonts and terminals without box drawing. When the box is wider than one rack, neighbouring racks fill the aisle on both sides, dimmer the further out they stand.
+
+## Examples
+
+### Incident card
+
+`alert={5}` flags the storage shelf at U05 on a status card, while `activity={0.85}` keeps the rest of the rack busy.
+
+<ComponentPreview src="examples/server-rack-incident.tsx" size="lg">
+  <ServerRackIncident />
+</ComponentPreview>
+
+### Plain ASCII on a phosphor
+
+`charset="standard"` and `phosphor="p1"` draw the rack in green ASCII on dark glass, with a CRT finish from `fx`. `intensity={0.5}` keeps the headline on top easy to read.
+
+<ComponentPreview
+  src="examples/server-rack-terminal.tsx"
+  size="lg"
+  align="stretch"
+>
+  <ServerRackTerminal />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "units",
+      type: "number",
+      default: "18",
+      description:
+        "Height of the rack in rack units, 1 to 48. Each unit is two rows of glyphs. A rack taller than the box is cropped top and bottom.",
+    },
+    {
+      name: "activity",
+      type: "number",
+      default: "0.6",
+      description:
+        "How busy the machines are, from 0 (idle) to 1. Drives the drive LEDs, port lights and fibre pulses.",
+    },
+    {
+      name: "alert",
+      type: "boolean | number",
+      default: "false",
+      description:
+        "true flashes the first storage shelf amber. A number flags the unit at that rack position, counted from the bottom.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
+    },
+    {
+      name: "charset",
+      type: '"cp437" | "standard"',
+      default: '"cp437"',
+      description:
+        "cp437 draws box drawing, shades and bullets. standard uses plain ASCII only.",
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono"',
+      default: '"truecolor", or "mono" with a phosphor',
+      description:
+        "truecolor lights LEDs and fibres in colour. mono draws every glyph in the ink, so lit LEDs stand out by glyph and brightness.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass that replace the ink and paper.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the lights and pulses move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4.2",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real status text next to it or on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime`, with some LEDs lit and a few pulses mid-fibre.
+- It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Every frame is a few thousand cell writes, so it costs little even full-screen.
+- The unit names and readouts are glyphs on a canvas, not text. Copy or export them with `handle`.

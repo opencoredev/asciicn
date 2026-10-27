@@ -1,0 +1,209 @@
+---
+title: "Mountain dusk"
+description: "Layered ridgelines fading into evening haze, with a setting sun, a rising moon, stars coming out, the odd shooting star and mist in the valleys."
+---
+
+import MountainDuskDemo from "@/examples/mountain-dusk-demo";
+import { controls as mountainDuskControls } from "@/examples/mountain-dusk-controls";
+import MountainDuskHeadline from "@/examples/mountain-dusk-headline";
+import MountainDuskNight from "@/examples/mountain-dusk-night";
+
+<ComponentPreview
+  src="examples/mountain-dusk-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={mountainDuskControls}
+>
+  <MountainDuskDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="mountain-dusk" />
+
+## Usage
+
+```tsx
+import { MountainDusk } from "@/components/asciicn/mountain-dusk";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <MountainDusk intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+Ridge after ridge of mountains runs back to the horizon. Each ridgeline is drawn with real line glyphs: `/` up a slope, `\` down the other side, `^` on a sharp peak and `_` or `-` along the flats. Below its crest each ridge falls away into haze, dense near the top and sparse at the foot, so the ridge in front always stands out against the one behind. Far ridges are pale rose, near ones deep violet, and mist drifts in the valleys between them.
+
+`time` runs the evening. At 0 the sun sits on the far ridge and the sky glows orange into violet. As it rises the sun sinks out of sight, the afterglow fades, the moon climbs on the right and the stars come out, brightest first. From about 0.3 a shooting star crosses now and then. Each star is a single sample, so it stays one crisp glyph, or one Braille dot.
+
+The ridges drift slowly sideways, the near ones fastest, so the depth shows even when nothing else moves. With `interactive` on, the default, they also slide apart as the pointer moves, and glide back when it leaves.
+
+It draws in `standard` glyphs and `truecolor` by default. The charset sets the glyphs for the haze, sky, sun, moon and mist. With a ramp charset the ridgelines are drawn as line glyphs on top; `braille` and `quadrants` draw them from their own sub-cell dots instead. In `mono` mode every glyph takes the ink, or a `phosphor`. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.55}` and `time={0.6}` put the scene in the blue hour, quiet enough for the headline to read first.
+
+<ComponentPreview
+  src="examples/mountain-dusk-headline.tsx"
+  size="lg"
+  align="stretch"
+>
+  <MountainDuskHeadline />
+</ComponentPreview>
+
+### Night in Braille
+
+`charset="braille"` with `time={1}` and `stars={1}`: the moon high, the sky full of single-dot stars, six ridges and heavy mist.
+
+<ComponentPreview
+  src="examples/mountain-dusk-night.tsx"
+  size="lg"
+  align="stretch"
+>
+  <MountainDuskNight />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "time",
+      type: "number",
+      default: "0.35",
+      description:
+        "Where the evening is, from 0 (the sun setting) to 1 (full night, moon high).",
+    },
+    {
+      name: "layers",
+      type: "number",
+      default: "5",
+      description:
+        "How many ridgelines stand before the horizon, 1 to 6. Fewer ridges drop the far ones first.",
+    },
+    {
+      name: "stars",
+      type: "number",
+      default: "0.7",
+      description:
+        "How many stars come out, from 0 (none, and no shooting stars) to 1.",
+    },
+    {
+      name: "mist",
+      type: "number",
+      default: "0.7",
+      description: "How much mist lies in the valleys, from 0 to 1.",
+    },
+    {
+      name: "moon",
+      type: "boolean",
+      default: "true",
+      description: "Show the rising moon.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "The ridges slide apart as the pointer moves, nearest most.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description:
+        "Which glyphs draw the haze, sky and mist. See Charsets. Ramps also get line-glyph ridgelines.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono"',
+      default: '"truecolor", or "mono" with a phosphor',
+      description:
+        "truecolor keeps the sky's colours. mono draws every glyph in the ink or phosphor.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass that replace the ink and paper.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the ridges drift and the stars twinkle.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "14",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Each ridge's crest is worked out once per column, not per sample, so `braille`, which samples eight times per cell, costs mostly the sky and mist.

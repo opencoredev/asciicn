@@ -1,0 +1,44 @@
+[
+  {
+    "name": "server-rack",
+    "type": "registry:component",
+    "title": "Server rack",
+    "description": "A data-centre rack in box-drawing glyphs, with drive LEDs that flicker in busy spells, a slow heartbeat, port lights and light pulses running along the fibres.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/server-rack.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/server-rack.tsx"
+      }
+    ]
+  },
+  {
+    "name": "mountain-dusk",
+    "type": "registry:component",
+    "title": "Mountain dusk",
+    "description": "Layered ridgelines fading into evening haze, with a setting sun, a rising moon, stars coming out, the odd shooting star and mist in the valleys.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/mountain-dusk.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/mountain-dusk.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ocean-waves",
+    "type": "registry:component",
+    "title": "Ocean waves",
+    "description": "A moonlit sea in glyphs, with swells rolling in, foam that breaks into lighter glyphs on the crests, a glittering moon path and slow clouds.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ocean-waves.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ocean-waves.tsx"
+      }
+    ]
+  }
+]

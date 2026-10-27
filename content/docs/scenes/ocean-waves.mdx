@@ -1,0 +1,188 @@
+---
+title: "Ocean waves"
+description: "A moonlit sea in glyphs, with swells rolling in, foam that breaks into lighter glyphs on the crests, a glittering moon path and slow clouds."
+---
+
+import OceanWavesDemo from "@/examples/ocean-waves-demo";
+import { controls as oceanWavesControls } from "@/examples/ocean-waves-controls";
+import OceanWavesHeadline from "@/examples/ocean-waves-headline";
+import OceanWavesStorm from "@/examples/ocean-waves-storm";
+
+<ComponentPreview
+  src="examples/ocean-waves-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={oceanWavesControls}
+>
+  <OceanWavesDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ocean-waves" />
+
+## Usage
+
+```tsx
+import { OceanWaves } from "@/components/asciicn/ocean-waves";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <OceanWaves intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The view is out to sea on a clear night. Long swells roll in toward you, small and crowded at the horizon and wide near the bottom of the box, with a run of `~` along every crest. Where a crest spills it comes apart into foam: `*`, `'`, `.` and `` ` ``, lighter the further it breaks. A full moon hangs over the water and lays a path of glints that flicker as the waves pass through it. Thin clouds drift across the sky, lit at their edges near the moon.
+
+`swell` sets the size of the swells, from a flat calm at 0 to heavy seas at 1. `wind` adds chop on top, brings foam to more of the crests and moves the clouds faster. Turn `moon` off for a dark night with only starlight and foam.
+
+It draws in `standard` glyphs and `truecolor` by default. The charset sets the glyphs for the sky, clouds and water shading. With a ramp charset the crests, foam and glints are drawn as line glyphs on top; `braille` and `quadrants` draw everything from their own sub-cell dots. In `mono` mode every glyph takes the ink, or a `phosphor`. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.5}` with a low swell and little wind keeps the sea quiet behind the text.
+
+<ComponentPreview
+  src="examples/ocean-waves-headline.tsx"
+  size="lg"
+  align="stretch"
+>
+  <OceanWavesHeadline />
+</ComponentPreview>
+
+### Gale on a blueprint phosphor
+
+`moon={false}`, `swell={1}` and `wind={0.9}`: a moonless night with foam on nearly every crest, in cyan on dark glass with a light CRT finish.
+
+<ComponentPreview
+  src="examples/ocean-waves-storm.tsx"
+  size="lg"
+  align="stretch"
+>
+  <OceanWavesStorm />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "swell",
+      type: "number",
+      default: "0.6",
+      description:
+        "How big the rolling swells are, from 0 (a flat calm) to 1 (heavy seas).",
+    },
+    {
+      name: "wind",
+      type: "number",
+      default: "0.4",
+      description:
+        "How hard the wind blows, from 0 to 1: more chop, more foam on the crests, faster clouds.",
+    },
+    {
+      name: "moon",
+      type: "boolean",
+      default: "true",
+      description: "Show the moon and its glittering path on the water.",
+    },
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description:
+        "Which glyphs draw the sky, clouds and water. See Charsets. Ramps also get line-glyph crests and foam.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono"',
+      default: '"truecolor", or "mono" with a phosphor',
+      description:
+        "truecolor keeps the night's colours. mono draws every glyph in the ink or phosphor.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description: "A CRT ink and glass that replace the ink and paper.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the swells roll and the clouds drift.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The scene fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It draws on the CPU at up to 30 fps and pauses when scrolled out of view or when the tab is hidden. Far out the swells fade into a calm sheen before they crowd closer than a glyph row, so the horizon stays steady instead of shimmering.
