@@ -266,7 +266,7 @@ export interface MapOptions {
   ramp?: RampName | readonly string[];
   /** `ansi16`: which 16-colour table. Default `"vga"`. */
   ansi?: Ansi16Name;
-  /** `palette`: colours from paper to ink as bytes. */
+  /** `palette`: paper, then the inks glyphs take by tone, as bytes. */
   palette?: readonly Rgb8[];
 }
 
@@ -409,8 +409,11 @@ const cellColorizer = (
     options.palette &&
     options.palette.length > 0
   ) {
-    const { palette } = options;
-    return (_column, _row, tone) => sampleRamp(palette, tone);
+    // The first entry is the paper behind the glyphs; glyphs take the inks
+    // after it, as the GPU renderer does.
+    const inks =
+      options.palette.length > 1 ? options.palette.slice(1) : options.palette;
+    return (_column, _row, tone) => sampleRamp(inks, tone);
   }
   const ansiTable: readonly Rgb8[] = ANSI16[options.ansi ?? "vga"];
   const [gx, gy] = charset.grid;
