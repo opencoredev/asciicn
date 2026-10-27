@@ -1,6 +1,6 @@
 ---
 title: "Dubai"
-description: "Dubai at golden hour: the Burj Khalifa catching the last sun above a cluster of glass towers, the sail of the Burj Al Arab on the shore, and dunes with sand blowing off their crests."
+description: "Dubai at night from the water: the Burj Khalifa stepping up to its spire and beacon, the Emirates Towers, the Marina and the sail of the Burj Al Arab, with lit windows and calm reflections."
 ---
 
 import DubaiDemo from "@/examples/dubai-demo";
@@ -36,21 +36,19 @@ export function Hero() {
 }
 ```
 
-The city is seen from the lake. At the back are a dusk sky with a low sun and two ridges of dunes. In front of them stand a hazy far skyline, the Burj Khalifa with its setbacks stepping up to the spire, a cluster of glass towers around its base, and the sail of the Burj Al Arab on its island near the shore. The lake below mirrors all of it, broken into ripples.
+The city is seen from the water at night. The Burj Khalifa stands in the middle, more than twice the height of anything around it. Its three wings step back in turn as it climbs, so the setbacks alternate sides, each with a lit ledge, up to a long spire. The faces carry vertical strips of light. To the left stand the two Emirates Towers with their sloped crowns, to the right the towers of the Marina, and on the shore the sail of the Burj Al Arab on its island. The water below repeats the lights as broken, dimmer copies.
 
-`hour` sets the time of day. At 0 the sun hangs low over the dunes and the towers glow gold. As `hour` moves toward 1 the sun sets, the line of sunlight climbs the Burj until only the spire holds it, stars come out, windows switch on and floodlights colour the Burj Al Arab. The red beacon on the tip blinks at any hour.
+Nothing built moves. Only the lights change: the red beacon on the tip pulses about once every two seconds, a window switches on or off now and then, the stars twinkle faintly, the reflections shift by a cell or two every few seconds, the floodlights on the Burj Al Arab drift slowly through soft colours, and a small boat crosses the water once every two minutes. The pointer does nothing.
 
-Sand streams off the dune crests, grains blow across the low city, and the air near the ground shimmers in the heat. `sand` sets how much of this you see. Every 14 seconds the fountain at the foot of the Burj runs a show of swaying jets for about seven seconds. With `interactive` on, the pointer shifts the layers by different amounts, so the Burj Al Arab slides further than the dunes.
+Every building covers whole sample columns and rows, and windows fill whole glyph cells, so edges stay hard and window grids stay square in any charset. It draws in `quadrants` by default, which gives the sharpest silhouette. In `quadrants` and `braille` the facades are solid and unlit windows are gaps; in ramp charsets such as `blocks`, `standard` and `dense` the facades are faint glyphs and lit windows the densest ones. In `truecolor`, the default, glyphs take the scene's silver, warm window light and red beacon on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
 
-It draws in `standard` by default. `dense` and `blocks` give the towers more weight, and `braille` keeps the spire and the fountain jets fine. In `truecolor`, the default, glyphs take the scene's gold, sand and dusk blue on a dark dusk paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
-
-`intensity` scales every glyph's tone. Lower it to keep a headline on top easy to read.
+`intensity` dims the scene. Lower it to keep a headline on top easy to read. In `quadrants` and `braille` it dims colours only, because those charsets draw a dot or nothing and a lower tone would erase whole facades.
 
 ## Examples
 
 ### Behind a headline
 
-`hour={0.6}` moves the sun down so the sky behind the text is darker, and `intensity={0.7}` pushes the city back.
+`intensity={0.6}` pushes the city back so the headline reads first.
 
 <ComponentPreview src="examples/dubai-hero.tsx" size="lg" align="stretch">
   <DubaiHero />
@@ -58,7 +56,7 @@ It draws in `standard` by default. `dense` and `blocks` give the towers more wei
 
 ### Sodium print
 
-`colorMode="duotone"` with `ramp="sodium"` and the `braille` charset turn the skyline into a two-colour print.
+`colorMode="duotone"` with `ramp="sodium"` and the `blocks` charset turn the skyline into a two-colour print.
 
 <ComponentPreview src="examples/dubai-sodium.tsx">
   <DubaiSodium />
@@ -76,30 +74,9 @@ It draws in `standard` by default. `dense` and `blocks` give the towers more wei
         "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
     },
     {
-      name: "hour",
-      type: "number",
-      default: "0.45",
-      description:
-        "Time of day, from 0 (golden hour, sun over the dunes) to 1 (night, only the beacon and windows lit).",
-    },
-    {
-      name: "sand",
-      type: "number",
-      default: "1",
-      description:
-        "Sand blowing off the dunes and heat shimmer near the ground, from 0 (still air) to 1.",
-    },
-    {
-      name: "fountain",
-      type: "boolean",
-      default: "true",
-      description:
-        "Runs a fountain show at the foot of the Burj Khalifa every 14 seconds.",
-    },
-    {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the scene. See Charsets.",
     },
     {
@@ -182,22 +159,9 @@ It draws in `standard` by default. `dense` and `blocks` give the towers more wei
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "An engine pointer effect on top of the parallax.",
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description:
-        "Pointer parallax: near layers slide further than far ones. false turns it off, and interaction with it.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -238,14 +202,14 @@ It draws in `standard` by default. `dense` and `blocks` give the towers more wei
       type: "AsciiColor",
       default: "–",
       description:
-        "Paper behind the glyphs. By default the scene's dusk colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
     },
     {
       name: "fallback",
       type: "ReactNode",
       default: "–",
       description:
-        "Shown without WebGL and until the first frame. By default a dusk gradient.",
+        "Shown without WebGL and until the first frame. By default a night gradient.",
     },
     {
       name: "className",
@@ -259,6 +223,7 @@ It draws in `standard` by default. `dense` and `blocks` give the towers more wei
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops. At the default of 2 seconds the fountain is mid-show.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dusk gradient.
-- The scene is one GPU pass with a few short loops (dunes, nearby towers, fountain jets), so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops. At the default of 2 seconds the beacon is lit.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a night gradient.
+- It has no pointer response. An `interactive` prop passed by a gallery is accepted and ignored.
+- The scene is one GPU pass with one short loop over the seven Marina towers; the other rows of buildings are looked up by slot. The water draws the land a second time for its reflection, so its cost follows the number of samples. `braille` samples eight times per cell and `quadrants` four; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).

@@ -4,7 +4,7 @@ import { segmented, select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the Hong Kong main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "braille",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -27,25 +27,16 @@ export const phosphor = segmented({
 export const lights = slider({
   default: 1,
   id: "lights",
-  label: "Light show",
+  label: "Colour lights",
   max: 1,
   min: 0,
   step: 0.05,
 });
 
-export const waves = slider({
-  default: 1,
-  id: "waves",
-  label: "Waves",
-  max: 2,
-  min: 0,
-  step: 0.1,
-});
-
-export const boats = toggle({
+export const ferry = toggle({
   default: true,
-  id: "boats",
-  label: "Boats",
+  id: "ferry",
+  label: "Star Ferry",
 });
 
 export const intensity = slider({
@@ -58,11 +49,11 @@ export const intensity = slider({
 });
 
 export const cell = slider({
-  default: 10,
+  default: 9,
   id: "cell",
   label: "Cell",
-  max: 20,
-  min: 8,
+  max: 16,
+  min: 6,
   step: 1,
   unit: "px",
 });
@@ -79,8 +70,7 @@ export const controls = [
   colorMode,
   phosphor,
   lights,
-  waves,
-  boats,
+  ferry,
   intensity,
   cell,
   animate,

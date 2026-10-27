@@ -2,404 +2,371 @@
 
 import type { ReactNode } from "react";
 
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  ColorMode,
-  Interaction,
-} from "@/lib/ascii";
+import { resolveCharset } from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// The whole city is one function of a point in box units: x runs across
-// the true aspect, y from 0 at the bottom to 1 at the top. Layers are drawn
-// back to front (sky, dunes, far towers, the Burj Khalifa, the glass
-// cluster, the Burj Al Arab), and the lake below mirrors them. Each layer
-// returns colour and tone, with a negative tone for "missed", so the first
-// opaque layer from the front wins. Tone is set per layer rather than
-// taken from brightness: open sky stays empty, silhouettes stay filled,
-// and sunlit glass reads as the densest glyphs.
+// Dubai at night from the water. Everything is placed on the engine's
+// sample grid: a building covers whole sample columns and rows, so its
+// edges are hard and its windows sit on a clean grid in every charset.
+// Each layer returns colour and tone, with a negative tone for "missed",
+// and the first layer that hits from the front wins. Open sky is empty;
+// only a few stars sit in it.
 const SCENE = `
-const float DUBAI_SHORE = 0.15;
-const float DUBAI_BURJ_BASE = 0.15;
-const float DUBAI_BURJ_ROOF = 0.79;
-const float DUBAI_BURJ_TIP = 0.955;
+const float DUBAI_WATER = 0.2;
+const float DUBAI_BURJ_H = 0.74;
 
-float dubaiNoise(float x) {
-  float i = floor(x);
-  float f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(hash21(vec2(i, 7.1)), hash21(vec2(i + 1.0, 7.1)), f);
+// Sample size in box units, half the sample columns, and the time.
+float dubaiW;
+float dubaiH;
+float dubaiHalf;
+float dubaiT;
+float dubaiShore;
+
+// The first and last sample columns whose centres fall inside [x0, x1].
+// A span is never narrower than one column, so a spire never vanishes.
+vec2 dubaiCols(float x0, float x1) {
+  float l = ceil(x0 / dubaiW + dubaiHalf - 0.5);
+  float r = floor(x1 / dubaiW + dubaiHalf - 0.5);
+  return vec2(l, max(l, r));
 }
 
-// Where the last sunlight reaches. Below it everything sits in the shadow
-// of the dunes; as the hour runs on it climbs the Burj and leaves only the
-// spire, then nothing.
-float dubaiSunLine() {
-  return DUBAI_SHORE + 0.06 + dubaiHour * 0.92;
+// The last sample row whose centre is at or below y.
+float dubaiTop(float y) {
+  return floor(y / dubaiH - 0.5);
 }
 
-float dubaiLit(float y) {
-  float line = dubaiSunLine();
-  return smoothstep(line - 0.012, line + 0.012, y);
+// Braille and quadrants light a dot only above half tone, so there the
+// facades are lifted over it and read as solid walls with dark windows.
+float dubaiFill(float tone) {
+  return mix(tone, max(tone, 0.56), dubaiSolid);
 }
 
-// A dune ridge: a long windward slope up to a crest, then a short steep
-// slip face. Returns the crest height and where along the dune x falls
-// (0 to 0.75 windward, 0.75 to 1 the slip face).
-vec2 dubaiDune(float x, float k) {
-  float w = x * (1.8 + k * 0.7) + k * 0.37 + 0.35 * dubaiNoise(x * 3.0 + k * 9.0);
-  float s = fract(w);
-  float prof = s < 0.75 ? s / 0.75 : (1.0 - s) / 0.25;
-  prof = prof * prof * (3.0 - 2.0 * prof);
-  float h = DUBAI_SHORE + 0.05 + k * 0.07
-    + (0.06 + 0.04 * dubaiNoise(floor(w) * 1.7 + k)) * prof
-    + 0.008 * sin(x * 21.0 + k * 3.0);
-  return vec2(h, s);
+float dubaiX(float col) {
+  return (col + 0.5 - dubaiHalf) * dubaiW;
 }
 
-vec4 dubaiSky(vec2 q, float sunX, float t, float px) {
-  float night = dubaiHour;
-  float hz = clamp((q.y - DUBAI_SHORE) / (1.0 - DUBAI_SHORE), 0.0, 1.0);
-  vec3 low = mix(vec3(1.0, 0.56, 0.24), vec3(0.4, 0.17, 0.26), night);
-  vec3 mid = mix(vec3(0.66, 0.36, 0.48), vec3(0.12, 0.09, 0.27), night);
-  vec3 top = mix(vec3(0.13, 0.18, 0.42), vec3(0.03, 0.04, 0.13), night);
-  vec3 col = mix(low, mid, smoothstep(0.0, 0.35, hz));
-  col = mix(col, top, smoothstep(0.3, 0.9, hz));
-  // The glow over the horizon is a band of faint glyphs; higher up the
-  // sky drops to paper.
-  float tone = 0.2 * (1.0 - smoothstep(0.0, 0.25, hz)) * (1.0 - 0.75 * night);
-
-  vec2 sun = vec2(sunX, DUBAI_SHORE + 0.3 - 0.32 * night);
-  float d = length(q - sun);
-  float radius = 0.05;
-  float halo = exp(-max(d - radius, 0.0) * 10.0) * (1.0 - 0.85 * night);
-  col += vec3(1.0, 0.5, 0.18) * halo * 0.7;
-  tone += halo * 0.28;
-  if (d < radius) {
-    col = mix(vec3(1.0, 0.9, 0.55), vec3(1.0, 0.45, 0.2), smoothstep(radius * 0.4, radius, d));
-    tone = 0.95;
+// Whether a window is lit. Most keep their state; one in twelve switches
+// now and then, each on its own slow clock, so the city changes a light
+// or two every few seconds.
+float dubaiLit(vec2 id, float rate) {
+  float h = hash21(id);
+  float h2 = hash21(id + 17.3);
+  if (h2 < 0.08) {
+    float epoch = floor(dubaiT / (18.0 + 300.0 * h2) + h * 5.0);
+    return step(hash21(id + epoch * 3.1), rate);
   }
-
-  // Thin streaks of cloud, lit gold from below at sunset.
-  float c = fbm(vec2(q.x * 1.8 - t * 0.006, q.y * 16.0 + 3.0));
-  float wisp = smoothstep(0.6, 0.78, c) * smoothstep(0.12, 0.3, hz) * smoothstep(0.7, 0.4, hz);
-  col = mix(col, mix(vec3(1.0, 0.62, 0.42), vec3(0.32, 0.26, 0.48), night), wisp);
-  tone = max(tone, wisp * 0.18);
-
-  // Stars come out as the sky darkens.
-  vec2 id = floor(q * 90.0);
-  float star = hash21(id + 4.3);
-  if (star > 0.986 && hz > 0.3) {
-    float twinkle = 0.55 + 0.45 * sin(t * (1.0 + star * 3.0) + star * 50.0);
-    float show = smoothstep(0.25, 0.75, night) * smoothstep(0.3, 0.55, hz);
-    // Most stars are faint dots; a few bright ones twinkle as larger glyphs.
-    tone = max(tone, (star > 0.996 ? 0.6 : 0.22) * twinkle * show);
-    col = mix(col, vec3(0.86, 0.9, 1.0), show);
-  }
-
-  // A plane crosses high up, its strobe blinking.
-  float span = u_resolution.x / u_resolution.y;
-  vec2 plane = vec2(mix(-0.6 * span - 0.1, 0.6 * span + 0.1, fract(t / 48.0)), 0.74 + 0.03 * sin(t * 0.05));
-  vec2 pd = abs(q - plane);
-  if (pd.x < 0.6 * px && pd.y < 0.5 * px) {
-    float strobe = step(fract(t * 1.1), 0.18);
-    tone = max(tone, 0.5 + 0.45 * strobe);
-    col = mix(vec3(1.0, 0.3, 0.25), vec3(1.0), strobe);
-  }
-  return vec4(col, tone);
+  return step(h, rate);
 }
 
-// Two ridges of dunes behind the city, sand blowing off the crests. The
-// low near ridge is tested first so its outline crosses the taller one.
-vec4 dubaiDunes(vec2 q, float t, float px) {
-  float night = dubaiHour;
-  for (int i = 0; i < 2; i++) {
-    float back = float(i);
-    vec2 dune = dubaiDune(q.x, back);
-    float above = q.y - dune.x;
-    if (above < 0.0) {
-      // Windward slopes face the low sun on the left; slip faces fall into shadow.
-      float lit = smoothstep(0.82, 0.7, dune.y) * smoothstep(0.0, 0.06, dune.y);
-      vec3 sand = mix(vec3(1.0, 0.68, 0.36), vec3(0.44, 0.37, 0.55), night);
-      vec3 shade = mix(vec3(0.66, 0.34, 0.28), vec3(0.17, 0.17, 0.33), night);
-      vec3 col = mix(shade, sand, lit);
-      // Ripples the wind combs across the sand.
-      float ripple = step(0.55, fract(q.x * 70.0 + q.y * 260.0 + 0.4 * sin(q.x * 18.0)));
-      float tone = mix(0.08, 0.18, lit) + 0.06 * ripple * lit;
-      // The ridge line catches the light, brightest along the crest.
-      float edge = step(-0.9 * px, above);
-      float crest = edge * mix(0.6, 1.0, smoothstep(0.4, 0.75, dune.y) * smoothstep(1.0, 0.8, dune.y));
-      tone = max(tone, crest * 0.72);
-      col = mix(col, mix(vec3(1.0, 0.82, 0.5), vec3(0.6, 0.55, 0.75), night), crest);
-      tone *= (1.0 - 0.45 * night) * mix(1.0, 0.72, back);
-      col = mix(col, vec3(0.9, 0.5, 0.35), back * 0.25 * (1.0 - night));
-      return vec4(col, tone);
+vec3 dubaiTint(float h) {
+  if (h < 0.55) return vec3(1.0, 0.8, 0.5);
+  if (h < 0.85) return vec3(0.96, 0.92, 0.84);
+  return vec3(0.62, 0.8, 1.0);
+}
+
+// One tower on the shore: a dim facade with a grid of windows, cut to its
+// crown. kind 0 is a flat roof, 1 a wedge rising to the right, 2 a wedge
+// rising to the left, 3 a stepped crown, 4 a flat roof with a mast.
+vec4 dubaiTower(vec2 c, float xc, float hw, float height, float kind, float seed, float rate) {
+  vec2 span = dubaiCols(xc - hw, xc + hw);
+  if (c.x < span.x || c.x > span.y) {
+    return vec4(-1.0);
+  }
+  float n = span.y - span.x + 1.0;
+  float lc = c.x - span.x;
+  float u = n > 1.0 ? lc / (n - 1.0) : 0.5;
+  float top = DUBAI_WATER + height;
+  float crown = 0.0;
+  if (kind > 0.5 && kind < 1.5) {
+    crown = 0.05 * u;
+  } else if (kind > 1.5 && kind < 2.5) {
+    crown = 0.05 * (1.0 - u);
+  } else if (kind > 2.5 && kind < 3.5) {
+    float inset = abs(u - 0.5);
+    crown = inset < 0.18 ? 0.03 : (inset < 0.34 ? 0.015 : 0.0);
+  } else if (kind > 3.5 && abs(u - 0.5) < 0.5 / n + 0.01) {
+    crown = 0.035;
+  }
+  float topRow = dubaiTop(top + crown);
+  if (c.y > topRow) {
+    return vec4(-1.0);
+  }
+  vec3 facade = vec3(0.3, 0.36, 0.56);
+  // The roof line and the crown catch the light.
+  if (c.y == topRow || (crown > 0.0 && c.y > dubaiTop(top))) {
+    float rim = c.y == topRow ? 0.62 : dubaiFill(0.4);
+    return vec4(vec3(0.72, 0.78, 0.92), rim);
+  }
+  // Windows fill whole glyph cells, every other cell across and up, so
+  // they stay a clean grid however many samples a cell holds.
+  vec2 g = floor(c / dubaiGrid);
+  float left = ceil(span.x / dubaiGrid.x);
+  float right = floor((span.y + 1.0) / dubaiGrid.x) - 1.0;
+  float base = ceil(dubaiShore / dubaiGrid.y);
+  float roof = floor(dubaiTop(top) / dubaiGrid.y) - 1.0;
+  float wx = g.x - left;
+  float wy = g.y - base;
+  if (g.x <= right - 1.0 && g.y <= roof && wy >= 0.0 && mod(wx, 2.0) > 0.5 && mod(wy, 2.0) > 0.5) {
+    vec2 id = vec2(seed * 61.0 + wx, wy);
+    if (dubaiLit(id, rate) > 0.5) {
+      return vec4(dubaiTint(hash21(vec2(seed, floor(wx / 4.0)))), 0.92);
     }
-    // Plumes stream downwind off the crests.
-    float plume = snoise(vec2((q.x - t * 0.07) * 26.0, above * 80.0 - q.x * 9.0 - t * 0.3));
-    float near = smoothstep(0.5, 0.75, dune.y) + smoothstep(0.75, 1.0, dune.y) * 0.6;
-    float blow = smoothstep(0.3, 0.85, plume) * exp(-above * 55.0) * near * dubaiSand;
-    if (blow > 0.12) {
-      return vec4(mix(vec3(1.0, 0.72, 0.42), vec3(0.5, 0.45, 0.62), night), blow * 0.42 * (1.0 - 0.4 * night));
-    }
+    return vec4(facade * 0.8, 0.2);
   }
-  return vec4(0.0, 0.0, 0.0, -1.0);
+  return vec4(facade, dubaiFill(0.28));
 }
 
-// Lit windows on a grid of floors, more of them as night falls, a few
-// switching on and off.
-float dubaiWindow(vec2 cellId, float t, float rate) {
-  float h = hash21(cellId);
-  float flick = hash21(cellId + floor(t * 0.15 + h * 9.0) * 1.37);
-  return step(h, rate) * step(0.08, flick);
+// A row of towers from hashed slots. envelope() decides how tall each
+// slot may be at its position; away from the centres the row thins out.
+vec4 dubaiRow(vec2 c, float burjX, float marinaX, float slotW, float maxH, float seedBase, float rate, float crowns) {
+  float x = dubaiX(c.x);
+  float slot = floor(x / slotW);
+  float h1 = hash21(vec2(slot, seedBase));
+  float h2 = hash21(vec2(slot, seedBase + 3.7));
+  float h3 = hash21(vec2(slot, seedBase + 9.1));
+  float xc = (slot + 0.5 + (h2 - 0.5) * 0.2) * slotW;
+  float hw = slotW * mix(0.22, 0.4, h3);
+  // Downtown rises around the Burj, the Marina further along the shore.
+  float down = exp(-pow((xc - burjX) / 0.3, 2.0));
+  float marina = exp(-pow((xc - marinaX) / 0.2, 2.0));
+  float envelope = max(max(down, marina * 0.9), 0.32);
+  if (h1 > envelope + 0.25) {
+    return vec4(-1.0);
+  }
+  float height = maxH * mix(0.35, 1.0, h1 * h1) * envelope;
+  // Wedge crowns are left to the Emirates Towers.
+  float kind = h2 < 0.45 ? 0.0 : (h2 < 0.8 ? 3.0 : 4.0);
+  kind *= crowns;
+  return dubaiTower(c, xc, hw, height, kind, slot + seedBase, rate);
 }
 
-// Glass towers from one row of hashed slots: the far skyline when far > 0.5,
-// the downtown cluster around the Burj otherwise.
-vec4 dubaiTowers(vec2 q, float burjX, float t, float px, float far) {
-  float night = dubaiHour;
-  float cw = mix(0.085, 0.05, far);
-  float slot = floor(q.x / cw);
-  vec4 hit = vec4(0.0, 0.0, 0.0, -1.0);
-  for (int j = -1; j <= 1; j++) {
-    float s = slot + float(j);
-    float h1 = hash21(vec2(s, 11.0 + far * 5.0));
-    float h2 = hash21(vec2(s, 17.0 + far * 5.0));
-    float h3 = hash21(vec2(s, 23.0 + far * 5.0));
-    float cx = (s + 0.5 + (h2 - 0.5) * 0.5) * cw;
-    float hw = cw * mix(0.28, 0.42, h3);
-    float dx = cx - burjX;
-    // Downtown rises around the Burj and falls away toward the desert.
-    float downtown = exp(-dx * dx / mix(0.05, 0.22, far));
-    float height = DUBAI_SHORE + mix(0.05, 0.02, far)
-      + mix(0.05 + 0.28 * h1 * h1, 0.03 + 0.13 * h1 * h1, far) * mix(0.3, 1.0, downtown);
-    // Leave the Burj its own slot, and gaps where the desert shows.
-    // Away from downtown the towers thin out and the desert shows.
-    if (abs(dx) < 0.05 + hw || (far > 0.5 && h2 > 0.72) || h3 > downtown + mix(0.3, 0.15, far)) {
-      continue;
-    }
-    float lx = (q.x - (cx - hw)) / (2.0 * hw);
-    if (lx < 0.0 || lx > 1.0) {
-      continue;
-    }
-    float kind = floor(h2 * 4.0);
-    float top = height;
-    if (kind < 0.5) {
-      // A sloped crown, like the Emirates Towers.
-      top = height + 0.045 * (h1 > 0.5 ? lx : 1.0 - lx) - 0.02;
-    } else if (kind < 1.5) {
-      top = height - 0.03 * abs(lx * 2.0 - 1.0);
-    } else if (kind < 2.5 && abs(lx - 0.5) < max(0.06, 0.35 * px / hw)) {
-      top = height + 0.035;
-    }
-    if (q.y > top || q.y < DUBAI_SHORE - 0.002) {
-      continue;
-    }
-    float lit = dubaiLit(q.y);
-    vec3 glass = mix(vec3(0.3, 0.34, 0.5), vec3(0.14, 0.17, 0.32), night);
-    vec3 gold = vec3(1.0, 0.7, 0.32);
-    float face = smoothstep(0.55, 0.25, lx);
-    float tone = mix(0.48, 0.56, face);
-    vec3 col = glass;
-    // Sun-facing glass turns gold above the shadow line.
-    col = mix(col, gold, lit * mix(0.55, 1.0, face));
-    tone = mix(tone, mix(0.72, 0.9, face), lit);
-    // A glint of sky slides across the glass now and then.
-    float glint = fract(t * 0.035 + h3 * 7.0) * 3.0 - 1.0;
-    float sheen = exp(-abs(lx - glint - (q.y - DUBAI_SHORE) * 2.0) * 30.0) * (1.0 - far);
-    tone = min(1.0, tone + sheen * 0.3);
-    col = mix(col, vec3(1.0, 0.86, 0.62), sheen * 0.6);
-    // Windows: a floor every two rows at least, three to seven bays across.
-    float floorH = max(0.013, 2.0 * px);
-    float floors = floor((q.y - DUBAI_SHORE) / floorH);
-    float bays = floor(lx * mix(3.0, 7.0, h3));
-    float rate = mix(0.1, 0.55, night) * (1.0 - lit) * mix(1.0, 0.7, far);
-    float on = dubaiWindow(vec2(s * 13.0 + bays, floors + far * 50.0), t, rate);
-    if (on > 0.5 && fract((q.y - DUBAI_SHORE) / floorH) > 0.5) {
-      col = hash21(vec2(s, bays)) > 0.3 ? vec3(1.0, 0.82, 0.5) : vec3(0.7, 0.86, 1.0);
-      tone = 0.86;
-    }
-    // Far towers sink into the haze over the horizon.
-    if (far > 0.5) {
-      col = mix(col, mix(vec3(0.75, 0.42, 0.42), vec3(0.2, 0.16, 0.34), night), 0.45);
-      tone *= 0.8;
-    }
-    hit = vec4(col, tone);
+// Half widths of the Burj Khalifa at a height h (0 at the water, 1 at
+// the tip of the spire): the left, right and front wings, and the core.
+// The Y-plan tower has three wings that step back at their own heights,
+// a third of a tier apart, so seen from the front the setbacks alternate
+// sides as they climb.
+float dubaiWing(float h, float phase) {
+  const float BODY = 0.68;
+  const float TIERS = 7.0;
+  if (h >= BODY) {
+    return 0.0;
   }
-  return hit;
+  float k = floor(h / BODY * TIERS + phase);
+  float u = clamp((k + 1.0 - phase) / TIERS, 0.0, 1.0);
+  return 0.078 * pow(1.0 - u, 0.8);
 }
 
-// The Burj Khalifa from the front: three wings around a core, each wing
-// stepping back at its own height so the setbacks spiral up, then the
-// core alone, then the spire.
-vec4 dubaiBurj(vec2 q, float burjX, float t, float px) {
-  float bx = q.x - burjX;
-  float y = q.y;
-  if (y < DUBAI_BURJ_BASE - 0.002 || y > DUBAI_BURJ_TIP || abs(bx) > 0.07) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
+vec4 dubaiBurjHalf(float h) {
+  float core = h < 0.73 ? 0.016 : (h < 0.79 ? 0.011 : 0.0);
+  if (h >= 0.79) {
+    // The spire: a needle that tapers to a single column.
+    float s = (h - 0.79) / 0.21;
+    float needle = 0.007 * (1.0 - s);
+    return vec4(needle, needle, needle, needle);
   }
-  float night = dubaiHour;
-  float h = (y - DUBAI_BURJ_BASE) / (DUBAI_BURJ_ROOF - DUBAI_BURJ_BASE);
-  const float TIERS = 9.0;
-  const float BASE = 0.1;
-  float core = max(0.008, 0.6 * px);
-  float tierL = floor(h * TIERS);
-  float tierR = floor(h * TIERS + 0.5);
-  float wingL = BASE * pow(max(0.0, 1.0 - tierL / TIERS), 1.5);
-  float wingR = BASE * pow(max(0.0, 1.0 - (tierR - 0.5) / TIERS), 1.5);
-  // The front wing narrows more slowly than the side wings.
-  float front = max(core * 1.3, BASE * 0.45 * pow(max(0.0, 1.0 - h), 0.9));
-  float left = h > 1.0 ? 0.0 : max(max(wingL, core), front);
-  float right = h > 1.0 ? 0.0 : max(max(wingR, core), front);
-  bool spire = false;
-  if (h > 1.0) {
-    float s = (y - DUBAI_BURJ_ROOF) / (DUBAI_BURJ_TIP - DUBAI_BURJ_ROOF);
-    float hw = max(mix(core * 0.85, core * 0.15, s), 0.34 * px);
-    left = hw;
-    right = hw;
-    spire = true;
-  }
-  if (bx < -left || bx > right) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
-  }
-  float lit = dubaiLit(y);
-  bool frontWing = abs(bx) < front || spire;
-  vec3 glass = mix(vec3(0.34, 0.37, 0.54), vec3(0.17, 0.2, 0.36), night);
-  vec3 col = frontWing ? glass * 1.15 : glass * 0.85;
-  float tone = frontWing ? 0.62 : 0.5;
-  // Sunlight lands hardest on the left, where the sun is.
-  float side = smoothstep(right, -left, bx);
-  col = mix(col, mix(vec3(1.0, 0.64, 0.28), vec3(1.0, 0.86, 0.55), side), lit);
-  tone = mix(tone, mix(0.8, 1.0, side) * (frontWing ? 1.0 : 0.9), lit);
-  // A bright ledge on top of each setback.
-  float ledgeL = fract(h * TIERS) * (DUBAI_BURJ_ROOF - DUBAI_BURJ_BASE) / TIERS;
-  float ledgeR = fract(h * TIERS + 0.5) * (DUBAI_BURJ_ROOF - DUBAI_BURJ_BASE) / TIERS;
-  bool onLedge = !spire && !frontWing
-    && ((bx < 0.0 && ledgeL > (DUBAI_BURJ_ROOF - DUBAI_BURJ_BASE) / TIERS - 1.2 * px)
-      || (bx > 0.0 && ledgeR > (DUBAI_BURJ_ROOF - DUBAI_BURJ_BASE) / TIERS - 1.2 * px));
-  if (onLedge) {
-    tone = min(1.0, tone + 0.2);
-    col = mix(col, vec3(1.0, 0.9, 0.7), 0.5);
-  }
-  // Seams between the wings.
-  if (!spire && abs(abs(bx) - front) < 0.45 * px) {
-    tone *= 0.8;
-  }
-  // Scattered lit floors after dark, below the sunlight.
-  float on = dubaiWindow(vec2(floor(bx * 220.0) + 400.0, floor(y * 95.0)), t, mix(0.04, 0.28, night) * (1.0 - lit));
-  if (on > 0.5 && !spire) {
-    col = vec3(1.0, 0.86, 0.6);
-    tone = 0.9;
-  }
-  // The aircraft beacon on the tip.
-  if (y > DUBAI_BURJ_TIP - 2.5 * px) {
-    float blink = step(fract(t * 0.6), 0.35);
-    col = mix(col, vec3(1.0, 0.18, 0.15), blink);
-    tone = max(tone, blink);
-  }
-  return vec4(col, tone);
+  float left = max(core, dubaiWing(h, 0.0));
+  float right = max(core, dubaiWing(h, 0.34));
+  float front = max(core, 0.42 * dubaiWing(h, 0.67));
+  return vec4(left, right, front, core);
 }
 
-// The Burj Al Arab on its island: a straight mast on the land side and a
-// sail that bellies out toward the sea, ribbed, with the helipad near the
-// top. Floodlights change its colour after dark.
-vec4 dubaiSail(vec2 q, float sailX, float t, float px) {
-  const float HEIGHT = 0.31;
-  float base = DUBAI_SHORE + 0.004;
-  float ax = q.x - sailX;
-  float h = (q.y - base) / HEIGHT;
-  float night = dubaiHour;
-  // The island it stands on.
-  if (q.y < base + 0.006 && q.y > DUBAI_SHORE - 0.003 && abs(ax - 0.015) < 0.045 - (q.y - DUBAI_SHORE) * 2.0) {
-    return vec4(mix(vec3(0.9, 0.62, 0.38), vec3(0.32, 0.3, 0.45), night), 0.38);
+vec4 dubaiBurj(vec2 c, float xc) {
+  float y = (c.y + 0.5) * dubaiH;
+  float h = (y - DUBAI_WATER) / DUBAI_BURJ_H;
+  float tipRow = dubaiTop(DUBAI_WATER + DUBAI_BURJ_H);
+  if (h < 0.0 || c.y > tipRow) {
+    return vec4(-1.0);
   }
-  if (h < 0.0 || h > 1.18 || ax < -0.03 || ax > 0.1) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
+  vec4 e = dubaiBurjHalf(h);
+  vec2 body = dubaiCols(xc - e.x, xc + e.y);
+  if (c.x < body.x || c.x > body.y) {
+    return vec4(-1.0);
   }
-  float back = -0.016 + 0.01 * h;
-  float belly = pow(sin(3.14159 * clamp(h * 0.92, 0.0, 1.0)), 0.75) * (1.0 - 0.35 * h);
-  float edge = back + 0.003 + 0.08 * belly;
-  float mastW = max(0.0022, 0.45 * px);
-  bool mast = abs(ax - back) < mastW && h < 1.18;
-  bool sail = h <= 1.0 && ax > back && ax < edge;
-  bool pad = h > 0.78 && h < 0.78 + max(0.04, 1.0 * px / HEIGHT) && ax > edge - 0.002 && ax < edge + 0.022;
-  if (!mast && !sail && !pad) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
+  // The aircraft beacon on the tip: one slow pulse every 1.8 seconds.
+  if (c.y == tipRow) {
+    float p = fract(dubaiT / 1.8);
+    float pulse = smoothstep(0.0, 0.1, p) * smoothstep(0.5, 0.15, p);
+    return vec4(mix(vec3(0.7, 0.2, 0.2), vec3(1.0, 0.25, 0.2), pulse), 0.45 + 0.55 * pulse);
   }
-  vec3 white = mix(vec3(1.0, 0.86, 0.66), vec3(0.75, 0.72, 0.86), night);
-  float flood = smoothstep(0.35, 0.75, night);
-  vec3 lights = toSrgb(oklch(0.72, 0.14, t * 0.12 + h * 1.6));
-  vec3 col = mix(white, lights, flood * 0.85);
-  float across = (ax - back) / max(edge - back, 1e-3);
-  float tone = mix(0.56, 0.66, flood) * mix(1.0, 0.85, across);
-  // Ribs curve across the fabric.
-  float rib = fract(h * 11.0 + across * across * 0.6);
-  if (sail && rib < 0.18) {
-    tone += 0.16;
+  if (h >= 0.79) {
+    return vec4(0.82, 0.88, 1.0, 0.74);
   }
-  // The outer frame and the mast are the brightest lines.
-  if (mast || pad || (sail && edge - ax < 1.2 * px)) {
-    tone = 0.92;
-    col = mix(vec3(1.0, 0.94, 0.82), lights, flood * 0.4);
+  vec2 front = dubaiCols(xc - e.z, xc + e.z);
+  // A setback ledge is a sample whose neighbour above is open air.
+  vec4 above = dubaiBurjHalf(h + dubaiH / DUBAI_BURJ_H);
+  vec2 bodyAbove = dubaiCols(xc - above.x, xc + above.y);
+  vec2 frontAbove = dubaiCols(xc - above.z, xc + above.z);
+  bool inFront = c.x >= front.x && c.x <= front.y;
+  bool ledge = c.x < bodyAbove.x || c.x > bodyAbove.y
+    || (inFront && (c.x < frontAbove.x || c.x > frontAbove.y) && c.y < tipRow - 1.0);
+  if (ledge) {
+    return vec4(1.0, 0.9, 0.74, 0.9);
   }
-  return vec4(col, min(tone, 1.0));
+  // Vertical strips of light run up every face, one cell on, one off.
+  float band = mod(floor(c.x / dubaiGrid.x), 2.0);
+  if (inFront) {
+    return band > 0.5 ? vec4(0.9, 0.94, 1.0, 0.84) : vec4(0.56, 0.64, 0.86, dubaiFill(0.5));
+  }
+  bool outline = c.x == body.x || c.x == body.y;
+  if (c.x < front.x) {
+    // The left wing turns away from us and sits darker.
+    return band > 0.5 || outline ? vec4(0.62, 0.7, 0.9, 0.58) : vec4(0.36, 0.42, 0.62, dubaiFill(0.32));
+  }
+  return band > 0.5 || outline ? vec4(0.74, 0.82, 0.98, 0.68) : vec4(0.42, 0.5, 0.72, dubaiFill(0.38));
+}
+
+// The Emirates Towers: two triangular towers whose wedge crowns slope
+// toward each other, the office tower a little taller with a short mast.
+vec4 dubaiEmirates(vec2 c, float x0) {
+  vec4 hit = dubaiTower(c, x0, 0.02, 0.27, 1.0, 301.0, 0.4);
+  if (hit.a >= 0.0) return hit;
+  vec2 mast = dubaiCols(x0 + 0.02 - 0.001, x0 + 0.02);
+  if (c.x == mast.y && c.y > dubaiTop(DUBAI_WATER + 0.32) && c.y <= dubaiTop(DUBAI_WATER + 0.35)) {
+    return vec4(0.8, 0.84, 0.95, 0.6);
+  }
+  return dubaiTower(c, x0 + 0.06, 0.018, 0.23, 2.0, 307.0, 0.45);
+}
+
+// Dubai Marina: a tight cluster of slim towers further down the shore.
+vec4 dubaiMarina(vec2 c, float x0) {
+  for (int i = 0; i < 7; i++) {
+    float fi = float(i);
+    float h1 = hash21(vec2(fi, 41.0));
+    float h2 = hash21(vec2(fi, 43.0));
+    float xc = x0 + (fi - 3.0) * 0.033 + (h2 - 0.5) * 0.008;
+    float height = 0.16 + 0.12 * h1 * (1.0 - abs(fi - 3.0) * 0.12);
+    float kind = mod(fi, 3.0) < 0.5 ? 3.0 : (fi == 1.0 || fi == 5.0 ? 4.0 : 0.0);
+    vec4 hit = dubaiTower(c, xc, 0.011 + 0.004 * h2, height, kind, 401.0 + fi, 0.5);
+    if (hit.a >= 0.0) return hit;
+  }
+  return vec4(-1.0);
+}
+
+// The Burj Al Arab on its island: a straight mast on the land side, a
+// sail that bellies out toward the sea and meets the mast at the top, a
+// helipad near the crown. Its floodlights drift slowly through colours.
+vec4 dubaiSail(vec2 c, float mastX) {
+  const float HEIGHT = 0.2;
+  float y = (c.y + 0.5) * dubaiH;
+  float s = (y - DUBAI_WATER) / HEIGHT;
+  if (s < -0.06 || s > 1.16) {
+    return vec4(-1.0);
+  }
+  float x = dubaiX(c.x);
+  float hue = dubaiT * 0.05 + 0.3;
+  vec3 wash = mix(vec3(0.95, 0.94, 1.0), toSrgb(oklch(0.8, 0.09, hue)), 0.4);
+  // The island, a low strip at the waterline.
+  if (s < 0.0) {
+    vec2 isle = dubaiCols(mastX - 0.014, mastX + 0.08);
+    return c.x >= isle.x && c.x <= isle.y ? vec4(0.5, 0.48, 0.6, 0.36) : vec4(-1.0);
+  }
+  vec2 mast = dubaiCols(mastX - 0.004, mastX + 0.004);
+  bool onMast = c.x >= mast.x && c.x <= mast.y;
+  if (onMast) {
+    return vec4(0.96, 0.96, 1.0, s > 1.0 ? 0.7 : 0.9);
+  }
+  if (s > 1.0) {
+    return vec4(-1.0);
+  }
+  // Widest at the foot, sweeping up in one curve to the top of the mast.
+  float belly = 0.066 * pow(1.0 - s, 0.75) * (1.0 + 0.6 * s);
+  vec2 sail = dubaiCols(mastX, mastX + belly);
+  // The helipad juts out on the sea side just below the crown.
+  float padRow = dubaiTop(DUBAI_WATER + HEIGHT * 0.8);
+  vec2 pad = dubaiCols(mastX + belly, mastX + belly + 0.024);
+  if (c.y == padRow && c.x > sail.y && c.x <= pad.y) {
+    return vec4(0.96, 0.96, 1.0, 0.8);
+  }
+  if (c.x <= mast.y || c.x > sail.y) {
+    return vec4(-1.0);
+  }
+  // The outer edge is bright; ribs cross the fabric every other row.
+  if (c.x == sail.y) {
+    return vec4(mix(vec3(1.0), wash, 0.4), 0.88);
+  }
+  float rib = mod(c.y - dubaiShore, 2.0);
+  return rib > 0.5 ? vec4(wash, 0.6) : vec4(wash * 0.75, dubaiFill(0.42));
+}
+
+// A low strip of distant city along the far shore, with a promenade of
+// lamps along the water's edge.
+vec4 dubaiFar(vec2 c) {
+  float lr = c.y - dubaiShore;
+  if (lr == 0.0) {
+    return mod(c.x, 4.0) < 0.5 ? vec4(1.0, 0.78, 0.48, 0.62) : vec4(0.4, 0.4, 0.55, 0.22);
+  }
+  float block = floor(c.x / 5.0);
+  float tall = 1.0 + floor(hash21(vec2(block, 5.0)) * 3.0);
+  if (lr <= tall) {
+    float on = step(0.82, hash21(c + 9.0));
+    return on > 0.5 ? vec4(1.0, 0.82, 0.55, 0.6) : vec4(0.3, 0.32, 0.48, 0.2);
+  }
+  return vec4(-1.0);
 }
 
 // Everything above the waterline, front layer first.
-vec4 dubaiLand(vec2 q, vec2 ptr, float burjX, float sailX, float sunX, float t, float px) {
-  vec4 layer = dubaiSail(q + ptr * 0.8, sailX, t, px);
-  if (layer.a >= 0.0) return layer;
-  layer = dubaiTowers(q + ptr * 0.7, burjX, t, px, 0.0);
-  if (layer.a >= 0.0) return layer;
-  layer = dubaiBurj(q + ptr * 0.55, burjX, t, px);
-  if (layer.a >= 0.0) return layer;
-  layer = dubaiTowers(q + ptr * 0.4, burjX, t, px, 1.0);
-  if (layer.a >= 0.0) return layer;
-  layer = dubaiDunes(q + ptr * 0.25, t, px);
-  if (layer.a >= 0.0) return layer;
-  return dubaiSky(q + ptr * 0.08, sunX, t, px);
+vec4 dubaiLand(vec2 c, vec4 at) {
+  vec4 hit = dubaiSail(c, at.w);
+  if (hit.a >= 0.0) return hit;
+  hit = dubaiRow(c, at.x, at.z, 0.05, 0.06, 13.0, 0.45, 0.0);
+  if (hit.a >= 0.0) return hit;
+  hit = dubaiEmirates(c, at.y);
+  if (hit.a >= 0.0) return hit;
+  hit = dubaiMarina(c, at.z);
+  if (hit.a >= 0.0) return hit;
+  hit = dubaiRow(c, at.x, at.z, 0.07, 0.15, 29.0, 0.35, 1.0);
+  if (hit.a >= 0.0) return hit;
+  hit = dubaiBurj(c, at.x);
+  if (hit.a >= 0.0) return hit;
+  return dubaiFar(c);
 }
 
-// The fountain in the lake at the Burj's feet: a show every fourteen
-// seconds, jets swaying in arcs and pulsing in turn.
-vec4 dubaiFountain(vec2 q, float burjX, float t, float px) {
-  if (dubaiFountainOn < 0.5) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
-  }
-  float phase = mod(t + 3.0, 14.0);
-  float show = smoothstep(0.0, 1.2, phase) * smoothstep(7.5, 6.0, phase);
-  if (show <= 0.0) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
-  }
-  float y0 = DUBAI_SHORE - 0.03;
-  float rise = q.y - y0;
-  if (rise < 0.0 || rise > 0.24) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
-  }
-  float best = 0.0;
-  for (int i = 0; i < 7; i++) {
-    float fi = float(i);
-    float jx = burjX + (fi - 3.0) * max(0.034, 1.4 * px);
-    float pulse = 0.55 + 0.45 * sin(t * 2.2 - fi * 0.7);
-    float tall = (0.08 + 0.13 * pulse * (1.0 - abs(fi - 3.0) * 0.15)) * show;
-    if (rise > tall) {
-      continue;
+// A sparse field of stars, one candidate per lattice cell in box units,
+// so the count doesn't change with the charset.
+vec4 dubaiSky(vec2 c) {
+  vec2 q = vec2(dubaiX(c.x), (c.y + 0.5) * dubaiH);
+  const float LATTICE = 0.035;
+  vec2 g = floor(q / LATTICE);
+  float h = hash21(g + 3.3);
+  if (h > 0.9 && q.y > DUBAI_WATER + 0.22) {
+    vec2 star = (g + vec2(hash21(g + 7.1), hash21(g + 1.9))) * LATTICE;
+    if (abs(q.x - star.x) < dubaiW * 0.5 && abs(q.y - star.y) < dubaiH * 0.5) {
+      float twinkle = 0.5 + 0.5 * sin(dubaiT * (0.4 + h) + h * 40.0);
+      float bright = h > 0.985 ? 0.6 : 0.22;
+      return vec4(0.86, 0.9, 1.0, bright + 0.06 * twinkle);
     }
-    float lean = sin(t * 1.3 + fi * 0.9) * 0.25;
-    float u = rise / tall;
-    // The jet leans and curls over at the top, spraying wider as it falls.
-    float x = jx + lean * rise + lean * 0.4 * tall * u * u;
-    float width = max(0.0025, 0.35 * px) * (1.0 + 1.5 * u * u);
-    float d = abs(q.x - x);
-    float spray = hash21(floor(q * 400.0) + floor(t * 12.0)) > 0.5 + 0.4 * u ? 1.0 : 0.0;
-    float core = step(d, width) * mix(1.0, spray, smoothstep(0.55, 1.0, u));
-    best = max(best, core * (1.0 - 0.35 * u));
   }
-  if (best <= 0.0) {
-    return vec4(0.0, 0.0, 0.0, -1.0);
+  return vec4(0.6, 0.66, 0.86, 0.0);
+}
+
+// The water mirrors the land row for row, shifted a whole sample or two
+// per row as the surface moves, and broken into short dashes.
+vec4 dubaiWater(vec2 c, vec4 at, float aspect) {
+  float depth = dubaiShore - c.y;
+  float wave = floor(sin(c.y * 1.7 + dubaiT * 0.3) * 1.4 + 0.5);
+  vec2 m = vec2(c.x + wave, dubaiShore + depth - 1.0);
+  vec4 land = dubaiLand(m, at);
+  float dash = floor((c.x + wave * 2.0 + c.y * 3.0) / 4.0);
+  // Deeper rows keep fewer dashes rather than dimmer ones, so the
+  // reflection fades out without dropping under the dot threshold.
+  float fade = exp(-depth * dubaiH * 3.0);
+  float keep = step(0.25 + 0.6 * (1.0 - fade), hash21(vec2(dash, c.y) + floor(dubaiT * 0.15 + hash21(vec2(c.y, 2.0)) * 4.0)));
+  vec4 hit = vec4(0.4, 0.5, 0.78, 0.0);
+  if (land.a >= 0.0) {
+    // Where only bright dots show, only the lights reflect.
+    float mirror = mix(land.a * 0.6, step(0.6, land.a) * 0.6, dubaiSolid);
+    hit = vec4(land.rgb * 0.8, mirror * keep);
   }
-  vec3 col = mix(vec3(1.0, 0.92, 0.75), vec3(0.78, 0.9, 1.0), dubaiHour);
-  return vec4(col, best * 0.95);
+  // An abra crosses the creek every two minutes, one warm lamp aboard.
+  float span = 0.5 * aspect + 0.1;
+  float boatX = mix(-span, span, fract(dubaiT / 120.0 + 0.35));
+  float boatRow = dubaiShore - floor(0.06 / dubaiH);
+  vec2 hull = dubaiCols(boatX - 0.014, boatX + 0.014);
+  if (c.y == boatRow && c.x >= hull.x && c.x <= hull.y) {
+    hit = c.x == hull.y ? vec4(1.0, 0.82, 0.5, 0.86) : vec4(0.5, 0.48, 0.6, 0.4);
+  }
+  return hit;
 }
 
 vec2 dubaiCacheUv = vec2(-1.0);
@@ -411,74 +378,35 @@ vec4 dubaiScene(vec2 uv, vec2 res, float t) {
     return dubaiCacheValue;
   }
   float aspect = res.x / res.y;
-  float px = 1.0 / res.y;
-  vec2 q = vec2((uv.x - 0.5) * aspect, uv.y);
-  vec2 ptr = (u_pointer.xy - 0.5) * u_pointer.z * dubaiParallax * vec2(-0.05, -0.015);
-  // Landmarks sit at fractions of the half width, clamped so a phone
-  // still gets both Burjs in frame.
-  float span = clamp(0.5 * aspect, 0.24, 0.95);
-  float burjX = -0.2 * span;
-  float sailX = 0.66 * span - 0.02;
-  float sunX = -0.62 * span;
+  dubaiW = aspect / max(ascii_samples.x, 1.0);
+  dubaiH = 1.0 / max(ascii_samples.y, 1.0);
+  dubaiHalf = 0.5 * ascii_samples.x;
+  dubaiT = t;
+  dubaiShore = floor(DUBAI_WATER / dubaiH + 0.5);
+  vec2 c = floor(uv * ascii_samples);
+  // The Burj Khalifa holds the centre; the rest spread along the shore
+  // and close in on narrow screens.
+  float span = clamp(0.5 * aspect, 0.42, 1.1);
+  vec4 at = vec4(0.0, -0.66 * span, 0.56 * span, min(0.86 * span - 0.03, 0.5 * aspect - 0.1));
 
-  // Heat shimmer bends the lowest air sideways, most in the evening heat.
-  float heat = dubaiSand * (1.0 - 0.7 * dubaiHour)
-    * smoothstep(DUBAI_SHORE - 0.01, DUBAI_SHORE + 0.02, q.y)
-    * smoothstep(DUBAI_SHORE + 0.16, DUBAI_SHORE + 0.03, q.y);
-  vec2 hq = q + vec2(heat * 0.0055 * sin(q.y * 190.0 + t * 5.0 + 3.0 * snoise(vec2(q.x * 7.0, t * 0.4))), 0.0);
-
-  vec4 scene;
-  if (q.y >= DUBAI_SHORE) {
-    scene = dubaiLand(hq, ptr, burjX, sailX, sunX, t, px);
+  vec4 hit;
+  if (c.y >= dubaiShore) {
+    hit = dubaiLand(c, at);
+    if (hit.a < 0.0) {
+      hit = dubaiSky(c);
+    }
   } else {
-    // The lake mirrors the city, broken into ripples.
-    float depth = DUBAI_SHORE - q.y;
-    float wobble = 0.004 * sin(q.y * 240.0 + t * 1.6) * (1.0 + depth * 18.0);
-    vec2 mq = vec2(q.x + wobble, DUBAI_SHORE + depth * 1.3);
-    vec4 above = dubaiLand(mq, ptr, burjX, sailX, sunX, t, px);
-    float ripple = snoise(vec2(q.x * 14.0, q.y * 190.0 - t * 0.7));
-    float keep = smoothstep(-0.35, 0.25, ripple);
-    vec3 water = mix(vec3(0.16, 0.2, 0.36), vec3(0.04, 0.06, 0.16), dubaiHour);
-    float tone = above.a * 0.52 * keep * (1.0 - depth * 2.5);
-    vec3 col = mix(water, above.rgb, 0.75);
-    // Sun glitter on the water.
-    float path = exp(-abs(q.x - sunX) * 9.0) * (1.0 - dubaiHour);
-    float glitter = step(0.93 - 0.2 * path, hash21(floor(vec2(q.x * 150.0, q.y * 260.0)) + floor(t * 3.0) * 0.71));
-    if (glitter > 0.5 && path > 0.05) {
-      tone = max(tone, 0.5 * path + 0.2);
-      col = vec3(1.0, 0.78, 0.42);
-    }
-    // The waterline.
-    if (depth < 1.1 * px) {
-      tone = max(tone, 0.34);
-      col = mix(col, vec3(1.0, 0.72, 0.4), 0.6 * (1.0 - dubaiHour));
-    }
-    scene = vec4(col, tone);
+    hit = dubaiWater(c, at, aspect);
   }
 
-  vec4 jet = dubaiFountain(q + ptr * 0.75, burjX, t, px);
-  if (jet.a > 0.0) {
-    scene = vec4(mix(scene.rgb, jet.rgb, jet.a), max(scene.a, jet.a));
-  }
-
-  // Grains of sand carried on the wind over the low city.
-  if (dubaiSand > 0.0 && q.y > DUBAI_SHORE && q.y < DUBAI_SHORE + 0.22) {
-    vec2 g = floor(vec2((q.x - t * 0.11) * 120.0, q.y * 150.0 + sin(q.x * 9.0 + t) * 2.0));
-    float grain = hash21(g + 31.0);
-    if (grain > 1.0 - 0.006 * dubaiSand) {
-      scene = vec4(mix(vec3(1.0, 0.76, 0.45), vec3(0.6, 0.55, 0.7), dubaiHour), max(scene.a, 0.42));
-    }
-  }
-
-  float tone = clamp(scene.a, 0.0, 1.0) * dubaiIntensity;
-  // Near-empty tones go to paper so the open sky stays clean.
-  tone = tone < 0.05 ? 0.0 : tone;
-  vec3 col = max(scene.rgb, vec3(0.0));
-  float peak = max(max(col.r, col.g), col.b);
-  vec3 ink = col / max(peak, 1e-4) * (0.5 + 0.5 * smoothstep(0.0, 0.85, peak));
+  float tone = clamp(hit.a, 0.0, 1.0);
+  // Near-empty tones go to paper so the open sky stays clean. Braille and
+  // quadrants draw a dot or nothing, so there intensity dims colour only;
+  // scaling tone would drop whole facades under the dot threshold.
+  tone = tone < 0.05 ? 0.0 : tone * mix(sqrt(dubaiIntensity), 1.0, dubaiSolid);
   dubaiCacheUv = uv;
   dubaiCacheT = t;
-  dubaiCacheValue = vec4(ink, tone);
+  dubaiCacheValue = vec4(hit.rgb * dubaiIntensity, tone);
   return dubaiCacheValue;
 }
 `;
@@ -495,10 +423,10 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 }
 `;
 
-// Modes that paint the scene's own colours need its dusk behind them in
+// Modes that paint the scene's own colours need its night behind them in
 // both themes; mono and palette keep the theme's paper, or the phosphor's.
-const DUSK = "#070915";
-const DUSK_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
+const NIGHT = "#04060f";
+const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
   "duotone",
@@ -509,7 +437,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "radial-gradient(ellipse at 20% 78%, #ffb35c55 0, transparent 40%), linear-gradient(to bottom, #0b1030 0%, #3a2350 45%, #d9783a 80%, #1a1426 85%, #070915 100%)",
+        "linear-gradient(to bottom, #04060f 0%, #070b1c 78%, #0b1228 80%, #04060f 100%)",
     }}
   />
 );
@@ -517,69 +445,60 @@ const FALLBACK = (
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 export interface DubaiProps extends AsciiSceneProps {
-  /** Time of day, from 0 (golden hour, sun over the dunes) to 1 (night, only the beacon and windows lit). Default 0.45. */
-  hour?: number;
-  /** Wind-blown sand off the dunes and heat shimmer near the ground, from 0 to 1. Default 1. */
-  sand?: number;
-  /** Fountain shows in the lake at the foot of the Burj Khalifa, every 14 seconds. Default `true`. */
-  fountain?: boolean;
   /** Dims the whole scene so text on top stays readable, from 0 to 1. Default 1. */
   intensity?: number;
-  /** An engine pointer effect on top of the parallax. Default `"none"`. */
-  interaction?: Interaction;
   /**
-   * Paper behind the glyphs. Default: the scene's dusk colour in
+   * Paper behind the glyphs. Default: the scene's night colour in
    * `truecolor`, `ansi16` and `duotone`; the theme's paper, or the
    * phosphor's, otherwise.
    */
   paper?: AsciiColor;
-  /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
+  /** Shown without WebGL and until the first frame. Default: a night gradient. */
   fallback?: ReactNode;
 }
 
 /**
- * Dubai from the lake at golden hour. The Burj Khalifa towers over a
- * cluster of glass towers, its upper floors still in the sun; the Burj Al
- * Arab stands on the shore, dunes roll behind with sand blowing off their
- * crests, and the fountain shoots arcs now and then. The pointer moves the
- * layers apart. Decorative and full-bleed: size it with `className`,
- * usually `absolute inset-0`.
+ * Dubai at night from the water. The Burj Khalifa holds the centre, its
+ * setbacks stepping up in turn to a long spire with a slow red beacon;
+ * the Emirates Towers, the Marina and the sail of the Burj Al Arab stand
+ * lower along the shore, and the water carries broken reflections. Only
+ * the lights move: a window now and then, the beacon, the stars, the
+ * water and one boat. Decorative and full-bleed: size it with
+ * `className`, usually `absolute inset-0`.
  */
 export const Dubai = ({
-  charset = "standard",
+  charset = "quadrants",
+  chars,
   colorMode,
   phosphor,
   paper,
-  cell = 12,
+  cell = 9,
   stillTime = 2,
-  interactive = true,
-  interaction = "none",
-  hour = 0.45,
-  sand = 1,
-  fountain = true,
   intensity = 1,
   fallback = FALLBACK,
+  // Accepted so galleries can pass it to every scene; this one has no
+  // pointer response, so the prop does nothing.
+  interactive: _interactive,
   ...props
 }: DubaiProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
+  const { kind, grid } = resolveCharset(charset, chars);
   return (
     <AsciiShader
       field={FIELD}
       colorField={COLOR_FIELD}
       uniforms={{
-        dubaiFountainOn: fountain ? 1 : 0,
-        dubaiHour: clamp01(hour),
+        dubaiGrid: [grid[0], grid[1]],
         dubaiIntensity: clamp01(intensity),
-        dubaiParallax: interactive ? 1 : 0,
-        dubaiSand: clamp01(sand),
+        dubaiSolid: kind === "braille" || kind === "quadrants" ? 1 : 0,
       }}
       charset={charset}
+      chars={chars}
       colorMode={mode}
       phosphor={phosphor}
-      paper={paper ?? (DUSK_MODES.has(mode) ? DUSK : undefined)}
+      paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
       cell={cell}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
       fallback={fallback}
       {...props}
     />

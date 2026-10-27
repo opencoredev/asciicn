@@ -11,9 +11,6 @@ export default function DubaiDemo() {
       charset={usePreviewValue(knobs.charset)}
       colorMode={usePreviewValue(knobs.colorMode)}
       phosphor={phosphor === "none" ? undefined : phosphor}
-      hour={usePreviewValue(knobs.hour)}
-      sand={usePreviewValue(knobs.sand)}
-      fountain={usePreviewValue(knobs.fountain)}
       intensity={usePreviewValue(knobs.intensity)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
