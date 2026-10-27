@@ -7,10 +7,10 @@ const SCENES: readonly {
   color: AsciiColorName;
   title: string;
 }[] = [
-  { color: "ink", illustration: "box", title: "No orders yet" },
+  { color: "blue", illustration: "inbox", title: "No messages" },
   { color: "grey", illustration: "search", title: "No matches" },
   { color: "orange", illustration: "folder", title: "This folder is empty" },
-  { color: "purple", illustration: "planet", title: "Nothing in orbit" },
+  { color: "red", illustration: "cable", title: "Connection lost" },
 ];
 
 export default function EmptyStateIllustrations() {
@@ -23,7 +23,8 @@ export default function EmptyStateIllustrations() {
           color={color}
           title={title}
           titleAs="h4"
-          className="bg-background ring-border rounded-xl px-4 py-6 ring-1"
+          cell={12}
+          className="bg-background rounded-lg border px-4 py-6"
         />
       ))}
     </div>

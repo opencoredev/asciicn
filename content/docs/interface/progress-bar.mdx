@@ -1,6 +1,6 @@
 ---
 title: "Progress bar"
-description: "A progress bar built from dither cells: any fill texture with a solid leading edge, stacked parts, step segments and an indeterminate comet."
+description: "A progress bar drawn in eighth-block glyphs, exact to an eighth of a cell, with stacked parts, step segments and an indeterminate comet."
 ---
 
 import ProgressBarDemo from "@/examples/progress-bar-demo";
@@ -30,9 +30,11 @@ export function Upload({ percent }: { percent: number }) {
 }
 ```
 
-`value` runs from 0 to `max`, which is 100 unless you set it. The fill sits on a faint track in the same colour. With `fill="gradient"` it is solid at the leading edge and thins out behind it; `dotted`, `hatched` and `solid` fill evenly. Every texture ends in a solid one-cell cap, so the exact value is always readable. The fill grows in on mount and eases between values.
+`value` runs from 0 to `max`, which is 100 unless you set it. The fill is a row of full blocks that ends in one of the eighth blocks `▏▎▍▌▋▊▉`, so 37.5% of a 32-cell bar is exactly 12 cells: `████████████`. The bar is as many whole cells as fit its container, measured in the glyph font, and it measures again when the container or the zoom changes.
 
-Leave `value` out when you can't measure progress. The bar becomes indeterminate: a comet with a dense head and a dithered tail sweeps across the track.
+Behind the fill runs a track of `░` (`track="shade"`), `·`, `─` or nothing. A new value slides in eighth by eighth over 600ms.
+
+Leave `value` out when you can't measure progress. A comet of `░▒▓█` sweeps the track instead:
 
 ```tsx
 <ProgressBar label="Indexing repository" />
@@ -42,7 +44,7 @@ Leave `value` out when you can't measure progress. The bar becomes indeterminate
 
 ### Usage card
 
-`parts` stacks several values in one bar, each in its own colour, with a legend underneath. Here storage is split by file type. Build minutes are close to the limit, so that bar uses `color="red"`, `fill="hatched"` and a low bloom.
+`parts` stacks several values in one bar, each in its own colour, with a legend of `█` swatches underneath. Boundaries between parts snap to whole cells, because a cell holds one glyph in one colour. The leading edge of the total keeps its eighth-cell precision.
 
 <ComponentPreview src="examples/progress-bar-usage.tsx">
   <ProgressBarUsage />
@@ -50,7 +52,7 @@ Leave `value` out when you can't measure progress. The bar becomes indeterminate
 
 ### Upload list
 
-Three states at `size="lg"`: a finished file in solid green, one in progress, and an indeterminate step while the server transcodes.
+Three states at `size="lg"`: a finished file in green, one at 46.25%, and an indeterminate step on a `─` track while the server transcodes.
 
 <ComponentPreview src="examples/progress-bar-uploads.tsx">
   <ProgressBarUploads />
@@ -58,7 +60,7 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
 
 ### Onboarding steps
 
-`segments` cuts the bar into blocks a cell apart. With one block per task, three of five tasks fill three blocks.
+`segments` cuts the bar into blocks with a blank cell between them. The value fills the blocks in order, so three of five tasks fill three blocks.
 
 <ComponentPreview src="examples/progress-bar-steps.tsx">
   <ProgressBarSteps />
@@ -85,7 +87,7 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
       name: "parts",
       type: "ProgressPart[]",
       description:
-        "{ label: string; value: number; color?: AsciiColor; fill?: FillVariant }, stacked left to right instead of value.",
+        "{ label: string; value: number; color?: AsciiColor }, stacked left to right instead of value.",
     },
     {
       name: "unit",
@@ -116,27 +118,19 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
       name: "size",
       type: '"sm" | "md" | "lg"',
       default: '"md"',
-      description: "Bar height: 2, 4 or 6 cells.",
+      description: "Glyph cell height: 12, 16 or 20px.",
     },
     {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the fill. Gradient is densest at the leading edge.",
+      name: "track",
+      type: '"shade" | "dots" | "line" | "none"',
+      default: '"shade"',
+      description: "Glyph along the empty track: ░, ·, ─ or nothing.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description:
-        "Colour of the fill and its track, a palette name or any CSS colour.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow in the fill's colour.",
+      description: "Colour of the fill, a palette name or any CSS colour.",
     },
     {
       name: "segments",
@@ -145,22 +139,29 @@ Three states at `size="lg"`: a finished file in solid green, one in progress, an
         "Cut the bar into this many blocks a cell apart, for step meters.",
     },
     {
+      name: "columns",
+      type: "number",
+      default: "As many as fit",
+      description:
+        "Fix the bar's width in cells instead of filling the container.",
+    },
+    {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Grow in on mount and ease between values.",
+      description: "Ease between values and grow in on mount.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
     },
   ]}
 />
 
 ## Notes
 
-- The root has `role="progressbar"`, is named by the label and reports the value (or `valueText`). An indeterminate bar leaves out the value, as assistive technology expects.
-- Width changes ease over 600ms; the comet moves only by transform. With reduced motion the fill jumps to its value and the comet rests in the middle of the track.
-- It is plain HTML with CSS masks: no SVG, canvas or animation loop.
+- The root has `role="progressbar"`, is named by the label and reports `aria-valuenow` and `aria-valuetext`. An indeterminate bar leaves the value out, as assistive technology expects. The glyphs are hidden from screen readers.
+- The bar is DOM text in `--ascii-font`, one line tall, so it stays sharp at any zoom and its height never changes. Before the first measurement it draws 32 cells.
+- With reduced motion, values jump instead of easing and the comet rests in the middle of the track.
+- The comet redraws at 30fps and pauses when the bar is offscreen or the tab is hidden.

@@ -8,7 +8,7 @@ const STORAGE = [
 
 export default function ProgressBarUsage() {
   return (
-    <div className="bg-background border-border flex w-full max-w-md flex-col gap-6 rounded-2xl border p-5 [--ascii-paper:var(--background)] sm:p-6">
+    <div className="bg-background border-border flex w-full max-w-md flex-col gap-6 rounded-lg border p-5 sm:p-6">
       <div className="flex flex-col gap-1">
         <span className="font-medium">Usage this cycle</span>
         <span className="text-muted-foreground text-sm">
@@ -21,7 +21,6 @@ export default function ProgressBarUsage() {
         max={10}
         unit=" GB"
         valueText="7.2 of 10 GB"
-        fill="solid"
       />
       <ProgressBar
         label="Bandwidth"
@@ -29,6 +28,7 @@ export default function ProgressBarUsage() {
         max={1000}
         valueText="312 of 1,000 GB"
         size="sm"
+        track="dots"
       />
       <ProgressBar
         label="Build minutes"
@@ -36,9 +36,8 @@ export default function ProgressBarUsage() {
         max={6000}
         valueText="5,770 of 6,000 min"
         size="sm"
+        track="dots"
         color="red"
-        fill="hatched"
-        bloom="low"
       />
     </div>
   );

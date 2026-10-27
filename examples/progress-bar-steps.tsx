@@ -12,7 +12,7 @@ const done = TASKS.filter((task) => task.done).length;
 
 export default function ProgressBarSteps() {
   return (
-    <div className="bg-background border-border flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-5 [--ascii-paper:var(--background)]">
+    <div className="bg-background border-border flex w-full max-w-sm flex-col gap-5 rounded-lg border p-5">
       <ProgressBar
         label="Getting started"
         value={done}
@@ -20,7 +20,6 @@ export default function ProgressBarSteps() {
         valueText={`${done} of ${TASKS.length}`}
         segments={TASKS.length}
         color="orange"
-        fill="dotted"
         size="lg"
       />
       <ul className="flex flex-col gap-2 text-sm">
@@ -30,10 +29,12 @@ export default function ProgressBarSteps() {
               aria-hidden="true"
               className={
                 task.done
-                  ? "bg-dither-orange size-2 rounded-[2px]"
-                  : "border-border size-2 rounded-[2px] border"
+                  ? "text-ascii-orange font-mono"
+                  : "text-muted-foreground font-mono"
               }
-            />
+            >
+              {task.done ? "■" : "□"}
+            </span>
             <span
               className={
                 task.done

@@ -7,23 +7,25 @@ import * as knobs from "@/examples/logo-marquee-controls";
 
 export default function LogoMarqueeDemo() {
   const speed = usePreviewValue(knobs.speed);
-  const fade = usePreviewValue(knobs.fade);
+  const charset = usePreviewValue(knobs.charset);
+  const rows = usePreviewValue(knobs.rows);
   const direction = usePreviewValue(knobs.direction);
-  const effect = usePreviewValue(knobs.effect);
+  const fade = usePreviewValue(knobs.fade);
   const color = usePreviewValue(knobs.ink);
 
   return (
-    <div className="flex w-full flex-col items-center gap-8">
-      <p className="text-muted-foreground text-sm">
+    <div className="flex w-full flex-col items-center gap-6">
+      <p className="text-muted-foreground font-mono text-xs">
         Teams that ship with asciicn
       </p>
       <LogoMarquee
         logos={LOGOS}
         label="Customers"
         speed={speed}
-        fade={fade}
+        charset={charset}
+        rows={rows}
         direction={direction}
-        effect={effect}
+        fade={fade}
         color={color}
       />
     </div>

@@ -3,22 +3,15 @@ import { LOGOS } from "@/examples/ascii-logo-data";
 
 export default function LogoMarqueeRows() {
   return (
-    <div className="flex w-full flex-col gap-4">
-      <LogoMarquee
-        logos={LOGOS}
-        label="Customers"
-        speed={24}
-        fade="dither"
-        fill="solid"
-      />
+    <div className="flex w-full flex-col gap-6">
+      <LogoMarquee logos={LOGOS} label="Customers" speed={10} color="ink" />
       <LogoMarquee
         logos={LOGOS.toReversed()}
         label="Partners"
-        speed={24}
+        speed={10}
         direction="right"
-        fade="dither"
-        fill="hatched"
-        color="grey"
+        charset="braille"
+        rows={8}
       />
     </div>
   );

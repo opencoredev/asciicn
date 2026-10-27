@@ -1,6 +1,6 @@
 ---
 title: "Loader"
-description: "A small dithered loading indicator: a ring with a comet tail, three dots that dissolve in turn, a pulse, or a sweeping bar."
+description: "A loading indicator drawn in glyphs: a spinner from six glyph sequences, walking dots, an eighth-block wave or a Braille comet."
 ---
 
 import LoaderDemo from "@/examples/loader-demo";
@@ -30,28 +30,29 @@ export function Saving() {
 }
 ```
 
-Each variant is a tone field on a small grid of cells. Every frame, the loader thresholds the field with the Bayer matrix and paints the inked cells into a canvas at one pixel per cell. Shape edges are hard, so the ring and the dots keep clean outlines; only the tone inside them changes, so the motion happens in the dither. Cells are 2 pixels by default, big enough that you see the Bayer steps.
+The default is a one-cell spinner that cycles the `orbit` sequence, `⣾⣽⣻⢿⡿⣟⣯⣷`. Pick another with `spinner`: `braille` (`⠋⠙⠹⠸`), `arc` (`◜◠◝◞`), `tick` (`-\|/`), `bar` (`▁▂▃▄▅▆▇█`) or `quadrant` (`▖▘▝▗`). Other variants are wider:
 
-- `ring`: a thick ring with a comet on a faint track. The head is solid and the tail steps down through the dither levels behind it. The tail stretches and shrinks as it goes round, so the ring breathes instead of spinning at one pace.
-- `pulse`: a dot that beats while three rings ripple out from it and thin out as they grow. Good for "waiting for something to arrive".
-- `dots`: three discs that build up from sparse dither to solid and dissolve again, one after another. Twice as wide as it is tall.
-- `bar`: a dense head easing across a faint track, its tail thinning behind it. Three times as wide as it is tall.
+- `dots`: a bright `●` steps along three dots, leaving a half-lit `•` behind it.
+- `wave`: six eighth blocks ride one sine wave, each a step behind its neighbour.
+- `comet`: a Braille comet with a full head and a tail of single dots crosses six cells.
+
+Inside a button, pass `color="currentColor"` so the glyphs follow the button's text.
 
 ## Examples
 
-### Variants and sizes
+### Every sequence
 
-`sm`, `md` and `lg` are 24, 40 and 64 pixels tall. Cells default to 1 pixel at `sm` and 2 pixels above it, so larger loaders show more cells and smoother falloff.
+All six spinners and the three wider variants at `size="lg"`.
 
-<ComponentPreview src="examples/loader-variants.tsx" size="md">
+<ComponentPreview src="examples/loader-variants.tsx">
   <LoaderVariants />
 </ComponentPreview>
 
 ### In context
 
-A ring next to a deploy, a bar under an upload, and a pulse in an empty event feed that is waiting for its first event. Give each one a `label` that says what is loading.
+A deploy row with a spinner, a log stream with a small wave and its label shown, and an empty event feed with a comet and a disabled button that holds a spinner.
 
-<ComponentPreview src="examples/loader-in-context.tsx" size="lg">
+<ComponentPreview src="examples/loader-in-context.tsx">
   <LoaderInContext />
 </ComponentPreview>
 
@@ -60,60 +61,59 @@ A ring next to a deploy, a bar under an upload, and a pulse in an empty event fe
 <PropsTable
   rows={[
     {
+      name: "label",
+      type: "string",
+      default: '"Loading"',
+      description: "What is loading. Screen readers announce it politely.",
+    },
+    {
+      name: "showLabel",
+      type: "boolean",
+      default: "false",
+      description: "Show the label as text next to the glyphs.",
+    },
+    {
       name: "variant",
-      type: '"ring" | "dots" | "pulse" | "bar"',
-      default: '"ring"',
-      description: "Which animation to draw.",
+      type: '"spinner" | "dots" | "wave" | "comet"',
+      default: '"spinner"',
+      description: "The animation.",
+    },
+    {
+      name: "spinner",
+      type: '"orbit" | "braille" | "arc" | "tick" | "bar" | "quadrant"',
+      default: '"orbit"',
+      description: "For the spinner variant: which glyph sequence to cycle.",
     },
     {
       name: "size",
       type: '"sm" | "md" | "lg"',
       default: '"md"',
-      description: "Height of 24, 40 or 64 pixels.",
-    },
-    {
-      name: "label",
-      type: "string",
-      default: '"Loading"',
-      description: "What screen readers announce.",
+      description: "Glyph cell height: 12, 16 or 24px.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
       description:
-        'A palette name such as "green", a CSS variable name, or any CSS colour.',
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "A soft glow in the loader's colour.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "2 (1 at sm)",
-      description: "Size of one dither cell in CSS pixels.",
+        'Glyph colour, a palette name or any CSS colour such as "currentColor".',
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "Speed multiplier.",
+      description: "Playback speed multiplier. 0 holds a still frame.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      description: "Glyph cell height in CSS pixels. Overrides size.",
     },
   ]}
 />
 
 ## Notes
 
-- The root has `role="status"` and a visually hidden `label`, so screen readers announce it politely when it appears. The canvas is hidden from them.
-- With reduced motion turned on, each variant draws one still frame that still reads as a loader.
-- It pauses when scrolled out of view or when the tab is hidden. A loader is at most about a thousand cells, so a frame is cheap, and it uses a 2D canvas rather than WebGL, so loaders never count against the page's WebGL budget.
-- Cells snap to whole device pixels, so a loader stays crisp at any zoom level.
+- The root is a polite live region (`role="status"`), so a screen reader reads `label` once when the loader appears. The glyphs are `aria-hidden`.
+- The width is fixed in cells (1 for a spinner, 3 for dots, 6 for the wave and comet), so text next to it never shifts as frames change.
+- Frames are written straight into the text node, only when the glyphs change, with no React render per frame. The loop pauses offscreen and in hidden tabs.
+- With reduced motion the loader holds one frame chosen to read as busy on its own: a full orbit glyph, the middle dot lit, a wave crest, the comet mid-flight.

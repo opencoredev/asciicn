@@ -1,19 +1,15 @@
 ---
 title: "Avatar"
-description: "A generative avatar: a mirrored dither face drawn from a name, with a group that overlaps and counts the rest."
+description: "An avatar drawn in glyphs: initials set over a lit disc of Braille dots, or a photo sampled into a glyph portrait, with a status glyph and overlapping groups."
 ---
 
 import AvatarDemo from "@/examples/avatar-demo";
 import { controls as avatarControls } from "@/examples/avatar-controls";
 import AvatarGroupExample from "@/examples/avatar-group";
 import AvatarMembers from "@/examples/avatar-members";
-import AvatarFills from "@/examples/avatar-fills";
+import AvatarPortraits from "@/examples/avatar-portraits";
 
-<ComponentPreview
-  src="examples/avatar-demo.tsx"
-  size="md"
-  controls={avatarControls}
->
+<ComponentPreview src="examples/avatar-demo.tsx" controls={avatarControls}>
   <AvatarDemo />
 </ComponentPreview>
 
@@ -27,12 +23,16 @@ import AvatarFills from "@/examples/avatar-fills";
 import { Avatar, AvatarGroup } from "@/components/asciicn/avatar";
 
 export function Owner() {
-  return <Avatar name="ada@acme.dev" label="Ada Lovelace" status="online" />;
+  return <Avatar name="Ada Lovelace" status="online" />;
+}
+
+export function Photo() {
+  return <Avatar name="Buzz Aldrin" src="/team/buzz.jpg" size="lg" />;
 }
 
 export function Viewers({ names }: { names: string[] }) {
   return (
-    <AvatarGroup max={4}>
+    <AvatarGroup max={4} aria-label={`${names.length} viewers`}>
       {names.map((name) => (
         <Avatar key={name} name={name} />
       ))}
@@ -41,34 +41,36 @@ export function Viewers({ names }: { names: string[] }) {
 }
 ```
 
-`name` seeds a small random generator that fills half of a 5 by 5 grid of blocks, and the other half mirrors it. A block is more likely to be on near the centre, so every face is a compact mark rather than noise, and the middle column always has at least two blocks. Each block is full or half tone, and the fill decides how half tone is drawn. Behind the face sits a disc of sparse dither in the same colour, densest at the top left as if lit, and kept one cell clear of the face so the mark stays crisp. The same string always gives the same face and colour, on the server and in the browser, so you can use an email or a user id and get a stable avatar for free.
+Without `src`, the avatar takes up to two initials from `name` ("Ada Lovelace" is AL, "deploy-bot" DB, "grace@navy.mil" G) and sets them in quadrant blocks (`▘▝▖▗▀▄▌▐█`), a pixel face whose solid 2×2 sub-cells stay legible even at 32px. They sit over a disc drawn in `charset`, Braille by default, whose mid tones are spread by ordered dithering. The disc is lit from the upper left, so it reads as a sphere, and it is tinted with a palette colour picked from `name`, so the same person always gets the same colour. A ring of blank samples around the letters keeps them clear of the disc.
 
-Without `color`, the avatar picks one of six palette hues from the string. Pass a palette name or any CSS colour to set it yourself.
+With `src`, the photo is cover-fitted, area-averaged into the glyph grid, stretched to its full tonal range and drawn in any charset. In a light theme the tones flip, so dark parts of the photo get the dense glyphs. `colorMode="truecolor"` keeps the photo's colour per glyph.
+
+The grid is always twice as many columns as rows, which makes it square. `sm` is 4 rows at 32px, `md` 6 rows at 48px, `lg` 8 rows at 72px and `xl` 12 rows at 112px. Pass a number for any size in pixels.
 
 ## Examples
 
+### Photo portraits
+
+The same photo at 160px in Braille, Dense 70, ANSI blocks, and Dense 70 in truecolor.
+
+<ComponentPreview src="examples/avatar-portraits.tsx">
+  <AvatarPortraits />
+</ComponentPreview>
+
 ### Group with a count
 
-`AvatarGroup` overlaps its avatars, cuts a gap around each in the surface colour, and replaces the rest with a "+N" chip. Set `outline` to the colour behind the group so the gaps disappear into it.
+`AvatarGroup` overlaps each avatar by a quarter of its width, with a ring in `outline` between them. Past `max`, the rest collapse into a grey `+n` disc.
 
-<ComponentPreview src="examples/avatar-group.tsx" size="md">
+<ComponentPreview src="examples/avatar-group.tsx">
   <AvatarGroupExample />
 </ComponentPreview>
 
 ### Members with presence
 
-A member list seeded by email, labelled by name. `status` adds a dot and appends the state to the accessible name, as in "Alan Turing, busy". The owner gets a `ring`; the bot gets a grey hatched face.
+`status` sets a glyph in the corner. Each status has its own shape as well as its own colour: `●` online, `◐` away, `■` busy, `○` offline. The bot uses `shape="square"` and a grey tint.
 
-<ComponentPreview src="examples/avatar-members.tsx" size="md">
+<ComponentPreview src="examples/avatar-members.tsx">
   <AvatarMembers />
-</ComponentPreview>
-
-### Fills
-
-The same six names in every fill. Gradient draws half tone as a Bayer checker; dotted and hatched texture it instead; solid uses a lighter opacity. Full blocks are solid in every fill.
-
-<ComponentPreview src="examples/avatar-fills.tsx" size="md">
-  <AvatarFills />
 </ComponentPreview>
 
 ## Props
@@ -82,56 +84,59 @@ The same six names in every fill. Gradient draws half tone as a Bayer checker; d
       type: "string",
       required: true,
       description:
-        "The string the face and colour come from, such as a name, email or id. Also the accessible name.",
+        "Who it is. Gives the initials, the default tint and the accessible name.",
     },
     {
       name: "label",
       type: "string",
-      description:
-        "Accessible name to use instead of name, when name is an id.",
+      default: "name",
+      description: "Accessible name, when it should differ from name.",
+    },
+    {
+      name: "src",
+      type: "string",
+      description: "A photo to draw as a glyph portrait instead of initials.",
     },
     {
       name: "size",
-      type: "number",
-      default: "40",
-      description: "Diameter in pixels. Inside a group, the group's size.",
+      type: '"sm" | "md" | "lg" | "xl" | number',
+      default: '"md"',
+      description: "32, 48, 72 or 112px, or any size in pixels.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Glyphs to draw with.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description: "A custom ramp from empty to dense. Wins over charset.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor"',
+      default: '"mono"',
+      description: "With src: truecolor keeps the photo's colour per glyph.",
     },
     {
       name: "color",
       type: "AsciiColor",
+      default: "Picked from name",
       description:
-        "A palette name or any CSS colour. Without it, one of six hues picked from name.",
-    },
-    {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description: "How each block's tone is drawn.",
+        "Tint of the disc or photo, a palette name or any CSS colour.",
     },
     {
       name: "shape",
       type: '"circle" | "square"',
       default: '"circle"',
-      description: "A circle or a rounded square.",
-    },
-    {
-      name: "ring",
-      type: "boolean",
-      default: "false",
-      description:
-        "A ring in the avatar's colour, for the current user or a selection.",
+      description: "A disc, or a square that fills the whole grid.",
     },
     {
       name: "status",
       type: '"online" | "away" | "busy" | "offline"',
-      description:
-        "A presence dot in the corner, added to the accessible name.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "A soft glow in the avatar's colour.",
+      description: "A status glyph in the corner.",
     },
   ]}
 />
@@ -141,36 +146,35 @@ The same six names in every fill. Gradient draws half tone as a Bayer checker; d
 <PropsTable
   rows={[
     {
+      name: "children",
+      type: "ReactNode",
+      required: true,
+      description: "The avatars, in order.",
+    },
+    {
       name: "max",
       type: "number",
-      description: "Show at most this many avatars, then a +N chip.",
+      default: "All",
+      description: "Show at most this many, then a +n count.",
     },
     {
       name: "size",
-      type: "number",
-      default: "32",
-      description: "Diameter of every avatar in pixels.",
+      type: '"sm" | "md" | "lg" | "xl" | number',
+      default: '"md"',
+      description: "Size of every avatar in the group.",
     },
     {
       name: "outline",
       type: "string",
-      default: '"var(--background)"',
-      description:
-        "Colour of the gap around each avatar. Match the surface behind the group.",
-    },
-    {
-      name: "moreLabel",
-      type: "(count: number) => string",
-      default: '"N more"',
-      description: "What the +N chip announces to screen readers.",
+      default: '"var(--ascii-paper)"',
+      description: "Colour of the ring between overlapping avatars.",
     },
   ]}
 />
 
-`avatarFace(name)` and `avatarColor(name)` are exported too, if you want the same face elsewhere, such as an Open Graph image.
-
 ## Notes
 
-- The avatar is a `role="img"` element named by `label` or `name`, plus the status when there is one. The group is a `role="group"`; give it an `aria-label` such as "Viewers" when the context does not say.
-- The face is one or a few SVG paths, cached per name and fill. No canvas, no client JavaScript.
-- Avatars in a group lift by 2 pixels on hover on devices that can hover. With reduced motion they stay put.
+- Each avatar is `role="img"` named by `label` or `name`, plus its status ("Ada Lovelace, online"). The glyphs are hidden from screen readers. Give the group an `aria-label` such as "9 viewers"; the count reads "and 5 more".
+- The disc is computed without a canvas, so it renders on the server with the initials as plain text over it. After mount, the initials are redrawn in glyphs; the box keeps its size, so nothing shifts.
+- Photos load with `crossOrigin="anonymous"`, so images from another origin need CORS headers to be sampled. Until a photo loads, the avatar shows the initials disc.
+- Every avatar is a few hundred glyphs of DOM text. The grid is sampled once per change of name, photo, charset or theme, never per frame.

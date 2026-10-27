@@ -1,6 +1,6 @@
 ---
 title: "Stat card"
-description: "A KPI card with a headline number, a coloured delta and a dithered trend along the bottom."
+description: "A KPI card in a box-drawing frame with a big number, a coloured ▲ or ▼ delta and an eighth-block sparkline."
 ---
 
 import StatCardDemo from "@/examples/stat-card-demo";
@@ -24,35 +24,37 @@ import { StatCard } from "@/components/asciicn/stat-card";
 export function Revenue() {
   return (
     <StatCard
-      label="Monthly recurring revenue"
+      label="Monthly revenue"
       value="$48,210"
       delta={12.4}
       deltaLabel="vs last month"
-      trend={[31.2, 34.6, 37.8, 41.2, 45.1, 48.2]}
+      trend={[31.2, 34.6, 35.9, 38.7, 43.9, 48.2]}
     />
   );
 }
 ```
 
-`delta` is a percentage: `12.4` reads as +12.4%. It is green when it moves the `good` way and red when it doesn't, using the palette's green and red pulled slightly toward the text colour so the small text keeps its contrast. `trend` takes recent values, oldest first, and draws them as a line with a square marker on the latest value. Under it, `fill="gradient"` draws bands that thin out below the line in dither steps; `dotted`, `hatched` and `solid` fill the area evenly. `color` takes a palette name such as `"blue"`, and `bloom` adds a soft glow behind the trend.
+The card is a box-drawing frame with the label set into its top edge, like a terminal panel: `╭─ Monthly revenue ──╮`. Inside are the value in large mono figures, the delta, and the trend.
 
-The card uses `bg-card` and a faint dot surface in the ink colour that fades out from the top right corner. Pass a `className` to change its background or width.
+`delta` is a percentage. A positive one reads `▲ 12.4%` and a negative one `▼ 3.1%`. Green means the move is good and red means it is bad; set `good="down"` for metrics such as latency or churn, where falling is good. Zero draws a grey `■`.
+
+`trend` takes recent values, oldest first. They are resampled to the card's width in cells and drawn in the eighth blocks `▁▂▃▄▅▆▇█`. Each row of `trendRows` adds eight levels, so the default two rows show 16.
 
 ## Examples
 
-### KPI row
+### Dashboard grid
 
-Four cards in a grid. Latency and error rate set `good="down"`, so latency going up is red and error rate going down is green. Each card has its own `color`, and latency, the one moving the wrong way, uses `color="red"` with `fill="hatched"` and a low bloom.
+Four cards in a grid. Latency and errors set `good="down"`, so latency rising reads red and errors falling read green.
 
 <ComponentPreview src="examples/stat-card-grid.tsx" size="lg">
   <StatCardGrid />
 </ComponentPreview>
 
-### Without a trend
+### Compact
 
-Leave `trend` out for a compact card, and `delta` out when there is nothing to compare. A delta of 0 is grey with no arrow.
+`variant="compact"` puts the value and delta on the left and a 12-cell, one-row sparkline on the right, in a light frame.
 
-<ComponentPreview src="examples/stat-card-compact.tsx" size="sm">
+<ComponentPreview src="examples/stat-card-compact.tsx" size="lg">
   <StatCardCompact />
 </ComponentPreview>
 
@@ -63,26 +65,24 @@ Leave `trend` out for a compact card, and `delta` out when there is nothing to c
     {
       name: "label",
       type: "string",
-      description: "What the number is.",
       required: true,
+      description: "What the number is. Set into the top of the frame.",
     },
     {
       name: "value",
       type: "number | string",
+      required: true,
       description:
         "The headline number. Numbers get thousands separators; strings show as given.",
-      required: true,
     },
     {
       name: "delta",
       type: "number",
-      default: "–",
       description: "Change since the last period, in percent.",
     },
     {
       name: "deltaLabel",
       type: "string",
-      default: "–",
       description: 'What the change compares with, such as "vs last month".',
     },
     {
@@ -94,45 +94,45 @@ Leave `trend` out for a compact card, and `delta` out when there is nothing to c
     {
       name: "trend",
       type: "number[]",
-      default: "–",
-      description: "Recent values, oldest first. Needs at least two.",
+      description: "Recent values, oldest first, drawn as a sparkline.",
+    },
+    {
+      name: "trendRows",
+      type: "number",
+      default: "2 (1 when compact)",
+      description:
+        "Height of the sparkline in rows. Each row adds eight levels.",
+    },
+    {
+      name: "variant",
+      type: '"default" | "compact"',
+      default: '"default"',
+      description: "Stacked, or value and sparkline on one line.",
+    },
+    {
+      name: "frame",
+      type: '"rounded" | "light" | "heavy" | "double" | "ascii"',
+      default: '"rounded"',
+      description: "Box-drawing set for the frame.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description:
-        "Colour of the trend and the dot surface, a palette name or any CSS colour.",
-    },
-    {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description: "Texture under the trend line.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "Soft glow in the colour behind the trend.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold pattern of the gradient fill.",
+      description: "Colour of the sparkline, a palette name or any CSS colour.",
     },
     {
       name: "cell",
       type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      default: "14",
+      description:
+        "Glyph cell height in CSS pixels, for the frame and sparkline.",
     },
   ]}
 />
 
 ## Notes
 
-- Screen readers hear the label, the value and the delta in words, such as "Up 12.4% vs last month". The trend and the surface are decorative and hidden.
-- The trend is drawn at the card's real width in CSS pixels, so cells stay square and crisp at any size. It redraws when the card resizes.
-- Nothing moves, so there is nothing to reduce.
+- The label and value are real text. The delta glyph is hidden from screen readers and replaced by the word "Up", "Down" or "No change", so the change doesn't rely on colour or shape alone.
+- The sparkline is decorative and `aria-hidden`. If the trend matters, say it in `deltaLabel` or nearby text.
+- The frame edges are runs of glyphs clipped to the card, so it follows its content at any width. The sparkline measures its width in cells and redraws when the card resizes.

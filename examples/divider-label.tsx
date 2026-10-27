@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function DividerLabel() {
   return (
-    <div className="bg-background flex w-full max-w-sm flex-col gap-5 rounded-2xl border p-6">
+    <div className="bg-background flex w-full max-w-sm flex-col gap-5 rounded-lg border p-6">
       <div className="flex flex-col gap-1">
         <span className="font-semibold tracking-tight">Sign in</span>
         <span className="text-muted-foreground text-sm">
@@ -17,7 +17,7 @@ export default function DividerLabel() {
         <Icon icon={GithubIcon} />
         Continue with GitHub
       </Button>
-      <Divider label="or" />
+      <Divider variant="dashed" label="or" />
       <Button className="w-full">
         <Icon icon={Mail01Icon} />
         Continue with email

@@ -10,16 +10,14 @@ export default function ProgressBarUploads() {
           valueText="Done"
           size="lg"
           color="green"
-          fill="solid"
         />
       </li>
       <li>
         <ProgressBar
           label="product-tour.mp4"
-          value={46}
+          value={46.25}
           size="lg"
           color="purple"
-          bloom="low"
         />
       </li>
       <li>
@@ -27,6 +25,7 @@ export default function ProgressBarUploads() {
           label="Transcoding product-tour.mp4"
           size="lg"
           color="purple"
+          track="line"
         />
       </li>
     </ul>

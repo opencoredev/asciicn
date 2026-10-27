@@ -6,7 +6,7 @@ export default function SkeletonTable() {
   return (
     <div
       aria-busy="true"
-      className="bg-background ring-border w-full max-w-xl overflow-hidden rounded-xl ring-1"
+      className="bg-background w-full max-w-xl overflow-hidden rounded-lg border"
     >
       <span className="sr-only">Loading members</span>
       <div className="text-muted-foreground grid grid-cols-[1fr_6rem_5rem] gap-4 border-b px-5 py-3 text-xs font-medium">
@@ -17,18 +17,17 @@ export default function SkeletonTable() {
       {ROWS.map((row) => (
         <div
           key={row}
-          className="grid grid-cols-[1fr_6rem_5rem] items-center gap-4 border-b px-5 py-3.5 last:border-b-0"
+          className="grid grid-cols-[1fr_6rem_5rem] items-center gap-4 border-b px-5 py-3 last:border-b-0"
         >
           <div className="flex items-center gap-3">
-            <Skeleton shape="circle" size={28} delay={row * 0.12} />
+            <Skeleton shape="circle" size={2} />
             <Skeleton
-              className="h-3"
+              rows={1}
               style={{ width: `${48 + ((row * 17) % 30)}%` }}
-              delay={row * 0.12}
             />
           </div>
-          <Skeleton className="h-3 w-14" delay={row * 0.12 + 0.06} />
-          <Skeleton className="ml-auto h-3 w-12" delay={row * 0.12 + 0.12} />
+          <Skeleton rows={1} className="w-14" />
+          <Skeleton rows={1} className="ml-auto w-12" />
         </div>
       ))}
     </div>

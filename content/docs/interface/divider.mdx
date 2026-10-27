@@ -1,10 +1,11 @@
 ---
 title: "Divider"
-description: "A horizontal or vertical dithered rule whose ends fade out, with an optional label in the middle."
+description: "A horizontal or vertical rule drawn in box-drawing glyphs or a repeating glyph pattern, with an optional label or ornament."
 ---
 
-import { controls as dividerControls } from "@/examples/divider-controls";
 import DividerDemo from "@/examples/divider-demo";
+import { controls as dividerControls } from "@/examples/divider-controls";
+import DividerPatterns from "@/examples/divider-patterns";
 import DividerLabel from "@/examples/divider-label";
 import DividerVertical from "@/examples/divider-vertical";
 
@@ -22,33 +23,37 @@ import DividerVertical from "@/examples/divider-vertical";
 import { Divider } from "@/components/asciicn/divider";
 
 export function Section() {
-  return (
-    <>
-      <p>First section</p>
-      <Divider />
-      <p>Second section</p>
-    </>
-  );
+  return <Divider label="Settings" align="start" />;
 }
 ```
 
-The rule is solid in the middle and fades towards each tip in ten steps of dither. `fade` sets how much of each half is spent fading.
+The rule is a run of one glyph, clipped to the width of its container: `─` by default, `━` with `variant="heavy"`, `═` for `double`, `┄` for `dashed` and `-` for plain `ascii`. The pattern variants repeat a short sequence: `dots` is `·`, `beads` alternates `·•` and `diamonds` spaces out `◆`. Patterns start at the label and read outward on both sides, so the glyphs next to the label always match.
+
+`label` sets text into the rule, `──── label ────`. `align="start"` or `"end"` leaves a four-cell lead before it. Without a label, `ornament` sets a single glyph in the middle instead, such as `◆` or `§`.
 
 ## Examples
 
-### With a label
+### Every variant
 
-Pass `label` and the rule splits around it, each half fading away from the text.
+Each variant with its name as a start-aligned label, then a light rule with a `◆` ornament.
 
-<ComponentPreview src="examples/divider-label.tsx" size="lg">
+<ComponentPreview src="examples/divider-patterns.tsx">
+  <DividerPatterns />
+</ComponentPreview>
+
+### Labelled
+
+A dashed rule with a centred label between two sign-in options.
+
+<ComponentPreview src="examples/divider-label.tsx">
   <DividerLabel />
 </ComponentPreview>
 
-### Vertical, between stats
+### Vertical
 
-A vertical divider fills the height of its container. Here it uses `--foreground` at half strength and 2 pixel cells, so it separates the numbers without competing with them.
+`orientation="vertical"` stacks the glyph down the height of a flex row, here between three stats.
 
-<ComponentPreview src="examples/divider-vertical.tsx" size="sm">
+<ComponentPreview src="examples/divider-vertical.tsx">
   <DividerVertical />
 </ComponentPreview>
 
@@ -57,73 +62,51 @@ A vertical divider fills the height of its container. Here it uses `--foreground
 <PropsTable
   rows={[
     {
+      name: "variant",
+      type: '"light" | "heavy" | "double" | "dashed" | "ascii" | "dots" | "beads" | "diamonds"',
+      default: '"light"',
+      description: "The glyph or pattern the rule is drawn with.",
+    },
+    {
       name: "orientation",
       type: '"horizontal" | "vertical"',
       default: '"horizontal"',
-      description: "Which way the rule runs.",
+      description: "Across the container, or down the height of a flex row.",
     },
     {
       name: "label",
       type: "ReactNode",
-      default: "–",
-      description: "Text in the middle of the rule. Horizontal only.",
+      description:
+        "Text set into the rule. A string label is also the accessible name.",
     },
     {
-      name: "thickness",
-      type: "number",
-      default: "1",
-      description: "Thickness in cells.",
+      name: "align",
+      type: '"start" | "center" | "end"',
+      default: '"center"',
+      description: "Where the label sits along the rule.",
     },
     {
-      name: "fade",
-      type: "number",
-      default: "0.6",
-      description: "Share of each half that fades out, from 0 to 1.",
-    },
-    {
-      name: "strength",
-      type: "number",
-      default: "0.6",
-      description: "Densest dither level, in the middle of the rule.",
+      name: "ornament",
+      type: "string",
+      description: "A glyph set into the middle when there is no label.",
     },
     {
       name: "color",
       type: "AsciiColor",
-      default: '"ink"',
-      description:
-        'Rule colour: a palette name such as "blue", a CSS variable name, or any CSS colour.',
-    },
-    {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description:
-        "Texture of the rule. Gradient fades through dither levels; the others keep their texture and fade by opacity.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern for the gradient fill.",
+      default: '"grey"',
+      description: "Glyph colour, a palette name or any CSS colour.",
     },
     {
       name: "cell",
       type: "number",
-      default: "2",
-      description: "Size of one dither cell in CSS pixels.",
-    },
-    {
-      name: "decorative",
-      type: "boolean",
-      default: "true",
-      description:
-        'Unlabelled rules only. false gives the rule role="separator" for assistive technology.',
+      default: "--ascii-cell",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- By default the rule is decorative, like most visual dividers. Set `decorative={false}` when it separates content that screen reader users should know is split. A labelled divider reads its label as ordinary text.
-- The rule is one SVG with no viewBox, so a dither cell is always a whole number of CSS pixels and every step of the fade lines up with its neighbours.
-- It has no motion.
+- The root has `role="separator"` and `aria-orientation`. The glyphs are hidden from screen readers; a string `label` becomes the separator's `aria-label`.
+- It is plain text with no measuring and no script, so it renders on the server, stays sharp at any zoom and never shifts the layout.
+- A run is clipped where the container ends, so the last glyph of a pattern can be cut. Lines (`─━═┄-`) hide the cut.

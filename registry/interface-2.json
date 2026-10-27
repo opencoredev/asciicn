@@ -3,7 +3,7 @@
     "name": "avatar",
     "type": "registry:component",
     "title": "Avatar",
-    "description": "A generative avatar drawn from a string as a mirrored dither face on a lit, dithered disc, with an overlapping avatar group.",
+    "description": "An avatar drawn in glyphs: initials set over a lit disc of Braille dots, or a photo sampled into a glyph portrait, with a status glyph and overlapping groups.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -17,7 +17,7 @@
     "name": "divider",
     "type": "registry:component",
     "title": "Divider",
-    "description": "A horizontal or vertical dithered rule with fading ends and an optional label.",
+    "description": "A horizontal or vertical rule drawn in box-drawing glyphs or a repeating glyph pattern, with an optional label or ornament.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -31,7 +31,7 @@
     "name": "empty-state",
     "type": "registry:component",
     "title": "Empty state",
-    "description": "A lit, dithered illustration (box, magnifier, folder or planet) with a title, a description and an action, for views with nothing in them yet.",
+    "description": "A box-drawing line drawing (an inbox, a search, a folder or an unplugged cable) with a title, a description and an action, for views with nothing in them yet.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -45,7 +45,7 @@
     "name": "loader",
     "type": "registry:component",
     "title": "Loader",
-    "description": "A small dithered loading indicator: a ring with a comet tail, three dissolving dots, a pulse or a bar.",
+    "description": "A loading indicator drawn in glyphs: a spinner from six glyph sequences, walking dots, an eighth-block wave or a Braille comet.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -59,11 +59,8 @@
     "name": "logo-marquee",
     "type": "registry:component",
     "title": "Logo marquee",
-    "description": "A looping row or still wall of logos in one dithered treatment, with soft or dithered edge fades.",
-    "registryDependencies": [
-      "{{REGISTRY_URL}}/ascii-core.json",
-      "{{REGISTRY_URL}}/ascii-logo.json"
-    ],
+    "description": "Logos sampled into glyph art, in a row that loops and pauses on hover, or a still wall.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
         "path": "components/asciicn/logo-marquee.tsx",
@@ -76,7 +73,7 @@
     "name": "not-found",
     "type": "registry:component",
     "title": "Not found",
-    "description": "A complete 404 block with a big dithered code, a message and actions.",
+    "description": "A complete 404 block: the code in big block glyphs with a shaded extrusion under a field of stars, a shell line for the failed path, a message and actions.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -90,7 +87,7 @@
     "name": "progress-bar",
     "type": "registry:component",
     "title": "Progress bar",
-    "description": "A progress bar built from dither cells: any fill texture with a solid leading edge, stacked parts, step segments and an indeterminate comet.",
+    "description": "A progress bar drawn in eighth-block glyphs, exact to an eighth of a cell, with stacked parts, step segments and an indeterminate comet.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -104,7 +101,7 @@
     "name": "skeleton",
     "type": "registry:component",
     "title": "Skeleton",
-    "description": "Loading placeholders for blocks, text lines and avatars, drawn in dither, with a dense band that sweeps across or a pulse that steps through the Bayer levels.",
+    "description": "Loading placeholders for text, blocks and avatars made of shade glyphs, with a band of denser glyphs that sweeps across the page.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -118,7 +115,7 @@
     "name": "stat-card",
     "type": "registry:component",
     "title": "Stat card",
-    "description": "A KPI card with a value, a coloured delta and a dithered trend area on a dotted surface.",
+    "description": "A KPI card in a box-drawing frame with a big number, a coloured ▲ or ▼ delta and an eighth-block sparkline.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {

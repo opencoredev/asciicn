@@ -1,5 +1,11 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented, select, slider } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import {
+  color,
+  segmented,
+  select,
+  slider,
+  toggle,
+} from "@/lib/preview-controls";
 
 // Knobs for the 404's main demo, shared by the page and the demo.
 
@@ -10,11 +16,20 @@ export const code = select({
   options: ["404", "410", "500", "503"],
 });
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const glyph = segmented({
+  default: "█",
+  id: "glyph",
+  label: "Glyph",
+  options: ["█", "▓", "#", "@", "⣿"],
+});
+
+export const depth = slider({
+  default: 2,
+  id: "depth",
+  label: "Depth",
+  max: 3,
+  min: 0,
+  step: 1,
 });
 
 export const tint = color({
@@ -24,32 +39,11 @@ export const tint = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
-
-export const cell = slider({
-  default: 4,
-  id: "cell",
-  label: "Cell",
-  max: 6,
-  min: 2,
-  step: 1,
-  unit: "px",
-});
-
-export const depth = slider({
-  default: 4,
-  id: "depth",
-  label: "Depth",
-  max: 8,
-  min: 0,
-  step: 1,
-  unit: " cells",
+export const animate = toggle({
+  default: true,
+  id: "animate",
+  label: "Animate",
 });
 
 /** Display order of the tray. */
-export const controls = [code, fill, tint, bloom, cell, depth];
+export const controls = [code, glyph, depth, tint, animate];

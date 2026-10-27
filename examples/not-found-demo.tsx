@@ -1,43 +1,34 @@
 "use client";
 
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
-
-import { AsciiButton } from "@/components/asciicn/ascii-button";
 import { NotFound } from "@/components/asciicn/not-found";
-import { Icon } from "@/components/icon";
 import { usePreviewValue } from "@/components/preview-controls";
+import { Button } from "@/components/ui/button";
 import * as knobs from "@/examples/not-found-controls";
 
 export default function NotFoundDemo() {
   const code = usePreviewValue(knobs.code);
-  const fill = usePreviewValue(knobs.fill);
-  const color = usePreviewValue(knobs.tint);
-  const bloom = usePreviewValue(knobs.bloom);
-  const cell = usePreviewValue(knobs.cell);
+  const glyph = usePreviewValue(knobs.glyph);
   const depth = usePreviewValue(knobs.depth);
+  const color = usePreviewValue(knobs.tint);
+  const animate = usePreviewValue(knobs.animate);
 
   return (
     <NotFound
       titleAs="h2"
       code={code}
-      fill={fill}
-      color={color}
-      bloom={bloom}
-      cell={cell}
+      glyph={glyph}
       depth={depth}
-      detail="GET /blog/2019/launch-week"
+      color={color}
+      animate={animate}
+      path="/blog/2019/launch-week"
       actions={
         <>
-          <AsciiButton color={color}>
-            <Icon icon={ArrowLeft01Icon} className="-ml-[5px]" />
-            Back to home
-          </AsciiButton>
-          <AsciiButton variant="outline" color="grey">
+          <Button size="sm">Back to home</Button>
+          <Button size="sm" variant="outline">
             Search the docs
-          </AsciiButton>
+          </Button>
         </>
       }
-      className="w-full"
     />
   );
 }

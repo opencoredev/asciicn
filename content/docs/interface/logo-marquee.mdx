@@ -1,6 +1,6 @@
 ---
 title: "Logo marquee"
-description: "A looping row, or a still wall, of logos in one dithered treatment, with soft or dithered edges."
+description: "Logos sampled into glyph art, in a row that loops and pauses on hover, or a still wall."
 ---
 
 import LogoMarqueeDemo from "@/examples/logo-marquee-demo";
@@ -24,116 +24,124 @@ import { controls as logoMarqueeControls } from "@/examples/logo-marquee-control
 ```tsx
 import { LogoMarquee } from "@/components/asciicn/logo-marquee";
 
-const logos = [
-  { src: "/logos/acme.svg", alt: "Acme", ratio: 4 },
-  {
-    src: "/logos/globex.svg",
-    alt: "Globex",
-    ratio: 3.5,
-    href: "/customers/globex",
-  },
+const LOGOS = [
+  { alt: "Halcyra", src: "/logos/halcyra.svg", ratio: 163 / 40 },
+  { alt: "Quillwork", src: "/logos/quillwork.svg", ratio: 196 / 40 },
+  { alt: "Orbitline", src: "/logos/orbitline.svg", ratio: 166 / 40 },
 ];
 
 export function Customers() {
-  return <LogoMarquee logos={logos} label="Customers" />;
+  return <LogoMarquee logos={LOGOS} label="Customers" />;
 }
 ```
 
-Every logo is a [Dithered logo](/docs/images/ascii-logo) with the same fill, cell and colour, so logos from different brands read as one set. The row repeats as many times as it needs to fill the width and loops without a seam.
+Each logo is drawn into a canvas, area-averaged into a grid of cells `rows` tall and mapped to glyphs. Only the image's alpha counts, so any single-colour SVG or PNG works, and every logo comes out in the same glyph colour whatever its own colours were. With the default `charset="quadrants"`, a 6-row logo is 12 solid sub-cells tall, enough for a mark and a small wordmark at any pixel density. `charset="braille"` gives 24 dots per 6 rows: finer on high-density screens, softer on standard ones. The art is set as text and cached, so a logo used in two marquees is sampled once.
 
-Hover or focus the row and it coasts to a stop instead of halting; let go and it picks up speed again. A small pause button appears at the right end on hover and keyboard focus. The ends fade out through a mask, so the fade works on any background: `soft` is a smooth ramp, `dither` steps through Bayer levels.
+Give each logo its `ratio` (width over height). The marquee then reserves the logo's exact width in cells before the file loads, and the row never jumps.
 
-`ratio` on each logo reserves its width before it loads, so the row does not shift. Give a logo an `href` to make it a link.
+The row holds two copies of the logos and slides by one copy's width on a loop, so the seam never shows. `speed` is in cells per second. The row pauses while the pointer is over it or a link inside it has focus, and logos turn `--foreground` on hover.
 
 ## Examples
 
-### Wall
-
-`variant="wall"` lays the logos out in a still grid with hairline dividers, two columns, or four once its container is 672px wide. Each logo links to a case study, and the shimmer passes through them in turn.
-
-<ComponentPreview src="examples/logo-marquee-wall.tsx" size="lg">
-  <LogoMarqueeWall />
-</ComponentPreview>
-
 ### Two rows
 
-Two marquees moving in opposite directions with dithered edges, the second hatched in grey.
+Two marquees moving in opposite directions: one in `ink` quadrants, one in muted Braille at 8 rows.
 
-<ComponentPreview src="examples/logo-marquee-rows.tsx" size="lg">
+<ComponentPreview src="examples/logo-marquee-rows.tsx">
   <LogoMarqueeRows />
 </ComponentPreview>
 
-## Props
+### Still wall
 
-Also takes the drawing props of [Dithered logo](/docs/images/ascii-logo): `color`, `tone`, `fill`, `outline`, `floor`, `matrix`, `cell`, `effect` and `period`.
+`variant="wall"` stands the logos still, wrapped and centred. Each one here is a link, so the wall works from the keyboard.
+
+<ComponentPreview src="examples/logo-marquee-wall.tsx">
+  <LogoMarqueeWall />
+</ComponentPreview>
+
+## Props
 
 <PropsTable
   rows={[
     {
       name: "logos",
-      type: "{ src: string; alt: string; ratio?: number; href?: string; color?: AsciiColor }[]",
-      description: "The logos, in order.",
+      type: "MarqueeLogo[]",
       required: true,
+      description:
+        "{ src: string; alt: string; ratio?: number; href?: string; color?: AsciiColor }, in order.",
     },
     {
       name: "label",
       type: "string",
-      default: '"Logos"',
-      description: "Names the list for screen readers.",
+      required: true,
+      description:
+        'What the logos are, such as "Customers", for screen readers.',
     },
     {
       name: "variant",
       type: '"marquee" | "wall"',
       default: '"marquee"',
-      description: "A scrolling row or a still grid.",
-    },
-    {
-      name: "speed",
-      type: "number",
-      default: "32",
-      description: "Marquee only: scroll speed in CSS pixels per second.",
+      description: "A looping row, or a still wrapped wall.",
     },
     {
       name: "direction",
       type: '"left" | "right"',
       default: '"left"',
-      description: "Marquee only: which way the row moves.",
+      description: "Which way the row moves.",
     },
     {
-      name: "fade",
-      type: '"soft" | "dither" | "none"',
-      default: '"soft"',
-      description: "Marquee only: how the ends fade out.",
-    },
-    {
-      name: "fadeWidth",
+      name: "speed",
       type: "number",
-      default: "96",
-      description: "Marquee only: width of each end's fade in CSS pixels.",
+      default: "8",
+      description: "Scroll speed in glyph cells per second.",
     },
     {
-      name: "pauseButton",
-      type: "boolean",
-      default: "true",
-      description: "Marquee only: show a pause button on hover and focus.",
-    },
-    {
-      name: "logoHeight",
+      name: "rows",
       type: "number",
-      default: "28",
-      description: "Logo height in CSS pixels.",
+      default: "6",
+      description: "Height of each logo in rows of cells.",
     },
     {
       name: "gap",
       type: "number",
-      default: "64",
-      description: "Space between logos in the row, in CSS pixels.",
+      default: "8",
+      description: "Blank cells between logos.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"quadrants"',
+      description: "Glyphs to draw with.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description: "A custom ramp from empty to dense. Wins over charset.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"--muted-foreground"',
+      description: "Glyph colour, a palette name or any CSS colour.",
+    },
+    {
+      name: "fade",
+      type: "boolean",
+      default: "true",
+      description: "Fade the moving row out at both ends.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- The first copy of the row is a list labelled by `label`; the copies that fill the loop are hidden from assistive technology and their links are out of the tab order.
-- The row stops while it is offscreen. Under reduced motion it becomes a still, centred row that wraps.
-- The motion is a single Web Animation on a transform, so it runs off the main thread.
+- The first copy of the row is a list named by `label`, and each logo is `role="img"` (or a link) named by its `alt`. The second copy only closes the loop, so it is `aria-hidden` and `inert`: its links can't be focused twice.
+- The motion is one Web Animations transform on the row, which the browser runs off the main thread. With reduced motion the marquee becomes the still wall.
+- Hover and focus pause the row. On touch screens there is no hover, so if the logos are links people need to tap, use `variant="wall"`.
+- Logos load with `crossOrigin="anonymous"`; images from another origin need CORS headers to be sampled.

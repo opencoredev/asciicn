@@ -1,6 +1,6 @@
 ---
 title: "Not found"
-description: "A complete 404 block: big dithered block digits that print in and catch the light, a message, a detail line and actions."
+description: "A complete 404 block: the code in big block glyphs with a shaded extrusion under a field of stars, a shell line for the failed path, a message and actions."
 ---
 
 import NotFoundDemo from "@/examples/not-found-demo";
@@ -22,20 +22,22 @@ import NotFoundCompact from "@/examples/not-found-compact";
 
 ## Usage
 
-```tsx title="app/not-found.tsx"
+Render it from your framework's not-found route. In Next.js that is `app/not-found.tsx`:
+
+```tsx
 import Link from "next/link";
 
-import { AsciiButton } from "@/components/asciicn/ascii-button";
 import { NotFound } from "@/components/asciicn/not-found";
+import { Button } from "@/components/ui/button";
 
 export default function NotFoundPage() {
   return (
     <main className="grid min-h-svh place-items-center">
       <NotFound
         actions={
-          <AsciiButton asChild>
+          <Button asChild>
             <Link href="/">Back to home</Link>
-          </AsciiButton>
+          </Button>
         }
       />
     </main>
@@ -43,15 +45,17 @@ export default function NotFoundPage() {
 }
 ```
 
-The code is set in your page's own font, then rasterised onto a grid of cells and turned into block letters. The faces are densest at the top and thin towards the baseline; the cells behind them, down and to the right, form an extruded side in a sparse dither. On mount the digits print in level by level, and after that a band of light crosses the faces every few seconds.
+The code is drawn in a 5×7 bitmap face. Each font pixel is two cells of `█` side by side, which makes it square, since a cell is about twice as tall as it is wide. Behind the digits, `depth` steps of `░` (and `·` for a third step) extrude down and to the right. Change the building glyph with `glyph`: `▓`, `#`, `@` or the Braille `⣿` all work.
 
-`code`, `title`, `description`, `detail` and `actions` are all yours, so the same block covers 410, 500 and maintenance pages. `detail` is a short mono line under the text, a good place for the requested path or an error reference.
+The scene moves a little. Stars hold still and flare through `+` and `*` now and then, and a row of `▓` passes down the digits every few seconds, like a terminal redrawing.
+
+`path` adds a shell line above the heading, `$ open /blog/2019/launch-week`, with the reply `no such page` and a blinking cursor. Change the reply with `detail`.
 
 ## Examples
 
 ### Server error
 
-A 500 in red with a reference people can quote to support, and an outline retry button that fills with red hatching on hover.
+`code="500"` in red, built from `▓`, with an error reference as the shell's reply.
 
 <ComponentPreview src="examples/not-found-error.tsx" size="lg">
   <NotFoundError />
@@ -59,9 +63,9 @@ A 500 in red with a reference people can quote to support, and an outline retry 
 
 ### Inside a card
 
-A missing resource inside the app shell rather than a whole page: grey dotted digits, a shallow side, finer cells and no animation.
+A smaller, still version for a missing resource inside an app: a 9px cell, one step of depth, grey, `animate={false}`.
 
-<ComponentPreview src="examples/not-found-compact.tsx" size="lg">
+<ComponentPreview src="examples/not-found-compact.tsx">
   <NotFoundCompact />
 </ComponentPreview>
 
@@ -73,7 +77,7 @@ A missing resource inside the app shell rather than a whole page: grey dotted di
       name: "code",
       type: "string",
       default: '"404"',
-      description: "The big code. Any short string works.",
+      description: "The status code drawn in big glyphs. Digits only.",
     },
     {
       name: "title",
@@ -84,68 +88,67 @@ A missing resource inside the app shell rather than a whole page: grey dotted di
     {
       name: "description",
       type: "ReactNode",
-      default: '"The link may be broken, or the page may have moved."',
+      default: '"The page you asked for has moved, or it never existed."',
       description: "A sentence under the heading.",
     },
     {
+      name: "path",
+      type: "string",
+      description: "The path that failed, shown as a shell line.",
+    },
+    {
       name: "detail",
-      type: "ReactNode",
-      description:
-        "A short mono line, such as the requested path or an error reference.",
+      type: "string",
+      default: '"no such page"',
+      description: "The shell's reply under the path.",
     },
     {
       name: "actions",
       type: "ReactNode",
-      description: "Buttons or links, such as a way home.",
+      description: "Links or buttons, laid out in a centred row.",
     },
     {
       name: "titleAs",
-      type: '"h1" | "h2"',
+      type: '"h1" | "h2" | "h3"',
       default: '"h1"',
-      description: "Heading level. Use h1 on a page of its own.",
+      description: "Heading level of the title.",
+    },
+    {
+      name: "glyph",
+      type: "string",
+      default: '"█"',
+      description: "Glyph the digits are built from.",
+    },
+    {
+      name: "depth",
+      type: "number",
+      default: "2",
+      description: "Steps of shaded extrusion behind the digits, 0 to 3.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
-      description:
-        'A palette name such as "red", a CSS variable name, or any CSS colour.',
-    },
-    {
-      name: "fill",
-      type: '"gradient" | "dotted" | "hatched" | "solid"',
-      default: '"gradient"',
-      description: "Texture of the digit faces.",
-    },
-    {
-      name: "bloom",
-      type: '"off" | "low" | "high"',
-      default: '"off"',
-      description: "A soft glow in the code's colour.",
-    },
-    {
-      name: "cell",
-      type: "number",
-      default: "4",
-      description: "Size of one dither cell in CSS pixels.",
-    },
-    {
-      name: "depth",
-      type: "number",
-      default: "4",
-      description: "Depth of the extruded side in cells. 0 gives flat digits.",
+      description: "Colour of the digits, a palette name or any CSS colour.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Print the digits in on mount and sweep light across them.",
+      description: "Flare the stars, scan the digits and blink the cursor.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "14",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- The digits are a decorative canvas hidden from assistive technology; the heading carries the message. Put the status in `title` or `description` if it matters to the reader.
-- The grid follows the block's width, so the digits fill the space on a phone and stop at 672 pixels wide on a desktop. They are re-set when your web fonts finish loading.
-- Under reduced motion, or with `animate={false}`, the digits are drawn once, finished. Offscreen and in hidden tabs, the light sweep pauses.
+- The scene is `aria-hidden`. The heading, description and path are real text, so the page reads as "Page not found" and the path, not as rows of blocks.
+- The title is an `h1` by default, because a 404 is usually the whole page. Pass `titleAs="h2"` when it sits inside a larger page.
+- The scene redraws at 10fps and pauses offscreen and in hidden tabs. With reduced motion it holds one frame with no row lit and the cursor showing.
+- At a 14px cell, a three-digit code with the default depth is 46 cells wide, about 320px, so it fits a phone. The scene clips rather than wraps if the container is narrower.

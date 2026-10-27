@@ -1,559 +1,406 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ComponentProps, CSSProperties, RefObject } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
-import { AsciiLogo } from "@/components/asciicn/ascii-logo";
-import type { AsciiLogoProps } from "@/components/asciicn/ascii-logo";
-import { asciiRamp, useInView, usePrefersReducedMotion } from "@/lib/ascii";
+import {
+  cssColor,
+  frameLines,
+  mapTones,
+  resolveCharset,
+  usePrefersReducedMotion,
+} from "@/lib/ascii";
+import type { AsciiColor, CharsetName } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
+/**
+ * Font size per cell height for DOM glyphs. Cascadia Mono's full block and
+ * box lines are 1.17em tall, so at this size blocks and lines in
+ * neighbouring rows touch instead of leaving a hairline between them.
+ */
+const GLYPH_EM = 1.17;
+
 export interface MarqueeLogo {
+  /** The image: an SVG or PNG whose shape is drawn in its alpha. */
   src: string;
   /** The brand name, read out by screen readers. */
   alt: string;
-  /** Width over height. Set it to reserve space before the logo loads. */
+  /** Width over height. Set it to reserve the logo's space before it loads. Default 4. */
   ratio?: number;
   /** Makes the logo a link. */
   href?: string;
-  /** This logo's ink, overriding `color`. */
-  color?: AsciiLogoProps["color"];
+  /** This logo's glyph colour, overriding `color`. */
+  color?: AsciiColor;
 }
 
-/** How the ends of the row meet the page. */
-export type MarqueeFade = "soft" | "dither" | "none";
-
-interface MarqueeLayout {
-  /** A single row that scrolls sideways. */
-  variant?: "marquee";
-  /** Scroll speed in CSS pixels per second. Default 32. */
-  speed?: number;
+export interface LogoMarqueeProps extends Omit<
+  ComponentProps<"div">,
+  "children" | "color"
+> {
+  /** The logos, in order. */
+  logos: readonly MarqueeLogo[];
+  /** What the logos are, such as `"Customers"`, for screen readers. */
+  label: string;
+  /** `marquee` scrolls one row on a loop; `wall` shows them still, wrapped and centred. Default `"marquee"`. */
+  variant?: "marquee" | "wall";
   /** Which way the row moves. Default `"left"`. */
   direction?: "left" | "right";
-  /**
-   * How the ends fade out: a smooth mask, a dithered one, or a hard edge.
-   * Both masks work on any background. Default `"soft"`.
-   */
-  fade?: MarqueeFade;
-  /** Width of each end's fade in CSS pixels. Default 96. */
-  fadeWidth?: number;
-  /**
-   * A small pause button that appears on hover and keyboard focus, so
-   * anyone can stop the motion. Default `true`.
-   */
-  pauseButton?: boolean;
+  /** Scroll speed in glyph cells per second. Default 8. */
+  speed?: number;
+  /** Height of each logo in rows of cells. Default 6. */
+  rows?: number;
+  /** Blank cells between logos. Default 8. */
+  gap?: number;
+  /** Glyphs to draw with. Default `"quadrants"`: solid 2x2 sub-cells that keep small type legible. */
+  charset?: CharsetName;
+  /** A custom ramp from empty to dense. Wins over `charset`. */
+  chars?: string;
+  /** Glyph colour: a palette name or any CSS colour. Logos turn `--foreground` on hover. Default `"--muted-foreground"`. */
+  color?: AsciiColor;
+  /** Fade the row out at both ends. Default true. */
+  fade?: boolean;
+  /** Glyph cell height in CSS pixels. Default 10. */
+  cell?: number;
 }
 
-interface WallLayout {
-  /** A still grid of logos with hairline dividers. */
-  variant: "wall";
-  speed?: never;
-  direction?: never;
-  fade?: never;
-  fadeWidth?: never;
-  pauseButton?: never;
-}
+const DEFAULT_RATIO = 4;
+/** Canvas pixels per sample when rasterising a logo, for an area average. */
+const SUPERSAMPLE = 4;
 
-export type LogoLayout = MarqueeLayout | WallLayout;
-
-export type LogoMarqueeProps = Omit<ComponentProps<"div">, "children"> &
-  LogoLayout &
-  Pick<
-    AsciiLogoProps,
-    | "color"
-    | "tone"
-    | "fill"
-    | "outline"
-    | "floor"
-    | "matrix"
-    | "cell"
-    | "effect"
-    | "period"
-  > & {
-    /** The logos, in order. */
-    logos: readonly MarqueeLogo[];
-    /** Names the list for screen readers. Default `"Logos"`. */
-    label?: string;
-    /** Logo height in CSS pixels. Default 28. */
-    logoHeight?: number;
-    /** Space between logos in the row, in CSS pixels. Default 64. */
-    gap?: number;
-  };
-
-// Enough to fill a very wide screen with a short row of logos.
-const MAX_COPIES = 8;
-// Seconds for the row to coast to a stop or back up to speed.
-const EASE_SECONDS = 0.45;
-// Cell of the dithered fade, in CSS pixels.
-const FADE_CELL = 3;
-
-/**
- * A mask for both ends of the row: transparent at the edges, opaque
- * between. `dither` steps through Bayer levels instead of a smooth ramp.
- */
-const fadeMask = (fade: MarqueeFade, width: number): CSSProperties => {
-  if (fade === "none") {
-    return {};
-  }
-  if (fade === "soft") {
-    const image = `linear-gradient(to right, transparent, #000 ${width}px, #000 calc(100% - ${width}px), transparent)`;
-    return { WebkitMaskImage: image, maskImage: image };
-  }
-  const length = Math.max(4, Math.round(width / FADE_CELL));
-  const tile = (edge: "left" | "right") => {
-    const ramp = asciiRamp({ edge, from: 1, length, to: 0 });
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ramp.width} ${ramp.height}" shape-rendering="crispEdges"><path d="${ramp.path}"/></svg>`;
-    return {
-      image: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
-      size: `${ramp.width * FADE_CELL}px ${ramp.height * FADE_CELL}px`,
-    };
-  };
-  // Dense towards the middle: the left tile is densest on its right.
-  const left = tile("right");
-  const right = tile("left");
-  const span = Number.parseFloat(left.size);
-  const image = `${left.image}, ${right.image}, linear-gradient(#000, #000)`;
-  const size = `${left.size}, ${right.size}, calc(100% - ${span * 2}px) 100%`;
-  const position = "left top, right top, center";
-  const repeat = "repeat-y, repeat-y, no-repeat";
-  return {
-    WebkitMaskImage: image,
-    WebkitMaskPosition: position,
-    WebkitMaskRepeat: repeat,
-    WebkitMaskSize: size,
-    maskImage: image,
-    maskPosition: position,
-    maskRepeat: repeat,
-    maskSize: size,
-  };
+const loadImage = async (src: string): Promise<HTMLImageElement> => {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = src;
+  await img.decode();
+  return img;
 };
 
-/** One logo, wrapped in a link when it has one. */
-const LogoItem = ({
+/** Columns for a logo `rows` tall: cells are about half as wide as tall. */
+const columnsFor = (ratio: number | undefined, rows: number): number =>
+  Math.max(1, Math.round(rows * 2 * (ratio ?? DEFAULT_RATIO)));
+
+/** Glyph art per logo and look, shared by every marquee on the page. */
+const artCache = new Map<string, Promise<string[]>>();
+
+/**
+ * Draw the logo's alpha into a sample grid, area-averaged, and map it to
+ * glyphs. The logo is fitted inside the grid with its aspect kept.
+ */
+const logoArt = ({
+  src,
+  columns,
+  rows,
+  charset,
+  chars,
+}: {
+  src: string;
+  columns: number;
+  rows: number;
+  charset: CharsetName;
+  chars: string | undefined;
+}): Promise<string[]> => {
+  const key = [src, columns, rows, charset, chars ?? ""].join("|");
+  const cached = artCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const rasterise = async (): Promise<string[]> => {
+    const img = await loadImage(src);
+    const [gx, gy] = resolveCharset(charset, chars).grid;
+    const width = columns * gx;
+    const height = rows * gy;
+    const canvas = document.createElement("canvas");
+    canvas.width = width * SUPERSAMPLE;
+    canvas.height = height * SUPERSAMPLE;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      return [];
+    }
+    // Contain, keeping the logo's aspect. A cell is about twice as tall
+    // as wide, so a canvas pixel is 2 * gx / gy times taller than wide.
+    const ratio = img.naturalWidth / Math.max(1, img.naturalHeight);
+    const pixelAspect = (2 * gx) / gy;
+    let drawWidth = canvas.width;
+    let drawHeight = drawWidth / ratio / pixelAspect;
+    if (drawHeight > canvas.height) {
+      drawWidth *= canvas.height / drawHeight;
+      drawHeight = canvas.height;
+    }
+    context.drawImage(
+      img,
+      (canvas.width - drawWidth) / 2,
+      (canvas.height - drawHeight) / 2,
+      drawWidth,
+      drawHeight
+    );
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    const tones = new Float32Array(width * height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        let alpha = 0;
+        for (let dy = 0; dy < SUPERSAMPLE; dy += 1) {
+          for (let dx = 0; dx < SUPERSAMPLE; dx += 1) {
+            const px = x * SUPERSAMPLE + dx;
+            const py = y * SUPERSAMPLE + dy;
+            alpha += data[(py * canvas.width + px) * 4 + 3] ?? 0;
+          }
+        }
+        tones[y * width + x] = alpha / (SUPERSAMPLE * SUPERSAMPLE * 255);
+      }
+    }
+    const frame = mapTones(
+      { colors: null, height, tones, width },
+      columns,
+      rows,
+      { chars, charset, threshold: 0.38 }
+    );
+    return frameLines(frame);
+  };
+  const job = (async () => {
+    try {
+      return await rasterise();
+    } catch (error) {
+      // A failed load can be retried by the next marquee that asks.
+      artCache.delete(key);
+      throw error;
+    }
+  })();
+  artCache.set(key, job);
+  return job;
+};
+
+const LogoArt = ({
   logo,
-  height,
-  hidden,
-  phase,
-  logoProps,
+  rows,
+  charset,
+  chars,
+  color,
 }: {
   logo: MarqueeLogo;
-  height: number;
-  hidden: boolean;
-  phase: number;
-  logoProps: Omit<AsciiLogoProps, "src" | "alt">;
+  rows: number;
+  charset: CharsetName;
+  chars: string | undefined;
+  color: AsciiColor;
 }) => {
-  const mark = (
-    <AsciiLogo
-      {...logoProps}
-      color={logo.color ?? logoProps.color}
-      phase={phase}
-      lazy={false}
-      src={logo.src}
-      alt={hidden || logo.href ? "" : logo.alt}
-      ratio={logo.ratio}
-      className="max-w-full"
-      style={{ height }}
-    />
-  );
-  if (!logo.href) {
-    return mark;
-  }
+  const columns = columnsFor(logo.ratio, rows);
+  const [lines, setLines] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    const draw = async () => {
+      try {
+        const art = await logoArt({
+          chars,
+          charset,
+          columns,
+          rows,
+          src: logo.src,
+        });
+        if (live) {
+          setLines(art);
+        }
+      } catch {
+        // The logo keeps its reserved space, blank, if the image fails.
+        if (live) {
+          setLines(null);
+        }
+      }
+    };
+    void draw();
+    return () => {
+      live = false;
+    };
+  }, [chars, charset, columns, logo.src, rows]);
+
   return (
-    <a
-      href={logo.href}
-      aria-label={logo.alt}
-      tabIndex={hidden ? -1 : undefined}
-      className="focus-visible:ring-ring flex max-w-full rounded-sm opacity-80 outline-none transition-opacity duration-150 ease-(--ease-out) hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
+    <span
+      className="block transition-colors duration-150 ease-out [@media(hover:hover)]:group-hover/logo:text-[var(--foreground)]"
+      style={{
+        color: cssColor(logo.color ?? color),
+        height: `${rows}lh`,
+        width: `${columns}ch`,
+      }}
     >
-      {mark}
-    </a>
+      {lines ? lines.join("\n") : null}
+    </span>
   );
 };
 
-/** Measures one copy of the row and the visible width. */
-const useRowSize = (
-  moving: boolean,
-  rootRef: RefObject<HTMLElement | null>,
-  groupRef: RefObject<HTMLElement | null>
-) => {
-  const [size, setSize] = useState({ group: 0, root: 0 });
-  useEffect(() => {
-    const root = rootRef.current;
-    const group = groupRef.current;
-    if (!(moving && root && group)) {
-      return;
-    }
-    const measure = () => {
-      const next = {
-        group: group.getBoundingClientRect().width,
-        root: root.getBoundingClientRect().width,
-      };
-      setSize((current) =>
-        current.group === next.group && current.root === next.root
-          ? current
-          : next
+/** One copy of the row. The second copy, which closes the loop, is hidden and inert. */
+const LogoRow = ({
+  logos,
+  label,
+  copy,
+  gap,
+  ...look
+}: {
+  logos: readonly MarqueeLogo[];
+  label: string;
+  copy: boolean;
+  gap: number;
+  rows: number;
+  charset: CharsetName;
+  chars: string | undefined;
+  color: AsciiColor;
+}) => (
+  <ul
+    aria-label={copy ? undefined : label}
+    aria-hidden={copy ? true : undefined}
+    inert={copy}
+    className="m-0 flex shrink-0 list-none p-0"
+  >
+    {logos.map((logo) => {
+      const art = <LogoArt logo={logo} {...look} />;
+      return (
+        <li
+          key={`${logo.src}-${logo.alt}`}
+          className="group/logo shrink-0"
+          style={{ paddingRight: `${gap}ch` }}
+        >
+          {logo.href ? (
+            <a
+              href={logo.href}
+              aria-label={logo.alt}
+              className="focus-visible:outline-ring block rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-4"
+            >
+              {art}
+            </a>
+          ) : (
+            <span role="img" aria-label={logo.alt} className="block">
+              {art}
+            </span>
+          )}
+        </li>
       );
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(root);
-    observer.observe(group);
-    return () => observer.disconnect();
-  }, [moving, rootRef, groupRef]);
-  return size;
-};
+    })}
+  </ul>
+);
 
 /**
- * Runs the row as a looping Web Animation and eases its playback rate
- * towards 0 while held and back to 1 when let go, so it coasts instead of
- * stopping dead.
+ * Logos drawn as glyph art (quadrant blocks by default) in a row that scrolls on
+ * a loop. Each logo is sampled from its image into a grid of cells and set
+ * as text. The row pauses while hovered or focused, and stands still,
+ * wrapped and centred, under reduced motion or with `variant="wall"`.
  */
-const useCoasting = ({
-  trackRef,
-  distance,
-  speed,
-  reverse,
-  held,
-  enabled,
-}: {
-  trackRef: RefObject<HTMLElement | null>;
-  distance: number;
-  speed: number;
-  reverse: boolean;
-  held: boolean;
-  enabled: boolean;
-}) => {
-  const animationRef = useRef<Animation | null>(null);
-  const heldRef = useRef(held);
+export const LogoMarquee = ({
+  logos,
+  label,
+  variant = "marquee",
+  direction = "left",
+  speed = 8,
+  rows = 6,
+  gap = 8,
+  charset = "quadrants",
+  chars,
+  color = "--muted-foreground",
+  fade = true,
+  cell = 10,
+  className,
+  style,
+  ...props
+}: LogoMarqueeProps) => {
+  const viewRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const moving = variant === "marquee" && !reduced && speed > 0;
+  const look = { chars, charset, color, rows };
+  // One copy's width in cells: every logo plus the gap after it.
+  const copyCells = logos.reduce(
+    (sum, logo) => sum + columnsFor(logo.ratio, rows) + gap,
+    0
+  );
 
   useEffect(() => {
+    const view = viewRef.current;
     const track = trackRef.current;
-    if (!(enabled && track && distance > 0 && speed > 0)) {
+    if (!view || !track || !moving) {
       return;
     }
-    const far = `translateX(${-distance}px)`;
-    const near = "translateX(0)";
-    const animation = track.animate(
-      [
-        { transform: reverse ? far : near },
-        { transform: reverse ? near : far },
-      ],
-      {
-        duration: (distance / speed) * 1000,
-        easing: "linear",
-        iterations: Number.POSITIVE_INFINITY,
+    const frames =
+      direction === "left"
+        ? [{ transform: "translateX(0)" }, { transform: "translateX(-50%)" }]
+        : [{ transform: "translateX(-50%)" }, { transform: "translateX(0)" }];
+    const animation = track.animate(frames, {
+      duration: (copyCells / speed) * 1000,
+      easing: "linear",
+      iterations: Number.POSITIVE_INFINITY,
+    });
+    const pause = () => animation.pause();
+    const play = () => {
+      if (!view.matches(":hover, :focus-within")) {
+        animation.play();
       }
-    );
-    animation.playbackRate = heldRef.current ? 0 : 1;
-    animationRef.current = animation;
+    };
+    view.addEventListener("pointerenter", pause);
+    view.addEventListener("pointerleave", play);
+    view.addEventListener("focusin", pause);
+    view.addEventListener("focusout", play);
     return () => {
       animation.cancel();
-      animationRef.current = null;
+      view.removeEventListener("pointerenter", pause);
+      view.removeEventListener("pointerleave", play);
+      view.removeEventListener("focusin", pause);
+      view.removeEventListener("focusout", play);
     };
-  }, [enabled, trackRef, distance, speed, reverse]);
+  }, [copyCells, direction, moving, speed]);
 
-  useEffect(() => {
-    heldRef.current = held;
-    const animation = animationRef.current;
-    if (!animation) {
-      return;
-    }
-    const target = held ? 0 : 1;
-    let frame = 0;
-    let last = performance.now();
-    const step = (now: number) => {
-      const rate = animation.playbackRate;
-      const delta = Math.min(0.1, (now - last) / 1000);
-      last = now;
-      const next =
-        rate + (target - rate) * Math.min(1, (delta / EASE_SECONDS) * 4);
-      animation.playbackRate = Math.abs(next - target) < 0.01 ? target : next;
-      if (animation.playbackRate !== target) {
-        frame = requestAnimationFrame(step);
-      }
-    };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [held]);
-};
-
-const PauseButton = ({
-  paused,
-  onToggle,
-}: {
-  paused: boolean;
-  onToggle: () => void;
-}) => (
-  <button
-    type="button"
-    aria-pressed={paused}
-    aria-label={paused ? "Play logos" : "Pause logos"}
-    onClick={onToggle}
-    className="bg-background/80 text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-1/2 right-1 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border opacity-0 backdrop-blur-sm transition-opacity duration-150 ease-(--ease-out) outline-none group-hover/marquee:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 data-[paused=true]:opacity-100 motion-reduce:transition-none"
-    data-paused={paused}
-  >
-    <svg
-      aria-hidden
-      viewBox="0 0 8 8"
-      className="size-2.5"
-      shapeRendering="crispEdges"
-    >
-      <path
-        d={
-          paused
-            ? "M1 0h2v8h-2zM3 1h2v6h-2zM5 2h2v4h-2zM7 3h1v2h-1z"
-            : "M1 0h2v8h-2zM5 0h2v8h-2z"
-        }
-        fill="currentColor"
-      />
-    </svg>
-  </button>
-);
-
-const StillRow = ({
-  logos,
-  label,
-  gap,
-  logoHeight,
-  logoProps,
-  className,
-  rootRef,
-  rest,
-}: {
-  logos: readonly MarqueeLogo[];
-  label: string;
-  gap: number;
-  logoHeight: number;
-  logoProps: Omit<AsciiLogoProps, "src" | "alt">;
-  className: string | undefined;
-  rootRef: RefObject<HTMLDivElement | null>;
-  rest: ComponentProps<"div">;
-}) => (
-  <div {...rest} ref={rootRef} className={cn("w-full", className)}>
-    <ul
-      aria-label={label}
-      className="flex flex-wrap items-center justify-center"
-      style={{ columnGap: gap, rowGap: gap / 2 }}
-    >
-      {logos.map((logo, index) => (
-        <li key={logo.src}>
-          <LogoItem
-            logo={logo}
-            height={logoHeight}
-            hidden={false}
-            phase={index / Math.max(1, logos.length)}
-            logoProps={logoProps}
-          />
-        </li>
-      ))}
-    </ul>
-  </div>
-);
-
-const Wall = ({
-  logos,
-  label,
-  logoHeight,
-  logoProps,
-  className,
-  rootRef,
-  rest,
-}: {
-  logos: readonly MarqueeLogo[];
-  label: string;
-  logoHeight: number;
-  logoProps: Omit<AsciiLogoProps, "src" | "alt">;
-  className: string | undefined;
-  rootRef: RefObject<HTMLDivElement | null>;
-  rest: ComponentProps<"div">;
-}) => (
-  <div {...rest} ref={rootRef} className={cn("@container w-full", className)}>
-    <ul
-      aria-label={label}
-      className="grid grid-cols-2 border-t border-l @2xl:grid-cols-4"
-    >
-      {logos.map((logo, index) => (
-        <li
-          key={logo.src}
-          className="flex min-w-0 items-center justify-center border-r border-b px-4 py-9 sm:px-6"
-        >
-          <LogoItem
-            logo={logo}
-            height={logoHeight}
-            hidden={false}
-            phase={index / Math.max(1, logos.length)}
-            logoProps={logoProps}
-          />
-        </li>
-      ))}
-    </ul>
-  </div>
-);
-
-/**
- * A row or wall of logos in one consistent dithered treatment. The row
- * loops seamlessly, coasts to a stop on hover and focus, pauses offscreen,
- * and holds still as a centred, wrapping row under reduced motion.
- */
-export const LogoMarquee = (props: LogoMarqueeProps) => {
-  const {
-    logos,
-    label = "Logos",
-    logoHeight = 28,
-    gap = 64,
-    color,
-    tone,
-    fill,
-    outline,
-    floor,
-    matrix,
-    cell,
-    effect,
-    period,
-    variant: _variant,
-    speed: _speed,
-    direction: _direction,
-    fade: _fade,
-    fadeWidth: _fadeWidth,
-    pauseButton: _pauseButton,
-    className,
-    onPointerEnter,
-    onPointerLeave,
-    onFocus,
-    onBlur,
-    ...rest
-  } = props;
-  const rootRef = useRef<HTMLDivElement>(null);
-  const groupRef = useRef<HTMLUListElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = usePrefersReducedMotion();
-  const inView = useInView(rootRef);
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const [paused, setPaused] = useState(false);
-
-  const isWall = props.variant === "wall";
-  const layout: MarqueeLayout = props.variant === "wall" ? {} : props;
-  const moving = !(isWall || reducedMotion);
-  const size = useRowSize(moving, rootRef, groupRef);
-  const logoProps = {
-    cell,
-    color,
-    effect,
-    fill,
-    floor,
-    matrix,
-    outline,
-    period,
-    tone,
+  const text: CSSProperties = {
+    fontFamily: "var(--ascii-font, monospace)",
+    fontSize: `${cell / GLYPH_EM}px`,
+    fontVariantLigatures: "none",
+    letterSpacing: 0,
+    lineHeight: `${cell}px`,
+    whiteSpace: "pre",
   };
+  const mask =
+    fade && moving
+      ? "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)"
+      : undefined;
 
-  useCoasting({
-    distance: size.group,
-    enabled: moving,
-    held: hovered || focused || paused || !inView,
-    reverse: layout.direction === "right",
-    speed: layout.speed ?? 32,
-    trackRef,
-  });
-
-  if (isWall) {
-    return (
-      <Wall
-        logos={logos}
-        label={label}
-        logoHeight={logoHeight}
-        logoProps={logoProps}
-        className={className}
-        rootRef={rootRef}
-        rest={rest}
-      />
-    );
-  }
   if (!moving) {
     return (
-      <StillRow
-        logos={logos}
-        label={label}
-        gap={gap}
-        logoHeight={logoHeight}
-        logoProps={logoProps}
-        className={className}
-        rootRef={rootRef}
-        rest={rest}
-      />
+      <div
+        className={cn("w-full select-none", className)}
+        style={{ ...text, ...style }}
+        {...props}
+      >
+        <ul
+          aria-label={label}
+          className="m-0 flex list-none flex-wrap items-center justify-center p-0"
+          style={{ columnGap: `${gap}ch`, rowGap: "2lh" }}
+        >
+          {logos.map((logo) => (
+            <li key={`${logo.src}-${logo.alt}`} className="group/logo shrink-0">
+              {logo.href ? (
+                <a
+                  href={logo.href}
+                  aria-label={logo.alt}
+                  className="focus-visible:outline-ring block rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-4"
+                >
+                  <LogoArt logo={logo} {...look} />
+                </a>
+              ) : (
+                <span role="img" aria-label={logo.alt} className="block">
+                  <LogoArt logo={logo} {...look} />
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
-
-  const copies =
-    size.group > 0
-      ? Math.min(MAX_COPIES, Math.max(2, Math.ceil(size.root / size.group) + 1))
-      : 2;
 
   return (
     <div
-      {...rest}
-      ref={rootRef}
-      data-paused={paused || undefined}
-      className={cn("group/marquee relative w-full", className)}
-      onPointerEnter={(event) => {
-        onPointerEnter?.(event);
-        if (event.pointerType !== "touch") {
-          setHovered(true);
-        }
-      }}
-      onPointerLeave={(event) => {
-        onPointerLeave?.(event);
-        setHovered(false);
-      }}
-      onFocus={(event) => {
-        onFocus?.(event);
-        setFocused(true);
-      }}
-      onBlur={(event) => {
-        onBlur?.(event);
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setFocused(false);
-        }
-      }}
+      ref={viewRef}
+      className={cn("w-full overflow-hidden select-none", className)}
+      style={{ ...text, WebkitMaskImage: mask, maskImage: mask, ...style }}
+      {...props}
     >
-      {/* Inline-size containment: the row's width must never feed back
-          into the box that decides how many copies it needs. */}
-      <div
-        className="overflow-hidden py-2 [contain:inline-size]"
-        style={fadeMask(layout.fade ?? "soft", layout.fadeWidth ?? 96)}
-      >
-        <div ref={trackRef} className="flex w-max will-change-transform">
-          {Array.from({ length: copies }, (_, copy) => (
-            <ul
-              key={copy}
-              ref={copy === 0 ? groupRef : undefined}
-              aria-label={copy === 0 ? label : undefined}
-              aria-hidden={copy === 0 ? undefined : true}
-              className="flex shrink-0 items-center"
-              style={{ columnGap: gap, paddingRight: gap }}
-            >
-              {logos.map((logo, index) => (
-                <li key={logo.src} className="flex shrink-0 items-center">
-                  <LogoItem
-                    logo={logo}
-                    height={logoHeight}
-                    hidden={copy !== 0}
-                    phase={index / Math.max(1, logos.length)}
-                    logoProps={logoProps}
-                  />
-                </li>
-              ))}
-            </ul>
-          ))}
-        </div>
+      <div ref={trackRef} className="flex w-max will-change-transform">
+        <LogoRow logos={logos} label={label} copy={false} gap={gap} {...look} />
+        <LogoRow logos={logos} label={label} copy gap={gap} {...look} />
       </div>
-      {(layout.pauseButton ?? true) && (
-        <PauseButton
-          paused={paused}
-          onToggle={() => setPaused((value) => !value)}
-        />
-      )}
     </div>
   );
 };

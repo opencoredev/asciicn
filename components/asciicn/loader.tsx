@@ -1,320 +1,248 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { ComponentProps } from "react";
+import { useRef } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
-import { bloomStyle, isInked, useAsciiColors, useFrameLoop } from "@/lib/ascii";
-import type { Bloom, AsciiColor, DitherMatrix, Rgba } from "@/lib/ascii";
+import {
+  BRAILLE_DOT_BITS,
+  brailleChar,
+  cssColor,
+  EIGHTHS_UP,
+  SPINNERS,
+  useFrameLoop,
+} from "@/lib/ascii";
+import type { AsciiColor, SpinnerName } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/*
- * Every variant is a tone field on a small grid of cells: a function from
- * a cell and the time to a tone between 0 and 1. Each frame the loader
- * thresholds the field with the matrix and paints the inked cells into a
- * canvas one pixel per cell, which CSS scales up without smoothing. Shape
- * edges are hard (a cell is in the ring or not); only the tone inside a
- * shape fades, so outlines stay crisp and the dither carries the motion.
- * Cells are two pixels by default, big enough to read as dither.
+/**
+ * Font size per cell height for DOM glyphs. Cascadia Mono's full block and
+ * box lines are 1.17em tall, so at this size blocks and lines in
+ * neighbouring rows touch instead of leaving a hairline between them.
  */
+const GLYPH_EM = 1.17;
 
-export type LoaderVariant = "ring" | "dots" | "pulse" | "bar";
+/**
+ * A hairline stroke in the text colour. Adjacent block glyphs meet at
+ * fractional pixels, where anti-aliasing leaves a faint seam; the stroke
+ * covers it without visibly thickening the glyphs.
+ */
+const SEAL = { WebkitTextStroke: "0.045em currentColor" } as const;
+
+/**
+ * `spinner` cycles one glyph through a `SPINNERS` sequence, `dots` walks a
+ * bright dot along three, `wave` rolls eighth blocks like an equaliser and
+ * `comet` sends a Braille comet across six cells.
+ */
+export type LoaderVariant = "spinner" | "dots" | "wave" | "comet";
+
 export type LoaderSize = "sm" | "md" | "lg";
 
-export type LoaderProps = Omit<ComponentProps<"div">, "children" | "color"> & {
-  /** The animation. Default `"ring"`. */
-  variant?: LoaderVariant;
-  /** Height in pixels: 24, 40 or 64. Dots are twice as wide, the bar three times. Default `"md"`. */
-  size?: LoaderSize;
-  /** What a screen reader announces. Default `"Loading"`. */
+export interface LoaderProps extends Omit<
+  ComponentProps<"span">,
+  "children" | "color"
+> {
+  /** What is loading, announced politely to screen readers. Default `"Loading"`. */
   label?: string;
-  /** A palette name or any CSS colour. Default `"ink"`. */
+  /** Show the label as text next to the glyphs. Default false. */
+  showLabel?: boolean;
+  /** The animation. Default `"spinner"`. */
+  variant?: LoaderVariant;
+  /** For `variant="spinner"`: which glyph sequence. Default `"orbit"`. */
+  spinner?: SpinnerName;
+  /** Glyph cell height: `sm` 12px, `md` 16px, `lg` 24px. Default `"md"`. */
+  size?: LoaderSize;
+  /** Glyph colour: a palette name or any CSS colour, such as `"currentColor"`. Default `"ink"`. */
   color?: AsciiColor;
-  /** A soft glow in the loader's colour. Default `"off"`. */
-  bloom?: Bloom;
-  /** Threshold matrix. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /** Size of one dither cell in CSS pixels. Default 2 (1 at `sm`). */
-  cell?: number;
-  /** Speed multiplier. Default 1. */
+  /** Playback speed multiplier. Default 1. */
   speed?: number;
-};
-
-const HEIGHT = { lg: 64, md: 40, sm: 24 } as const satisfies Record<
-  LoaderSize,
-  number
->;
-
-const DEFAULT_CELL = { lg: 2, md: 2, sm: 1 } as const satisfies Record<
-  LoaderSize,
-  number
->;
-
-type ToneField = (x: number, y: number, t: number) => number;
-
-interface Grid {
-  cols: number;
-  rows: number;
+  /** Glyph cell height in CSS pixels. Overrides `size`. */
+  cell?: number;
 }
 
-const TAU = Math.PI * 2;
-/** Tone of the faint track every variant draws its motion on. */
-const TRACK = 0.13;
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-const fract = (value: number) => value - Math.floor(value);
-const easeInOut = (value: number) =>
-  value < 0.5 ? 4 * value ** 3 : 1 - (-2 * value + 2) ** 3 / 2;
+const CELLS = { lg: 24, md: 16, sm: 12 } as const satisfies Record<
+  LoaderSize,
+  number
+>;
 
-/** Distance of a cell centre from the grid centre, 1 at the edge. */
-const radiusAt = ({ cols, rows }: Grid, x: number, y: number) =>
-  Math.hypot(
-    (x + 0.5 - cols / 2) / (cols / 2),
-    (y + 0.5 - rows / 2) / (rows / 2)
-  );
+/** Frames per second of each variant at speed 1, and its width in cells. */
+const TIMING = {
+  comet: { cells: 6, rate: 28 },
+  dots: { cells: 3, rate: 6 },
+  spinner: { cells: 1, rate: 11 },
+  wave: { cells: 6, rate: 24 },
+} as const satisfies Record<LoaderVariant, { cells: number; rate: number }>;
 
-/**
- * A thick ring with a comet running round it. The head is solid and the
- * tail steps down through the dither levels behind it. The tail stretches
- * and shrinks as it goes, so the ring breathes instead of spinning at one
- * pace, and the whole ring keeps a faint track.
- */
-const ringField =
-  ({ cols, rows }: Grid): ToneField =>
-  (x, y, t) => {
-    const dx = (x + 0.5 - cols / 2) / (cols / 2);
-    const dy = (y + 0.5 - rows / 2) / (rows / 2);
-    const radius = Math.hypot(dx, dy);
-    if (radius > 1 || radius < 0.58) {
-      return 0;
-    }
-    const angle = fract(Math.atan2(dx, -dy) / TAU);
-    const tail = 0.5 + 0.3 * (0.5 - 0.5 * Math.cos(t * 2.1));
-    const behind = fract(t * 0.85 - angle);
-    if (behind > tail) {
-      return TRACK;
-    }
-    return Math.max(TRACK, (1 - behind / tail) ** 1.4 * 1.1);
-  };
+const DOT_GLYPHS = ["·", "•", "●"] as const;
 
-/** Three discs that build up and dissolve through the dither levels in turn. */
-const dotsField =
-  ({ cols, rows }: Grid): ToneField =>
-  (x, y, t) => {
-    const pitch = cols / 3;
-    const index = Math.min(2, Math.floor(x / pitch));
-    const dx = (x + 0.5 - (index + 0.5) * pitch) / (pitch / 2);
-    const dy = (y + 0.5 - rows / 2) / (rows / 2);
-    if (Math.hypot(dx, dy) > 0.86) {
-      return 0;
+/** Dots: a bright dot steps along, the one it just left still half lit. */
+const dotsFrame = (frame: number): string => {
+  const head = frame % 4;
+  let out = "";
+  for (let index = 0; index < 3; index += 1) {
+    let level = 0;
+    if (index === head) {
+      level = 2;
+    } else if (index === head - 1) {
+      level = 1;
     }
-    const wave = 0.5 + 0.5 * Math.sin(t * TAU * 0.8 - index * 1.1);
-    return Math.max(TRACK, wave ** 1.6 * 1.05);
-  };
-
-/** A dot that beats while thin rings ripple out of it and fade as they grow. */
-const pulseField = ({ cols, rows }: Grid): ToneField => {
-  const band = 1.6 / cols;
-  return (x, y, t) => {
-    const radius = radiusAt({ cols, rows }, x, y);
-    if (radius > 1) {
-      return 0;
-    }
-    const beat = 0.5 - 0.5 * Math.cos(t * TAU * 0.6);
-    if (radius < 0.18 + 0.08 * beat) {
-      return 1;
-    }
-    let tone = 0;
-    for (let ring = 0; ring < 3; ring += 1) {
-      const front = 0.25 + 0.75 * fract(t * 0.6 + ring / 3);
-      if (Math.abs(radius - front) < band) {
-        tone = Math.max(tone, (1 - front) ** 0.6 * 1.3);
-      }
-    }
-    return tone;
-  };
+    out += DOT_GLYPHS[level];
+  }
+  return out;
 };
 
-/** A dense head sweeping across a faint track, its tail thinning behind it. */
-const barField =
-  ({ cols }: Grid): ToneField =>
-  (x, _y, t) => {
-    const u = (x + 0.5) / cols;
-    // Each pass eases across and runs on past the end, so the tail leaves too.
-    const head = 1.45 * easeInOut(fract(t * 0.55));
-    const behind = head - u;
-    if (behind < 0 || behind > 0.45) {
-      return TRACK;
+/** Wave: each column rides a sine one step behind its left neighbour. */
+const waveFrame = (frame: number, cells: number): string => {
+  let out = "";
+  for (let index = 0; index < cells; index += 1) {
+    const phase = (frame / 24 - index / 7) * Math.PI * 2;
+    const level = 1 + Math.round(((Math.sin(phase) + 1) / 2) * 7);
+    out += EIGHTHS_UP[level] ?? "▄";
+  }
+  return out;
+};
+
+/** Dots lit per Braille column, from the comet's head back along its tail. */
+const COMET_TAIL = [4, 4, 3, 2, 2, 1, 1, 1] as const;
+/** Which rows a column with `n` dots lights, kept near the middle. */
+const COMET_ROWS = [[], [2], [1, 2], [0, 1, 2], [0, 1, 2, 3]] as const;
+
+/** Comet: a dense head of full Braille columns thinning to single dots. */
+const cometFrame = (frame: number, cells: number): string => {
+  const columns = cells * 2;
+  const span = columns + COMET_TAIL.length;
+  const head = frame % span;
+  let out = "";
+  for (let cell = 0; cell < cells; cell += 1) {
+    let mask = 0;
+    for (let side = 0; side < 2; side += 1) {
+      const behind = head - (cell * 2 + side);
+      const dots = behind >= 0 ? (COMET_TAIL[behind] ?? 0) : 0;
+      for (const row of COMET_ROWS[dots] ?? []) {
+        mask += BRAILLE_DOT_BITS[row]?.[side] ?? 0;
+      }
     }
-    return Math.max(TRACK, (1 - behind / 0.45) ** 1.1);
-  };
+    out += mask === 0 ? " " : brailleChar(mask);
+  }
+  return out;
+};
 
-const FIELDS = {
-  bar: barField,
-  dots: dotsField,
-  pulse: pulseField,
-  ring: ringField,
-} as const satisfies Record<LoaderVariant, (grid: Grid) => ToneField>;
+const glyphsAt = (
+  variant: LoaderVariant,
+  spinner: SpinnerName,
+  frame: number
+): string => {
+  switch (variant) {
+    case "spinner": {
+      const frames = SPINNERS[spinner];
+      return frames[frame % frames.length] ?? " ";
+    }
+    case "dots": {
+      return dotsFrame(frame);
+    }
+    case "wave": {
+      return waveFrame(frame, TIMING.wave.cells);
+    }
+    case "comet": {
+      return cometFrame(frame, TIMING.comet.cells);
+    }
+    default: {
+      const exhaustive: never = variant;
+      return exhaustive;
+    }
+  }
+};
 
-// The still frame each variant shows under reduced motion.
-const STILL_TIME = {
-  bar: 0.9,
-  dots: 0.2,
-  pulse: 0.5,
-  ring: 0.4,
+/** The frame drawn when motion is off: one that reads as "busy" on its own. */
+const STILL_FRAME = {
+  comet: 9,
+  dots: 1,
+  spinner: 0,
+  wave: 6,
 } as const satisfies Record<LoaderVariant, number>;
 
-const gridFor = (variant: LoaderVariant, height: number, cell: number) => {
-  const rows = Math.max(6, Math.round(height / cell));
-  if (variant === "bar") {
-    return { cols: rows * 3, rows: Math.max(2, Math.round(rows / 5)) };
-  }
-  if (variant === "dots") {
-    return { cols: rows * 2, rows: Math.round(rows * 0.62) };
-  }
-  return { cols: rows, rows };
-};
-
-const toByte = (value: number) => Math.round(clamp01(value) * 255);
-
-interface DrawOptions {
-  canvas: HTMLCanvasElement | null;
-  frame: { current: ImageData | null };
-  grid: Grid;
-  field: ToneField;
-  ink: Rgba;
-  matrix: DitherMatrix;
-  time: number;
-}
-
-const paint = ({
-  canvas,
-  frame,
-  grid,
-  field,
-  ink,
-  matrix,
-  time,
-}: DrawOptions) => {
-  const context = canvas?.getContext("2d");
-  if (!context) {
-    return;
-  }
-  const { cols, rows } = grid;
-  if (frame.current?.width !== cols || frame.current.height !== rows) {
-    frame.current = context.createImageData(cols, rows);
-  }
-  const { data } = frame.current;
-  const [red, green, blue, alpha] = ink.map(toByte);
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      const offset = (y * cols + x) * 4;
-      data[offset] = red ?? 0;
-      data[offset + 1] = green ?? 0;
-      data[offset + 2] = blue ?? 0;
-      data[offset + 3] = isInked(matrix, x, y, field(x, y, time))
-        ? (alpha ?? 255)
-        : 0;
-    }
-  }
-  context.putImageData(frame.current, 0, 0);
-};
-
 /**
- * A small dithered loading indicator: a ring with a comet tail, three
- * dots that dissolve in turn, a pulse, or a bar. It announces `label` politely to
- * screen readers, holds a still frame under reduced motion, and pauses
- * offscreen and in hidden tabs.
+ * A loading indicator drawn in glyphs: a spinner from `SPINNERS`, walking
+ * dots, an eighth-block wave or a Braille comet. It is a polite live
+ * region, so screen readers hear `label` once; the glyphs are hidden from
+ * them. The width is fixed in cells, so nothing around it shifts.
  */
 export const Loader = ({
-  variant = "ring",
-  size = "md",
   label = "Loading",
+  showLabel = false,
+  variant = "spinner",
+  spinner = "orbit",
+  size = "md",
   color = "ink",
-  bloom = "off",
-  matrix = "bayer4",
-  cell,
   speed = 1,
+  cell,
   className,
+  style,
   ...props
 }: LoaderProps) => {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const frameRef = useRef<ImageData | null>(null);
-  const timeRef = useRef<number>(STILL_TIME[variant]);
-  const colors = useAsciiColors(rootRef, [color]);
-  const ink: Rgba | null = colors ? colors[0] : null;
-
-  const step = Math.max(1, Math.round(cell ?? DEFAULT_CELL[size]));
-  const { cols, rows } = gridFor(variant, HEIGHT[size], step);
-  const grid = useMemo(() => ({ cols, rows }), [cols, rows]);
-  const field = useMemo(() => FIELDS[variant](grid), [variant, grid]);
-
-  const draw = useCallback(
-    (time: number) => {
-      if (ink) {
-        paint({
-          canvas: canvasRef.current,
-          field,
-          frame: frameRef,
-          grid,
-          ink,
-          matrix,
-          time,
-        });
-      }
-    },
-    [field, grid, ink, matrix]
-  );
-
-  // Snap cells to whole device pixels, as the shader does, so every cell is the same size.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const ratio = window.devicePixelRatio || 1;
-    const devicePixels = Math.max(1, Math.round(step * ratio));
-    canvas.style.width = `${(cols * devicePixels) / ratio}px`;
-    canvas.style.height = `${(rows * devicePixels) / ratio}px`;
-  }, [step, cols, rows]);
+  const glyphRef = useRef<HTMLSpanElement>(null);
+  const shown = useRef("");
+  const height = cell ?? CELLS[size];
+  const { cells, rate } = TIMING[variant];
+  const still = STILL_FRAME[variant];
+  // Frames per second of motion; speed 0 holds the still frame.
+  const pace = rate * Math.max(speed, 0.01);
 
   useFrameLoop(
     (time) => {
-      timeRef.current = time * speed + STILL_TIME[variant];
-      draw(timeRef.current);
+      const el = glyphRef.current;
+      if (!el) {
+        return;
+      }
+      const text = glyphsAt(variant, spinner, Math.floor(time * pace));
+      // Only touch the DOM when the glyphs change, not every tick.
+      if (text !== shown.current) {
+        shown.current = text;
+        el.textContent = text;
+      }
     },
-    { stillTime: 0, target: rootRef }
+    {
+      enabled: speed > 0,
+      fps: Math.min(60, Math.max(4, pace)),
+      // Halfway into the still frame, so rounding can't land on its neighbour.
+      stillTime: (still + 0.5) / pace,
+      target: glyphRef,
+    }
   );
 
-  // Redraw the current frame when the colour or shape changes while still.
-  useEffect(() => {
-    draw(timeRef.current);
-  }, [draw]);
+  const glyphStyle: CSSProperties = {
+    ...SEAL,
+    color: cssColor(color),
+    fontFamily: "var(--ascii-font, monospace)",
+    fontSize: `${height / GLYPH_EM}px`,
+    fontVariantLigatures: "none",
+    letterSpacing: 0,
+    lineHeight: `${height}px`,
+    width: `${cells}ch`,
+  };
 
   return (
-    <div
-      ref={rootRef}
+    <span
       role="status"
-      data-slot="loader"
-      data-variant={variant}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center",
-        className
-      )}
+      aria-live="polite"
+      className={cn("inline-flex items-center gap-2 align-middle", className)}
+      style={style}
       {...props}
     >
-      <canvas
-        ref={canvasRef}
-        width={cols}
-        height={rows}
+      <span
+        ref={glyphRef}
         aria-hidden="true"
-        className="block [image-rendering:pixelated]"
-        style={{
-          height: rows * step,
-          width: cols * step,
-          ...bloomStyle(color, bloom),
-        }}
-      />
-      <span className="sr-only">{label}</span>
-    </div>
+        className="inline-block shrink-0 overflow-hidden whitespace-pre select-none"
+        style={glyphStyle}
+      >
+        {glyphsAt(variant, spinner, still)}
+      </span>
+      <span
+        className={cn(
+          showLabel ? "text-muted-foreground font-mono text-xs" : "sr-only"
+        )}
+      >
+        {label}
+      </span>
+    </span>
   );
 };

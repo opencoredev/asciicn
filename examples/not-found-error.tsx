@@ -1,5 +1,5 @@
-import { AsciiButton } from "@/components/asciicn/ascii-button";
 import { NotFound } from "@/components/asciicn/not-found";
+import { Button } from "@/components/ui/button";
 
 export default function NotFoundError() {
   return (
@@ -7,15 +7,16 @@ export default function NotFoundError() {
       titleAs="h2"
       code="500"
       color="red"
+      glyph="▓"
       title="Something went wrong"
-      description="We could not load this page. Try again in a moment."
-      detail="ref 7f3a-e21c · 14:02 UTC"
+      description="We couldn't load this page. Try again in a moment."
+      path="/dashboard/usage"
+      detail="error 500 · ref 7f3a-e21c"
       actions={
-        <AsciiButton color="red" fill="hatched" variant="outline">
+        <Button size="sm" variant="outline">
           Try again
-        </AsciiButton>
+        </Button>
       }
-      className="w-full"
     />
   );
 }

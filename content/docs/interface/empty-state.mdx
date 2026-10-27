@@ -1,6 +1,6 @@
 ---
 title: "Empty state"
-description: "A lit, dithered illustration with a title, a description and an action, for views with nothing in them yet."
+description: "A box-drawing line drawing (an inbox, a search, a folder or an unplugged cable) with a title, a description and an action, for views with nothing in them yet."
 ---
 
 import EmptyStateDemo from "@/examples/empty-state-demo";
@@ -11,7 +11,6 @@ import EmptyStateSearch from "@/examples/empty-state-search";
 
 <ComponentPreview
   src="examples/empty-state-demo.tsx"
-  size="lg"
   controls={emptyStateControls}
 >
   <EmptyStateDemo />
@@ -32,27 +31,32 @@ export function NoProjects() {
     <EmptyState
       illustration="folder"
       title="No projects yet"
-      description="Create a project to start building."
+      description="Create a project to deploy your first site."
       action={<Button>New project</Button>}
     />
   );
 }
 ```
 
-Above the text sits a small lit object drawn in dither cells. Each surface takes a tone from a light up and to the left, so faces turned to the light are dense, faces turned away are sparse, and curved surfaces step through every Bayer level. A one-cell seam splits the object's parts, a clear margin outlines it, and a faint halo and floor shadow sit behind it.
+Each drawing is about 21 cells wide, set as text in `--ascii-font`: line art in the muted text colour, a few accent glyphs in `color`, and a `░` drop shadow down the right and along the bottom, like a dialog in a text-mode interface. The accent glyphs that mean "nothing yet" (the dots above the inbox, the `?` in the lens, the dust in the folder, the gap in the cable) blink in turn.
 
-- `box`: an open box with its flaps folded back. The default, for lists and orders.
-- `search`: a magnifying glass with a glint on the glass. For search and filters with no results.
-- `folder`: a folder with a sheet peeking out. For files, projects and documents.
-- `planet`: a lit sphere with a tilted ring. For feeds, events and anything still to arrive.
+To draw your own, pass `illustration={{ art, mask }}`: two arrays of strings the same size. In the mask, a space is line art, `a` is accent, `s` is shadow, and `1` to `3` are accent glyphs that blink in that order.
 
-`matrix` changes the pattern: `bayer4` for crisp steps, `bayer8` for finer ones, `blue-noise` for an even grain.
+```tsx
+<EmptyState
+  illustration={{
+    art: ["┌───┐", "│ · │", "└───┘"],
+    mask: ["     ", "  1  ", "     "],
+  }}
+  title="Nothing queued"
+/>
+```
 
 ## Examples
 
 ### Illustrations
 
-The four objects in four colours.
+All four drawings at a 12px cell, each with its own accent colour.
 
 <ComponentPreview src="examples/empty-state-illustrations.tsx" size="lg">
   <EmptyStateIllustrations />
@@ -60,17 +64,17 @@ The four objects in four colours.
 
 ### Inside a settings panel
 
-A first-run state for API keys, with the green folder and a dither button for the action.
+The folder in green, under a panel header, with one action.
 
-<ComponentPreview src="examples/empty-state-panel.tsx" size="lg">
+<ComponentPreview src="examples/empty-state-panel.tsx">
   <EmptyStatePanel />
 </ComponentPreview>
 
 ### No search results
 
-The magnifier in grey, for a state the user will see often. Keep these quiet and give a way out.
+The magnifier under a search field, with an outline button to clear it.
 
-<ComponentPreview src="examples/empty-state-search.tsx" size="lg">
+<ComponentPreview src="examples/empty-state-search.tsx">
   <EmptyStateSearch />
 </ComponentPreview>
 
@@ -82,54 +86,55 @@ The magnifier in grey, for a state the user will see often. Keep these quiet and
       name: "title",
       type: "ReactNode",
       required: true,
-      description: "The heading. Say what is empty, plainly.",
+      description: 'What is empty, such as "No projects yet".',
     },
     {
       name: "description",
       type: "ReactNode",
-      description: "One or two sentences: why it is empty and what to do next.",
+      description: "One or two sentences on why it is empty and what to do.",
     },
     {
       name: "action",
       type: "ReactNode",
-      description: "Buttons or links, under the text.",
+      description: "Buttons or links, laid out in a centred row.",
     },
     {
       name: "illustration",
-      type: '"box" | "search" | "folder" | "planet"',
-      default: '"box"',
-      description: "The dithered object above the text.",
+      type: '"inbox" | "search" | "folder" | "cable" | EmptyStateArt',
+      default: '"inbox"',
+      description: "Which drawing to show, or your own art and mask.",
+    },
+    {
+      name: "titleAs",
+      type: '"h2" | "h3" | "h4" | "p"',
+      default: '"h3"',
+      description: "Heading level of the title, to fit the page outline.",
     },
     {
       name: "color",
       type: "AsciiColor",
       default: '"ink"',
       description:
-        "Colour of the illustration: a palette name, a CSS variable name or any CSS colour.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "The threshold pattern.",
+        "Accent colour of the drawing, a palette name or any CSS colour.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description: "Bob the object up and down by one cell.",
+      description: "Blink the accent glyphs in turn.",
     },
     {
-      name: "titleAs",
-      type: '"h2" | "h3" | "h4"',
-      default: '"h3"',
-      description: "Heading level of the title.",
+      name: "cell",
+      type: "number",
+      default: "14",
+      description: "Glyph cell height in CSS pixels.",
     },
   ]}
 />
 
 ## Notes
 
-- The illustration is decorative and hidden from assistive technology. The title is a real heading; set `titleAs` to fit the page outline.
-- The bob moves the object one whole cell in steps, so the dither never smears, and it stops under reduced motion. Each illustration is two SVG paths, computed once per illustration and matrix and cached, so it costs no JavaScript at runtime and renders on the server.
-- The illustration keeps a 112 by 72 cell aspect ratio up to 336 pixels wide, so cells are 3 pixels at full size, and it shrinks on narrow screens.
+- The drawing is `aria-hidden`; the title is a real heading and the description real text. Pick `titleAs` so the heading fits the page outline.
+- The art is plain DOM text, so it renders on the server, stays sharp at any zoom and can be selected and copied.
+- The blink runs on the Web Animations API, which the browser runs off the main thread. Each glyph stays lit most of the cycle and dims briefly. With reduced motion, or `animate={false}`, every glyph stays lit.
+- The four drawings are exported as `EMPTY_STATE_ART` if you want to reuse them elsewhere.

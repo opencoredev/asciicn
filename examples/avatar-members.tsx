@@ -30,17 +30,15 @@ const MEMBERS: readonly {
 
 export default function AvatarMembers() {
   return (
-    <ul className="bg-background ring-border divide-border flex w-full max-w-md flex-col divide-y rounded-xl ring-1">
-      {MEMBERS.map((member, index) => (
+    <ul className="bg-background flex w-full max-w-md flex-col divide-y rounded-lg border">
+      {MEMBERS.map((member) => (
         <li key={member.email} className="flex items-center gap-3 px-4 py-3">
           <Avatar
-            name={member.email}
-            label={member.name}
-            size={36}
+            name={member.name}
+            size={40}
             status={member.status}
-            fill={member.role === "Bot" ? "hatched" : "gradient"}
+            shape={member.role === "Bot" ? "square" : "circle"}
             color={member.role === "Bot" ? "grey" : undefined}
-            ring={index === 0}
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-sm font-medium">{member.name}</span>

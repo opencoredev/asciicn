@@ -1,20 +1,20 @@
-import { ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
 import { color, segmented, slider } from "@/lib/preview-controls";
 
 // Knobs for the skeleton's main demo, shared by the page and the demo.
 
-export const animation = segmented({
+export const motion = segmented({
   default: "sweep",
-  id: "animation",
-  label: "Animation",
+  id: "motion",
+  label: "Motion",
   options: ["sweep", "pulse", "none"],
 });
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const chars = segmented({
+  default: "░▒▓",
+  id: "chars",
+  label: "Glyphs",
+  options: ["░▒▓", "·•●", ".:#", "⠂⠕⠿"],
 });
 
 export const tint = color({
@@ -25,24 +25,14 @@ export const tint = color({
 });
 
 export const cell = slider({
-  default: 2,
+  default: 12,
   id: "cell",
   label: "Cell",
-  max: 4,
-  min: 1,
-  step: 1,
+  max: 18,
+  min: 8,
+  step: 2,
   unit: "px",
 });
 
-export const duration = slider({
-  default: 1.8,
-  id: "duration",
-  label: "Duration",
-  max: 4,
-  min: 1,
-  step: 0.2,
-  unit: "s",
-});
-
 /** Display order of the tray. */
-export const controls = [animation, fill, tint, cell, duration];
+export const controls = [motion, chars, tint, cell];

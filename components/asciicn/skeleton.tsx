@@ -1,295 +1,265 @@
+"use client";
+
+import { useRef } from "react";
 import type { ComponentProps, CSSProperties } from "react";
 
-import { cssColor, asciiMask, fillStyle } from "@/lib/ascii";
-import type { AsciiColor, FillVariant } from "@/lib/ascii";
+import { cssColor, useFrameLoop } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/*
- * A placeholder drawn entirely in dither, in one colour. At rest each
- * block is a faint tint under a Bayer ramp that thins from the left edge,
- * so it reads as dither even in a still frame. `sweep` runs a wide band
- * across it: four copies of the colour, each masked to a denser Bayer
- * level and clipped to a narrower slice, so the band's middle is densest
- * and its sides fall off level by level. `pulse` steps the whole block up
- * through three nested Bayer levels and back down, so the dots multiply
- * and thin out instead of fading. Only `clip-path` and opacity animate;
- * the masks stay put, so every dot stays on the cell grid.
+/**
+ * Font size per cell height for DOM glyphs. Cascadia Mono's full block and
+ * box lines are 1.17em tall, so at this size blocks and lines in
+ * neighbouring rows touch instead of leaving a hairline between them.
  */
+const GLYPH_EM = 1.17;
 
-// Levels of the sweep, light to dense, with the half-width of each slice.
-const BAND = [
-  { halfWidth: 120, level: 4 / 16 },
-  { halfWidth: 82, level: 6 / 16 },
-  { halfWidth: 48, level: 8 / 16 },
-  { halfWidth: 20, level: 11 / 16 },
-] as const;
-
-const REACH = BAND[0].halfWidth;
-
-// Levels the pulse steps through, each switched on for a shorter span.
-const PULSE = [4 / 16, 6 / 16, 9 / 16] as const;
-
-const maskRule = (level: number) => {
-  const image = asciiMask(level);
-  const size = "calc(var(--dcn-cell) * 4)";
-  return `-webkit-mask-image:${image};mask-image:${image};-webkit-mask-size:${size};mask-size:${size};`;
-};
-
-const pulseRule = (index: number) => {
-  const on = 10 + index * 12;
-  return `@keyframes dcn-skeleton-step-${index}{0%,${on - 0.1}%{opacity:0}${on}%,${100 - on}%{opacity:1}${100 - on + 0.1}%,100%{opacity:0}}.dcn-skeleton-pulse-${index}{${maskRule(PULSE[index] ?? 0.5)}opacity:0;animation:dcn-skeleton-step-${index} var(--dcn-duration) linear var(--dcn-delay) infinite}`;
-};
-
-const STYLES = [
-  ...BAND.map(
-    ({ level }, index) => `.dcn-skeleton-band-${index}{${maskRule(level)}}`
-  ),
-  ...PULSE.map((_, index) => pulseRule(index)),
-  `@keyframes dcn-skeleton-sweep{0%{clip-path:inset(0 calc(100% + ${REACH}px - var(--dcn-half)) 0 calc(0% - ${REACH}px - var(--dcn-half)))}80%,100%{clip-path:inset(0 calc(0% - ${REACH}px - var(--dcn-half)) 0 calc(100% + ${REACH}px - var(--dcn-half)))}}`,
-  ".dcn-skeleton-sweep{clip-path:inset(0 100% 0 0);animation:dcn-skeleton-sweep var(--dcn-duration) cubic-bezier(0.65,0,0.35,1) var(--dcn-delay) infinite}",
-  "@media (prefers-reduced-motion: reduce){.dcn-skeleton-sweep{display:none}[class*=dcn-skeleton-pulse-]{animation:none}}",
-].join("");
-
-const SkeletonStyles = () => (
-  <style href="asciicn-skeleton" precedence="asciicn">
-    {STYLES}
-  </style>
-);
-
-export type SkeletonAnimation = "sweep" | "pulse" | "none";
-
-interface BlockShape {
-  /** A rectangle. Size it with `className`. */
-  shape?: "block";
-  lines?: never;
-  size?: never;
-}
-
-interface TextShape {
-  /** Lines of text, the last one shorter. */
-  shape: "text";
-  /** How many lines. Default 3. */
-  lines?: number;
-  size?: never;
-}
-
-interface CircleShape {
-  /** A circle, for avatars. */
-  shape: "circle";
-  /** Diameter in pixels. Default 40. */
-  size?: number;
-  lines?: never;
-}
-
-export type SkeletonShape = BlockShape | TextShape | CircleShape;
-
-export type SkeletonProps = Omit<ComponentProps<"div">, "children" | "color"> &
-  SkeletonShape & {
-    /** A palette name or any CSS colour. Default `"grey"`. */
-    color?: AsciiColor;
-    /** Texture of the resting layer: a Bayer ramp from the left, a dot lattice, diagonals, or a flat tint. Default `"gradient"`. */
-    fill?: FillVariant;
-    /** `sweep` runs a dense band across; `pulse` steps the dither up and down through its levels; `none` holds still. Default `"sweep"`. */
-    animation?: SkeletonAnimation;
-    /** Size of one dither cell in CSS pixels. Default 2. */
-    cell?: number;
-    /** Seconds for one sweep or pulse, including the pause after it. Default 1.8. */
-    duration?: number;
-    /** Seconds to wait before the first sweep. Default 0. */
-    delay?: number;
-  };
-
-/** Inline styles that also carry custom properties. */
-type StyleWithVars = CSSProperties & Record<`--${string}`, string>;
-
-interface Look {
-  color: AsciiColor;
-  fill: FillVariant;
-  animation: SkeletonAnimation;
-  cell: number;
-  duration: number;
-  delay: number;
-}
-
-type BarProps = Omit<ComponentProps<"div">, "children" | "color"> & Look;
-
-// The resting texture: a ramp from the left for gradient, the tile for
-// dotted and hatched, nothing extra for solid (its tint is stronger).
-const textureStyle = ({ fill, color, cell }: Look): CSSProperties | null => {
-  if (fill === "solid") {
-    return null;
-  }
-  return fillStyle(fill, {
-    cell,
-    color,
-    edge: "left",
-    from: 0.375,
-    length: 40,
-    to: 0.125,
-  });
-};
-
-const Bar = ({
-  className,
-  style,
-  color,
-  fill,
-  animation,
-  cell,
-  duration,
-  delay,
-  ...rest
-}: BarProps) => {
-  const vars: StyleWithVars = {
-    "--dcn-cell": `${cell}px`,
-    "--dcn-delay": `${delay}s`,
-    "--dcn-duration": `${duration}s`,
-    "--dcn-skeleton": cssColor(color),
-    ...style,
-  };
-  const texture = textureStyle({
-    animation,
-    cell,
-    color,
-    delay,
-    duration,
-    fill,
-  });
-  return (
-    <div
-      data-slot="skeleton"
-      {...rest}
-      className={cn("relative overflow-hidden rounded-md", className)}
-      style={vars}
-    >
-      <SkeletonStyles />
-      <div
-        className={cn(
-          "absolute inset-0 bg-(--dcn-skeleton)",
-          fill === "solid" ? "opacity-[0.18]" : "opacity-[0.07]"
-        )}
-      />
-      {texture === null ? null : (
-        <div
-          className="absolute inset-0"
-          style={{ ...texture, opacity: 0.6 }}
-        />
-      )}
-      {animation === "sweep"
-        ? BAND.map(({ halfWidth }, index) => {
-            const slice: StyleWithVars = { "--dcn-half": `${halfWidth}px` };
-            return (
-              <div
-                key={halfWidth}
-                className={cn(
-                  "dcn-skeleton-sweep absolute inset-0 bg-(--dcn-skeleton) opacity-60",
-                  `dcn-skeleton-band-${index}`
-                )}
-                style={slice}
-              />
-            );
-          })
-        : null}
-      {animation === "pulse"
-        ? PULSE.map((level, index) => (
-            <div
-              key={level}
-              className={cn(
-                "absolute inset-0 bg-(--dcn-skeleton)",
-                `dcn-skeleton-pulse-${index}`
-              )}
-            />
-          ))
-        : null}
-    </div>
-  );
-};
-
-// The last line of a paragraph is rarely full.
-const lineWidth = (index: number, count: number) =>
-  count > 1 && index === count - 1 ? "62%" : "100%";
+/** `text` is a paragraph of lines, `block` a filled rectangle, `circle` a glyph disc. */
+export type SkeletonShape = "text" | "block" | "circle";
 
 /**
- * A loading placeholder drawn in dither: a Bayer ramp at rest, and a band
- * of denser dither that sweeps across or a pulse that steps through levels. A block by default; `shape="text"`
- * draws lines and `shape="circle"` an avatar. It is hidden from assistive
- * technology: mark the region that is loading with `aria-busy` and
- * announce it in words.
+ * `sweep` passes a dense band across every skeleton on the page, as one
+ * light; `pulse` breathes all glyphs between the first two levels; `none`
+ * holds still.
  */
-export const Skeleton = (props: SkeletonProps) => {
-  const {
-    shape: _shape,
-    lines: _lines,
-    size: _size,
-    color = "grey",
-    fill = "gradient",
-    animation = "sweep",
-    cell = 2,
-    duration = 1.8,
-    delay = 0,
-    className,
-    style,
-    ...rest
-  } = props;
-  const look: Look = {
-    animation,
-    cell: Math.max(1, Math.round(cell)),
-    color,
-    delay,
-    duration,
-    fill,
-  };
+export type SkeletonMotion = "sweep" | "pulse" | "none";
 
-  switch (props.shape) {
+export interface SkeletonProps extends Omit<
+  ComponentProps<"div">,
+  "children" | "color"
+> {
+  /** What to stand in for. Default `"block"`. */
+  shape?: SkeletonShape;
+  /** `text`: number of lines; the last one is shorter. Default 3. */
+  lines?: number;
+  /** `block`: height in rows of cells. Default 3. */
+  rows?: number;
+  /** `circle`: diameter in rows of cells. Default 3. */
+  size?: number;
+  /** How it moves while loading. Default `"sweep"`; still under reduced motion. */
+  motion?: SkeletonMotion;
+  /** Glyphs from resting to the peak of the sweep. Default `"░▒▓"`. */
+  chars?: string;
+  /** Glyph colour: a palette name or any CSS colour. Default `"grey"`. */
+  color?: AsciiColor;
+  /** Glyph cell height in CSS pixels. Default `--ascii-cell`. */
+  cell?: number;
+}
+
+/** Glyphs per line before clipping: wide enough for any card or table cell. */
+const RUN_CELLS = 320;
+/** Widths of text lines, by position; the last line uses `LAST_LINE`. */
+const LINE_WIDTHS = ["100%", "94%", "97%", "88%"] as const;
+const LAST_LINE = "62%";
+/** One pass of the sweep across the viewport, in seconds. */
+const SWEEP_SECONDS = 1.9;
+/** Half-widths of the sweep band's peak and shoulder, in cells. */
+const PEAK_CELLS = 1.5;
+const SHOULDER_CELLS = 5;
+const PROBE = "0000000000";
+
+const cellText = (cell: number | undefined): CSSProperties => {
+  const height = cell === undefined ? "var(--ascii-cell, 12px)" : `${cell}px`;
+  return {
+    fontFamily: "var(--ascii-font, monospace)",
+    fontSize: `calc(${height} / ${GLYPH_EM})`,
+    fontVariantLigatures: "none",
+    letterSpacing: 0,
+    lineHeight: height,
+    whiteSpace: "pre",
+  };
+};
+
+/** Rows of a disc `size` rows across. Cells are half as wide as tall, so a row spans twice as many columns. */
+const discRows = (size: number): string[] => {
+  const rows = Math.max(1, Math.round(size));
+  const columns = rows * 2;
+  return Array.from({ length: rows }, (_, row) => {
+    const y = ((row + 0.5) / rows) * 2 - 1;
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const x = ((column + 0.5) / columns) * 2 - 1;
+      line += x * x + y * y <= 1.08 ? "x" : " ";
+    }
+    return line;
+  });
+};
+
+interface Line {
+  /** CSS width of the line. */
+  readonly width: string;
+  /** Which cells hold a glyph (`x`), or null for every cell. */
+  readonly mask: string | null;
+}
+
+const shapeLines = ({
+  shape,
+  lines,
+  rows,
+  size,
+}: {
+  shape: SkeletonShape;
+  lines: number;
+  rows: number;
+  size: number;
+}): Line[] => {
+  switch (shape) {
     case "text": {
-      const count = Math.max(1, Math.round(props.lines ?? 3));
-      return (
-        <div
-          aria-hidden="true"
-          {...rest}
-          className={cn("flex w-full flex-col gap-2.5", className)}
-          style={style}
-        >
-          {Array.from({ length: count }, (_, index) => (
-            <Bar
-              key={index}
-              {...look}
-              // Each line starts a beat after the one above, so the sweep reads as one wave.
-              delay={delay + index * 0.08}
-              className="h-3 rounded-[3px]"
-              style={{ width: lineWidth(index, count) }}
-            />
-          ))}
-        </div>
-      );
+      const count = Math.max(1, Math.round(lines));
+      return Array.from({ length: count }, (_, index) => ({
+        mask: null,
+        width:
+          count > 1 && index === count - 1
+            ? LAST_LINE
+            : (LINE_WIDTHS[index % LINE_WIDTHS.length] ?? "100%"),
+      }));
+    }
+    case "block": {
+      return Array.from({ length: Math.max(1, Math.round(rows)) }, () => ({
+        mask: null,
+        width: "100%",
+      }));
     }
     case "circle": {
-      const diameter = props.size ?? 40;
-      return (
-        <Bar
-          aria-hidden="true"
-          {...rest}
-          {...look}
-          className={cn("shrink-0 rounded-full", className)}
-          style={{ height: diameter, width: diameter, ...style }}
-        />
-      );
-    }
-    case undefined:
-    case "block": {
-      return (
-        <Bar
-          aria-hidden="true"
-          {...rest}
-          {...look}
-          className={className}
-          style={style}
-        />
-      );
+      return discRows(size).map((mask) => ({
+        mask,
+        width: `${mask.length}ch`,
+      }));
     }
     default: {
-      const exhaustive: never = props;
+      const exhaustive: never = shape;
       return exhaustive;
     }
   }
+};
+
+const lineText = (
+  line: Line,
+  glyphAt: (column: number) => string,
+  cells: number
+): string => {
+  let out = "";
+  const count = line.mask === null ? cells : line.mask.length;
+  for (let column = 0; column < count; column += 1) {
+    out +=
+      line.mask === null || line.mask[column] === "x" ? glyphAt(column) : " ";
+  }
+  return out;
+};
+
+/**
+ * A loading placeholder made of shade glyphs: lines of text, a block or a
+ * disc. A dense band of `▒▓` sweeps across it, positioned against the
+ * viewport, so every skeleton on the page shimmers as one. The glyphs are
+ * hidden from screen readers: mark the region that is loading with
+ * `aria-busy` and give it a text status.
+ */
+export const Skeleton = ({
+  shape = "block",
+  lines = 3,
+  rows = 3,
+  size = 3,
+  motion = "sweep",
+  chars = "░▒▓",
+  color = "grey",
+  cell,
+  className,
+  style,
+  ...props
+}: SkeletonProps) => {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const glyphs = [...chars];
+  const rest = glyphs[0] ?? "░";
+  const shoulder = glyphs[1] ?? rest;
+  const peak = glyphs.at(-1) ?? shoulder;
+  const shapeOf = shapeLines({ lines, rows, shape, size });
+
+  useFrameLoop(
+    () => {
+      const probe = probeRef.current;
+      if (!probe) {
+        return;
+      }
+      const advance = probe.getBoundingClientRect().width / PROBE.length;
+      if (advance <= 0) {
+        return;
+      }
+      // A shared clock rather than this loop's own, so every skeleton on
+      // the page agrees on where the band is.
+      const now = performance.now() / 1000;
+      const phase = (now / SWEEP_SECONDS) % 1;
+      // Read every line's position first, then write, to avoid
+      // interleaving layout reads with DOM writes.
+      const boxes = lineRefs.current.map((el) => el?.getBoundingClientRect());
+      for (const [index, el] of lineRefs.current.entries()) {
+        const line = shapeOf[index];
+        const box = boxes[index];
+        if (!el || !line || !box) {
+          continue;
+        }
+        const cells = Math.ceil(box.width / advance);
+        let glyphAt = (_column: number) => rest;
+        if (motion === "sweep") {
+          const viewport = window.innerWidth;
+          const margin = SHOULDER_CELLS * advance;
+          const bandX = -margin + phase * (viewport + margin * 2);
+          glyphAt = (column) => {
+            const distance =
+              Math.abs(box.left + (column + 0.5) * advance - bandX) / advance;
+            if (distance < PEAK_CELLS) {
+              return peak;
+            }
+            return distance < SHOULDER_CELLS ? shoulder : rest;
+          };
+        } else if (motion === "pulse") {
+          const lit = Math.sin(phase * Math.PI * 2) > 0.35;
+          glyphAt = () => (lit ? shoulder : rest);
+        }
+        const text = lineText(line, glyphAt, cells);
+        if (el.textContent !== text) {
+          el.textContent = text;
+        }
+      }
+    },
+    { enabled: motion !== "none", fps: 30, target: rootRef }
+  );
+
+  return (
+    <div
+      ref={rootRef}
+      aria-hidden="true"
+      className={cn(
+        "relative flex flex-col overflow-hidden select-none",
+        shape === "circle" ? "w-max" : "w-full",
+        className
+      )}
+      style={{
+        ...cellText(cell),
+        color: `color-mix(in oklab, ${cssColor(color)} 70%, transparent)`,
+        gap: shape === "text" ? "0.5lh" : 0,
+        ...style,
+      }}
+      {...props}
+    >
+      <span ref={probeRef} className="invisible absolute top-0 left-0">
+        {PROBE}
+      </span>
+      {shapeOf.map((line, index) => (
+        <span
+          // Lines are positional and never reorder.
+          // oxlint-disable-next-line react/no-array-index-key
+          key={index}
+          ref={(el) => {
+            lineRefs.current[index] = el;
+          }}
+          className="block max-w-full overflow-hidden"
+          style={{ width: line.width }}
+        >
+          {lineText(line, () => rest, RUN_CELLS)}
+        </span>
+      ))}
+    </div>
+  );
 };

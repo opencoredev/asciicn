@@ -1,433 +1,315 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
-import { bloomStyle, isInked, useAsciiColors, useFrameLoop } from "@/lib/ascii";
-import type { Bloom, AsciiColor, FillVariant, Rgba } from "@/lib/ascii";
+import { cssColor, useFrameLoop } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/*
- * The code is set in the page's own font, rasterised once onto a grid of
- * cells, and turned into block letters: each face cell gets a tone that
- * is densest at the top of the glyphs and thins towards the baseline, and
- * the cells behind it, down and to the right, become an extruded side in
- * a sparse dither. Every frame the tones are thresholded with the Bayer
- * matrix and painted into a canvas one pixel per cell. On mount the tones
- * rise from nothing, so the digits print in level by level; after that a
- * band of light crosses the face every few seconds. Reduced motion shows
- * the finished letters, still.
+/**
+ * Font size per cell height for DOM glyphs. Cascadia Mono's full block and
+ * box lines are 1.17em tall, so at this size blocks and lines in
+ * neighbouring rows touch instead of leaving a hairline between them.
  */
+const GLYPH_EM = 1.17;
 
-const PRINT_SECONDS = 1.1;
-const SWEEP_SECONDS = 5.5;
-// Where the still frame sits: after the print, between two sweeps.
-const STILL_TIME = PRINT_SECONDS + SWEEP_SECONDS * 0.7;
+/**
+ * A hairline stroke in the text colour. Adjacent block glyphs meet at
+ * fractional pixels, where anti-aliasing leaves a faint seam; the stroke
+ * covers it without visibly thickening the glyphs.
+ */
+const SEAL = { WebkitTextStroke: "0.045em currentColor" } as const;
 
-/** Cell kinds: 0 empty, 1 face, 2 and up the extruded side (2 = nearest the face). */
-interface Raster {
-  cols: number;
-  rows: number;
-  kind: Uint8Array;
-  /** Vertical position inside the glyphs for face cells, 0 at the top. */
-  depth: Float32Array;
-}
-
-const rasterise = ({
-  code,
-  font,
-  cols,
-  rows,
-  extrude,
-}: {
-  code: string;
-  font: string;
-  cols: number;
-  rows: number;
-  extrude: number;
-}): Raster | null => {
-  const scale = 4;
-  const canvas = document.createElement("canvas");
-  canvas.width = cols * scale;
-  canvas.height = rows * scale;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) {
-    return null;
-  }
-  const pad = extrude + 1;
-  // Fit the code into the grid, leaving room for the extruded side.
-  context.font = `800 100px ${font}`;
-  const metrics = context.measureText(code);
-  const ascent = metrics.actualBoundingBoxAscent;
-  const descent = metrics.actualBoundingBoxDescent;
-  const width = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-  const size = Math.min(
-    ((cols - pad - 1) * scale) / (width / 100),
-    ((rows - pad - 1) * scale) / ((ascent + descent) / 100)
-  );
-  context.font = `800 ${size}px ${font}`;
-  const fitted = context.measureText(code);
-  const glyphHeight =
-    fitted.actualBoundingBoxAscent + fitted.actualBoundingBoxDescent;
-  const glyphWidth =
-    fitted.actualBoundingBoxLeft + fitted.actualBoundingBoxRight;
-  const left = ((cols - pad) * scale - glyphWidth) / 2;
-  const top = ((rows - pad) * scale - glyphHeight) / 2;
-  context.fillStyle = "#000";
-  context.fillText(
-    code,
-    left + fitted.actualBoundingBoxLeft,
-    top + fitted.actualBoundingBoxAscent
-  );
-  const { data } = context.getImageData(0, 0, cols * scale, rows * scale);
-  const kind = new Uint8Array(cols * rows);
-  const depth = new Float32Array(cols * rows);
-  const topCell = top / scale;
-  const heightCells = Math.max(1, glyphHeight / scale);
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      let coverage = 0;
-      for (let sy = 0; sy < scale; sy += 1) {
-        for (let sx = 0; sx < scale; sx += 1) {
-          coverage +=
-            data[((y * scale + sy) * cols * scale + x * scale + sx) * 4 + 3] ??
-            0;
-        }
-      }
-      if (coverage / (scale * scale * 255) >= 0.5) {
-        kind[y * cols + x] = 1;
-        depth[y * cols + x] = (y + 0.5 - topCell) / heightCells;
-      }
-    }
-  }
-  // The side: cells behind the face along the diagonal, nearest first.
-  for (let step = 1; step <= extrude; step += 1) {
-    for (let y = rows - 1; y >= step; y -= 1) {
-      for (let x = cols - 1; x >= step; x -= 1) {
-        const index = y * cols + x;
-        if (kind[index] === 0 && kind[(y - step) * cols + x - step] === 1) {
-          kind[index] = step + 1;
-        }
-      }
-    }
-  }
-  return { cols, depth, kind, rows };
-};
-
-const mod4 = (value: number) => value % 4;
-
-const TEXTURE = {
-  dotted: (x: number, y: number) => y % 2 === 0 && (mod4(x) + y / 2) % 2 === 0,
-  hatched: (x: number, y: number) => mod4(x + y) === 3,
-} as const;
-
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
-interface PaintOptions {
-  raster: Raster;
-  fill: FillVariant;
-  ink: Rgba;
-  time: number;
-  extrude: number;
-  image: ImageData;
-}
-
-/** The light band's position across the face at `time`, or null between sweeps. */
-const sweepAt = (time: number) => {
-  const phase = (time - PRINT_SECONDS) / SWEEP_SECONDS;
-  if (phase < 0) {
-    return null;
-  }
-  const along = (phase - Math.floor(phase)) * 1.8 - 0.3;
-  return along > 1.3 ? null : along;
-};
-
-const faceInked = ({
-  fill,
-  tone,
-  x,
-  y,
-}: {
-  fill: FillVariant;
-  tone: number;
-  x: number;
-  y: number;
-}) => {
-  switch (fill) {
-    case "gradient": {
-      return isInked("bayer4", x, y, tone);
-    }
-    case "solid": {
-      return tone > 0.06;
-    }
-    case "dotted":
-    case "hatched": {
-      return tone > 0.9 || (tone > 0.06 && TEXTURE[fill](x, y));
-    }
-    default: {
-      const exhaustive: never = fill;
-      return exhaustive;
-    }
-  }
-};
-
-const paint = ({ raster, fill, ink, time, extrude, image }: PaintOptions) => {
-  const { cols, rows, kind, depth } = raster;
-  const { data } = image;
-  const print = clamp01(time / PRINT_SECONDS);
-  const sweep = sweepAt(time);
-  const span = cols + rows * 0.7;
-  const [red, green, blue, alpha] = ink.map((value) =>
-    Math.round(clamp01(value) * 255)
-  );
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      const index = y * cols + x;
-      const cell = kind[index] ?? 0;
-      let on = false;
-      if (cell === 1) {
-        const glow =
-          sweep === null
-            ? 0
-            : Math.max(0, 1 - Math.abs((x + y * 0.7) / span - sweep) / 0.06);
-        // A lit edge along the tops of the glyphs, then the face thinning downward.
-        const lit = y === 0 || kind[index - cols] !== 1;
-        const shade = lit ? 1 : 0.95 - 0.4 * (depth[index] ?? 0);
-        const tone = (shade + 0.45 * glow) * print;
-        on = faceInked({ fill, tone, x, y });
-      } else if (cell > 1) {
-        // The side fades away from the face.
-        const tone =
-          (0.22 - (0.12 * (cell - 2)) / Math.max(1, extrude)) * print;
-        on = isInked("bayer4", x, y, tone);
-      }
-      const offset = index * 4;
-      data[offset] = red ?? 0;
-      data[offset + 1] = green ?? 0;
-      data[offset + 2] = blue ?? 0;
-      data[offset + 3] = on ? (alpha ?? 255) : 0;
-    }
-  }
-};
-
-/** Width of the root in CSS pixels, kept up to date. */
-const useWidth = (ref: { current: HTMLElement | null }) => {
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) => {
-      setWidth(Math.round(entry?.contentRect.width ?? 0));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref]);
-  return width;
-};
-
-/** Bumps once the page's fonts have loaded, so the code is set in the right face. */
-const useFontsReady = () => {
-  const [ready, setReady] = useState(0);
-  useEffect(() => {
-    let live = true;
-    const wait = async () => {
-      await document.fonts.ready;
-      if (live) {
-        setReady((count) => count + 1);
-      }
-    };
-    void wait();
-    return () => {
-      live = false;
-    };
-  }, []);
-  return ready;
-};
-
-interface NumeralProps {
-  code: string;
-  color: AsciiColor;
-  fill: FillVariant;
-  bloom: Bloom;
-  cell: number;
-  extrude: number;
-  animate: boolean;
-}
-
-const Numeral = ({
-  code,
-  color,
-  fill,
-  bloom,
-  cell,
-  extrude,
-  animate,
-}: NumeralProps) => {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rasterRef = useRef<Raster | null>(null);
-  const imageRef = useRef<ImageData | null>(null);
-  const timeRef = useRef(animate ? 0 : STILL_TIME);
-  const width = useWidth(rootRef);
-  const fonts = useFontsReady();
-  const colors = useAsciiColors(rootRef, [color]);
-  const ink = colors ? colors[0] : null;
-  // One pixel finer on phones, so the digits keep their detail at a smaller size.
-  const step = width > 0 && width < 480 ? Math.max(2, cell - 1) : cell;
-  const cols = Math.max(24, Math.floor(width / step));
-  const rows = Math.max(12, Math.round(cols * 0.4));
-
-  const draw = useCallback(
-    (time: number) => {
-      const canvas = canvasRef.current;
-      const raster = rasterRef.current;
-      const context = canvas?.getContext("2d");
-      if (!context || !raster || !ink) {
-        return;
-      }
-      if (
-        imageRef.current?.width !== raster.cols ||
-        imageRef.current.height !== raster.rows
-      ) {
-        imageRef.current = context.createImageData(raster.cols, raster.rows);
-      }
-      paint({ extrude, fill, image: imageRef.current, ink, raster, time });
-      context.putImageData(imageRef.current, 0, 0);
-    },
-    [extrude, fill, ink]
-  );
-
-  // Rasterise the code whenever the grid, the text or the font changes.
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || width === 0) {
-      return;
-    }
-    rasterRef.current = rasterise({
-      code,
-      cols,
-      extrude,
-      font: getComputedStyle(root).fontFamily,
-      rows,
-    });
-    draw(timeRef.current);
-  }, [code, cols, rows, extrude, fonts, width, draw]);
-
-  useFrameLoop(
-    (time) => {
-      timeRef.current = time;
-      draw(time);
-    },
-    { enabled: animate, stillTime: STILL_TIME, target: rootRef }
-  );
-
-  return (
-    <div ref={rootRef} aria-hidden="true" className="w-full">
-      <canvas
-        ref={canvasRef}
-        width={cols}
-        height={rows}
-        className="mx-auto block [image-rendering:pixelated]"
-        style={{
-          aspectRatio: `${cols} / ${rows}`,
-          maxWidth: "100%",
-          width: cols * step,
-          ...bloomStyle(color, bloom),
-        }}
-      />
-    </div>
-  );
-};
-
-export type NotFoundProps = Omit<
-  ComponentProps<"section">,
+export interface NotFoundProps extends Omit<
+  ComponentProps<"div">,
   "title" | "color"
-> & {
-  /** The big code. Default `"404"`. */
+> {
+  /** The status code drawn in big glyphs. Digits only. Default `"404"`. */
   code?: string;
   /** The heading. Default `"Page not found"`. */
   title?: ReactNode;
   /** A sentence under the heading. */
   description?: ReactNode;
-  /** A short mono line under the text, such as the path that was requested. */
-  detail?: ReactNode;
-  /** Buttons or links, such as a way home. */
+  /** The path that failed, shown as a shell line: `$ open /path`. */
+  path?: string;
+  /** The shell's reply under the path, with a blinking cursor. Default `"no such page"`. */
+  detail?: string;
+  /** Links or buttons, such as back home and search. */
   actions?: ReactNode;
-  /** Heading level. Use `"h1"` on a page of its own. Default `"h1"`. */
-  titleAs?: "h1" | "h2";
-  /** A palette name or any CSS colour. Default `"ink"`. */
-  color?: AsciiColor;
-  /** Texture of the digit faces. Default `"gradient"`. */
-  fill?: FillVariant;
-  /** A soft glow in the code's colour. Default `"off"`. */
-  bloom?: Bloom;
-  /** Size of one dither cell in CSS pixels. Default 4. */
-  cell?: number;
-  /** Depth of the extruded side in cells. 0 for flat digits. Default 4. */
+  /** Heading level of the title. Default `"h1"`. */
+  titleAs?: "h1" | "h2" | "h3";
+  /** Glyph the digits are built from. Default `"█"`. */
+  glyph?: string;
+  /** Steps of shaded extrusion behind the digits, 0 to 3. Default 2. */
   depth?: number;
-  /** Print the digits in on mount and sweep light across them. Default `true`. */
+  /** Colour of the digits: a palette name or any CSS colour. Default `"ink"`. */
+  color?: AsciiColor;
+  /** Twinkle the stars, scan the digits and blink the cursor. Default true; still under reduced motion. */
   animate?: boolean;
+  /** Glyph cell height in CSS pixels. Default 14. */
+  cell?: number;
+}
+
+/** A 5x7 bitmap face for the code, one string per row. */
+const DIGITS: Record<string, readonly string[]> = {
+  "0": [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  "1": ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+  "2": [".###.", "#...#", "....#", "..##.", ".#...", "#....", "#####"],
+  "3": ["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
+  "4": ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+  "5": ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+  "6": ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+  "7": ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+  "8": [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+  "9": [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
+};
+const UNKNOWN = ["#####", "#...#", "...#.", "..#..", "..#..", ".....", "..#.."];
+
+const DIGIT_ROWS = 7;
+/** A font pixel is two cells wide and one tall: square, since cells are about 1:2. */
+const PIXEL_COLUMNS = 2;
+const DIGIT_GAP = 2;
+const MARGIN_X = 4;
+const MARGIN_Y = 2;
+const SHADES = ["░", "░", "·"] as const;
+const STAR_GLYPHS = ["·", "+", "*", "+"] as const;
+const STAR_COUNT = 16;
+const FPS = 10;
+/** Seconds for the scan row to pass down the digits once. */
+const SCAN_SECONDS = 2.8;
+
+type Tone = "digit" | "scan" | "shade" | "star" | "blank";
+
+interface Cell {
+  glyph: string;
+  tone: Tone;
+}
+
+/** A small seeded generator, so the stars land in the same places on the server and the client. */
+const seeded = (seed: number) => {
+  let state = seed % 2_147_483_647 || 1;
+  return () => {
+    state = (state * 48_271) % 2_147_483_647;
+    return state / 2_147_483_647;
+  };
+};
+
+interface Layout {
+  readonly columns: number;
+  readonly rows: number;
+  /** Lit font pixels as [column, row] cells of the left half of each pixel. */
+  readonly pixels: readonly (readonly [number, number])[];
+  readonly stars: readonly { x: number; y: number; phase: number }[];
+}
+
+const layoutCode = (code: string, depth: number): Layout => {
+  const digits = [...code].map((char) => DIGITS[char] ?? UNKNOWN);
+  const digitWidth = 5 * PIXEL_COLUMNS;
+  const codeWidth =
+    digits.length * digitWidth + Math.max(0, digits.length - 1) * DIGIT_GAP;
+  const columns = codeWidth + depth * PIXEL_COLUMNS + MARGIN_X * 2;
+  const rows = DIGIT_ROWS + depth + MARGIN_Y * 2;
+  const pixels: [number, number][] = [];
+  for (const [index, digit] of digits.entries()) {
+    const left = MARGIN_X + index * (digitWidth + DIGIT_GAP);
+    for (const [row, line] of digit.entries()) {
+      for (const [column, mark] of [...line].entries()) {
+        if (mark === "#") {
+          pixels.push([left + column * PIXEL_COLUMNS, MARGIN_Y + row]);
+        }
+      }
+    }
+  }
+  const random = seeded(
+    [...code].reduce((sum, char) => sum * 31 + (char.codePointAt(0) ?? 0), 7)
+  );
+  const stars = Array.from({ length: STAR_COUNT }, () => ({
+    phase: random(),
+    x: Math.floor(random() * columns),
+    y: Math.floor(random() * rows),
+  }));
+  return { columns, pixels, rows, stars };
+};
+
+/** The scene at `time` seconds: stars, extrusion, digits and the scan row. */
+const drawScene = (
+  layout: Layout,
+  { time, glyph, depth }: { time: number; glyph: string; depth: number }
+): Cell[][] => {
+  const grid: Cell[][] = Array.from({ length: layout.rows }, () =>
+    Array.from({ length: layout.columns }, () => ({
+      glyph: " ",
+      tone: "blank" as Tone,
+    }))
+  );
+  const put = (x: number, y: number, cell: Cell) => {
+    const row = grid[y];
+    if (row && x >= 0 && x < layout.columns) {
+      row[x] = cell;
+    }
+  };
+  for (const star of layout.stars) {
+    // Each star holds still most of the time and flares briefly.
+    const cycle = (time / 3.4 + star.phase) % 1;
+    const step = cycle < 0.84 ? 0 : Math.floor(((cycle - 0.84) / 0.16) * 4);
+    put(star.x, star.y, { glyph: STAR_GLYPHS[step] ?? "·", tone: "star" });
+  }
+  // Extrusion first, farthest step first, so nearer steps and the digits cover it.
+  for (let step = depth; step >= 1; step -= 1) {
+    const shade = SHADES[Math.min(step - 1, SHADES.length - 1)] ?? "░";
+    for (const [x, y] of layout.pixels) {
+      for (let half = 0; half < PIXEL_COLUMNS; half += 1) {
+        put(x + half + step * PIXEL_COLUMNS, y + step, {
+          glyph: shade,
+          tone: "shade",
+        });
+      }
+    }
+  }
+  const scanRow =
+    MARGIN_Y + Math.floor(((time / SCAN_SECONDS) % 1.6) * DIGIT_ROWS);
+  for (const [x, y] of layout.pixels) {
+    for (let half = 0; half < PIXEL_COLUMNS; half += 1) {
+      put(x + half, y, {
+        glyph: y === scanRow ? "▓" : glyph,
+        tone: y === scanRow ? "scan" : "digit",
+      });
+    }
+  }
+  return grid;
+};
+
+/** A row as runs of one tone, so each run is one coloured span. */
+const runsOf = (row: readonly Cell[]) => {
+  const runs: { tone: Tone; text: string }[] = [];
+  for (const cell of row) {
+    const last = runs.at(-1);
+    if (last && (last.tone === cell.tone || cell.glyph === " ")) {
+      last.text += cell.glyph;
+    } else {
+      runs.push({ text: cell.glyph, tone: cell.tone });
+    }
+  }
+  return runs;
 };
 
 /**
- * A complete 404 block: big dithered block digits with an extruded side,
- * a heading, a sentence, an optional mono detail and your actions. Drop it
- * into `app/not-found.tsx`.
+ * A complete 404 block: the code drawn big in a 5x7 bitmap face of full
+ * blocks with a shaded extrusion, under a few stars that flare now and
+ * then and a scan row that passes down the digits. Below it sit an
+ * optional shell line for the failed path, the heading, a sentence and
+ * your actions.
  */
 export const NotFound = ({
   code = "404",
   title = "Page not found",
-  description = "The link may be broken, or the page may have moved.",
-  detail,
+  description = "The page you asked for has moved, or it never existed.",
+  path,
+  detail = "no such page",
   actions,
-  titleAs: Heading = "h1",
+  titleAs: Title = "h1",
+  glyph = "█",
+  depth = 2,
   color = "ink",
-  fill = "gradient",
-  bloom = "off",
-  cell = 4,
-  depth = 4,
   animate = true,
+  cell = 14,
   className,
   ...props
-}: NotFoundProps) => (
-  <section
-    data-slot="not-found"
-    className={cn(
-      "flex flex-col items-center px-6 py-14 text-center",
-      className
-    )}
-    {...props}
-  >
-    <div className="w-full max-w-2xl">
-      <Numeral
-        code={code}
-        color={color}
-        fill={fill}
-        bloom={bloom}
-        cell={Math.max(2, Math.round(cell))}
-        extrude={Math.max(0, Math.round(depth))}
-        animate={animate}
-      />
-    </div>
-    <div className="mt-8 flex max-w-md flex-col gap-2">
-      <Heading className="text-2xl font-semibold tracking-tight text-balance">
-        {title}
-      </Heading>
-      {description === undefined ? null : (
-        <p className="text-muted-foreground text-pretty">{description}</p>
+}: NotFoundProps) => {
+  const steps = Math.min(3, Math.max(0, Math.round(depth)));
+  const layout = layoutCode(code, steps);
+  const sceneRef = useRef<HTMLPreElement>(null);
+  // A still moment between scans: the stars at rest, no row lit.
+  const [time, setTime] = useState(SCAN_SECONDS * 1.5);
+  useFrameLoop(
+    (seconds) => {
+      setTime(seconds);
+    },
+    {
+      enabled: animate,
+      fps: FPS,
+      stillTime: SCAN_SECONDS * 1.5,
+      target: sceneRef,
+    }
+  );
+  const grid = drawScene(layout, { depth: steps, glyph, time });
+  const ink = cssColor(color);
+  const tones: Record<Tone, string | undefined> = {
+    blank: undefined,
+    digit: ink,
+    scan: `color-mix(in oklab, ${ink} 70%, var(--ascii-paper))`,
+    shade: `color-mix(in oklab, ${ink} 38%, transparent)`,
+    star: "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+  };
+  const cursorOn = !animate || Math.floor(time * 1.6) % 2 === 0;
+
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col items-center gap-6 px-4 py-10 text-center",
+        className
       )}
-    </div>
-    {detail === undefined ? null : (
-      <p className="text-muted-foreground bg-muted/60 ring-border mt-4 max-w-full truncate rounded-md px-2.5 py-1 font-mono text-xs ring-1">
-        {detail}
-      </p>
-    )}
-    {actions === undefined ? null : (
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        {actions}
+      {...props}
+    >
+      <pre
+        ref={sceneRef}
+        aria-hidden="true"
+        className="m-0 max-w-full overflow-hidden select-none"
+        style={{
+          ...SEAL,
+          fontFamily: "var(--ascii-font, monospace)",
+          fontSize: `${cell / GLYPH_EM}px`,
+          fontVariantLigatures: "none",
+          letterSpacing: 0,
+          lineHeight: `${cell}px`,
+        }}
+      >
+        {grid.map((row, y) => (
+          // Rows are positional, top to bottom.
+          // oxlint-disable-next-line react/no-array-index-key
+          <span key={y} className="block">
+            {runsOf(row).map((run, index) => (
+              // oxlint-disable-next-line react/no-array-index-key
+              <span key={index} style={{ color: tones[run.tone] }}>
+                {run.text}
+              </span>
+            ))}
+          </span>
+        ))}
+      </pre>
+      {path ? (
+        <p className="text-muted-foreground max-w-full truncate font-mono text-xs">
+          <span aria-hidden="true">$ </span>
+          {`open ${path}`}
+          <span className="sr-only">: </span>
+          <span className="block">
+            {detail}
+            <span
+              aria-hidden="true"
+              className="text-foreground"
+              style={{ opacity: cursorOn ? 1 : 0 }}
+            >
+              {" ▌"}
+            </span>
+          </span>
+        </p>
+      ) : null}
+      <div className="flex max-w-md flex-col items-center gap-2">
+        <Title className="text-foreground text-2xl font-semibold tracking-tight text-balance">
+          {title}
+        </Title>
+        {description ? (
+          <p className="text-muted-foreground text-sm text-pretty">
+            {description}
+          </p>
+        ) : null}
       </div>
-    )}
-  </section>
-);
+      {actions ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  );
+};

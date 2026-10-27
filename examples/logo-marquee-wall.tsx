@@ -10,9 +10,9 @@ export default function LogoMarqueeWall() {
       variant="wall"
       logos={LINKED}
       label="Customers"
-      logoHeight={26}
-      effect="shimmer"
-      period={9}
+      rows={5}
+      gap={6}
+      className="max-w-2xl"
     />
   );
 }

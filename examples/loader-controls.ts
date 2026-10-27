@@ -1,13 +1,22 @@
-import { BLOOMS, ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, select, slider } from "@/lib/preview-controls";
 
 // Knobs for the loader's main demo, shared by the page and the demo.
+// Spinner names are spelled out: SPINNERS lives in a module this
+// server-read file shouldn't pull in for one list.
 
 export const variant = segmented({
-  default: "ring",
+  default: "spinner",
   id: "variant",
   label: "Variant",
-  options: ["ring", "dots", "pulse", "bar"],
+  options: ["spinner", "dots", "wave", "comet"],
+});
+
+export const spinner = select({
+  default: "orbit",
+  id: "spinner",
+  label: "Spinner",
+  options: ["orbit", "braille", "arc", "tick", "bar", "quadrant"],
 });
 
 export const size = segmented({
@@ -24,13 +33,6 @@ export const tint = color({
   options: ASCII_COLOR_NAMES,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
-
 export const speed = slider({
   default: 1,
   id: "speed",
@@ -42,4 +44,4 @@ export const speed = slider({
 });
 
 /** Display order of the tray. */
-export const controls = [variant, size, tint, bloom, speed];
+export const controls = [variant, spinner, size, tint, speed];

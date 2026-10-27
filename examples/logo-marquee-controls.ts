@@ -1,32 +1,38 @@
-import type { LogoEffect } from "@/components/asciicn/ascii-logo";
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider } from "@/lib/preview-controls";
-
-// Spelled out here: the component module is a client module, and this
-// file is also read by the server-rendered docs page.
-const LOGO_EFFECTS = [
-  "none",
-  "shimmer",
-  "scan",
-] as const satisfies readonly LogoEffect[];
+import {
+  color,
+  segmented,
+  select,
+  slider,
+  toggle,
+} from "@/lib/preview-controls";
 
 // Knobs for the logo marquee's main demo, shared by the page and the demo.
 
 export const speed = slider({
-  default: 32,
+  default: 8,
   id: "speed",
   label: "Speed",
-  max: 120,
-  min: 8,
-  step: 4,
-  unit: "px/s",
+  max: 24,
+  min: 2,
+  step: 2,
+  unit: " cells/s",
 });
 
-export const fade = segmented({
-  default: "soft",
-  id: "fade",
-  label: "Edge fade",
-  options: ["soft", "dither", "none"],
+export const charset = select({
+  default: "quadrants",
+  id: "charset",
+  label: "Charset",
+  options: ["quadrants", "braille", "blocks", "standard", "dots"],
+});
+
+export const rows = slider({
+  default: 6,
+  id: "rows",
+  label: "Rows",
+  max: 10,
+  min: 3,
+  step: 1,
 });
 
 export const direction = segmented({
@@ -36,19 +42,18 @@ export const direction = segmented({
   options: ["left", "right"],
 });
 
-export const effect = segmented({
-  default: "none",
-  id: "effect",
-  label: "Effect",
-  options: LOGO_EFFECTS,
+export const fade = toggle({
+  default: true,
+  id: "fade",
+  label: "Edge fade",
 });
 
 export const ink = color({
-  default: "ink",
+  default: "grey",
   id: "color",
-  label: "Ink",
+  label: "Colour",
   options: ASCII_COLOR_NAMES,
 });
 
 /** Display order of the tray. */
-export const controls = [speed, fade, direction, effect, ink];
+export const controls = [speed, charset, rows, direction, fade, ink];

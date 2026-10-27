@@ -6,21 +6,24 @@ import * as knobs from "@/examples/loader-controls";
 
 export default function LoaderDemo() {
   const variant = usePreviewValue(knobs.variant);
+  const spinner = usePreviewValue(knobs.spinner);
   const size = usePreviewValue(knobs.size);
   const color = usePreviewValue(knobs.tint);
-  const bloom = usePreviewValue(knobs.bloom);
   const speed = usePreviewValue(knobs.speed);
 
   return (
     <div className="flex flex-col items-center gap-5">
       <Loader
         variant={variant}
+        spinner={spinner}
         size={size}
         color={color}
-        bloom={bloom}
         speed={speed}
+        label="Loading preview"
       />
-      <span className="text-muted-foreground font-mono text-xs">{variant}</span>
+      <span className="text-muted-foreground font-mono text-xs">
+        {variant === "spinner" ? `spinner · ${spinner}` : variant}
+      </span>
     </div>
   );
 }

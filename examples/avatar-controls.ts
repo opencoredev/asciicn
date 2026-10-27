@@ -1,13 +1,14 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import {
-  color,
-  segmented,
-  select,
-  slider,
-  toggle,
-} from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, select, toggle } from "@/lib/preview-controls";
 
 // Knobs for the avatar's main demo, shared by the page and the demo.
+
+export const source = segmented({
+  default: "initials",
+  id: "source",
+  label: "Source",
+  options: ["initials", "photo"],
+});
 
 export const name = select({
   default: "Ada Lovelace",
@@ -19,27 +20,26 @@ export const name = select({
     "Linus",
     "deploy-bot",
     "Margaret Hamilton",
-    "team-design",
   ],
 });
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Fill",
-  options: FILL_VARIANTS,
+export const charset = select({
+  default: "braille",
+  id: "charset",
+  label: "Charset",
+  options: ["braille", "quadrants", "blocks", "standard", "dense", "dots"],
 });
 
 export const fromName = toggle({
   default: true,
   id: "from-name",
-  label: "Colour from name",
+  label: "Tint from name",
 });
 
 export const tint = color({
   default: "blue",
   id: "color",
-  label: "Colour",
+  label: "Tint",
   options: ASCII_COLOR_NAMES,
 });
 
@@ -57,34 +57,5 @@ export const shape = segmented({
   options: ["circle", "square"],
 });
 
-export const bloom = segmented({
-  default: "off",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
-});
-
-export const size = slider({
-  default: 96,
-  id: "size",
-  label: "Size",
-  max: 128,
-  min: 24,
-  step: 8,
-  unit: "px",
-});
-
-export const ring = toggle({ default: false, id: "ring", label: "Ring" });
-
 /** Display order of the tray. */
-export const controls = [
-  name,
-  fill,
-  fromName,
-  tint,
-  status,
-  shape,
-  size,
-  bloom,
-  ring,
-];
+export const controls = [source, name, charset, fromName, tint, status, shape];

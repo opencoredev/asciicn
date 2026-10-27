@@ -5,57 +5,39 @@ import type { AvatarStatus } from "@/components/asciicn/avatar";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/avatar-controls";
 
-const OTHERS = [
-  "Alan Turing",
-  "katherine.j",
-  "Edsger",
-  "ci-runner",
-  "Barbara Liskov",
-  "Ken T.",
-  "radia@perlman.net",
-  "Hopper",
-] as const;
+const SIZES = ["sm", "md", "lg", "xl"] as const;
 
 export default function AvatarDemo() {
+  const source = usePreviewValue(knobs.source);
   const name = usePreviewValue(knobs.name);
-  const fill = usePreviewValue(knobs.fill);
+  const charset = usePreviewValue(knobs.charset);
   const fromName = usePreviewValue(knobs.fromName);
   const tint = usePreviewValue(knobs.tint);
   const status = usePreviewValue(knobs.status);
   const shape = usePreviewValue(knobs.shape);
-  const size = usePreviewValue(knobs.size);
-  const bloom = usePreviewValue(knobs.bloom);
-  const ring = usePreviewValue(knobs.ring);
   const presence: AvatarStatus | undefined =
     status === "none" ? undefined : status;
+  const photo = source === "photo";
 
   return (
-    <div className="flex flex-col items-center gap-8">
-      <div className="flex flex-col items-center gap-3">
-        <Avatar
-          name={name}
-          size={size}
-          fill={fill}
-          color={fromName ? undefined : tint}
-          status={presence}
-          shape={shape}
-          bloom={bloom}
-          ring={ring}
-        />
-        <span className="text-muted-foreground font-mono text-xs">{name}</span>
-      </div>
-      <div className="flex flex-wrap justify-center gap-3">
-        {OTHERS.map((other) => (
+    <div className="flex flex-col items-center gap-6">
+      <div className="flex items-end gap-5">
+        {SIZES.map((size) => (
           <Avatar
-            key={other}
-            name={other}
-            size={36}
-            fill={fill}
-            shape={shape}
+            key={size}
+            name={photo ? "Buzz Aldrin" : name}
+            src={photo ? "/examples/aldrin.jpg" : undefined}
+            size={size}
+            charset={charset}
             color={fromName ? undefined : tint}
+            status={presence}
+            shape={shape}
           />
         ))}
       </div>
+      <span className="text-muted-foreground font-mono text-xs">
+        {photo ? "aldrin.jpg" : name} · {charset}
+      </span>
     </div>
   );
 }

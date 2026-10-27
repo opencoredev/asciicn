@@ -1,27 +1,29 @@
-import { BLOOMS, ASCII_COLOR_NAMES, FILL_VARIANTS } from "@/lib/ascii";
-import { color, segmented } from "@/lib/preview-controls";
+import { ASCII_COLOR_NAMES } from "@/lib/ascii";
+import { color, segmented, slider } from "@/lib/preview-controls";
 
 // Knobs for the stat card's main demo, shared by the page and the demo.
 
-export const fill = segmented({
-  default: "gradient",
-  id: "fill",
-  label: "Trend fill",
-  options: FILL_VARIANTS,
+export const frame = segmented({
+  default: "rounded",
+  id: "frame",
+  label: "Frame",
+  options: ["rounded", "light", "heavy", "double", "ascii"],
 });
 
 export const tint = color({
-  default: "ink",
+  default: "blue",
   id: "color",
-  label: "Colour",
+  label: "Sparkline",
   options: ASCII_COLOR_NAMES,
 });
 
-export const bloom = segmented({
-  default: "low",
-  id: "bloom",
-  label: "Bloom",
-  options: BLOOMS,
+export const trendRows = slider({
+  default: 2,
+  id: "trend-rows",
+  label: "Sparkline rows",
+  max: 4,
+  min: 1,
+  step: 1,
 });
 
 export const good = segmented({
@@ -32,4 +34,4 @@ export const good = segmented({
 });
 
 /** Display order of the tray. */
-export const controls = [fill, tint, bloom, good];
+export const controls = [frame, tint, trendRows, good];

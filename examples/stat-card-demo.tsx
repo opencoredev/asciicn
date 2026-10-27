@@ -10,9 +10,9 @@ const REVENUE = [
 ] as const;
 
 export default function StatCardDemo() {
-  const fill = usePreviewValue(knobs.fill);
+  const frame = usePreviewValue(knobs.frame);
   const color = usePreviewValue(knobs.tint);
-  const bloom = usePreviewValue(knobs.bloom);
+  const trendRows = usePreviewValue(knobs.trendRows);
   const good = usePreviewValue(knobs.good);
 
   return (
@@ -22,11 +22,11 @@ export default function StatCardDemo() {
       delta={12.4}
       deltaLabel="vs last month"
       trend={REVENUE}
-      fill={fill}
+      trendRows={trendRows}
+      frame={frame}
       color={color}
-      bloom={bloom}
       good={good}
-      className="bg-background w-full max-w-xs"
+      className="w-full max-w-xs"
     />
   );
 }

@@ -1,27 +1,30 @@
 import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, toggle } from "@/lib/preview-controls";
+import { color, segmented, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the empty state's main demo, shared by the page and the demo.
 
 export const illustration = segmented({
-  default: "box",
+  default: "inbox",
   id: "illustration",
   label: "Illustration",
-  options: ["box", "search", "folder", "planet"],
-});
-
-export const matrix = segmented({
-  default: "bayer4",
-  id: "matrix",
-  label: "Matrix",
-  options: ["bayer4", "bayer8", "blue-noise"],
+  options: ["inbox", "search", "folder", "cable"],
 });
 
 export const tint = color({
-  default: "ink",
+  default: "blue",
   id: "color",
-  label: "Colour",
+  label: "Accent",
   options: ASCII_COLOR_NAMES,
+});
+
+export const cell = slider({
+  default: 14,
+  id: "cell",
+  label: "Cell",
+  max: 20,
+  min: 10,
+  step: 2,
+  unit: "px",
 });
 
 export const animate = toggle({
@@ -31,4 +34,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [illustration, matrix, tint, animate];
+export const controls = [illustration, tint, cell, animate];

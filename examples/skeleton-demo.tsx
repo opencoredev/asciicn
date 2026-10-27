@@ -6,28 +6,27 @@ import * as knobs from "@/examples/skeleton-controls";
 
 export default function SkeletonDemo() {
   const look = {
-    animation: usePreviewValue(knobs.animation),
     cell: usePreviewValue(knobs.cell),
+    chars: usePreviewValue(knobs.chars),
     color: usePreviewValue(knobs.tint),
-    duration: usePreviewValue(knobs.duration),
-    fill: usePreviewValue(knobs.fill),
+    motion: usePreviewValue(knobs.motion),
   };
 
   return (
     <div
       aria-busy="true"
-      className="bg-background ring-border flex w-full max-w-sm flex-col gap-5 rounded-xl p-5 ring-1"
+      className="bg-background flex w-full max-w-sm flex-col gap-5 rounded-lg border p-5"
     >
       <span className="sr-only">Loading post</span>
       <div className="flex items-center gap-3">
-        <Skeleton {...look} shape="circle" size={40} />
+        <Skeleton {...look} shape="circle" size={3} />
         <div className="flex flex-1 flex-col gap-2">
-          <Skeleton {...look} className="h-3 w-32" />
-          <Skeleton {...look} className="h-3 w-20" delay={0.08} />
+          <Skeleton {...look} rows={1} className="w-32" />
+          <Skeleton {...look} rows={1} className="w-20" />
         </div>
       </div>
-      <Skeleton {...look} className="h-40 w-full rounded-lg" delay={0.16} />
-      <Skeleton {...look} shape="text" lines={3} delay={0.24} />
+      <Skeleton {...look} rows={8} />
+      <Skeleton {...look} shape="text" lines={3} />
     </div>
   );
 }
