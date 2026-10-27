@@ -170,7 +170,7 @@ export const DocsCopyPage = ({
 
   const trigger = (
     <Button
-      variant="secondary"
+      variant="ghost"
       size="icon-sm"
       className="peer -ml-0.5 md:size-7"
       aria-label="More ways to use this page"
@@ -181,15 +181,15 @@ export const DocsCopyPage = ({
 
   return (
     <Popover>
-      <div className="group/buttons relative flex rounded-full bg-secondary *:data-[slot=button]:focus-visible:relative *:data-[slot=button]:focus-visible:z-10">
+      <div className="group/buttons relative flex rounded-xs *:data-[slot=button]:focus-visible:relative *:data-[slot=button]:focus-visible:z-10">
         <PopoverAnchor />
         <CopyButton
           value={copyValue}
           showTooltip={false}
-          variant="secondary"
-          className="md:h-7 md:text-[0.8rem]"
+          variant="ghost"
+          className="md:h-7 md:text-xs"
         >
-          Copy Page
+          Copy page
         </CopyButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="hidden sm:flex">
@@ -197,7 +197,7 @@ export const DocsCopyPage = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="animate-none! rounded-lg shadow-none"
+            className="animate-none! rounded-sm shadow-none"
           >
             {MENU_ITEMS.map(([key, render]) => (
               <DropdownMenuItem key={key} asChild>
@@ -208,13 +208,13 @@ export const DocsCopyPage = ({
         </DropdownMenu>
         <Separator
           orientation="vertical"
-          className="absolute top-1 right-8 z-0 h-6! bg-foreground/5! peer-focus-visible:opacity-0 sm:right-7 sm:h-5!"
+          className="absolute top-1 right-8 z-0 h-6! bg-border! peer-focus-visible:opacity-0 sm:right-7 sm:h-5!"
         />
         <PopoverTrigger asChild className="flex sm:hidden">
           {trigger}
         </PopoverTrigger>
         <PopoverContent
-          className="w-52 origin-center! rounded-lg bg-background/70 p-1 shadow-none backdrop-blur-sm dark:bg-background/60"
+          className="w-52 origin-center! rounded-sm bg-popover p-1 shadow-none"
           align="start"
         >
           {MENU_ITEMS.map(([key, render]) => (
@@ -223,7 +223,7 @@ export const DocsCopyPage = ({
               size="lg"
               asChild
               key={key}
-              className="w-full justify-start rounded-md text-base font-normal *:[svg]:text-muted-foreground"
+              className="w-full justify-start rounded-xs text-sm font-normal *:[svg]:text-muted-foreground"
             >
               {render(url)}
             </Button>

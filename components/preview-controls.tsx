@@ -2,7 +2,7 @@
 
 import { Slider as SliderPrimitive } from "radix-ui";
 import { createContext, useContext, useId } from "react";
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 import {
   NativeSelect,
@@ -58,8 +58,7 @@ export function usePreviewValue(control: PreviewControl): PreviewValue {
   return readControl(control, values?.[control.id]);
 }
 
-const LABEL =
-  "text-muted-foreground font-mono text-[10px] tracking-[0.08em] uppercase";
+const LABEL = "label-caps text-muted-foreground";
 
 /** Arrow keys move the selection in a radio group, wrapping at the ends. */
 const onRadioKeys = (
@@ -97,54 +96,39 @@ const Segmented = ({
   value: string;
   onChange: (value: string) => void;
   labelId: string;
-}) => {
-  const count = control.options.length;
-  const index = Math.max(control.options.indexOf(value), 0);
-  return (
-    <div
-      role="radiogroup"
-      aria-labelledby={labelId}
-      className="bg-muted/70 relative flex rounded-full p-0.5"
-    >
-      {/* One chip slides under the options; segments are equal widths. */}
-      <span
-        aria-hidden
-        className="bg-background absolute inset-y-0.5 start-0.5 w-(--chip) translate-x-[calc(var(--index)*100%)] rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.08)] transition-transform duration-200 ease-(--ease-out) motion-reduce:transition-none rtl:-translate-x-[calc(var(--index)*100%)] dark:bg-white/[0.11] dark:shadow-none"
-        style={
-          {
-            "--chip": `calc((100% - 0.25rem) / ${count})`,
-            "--index": index,
-          } as CSSProperties
-        }
-      />
-      {control.options.map((option) => {
-        const checked = option === value;
-        return (
-          <button
-            key={option}
-            type="button"
-            role="radio"
-            aria-checked={checked}
-            data-value={option}
-            tabIndex={checked ? 0 : -1}
-            onClick={() => onChange(option)}
-            onKeyDown={(event) =>
-              onRadioKeys(event, control.options, value, onChange)
-            }
-            className={cn(
-              "focus-visible:ring-ring/50 relative h-7 min-w-0 flex-1 truncate rounded-full px-2 pb-[0.5px] font-mono text-[11px] transition-colors duration-150 ease-out outline-none focus-visible:ring-[3px]",
-              checked
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {option}
-          </button>
-        );
-      })}
-    </div>
-  );
-};
+}) => (
+  <div
+    role="radiogroup"
+    aria-labelledby={labelId}
+    className="divide-border relative flex divide-x rounded-xs border"
+  >
+    {control.options.map((option) => {
+      const checked = option === value;
+      return (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={checked}
+          data-value={option}
+          tabIndex={checked ? 0 : -1}
+          onClick={() => onChange(option)}
+          onKeyDown={(event) =>
+            onRadioKeys(event, control.options, value, onChange)
+          }
+          className={cn(
+            "relative h-7 min-w-0 flex-1 truncate px-2 font-mono text-[11px] transition-colors duration-150 ease-out focus-visible:z-10",
+            checked
+              ? "bg-ink-soft text-ink"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          {option}
+        </button>
+      );
+    })}
+  </div>
+);
 
 const Swatches = ({
   control,
@@ -178,14 +162,14 @@ const Swatches = ({
           onKeyDown={(event) =>
             onRadioKeys(event, control.options, value, onChange)
           }
-          className="group/swatch focus-visible:ring-ring/50 relative size-7 rounded-full outline-none focus-visible:ring-[3px]"
+          className="group/swatch relative size-7 rounded-xs"
         >
           {/* Ring and dot share one box, so they stay concentric. The ring
               takes the swatch's own colour. */}
           <span
             aria-hidden
             className={cn(
-              "absolute inset-px rounded-full border-[1.5px] transition-colors duration-150 ease-out",
+              "absolute inset-px rounded-xs border transition-colors duration-150 ease-out",
               checked
                 ? "border-current"
                 : "group-hover/swatch:border-current/35 border-transparent"
@@ -194,7 +178,7 @@ const Swatches = ({
           />
           <span
             aria-hidden
-            className="absolute inset-[5px] rounded-full transition-[scale] duration-150 ease-out group-active/swatch:scale-[0.96] motion-reduce:transition-none"
+            className="absolute inset-[5px] rounded-[1px] transition-[scale] duration-150 ease-out group-active/swatch:scale-[0.96] motion-reduce:transition-none"
             style={{ background: cssColor(option) }}
           />
         </button>
@@ -245,12 +229,14 @@ const Knob = ({
       }}
       className="group/knob knob-glide relative flex h-4 w-full cursor-pointer touch-none items-center select-none data-disabled:cursor-default data-disabled:opacity-50"
     >
-      <SliderPrimitive.Track className="bg-foreground/12 relative h-1 grow overflow-hidden rounded-full">
-        <SliderPrimitive.Range className="bg-ascii-ink absolute h-full rounded-full transition-[left,right] duration-150 ease-(--ease-out) motion-reduce:transition-none" />
+      {/* A ruled track with tick marks every tenth, filled in ink up to the
+          value; the thumb is a cursor bar. */}
+      <SliderPrimitive.Track className="border-rule relative h-2 grow overflow-hidden rounded-[1px] border bg-[repeating-linear-gradient(to_right,transparent_0_calc(10%-1px),var(--border)_calc(10%-1px)_10%)]">
+        <SliderPrimitive.Range className="bg-ascii-ink absolute h-full transition-[left,right] duration-150 ease-(--ease-out) motion-reduce:transition-none" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         aria-labelledby={labelId}
-        className="focus-visible:ring-ring/50 block size-3.5 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_3px_rgb(0_0_0/0.3)] transition-[scale,box-shadow] duration-150 ease-out outline-none group-hover/knob:scale-115 focus-visible:ring-[3px] active:scale-115 motion-reduce:transition-none group-data-pointer/knob:ring-0!"
+        className="bg-foreground focus-visible:outline-ring block h-4 w-1.5 rounded-[1px] shadow-[0_0_0_2px_var(--card)] transition-[scale] duration-150 ease-out outline-offset-2 focus-visible:outline group-hover/knob:scale-y-110 active:scale-y-110 motion-reduce:transition-none group-data-pointer/knob:outline-none!"
       />
     </SliderPrimitive.Root>
   );
@@ -272,16 +258,28 @@ const Switch = ({
     aria-labelledby={labelId}
     onClick={() => onChange(!checked)}
     className={cn(
-      "focus-visible:ring-ring/50 relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors duration-150 ease-out focus-visible:ring-[3px]",
-      checked ? "bg-ascii-ink" : "bg-foreground/15"
+      "flex h-6 shrink-0 items-stretch overflow-hidden rounded-xs border font-mono text-[11px] transition-colors duration-150 ease-out",
+      checked ? "border-(--ascii-ink)" : "border-rule"
     )}
   >
     <span
+      aria-hidden
       className={cn(
-        "absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-[0_1px_2px_rgb(0_0_0/0.25)] transition-transform duration-200 ease-(--ease-out) motion-reduce:transition-none",
-        checked && "translate-x-4"
+        "flex w-8 items-center justify-center",
+        checked ? "bg-ascii-ink text-primary-foreground" : "text-faint"
       )}
-    />
+    >
+      on
+    </span>
+    <span
+      aria-hidden
+      className={cn(
+        "flex w-8 items-center justify-center",
+        checked ? "text-faint" : "bg-muted text-foreground"
+      )}
+    >
+      off
+    </span>
   </button>
 );
 
@@ -430,19 +428,17 @@ export const PreviewControlsPanel = ({
       role="group"
       aria-label="Preview controls"
       className={cn(
-        "border-border/70 flex flex-col gap-4 px-5 pt-4 pb-5 sm:px-6",
+        "flex flex-col gap-4 px-4 pt-3 pb-4",
         LAYOUT_CLASS[layout].root
       )}
     >
       <div className="flex h-5 items-center justify-between">
-        <span className="text-foreground font-mono text-[11px] tracking-[0.08em] uppercase">
-          Controls
-        </span>
+        <span className="label-caps text-foreground">Controls</span>
         <button
           type="button"
           onClick={onReset}
           disabled={!changed}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 rounded-sm font-mono text-[11px] transition-[color,opacity] duration-150 outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-0"
+          className="text-muted-foreground hover:text-foreground rounded-xs font-mono text-[11px] lowercase transition-[color,opacity] duration-150 disabled:pointer-events-none disabled:opacity-0"
         >
           Reset
         </button>

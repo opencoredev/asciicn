@@ -53,7 +53,7 @@ export const CodeBlockCommand = ({
   return (
     <div
       className={cn(
-        "bg-code text-code-foreground relative overflow-hidden rounded-lg text-sm",
+        "bg-code text-code-foreground relative overflow-hidden rounded-sm border text-sm",
         className
       )}
     >
@@ -62,14 +62,14 @@ export const CodeBlockCommand = ({
         onValueChange={handlePackageManagerChange}
         value={packageManager}
       >
-        <div className="border-border/50 flex items-center gap-2 border-b px-3 py-1">
+        <div className="flex items-center gap-2 border-b px-2 py-1">
           <TabsList className="rounded-none bg-transparent p-0 [&_svg]:me-2 [&_svg]:size-4 [&_svg]:text-muted-foreground">
             {getIconForPackageManager(packageManager)}
 
             {Object.entries(commandTabs).map(([key]) => (
               <TabsTrigger
                 key={key}
-                className="data-[state=active]:border-input h-7 border border-transparent pt-[5px] data-[state=active]:shadow-none"
+                className="data-[state=active]:border-rule h-7 rounded-xs border border-transparent font-mono text-xs data-[state=active]:shadow-none"
                 value={key}
               >
                 {key}
@@ -86,7 +86,7 @@ export const CodeBlockCommand = ({
                   data-language="bash"
                   className="font-mono text-sm/none"
                 >
-                  <span className="select-none">$ </span>
+                  <span className="text-ink select-none">$ </span>
                   {value}
                 </code>
               </pre>

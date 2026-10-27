@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+import { PaletteSwitcher } from "@/components/terminal/palette-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -38,7 +39,10 @@ const MobileLink = ({
     <Link
       href={href}
       onClick={handleClick}
-      className={cn("text-2xl font-medium", className)}
+      className={cn(
+        "text-foreground hover:bg-accent flex h-10 items-center gap-3 border-b px-1 text-[15px]",
+        className
+      )}
       {...props}
     >
       {children}
@@ -59,9 +63,9 @@ const MobileNavGroup = ({
     return null;
   }
   return (
-    <div className="flex flex-col gap-4">
-      <div className="text-muted-foreground text-sm font-medium">{label}</div>
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
+      <div className="label-caps text-muted-foreground">{label}</div>
+      <div className="flex flex-col border-t">
         {pages.map((page) => (
           <MobileLink key={page.url} href={page.url} onOpenChange={setOpen}>
             {page.name}
@@ -92,7 +96,7 @@ export const MobileNav = ({
         <Button
           variant="ghost"
           className={cn(
-            "extend-touch-target size-8 touch-manipulation items-center justify-center !p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent dark:hover:bg-transparent rounded-full",
+            "extend-touch-target size-8 touch-manipulation items-center justify-center rounded-xs !p-0 hover:bg-transparent active:bg-transparent dark:hover:bg-transparent",
             className
           )}
         >
@@ -100,49 +104,50 @@ export const MobileNav = ({
             <div className="relative size-4">
               <span
                 className={cn(
-                  "bg-foreground absolute left-0 block h-0.5 w-4 transition-all duration-100",
-                  open ? "top-[7px] -rotate-45" : "top-1"
+                  "bg-foreground absolute left-0 block h-px w-4 transition-[top,rotate] duration-100",
+                  open ? "top-[7.5px] -rotate-45" : "top-1"
                 )}
               />
               <span
                 className={cn(
-                  "bg-foreground absolute left-0 block h-0.5 w-4 transition-all duration-100",
-                  open ? "top-[7px] rotate-45" : "top-2.5"
+                  "bg-foreground absolute left-0 block h-px w-4 transition-[top,rotate] duration-100",
+                  open ? "top-[7.5px] rotate-45" : "top-[11px]"
                 )}
               />
             </div>
-            <span className="sr-only">Toggle Menu</span>
+            <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
           </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="bg-background/90 no-scrollbar h-(--radix-popper-available-height) w-(--radix-popper-available-width) overflow-y-auto rounded-none border-none p-0 shadow-none backdrop-blur duration-100"
+        className="bg-background no-scrollbar h-(--radix-popper-available-height) w-(--radix-popper-available-width) overflow-y-auto rounded-none border-none p-0 shadow-none duration-100"
         align="start"
         side="bottom"
         alignOffset={-16}
-        sideOffset={14}
+        sideOffset={20}
       >
-        <div className="flex flex-col gap-12 overflow-auto px-6 py-6">
-          <div className="flex flex-col gap-4">
-            <div className="text-muted-foreground text-sm font-medium">
-              Menu
-            </div>
-            <div className="flex flex-col gap-3">
-              <MobileLink href={ROUTES.HOME} onOpenChange={setOpen}>
-                Home
-              </MobileLink>
-              {items.map((item) => (
+        <div className="flex flex-col gap-10 overflow-auto px-4 pt-4 pb-10">
+          <nav aria-label="Site" className="flex flex-col border-t">
+            {[{ href: ROUTES.HOME, label: "Home" }, ...items].map(
+              (item, index) => (
                 <MobileLink
                   key={item.href}
                   href={item.href}
                   onOpenChange={setOpen}
+                  className="font-display h-12 text-lg tracking-[-0.02em] [font-stretch:87.5%]"
                 >
-                  {item.label}
+                  <span className="tabular text-faint font-mono text-xs">
+                    {String(index).padStart(2, "0")}
+                  </span>
+                  {item.label.toLowerCase()}
                 </MobileLink>
-              ))}
+              )
+            )}
+            <div className="flex h-12 items-center border-b px-1">
               {githubLink}
             </div>
-          </div>
+          </nav>
+          <PaletteSwitcher variant="inline" />
           {getDocsNav(tree).map((section) => (
             <MobileNavGroup
               key={section.id}

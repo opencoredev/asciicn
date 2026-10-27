@@ -112,14 +112,20 @@ const PieceTile = ({
         data-track-component-name={piece.url.split("/").pop()}
         data-track-category={piece.url.split("/")[2]}
         data-track-location="catalog"
-        className="group/tile focus-visible:ring-ring/50 flex flex-col gap-2.5 rounded-[18px] outline-none focus-visible:ring-[3px] focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+        className="group/tile hover:border-rule flex flex-col overflow-hidden rounded-sm border transition-colors duration-150"
       >
-        <span className="bg-card relative block aspect-[4/3] overflow-hidden rounded-[14px] sm:rounded-[18px]">
+        <span className="bg-card relative block aspect-[4/3] overflow-hidden">
           {hasPreview(piece.url) ? <Preview piece={piece} /> : null}
           {demo ? <CatalogLivePreview demo={demo} /> : null}
         </span>
-        <span className="decoration-foreground/40 px-0.5 text-sm font-medium underline-offset-4 group-hover/tile:underline">
-          {piece.name}
+        <span className="text-muted-foreground group-hover/tile:text-foreground flex h-8 items-center gap-1.5 border-t px-2.5 font-mono text-xs transition-colors duration-150">
+          <span
+            aria-hidden
+            className="text-ink -ml-0.5 w-[1ch] opacity-0 transition-opacity duration-150 group-hover/tile:opacity-100"
+          >
+            ▸
+          </span>
+          <span className="truncate">{piece.name}</span>
         </span>
       </Link>
     </li>
@@ -150,20 +156,20 @@ export const CatalogIndex = async ({ className }: { className?: string }) => {
               <div className="flex items-baseline justify-between gap-4">
                 <h3
                   id={`catalog-${category.id}`}
-                  className="scroll-m-28 text-base font-semibold tracking-tight"
+                  className="font-heading scroll-m-28 text-base font-medium tracking-[-0.02em] [font-stretch:87.5%]"
                 >
                   {category.name}
                 </h3>
-                <span className="text-muted-foreground font-mono text-xs tabular-nums">
-                  {category.pieces.length}
+                <span className="text-muted-foreground tabular font-mono text-xs">
+                  [{String(category.pieces.length).padStart(2, "0")}]
                 </span>
               </div>
-              <p className="text-muted-foreground text-sm text-pretty">
+              <p className="text-muted-foreground font-sans text-sm text-pretty">
                 {category.description}
               </p>
             </div>
             {category.pieces.length > 0 ? (
-              <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {category.pieces.map((piece, index) => (
                   <PieceTile
                     key={piece.url}
