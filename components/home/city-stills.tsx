@@ -16,7 +16,7 @@ import type { AsciiSceneProps } from "@/lib/ascii/scene";
  * for the tab's session.
  */
 
-const STORAGE_KEY = "asciicn-city-stills-v1";
+const STORAGE_KEY = "asciicn-city-stills-v2";
 // Gives a city that never draws (no WebGL, a broken chunk) up to this
 // long before the baker moves on.
 const BAKE_TIMEOUT_MS = 5000;

@@ -7,7 +7,7 @@ import TokyoDemo from "@/examples/tokyo-demo";
 import { controls as demoControls } from "@/examples/tokyo-controls";
 import TokyoHero from "@/examples/tokyo-hero";
 import TokyoPhosphor from "@/examples/tokyo-phosphor";
-import TokyoQuadrants from "@/examples/tokyo-quadrants";
+import TokyoBraille from "@/examples/tokyo-braille";
 
 <ComponentPreview
   src="examples/tokyo-demo.tsx"
@@ -41,7 +41,7 @@ The view looks across Minato at night. Tokyo Tower stands on the right, drawn to
 
 The buildings, the tower and Fuji never move, and the pointer does nothing. Only lights change: a few windows switch on or off at a time, each fading over a few seconds; red beacons on the tower and the tallest roofs pulse about once every 1.8 seconds; stars twinkle faintly; and one train crosses the elevated line slowly as a row of lit windows.
 
-Every building edge and window sits on whole samples, so the window grids stay regular in every charset. It draws in `braille` by default at a 9px cell, which keeps the tower's lattice fine. In `braille` and `quadrants` it uses `bayer4` dithering, which turns Fuji's slopes and the gaps in the lattice into even grids of dots. `quadrants` and `blocks` give bolder solid shapes, and `standard` and `dense` a typed look. In `truecolor`, the default, glyphs take the scene's own colours on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+Every building edge and window sits on whole samples, so the window grids stay regular in every charset. It draws in `quadrants` by default at a 9px cell, which keeps the tower bold and its colours strong. In `quadrants` and `braille` it uses `bayer4` dithering, which turns Fuji's slopes and the gaps in the lattice into even grids of dots. `braille` draws the finest lattice in lighter dots, `blocks` gives solid shapes, and `standard` and `dense` a typed look. In `truecolor`, the default, glyphs take the scene's own colours on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
 
 `intensity` dims the colours and thins the glyphs. Lower it to keep a headline on top easy to read.
 
@@ -63,12 +63,12 @@ Every building edge and window sits on whole samples, so the window grids stay r
   <TokyoPhosphor />
 </ComponentPreview>
 
-### In quadrants
+### In Braille
 
-`charset="quadrants"` at `cell={10}` draws the city in solid 2x2 blocks: bolder shapes and stronger colour, with a little less detail in the lattice.
+`charset="braille"` draws the city in 2x4 dots: the finest lattice and window grids, with lighter colour than the default quadrants.
 
-<ComponentPreview src="examples/tokyo-quadrants.tsx">
-  <TokyoQuadrants />
+<ComponentPreview src="examples/tokyo-braille.tsx">
+  <TokyoBraille />
 </ComponentPreview>
 
 ## Props
@@ -97,7 +97,7 @@ Every building edge and window sits on whole samples, so the window grids stay r
     {
       name: "charset",
       type: "CharsetName",
-      default: '"braille"',
+      default: '"quadrants"',
       description: "Which glyphs draw the scene. See Charsets.",
     },
     {

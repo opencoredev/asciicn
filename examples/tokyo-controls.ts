@@ -4,7 +4,7 @@ import { segmented, select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the Tokyo main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "braille",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,

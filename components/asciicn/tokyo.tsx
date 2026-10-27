@@ -469,7 +469,7 @@ export interface TokyoProps extends AsciiSceneProps {
  * it with `className`, usually `absolute inset-0`.
  */
 export const Tokyo = ({
-  charset = "braille",
+  charset = "quadrants",
   chars,
   colorMode,
   phosphor,

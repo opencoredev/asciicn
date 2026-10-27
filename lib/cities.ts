@@ -21,9 +21,9 @@ export interface CityEntry {
 
 export const CITIES: readonly CityEntry[] = [
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "Ocean Drive at dusk: art deco hotels with flickering neon fins, swaying palms, cars on the drive and a slow surf under a low sun.",
+      "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay.",
     id: "miami",
     load: async () => {
       const { Miami } = await import("@/components/asciicn/miami");
@@ -33,9 +33,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Miami",
   },
   {
-    charset: "braille",
+    charset: "quadrants",
     description:
-      "Tokyo on a clear night: Tokyo Tower lit among towers of windows, vertical neon signs, a train on a curving elevated line and Mount Fuji on the horizon.",
+      "Tokyo at night: Tokyo Tower in orange and white with both decks lit, a dense skyline of lit windows, a train on an elevated line and Mount Fuji in the distance.",
     id: "tokyo",
     load: async () => {
       const { Tokyo } = await import("@/components/asciicn/tokyo");
@@ -45,9 +45,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Tokyo",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "Manhattan at night from across the East River, with the Empire State and Chrysler buildings, a skyline of lit windows, the Brooklyn Bridge and a ferry.",
+      "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water.",
     id: "new-york",
     load: async () => {
       const { NewYork } = await import("@/components/asciicn/new-york");
@@ -57,9 +57,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "New York",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "The Eiffel Tower glowing gold at blue hour over the Seine, with its sparkle, its beacon, a bateau-mouche and zinc rooftops.",
+      "The Eiffel Tower lit gold at blue hour over the Seine, between Haussmann rooftops and the dome of Les Invalides, with one slow bateau-mouche.",
     id: "paris",
     load: async () => {
       const { Paris } = await import("@/components/asciicn/paris");
@@ -69,9 +69,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Paris",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "Big Ben, the Houses of Parliament and Tower Bridge in evening fog over the Thames, with amber lamps and a red bus crossing.",
+      "Westminster at night across the Thames: the Elizabeth Tower with its lit clock, the Palace of Westminster, Tower Bridge and the Shard, with amber lamps on the embankment.",
     id: "london",
     load: async () => {
       const { London } = await import("@/components/asciicn/london");
@@ -81,9 +81,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "London",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "Dubai at golden hour: the Burj Khalifa catching the last sun above a cluster of glass towers, the sail of the Burj Al Arab on the shore, and dunes with sand blowing off their crests.",
+      "Dubai at night from the water: the Burj Khalifa stepping up to its spire and beacon, the Emirates Towers, the Marina and the sail of the Burj Al Arab, with lit windows and calm reflections.",
     id: "dubai",
     load: async () => {
       const { Dubai } = await import("@/components/asciicn/dubai");
@@ -93,9 +93,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Dubai",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "The Golden Gate Bridge on a foggy morning: orange towers, fog rolling through the strait and under the deck, the city and the Transamerica Pyramid behind, and sailboats on the bay.",
+      "The Golden Gate Bridge at night: orange towers with stepped portals, the main cable dipping to the deck, the Marin Headlands, a low fog bank and the downtown skyline with the Transamerica Pyramid and Salesforce Tower.",
     id: "san-francisco",
     load: async () => {
       const { SanFrancisco } =
@@ -106,9 +106,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "San Francisco",
   },
   {
-    charset: "braille",
+    charset: "quadrants",
     description:
-      "Victoria Harbour at night from Kowloon: towers up the slopes of Victoria Peak, the Bank of China Tower and IFC, a rooftop light show, and a junk and a Star Ferry on the mirrored water.",
+      "Victoria Harbour at night from Kowloon: a wall of lit towers below the ridge of Victoria Peak, with Central Plaza, the Bank of China Tower and Two IFC, calm reflections and the Star Ferry.",
     id: "hong-kong",
     load: async () => {
       const { HongKong } = await import("@/components/asciicn/hong-kong");
@@ -118,9 +118,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Hong Kong",
   },
   {
-    charset: "standard",
+    charset: "quadrants",
     description:
-      "Sugarloaf and Corcovado in the late afternoon over Copacabana, with cable cars, breaking surf, the wave-mosaic promenade and frigatebirds.",
+      "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay.",
     id: "rio",
     load: async () => {
       const { Rio } = await import("@/components/asciicn/rio");
@@ -130,9 +130,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Rio de Janeiro",
   },
   {
-    charset: "braille",
+    charset: "quadrants",
     description:
-      "Sydney Harbour at night: the Opera House lit white, the Harbour Bridge behind it, fireworks bursting over the arch and the whole scene mirrored in the water.",
+      "Sydney Harbour at night: the Opera House lit cream-white on its podium, the Harbour Bridge behind it, Circular Quay's towers and one ferry on calm water.",
     id: "sydney",
     load: async () => {
       const { Sydney } = await import("@/components/asciicn/sydney");

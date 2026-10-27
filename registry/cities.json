@@ -3,7 +3,7 @@
     "name": "miami",
     "type": "registry:component",
     "title": "Miami",
-    "description": "Ocean Drive at dusk: art deco hotels with flickering neon fins, swaying palms, cars on the drive and a slow surf under a low sun.",
+    "description": "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -20,7 +20,7 @@
     "name": "tokyo",
     "type": "registry:component",
     "title": "Tokyo",
-    "description": "Tokyo on a clear night: Tokyo Tower lit among towers of windows, vertical neon signs, a train on a curving elevated line and Mount Fuji on the horizon.",
+    "description": "Tokyo at night: Tokyo Tower in orange and white with both decks lit, a dense skyline of lit windows, a train on an elevated line and Mount Fuji in the distance.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -37,7 +37,7 @@
     "name": "new-york",
     "type": "registry:component",
     "title": "New York",
-    "description": "Manhattan at night from across the East River, with the Empire State and Chrysler buildings, a skyline of lit windows, the Brooklyn Bridge and a ferry.",
+    "description": "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -54,7 +54,7 @@
     "name": "paris",
     "type": "registry:component",
     "title": "Paris",
-    "description": "The Eiffel Tower glowing gold at blue hour over the Seine, with its sparkle, its beacon, a bateau-mouche and zinc rooftops.",
+    "description": "The Eiffel Tower lit gold at blue hour over the Seine, between Haussmann rooftops and the dome of Les Invalides, with one slow bateau-mouche.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -71,7 +71,7 @@
     "name": "london",
     "type": "registry:component",
     "title": "London",
-    "description": "Big Ben, the Houses of Parliament and Tower Bridge in evening fog over the Thames, with amber lamps and a red bus crossing.",
+    "description": "Westminster at night across the Thames: the Elizabeth Tower with its lit clock, the Palace of Westminster, Tower Bridge and the Shard, with amber lamps on the embankment.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -88,7 +88,7 @@
     "name": "dubai",
     "type": "registry:component",
     "title": "Dubai",
-    "description": "Dubai at golden hour: the Burj Khalifa catching the last sun above a cluster of glass towers, the sail of the Burj Al Arab on the shore, and dunes with sand blowing off their crests.",
+    "description": "Dubai at night from the water: the Burj Khalifa stepping up to its spire and beacon, the Emirates Towers, the Marina and the sail of the Burj Al Arab, with lit windows and calm reflections.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -105,7 +105,7 @@
     "name": "san-francisco",
     "type": "registry:component",
     "title": "San Francisco",
-    "description": "The Golden Gate Bridge on a foggy morning: orange towers, fog rolling through the strait and under the deck, the city and the Transamerica Pyramid behind, and sailboats on the bay.",
+    "description": "The Golden Gate Bridge at night: orange towers with stepped portals, the main cable dipping to the deck, the Marin Headlands, a low fog bank and the downtown skyline with the Transamerica Pyramid and Salesforce Tower.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -122,7 +122,7 @@
     "name": "hong-kong",
     "type": "registry:component",
     "title": "Hong Kong",
-    "description": "Victoria Harbour at night from Kowloon: towers up the slopes of Victoria Peak, the Bank of China Tower and IFC, a rooftop light show, and a junk and a Star Ferry on the mirrored water.",
+    "description": "Victoria Harbour at night from Kowloon: a wall of lit towers below the ridge of Victoria Peak, with Central Plaza, the Bank of China Tower and Two IFC, calm reflections and the Star Ferry.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -139,7 +139,7 @@
     "name": "rio",
     "type": "registry:component",
     "title": "Rio de Janeiro",
-    "description": "Sugarloaf and Corcovado in the late afternoon over Copacabana, with cable cars, breaking surf, the wave-mosaic promenade and frigatebirds.",
+    "description": "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
@@ -156,7 +156,7 @@
     "name": "sydney",
     "type": "registry:component",
     "title": "Sydney",
-    "description": "Sydney Harbour at night: the Opera House lit white, the Harbour Bridge behind it, fireworks bursting over the arch and the whole scene mirrored in the water.",
+    "description": "Sydney Harbour at night: the Opera House lit cream-white on its podium, the Harbour Bridge behind it, Circular Quay's towers and one ferry on calm water.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

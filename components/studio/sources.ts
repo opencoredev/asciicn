@@ -223,16 +223,16 @@ const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
 
 /** Each city's own charset, so the snippet and the stage agree. */
 const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
-  dubai: { charset: "standard", colorMode: "truecolor" },
-  "hong-kong": { charset: "braille", colorMode: "truecolor" },
-  london: { charset: "standard", colorMode: "truecolor" },
-  miami: { charset: "standard", colorMode: "truecolor" },
-  "new-york": { charset: "standard", colorMode: "truecolor" },
-  paris: { charset: "standard", colorMode: "truecolor" },
-  rio: { charset: "standard", colorMode: "truecolor" },
-  "san-francisco": { charset: "standard", colorMode: "truecolor" },
-  sydney: { charset: "braille", colorMode: "truecolor" },
-  tokyo: { charset: "braille", colorMode: "truecolor" },
+  dubai: { charset: "quadrants", colorMode: "truecolor" },
+  "hong-kong": { charset: "quadrants", colorMode: "truecolor" },
+  london: { charset: "quadrants", colorMode: "truecolor" },
+  miami: { charset: "quadrants", colorMode: "truecolor" },
+  "new-york": { charset: "quadrants", colorMode: "truecolor" },
+  paris: { charset: "quadrants", colorMode: "truecolor" },
+  rio: { charset: "quadrants", colorMode: "truecolor" },
+  "san-francisco": { charset: "quadrants", colorMode: "truecolor" },
+  sydney: { charset: "quadrants", colorMode: "truecolor" },
+  tokyo: { charset: "quadrants", colorMode: "truecolor" },
 };
 
 const isSceneId = (id: string): id is SceneSourceId =>
