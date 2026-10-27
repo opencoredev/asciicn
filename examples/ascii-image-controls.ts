@@ -1,56 +1,76 @@
-import type { AsciiImagePreset } from "@/components/asciicn/ascii-image";
-import { ASCII_COLOR_NAMES, DITHER_METHODS } from "@/lib/ascii";
-import {
-  color,
-  segmented,
-  select,
-  slider,
-  toggle,
-} from "@/lib/preview-controls";
+import { CHARSET_NAMES } from "@/lib/ascii/charsets";
+import { COLOR_MODES } from "@/lib/ascii/palettes";
+import { segmented, select, slider, toggle } from "@/lib/preview-controls";
 
-// Spelled out here: the component module is a client module, and this
-// file is also read by the server-rendered docs page.
-const ASCII_IMAGE_PRESETS = [
-  "ink",
-  "duotone",
-  "newsprint",
-  "gameboy",
-  "riso",
-] as const satisfies readonly AsciiImagePreset[];
+// Knobs for the ASCII image's main demo, shared by the page and the demo.
 
-// Knobs for the dither image's main demo, shared by the page and the demo.
+/** The sample photos in public/examples, by knob value. */
+export const PHOTOS = {
+  aldrin: {
+    alt: "Buzz Aldrin standing on the Moon during Apollo 11, the photographer reflected in his visor",
+    ratio: 4 / 5,
+    src: "/examples/aldrin.jpg",
+  },
+  earthrise: {
+    alt: "Earth rising over the grey horizon of the Moon, seen from Apollo 8",
+    ratio: 4 / 3,
+    src: "/examples/earthrise.jpg",
+  },
+  pillars: {
+    alt: "The Pillars of Creation, towers of gas and dust in the Eagle Nebula",
+    ratio: 4 / 5,
+    src: "/examples/pillars.jpg",
+  },
+  tetons: {
+    alt: "The Teton Range above the winding Snake River, in black and white",
+    ratio: 5 / 4,
+    src: "/examples/tetons.jpg",
+  },
+} as const;
 
-export const preset = segmented({
-  default: "duotone",
-  id: "preset",
-  label: "Preset",
-  options: ASCII_IMAGE_PRESETS,
+export const photo = segmented({
+  default: "earthrise",
+  id: "photo",
+  label: "Photo",
+  options: ["earthrise", "pillars", "tetons", "aldrin"],
 });
 
-export const ink = color({
-  default: "blue",
-  id: "color",
-  label: "Ink (ink, duotone)",
-  options: ASCII_COLOR_NAMES,
+export const charset = select({
+  default: "standard",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
 });
 
-export const method = select({
-  default: "preset",
-  id: "method",
-  label: "Method",
-  options: ["preset", ...DITHER_METHODS],
+export const colorMode = segmented({
+  default: "truecolor",
+  id: "colorMode",
+  label: "Colour",
+  options: COLOR_MODES,
 });
 
-export const sharpen = slider({
-  default: 0.3,
-  id: "sharpen",
-  label: "Sharpen",
-  max: 1,
-  min: 0,
-  step: 0.1,
+export const cell = slider({
+  default: 9,
+  id: "cell",
+  label: "Cell",
+  max: 20,
+  min: 6,
+  step: 1,
+  unit: "px",
 });
 
-export const invert = toggle({ default: false, id: "invert", label: "Invert" });
+export const reveal = segmented({
+  default: "spotlight",
+  id: "reveal",
+  label: "Pointer",
+  options: ["none", "spotlight", "photo"],
+});
+
+export const autoLevels = toggle({
+  default: true,
+  id: "autoLevels",
+  label: "Auto levels",
+});
 
 /** Display order of the tray. */
-export const controls = [preset, ink, method, sharpen, invert];
+export const controls = [photo, charset, colorMode, cell, reveal, autoLevels];

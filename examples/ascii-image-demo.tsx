@@ -5,23 +5,25 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-image-controls";
 
 export default function AsciiImageDemo() {
-  const preset = usePreviewValue(knobs.preset);
-  const color = usePreviewValue(knobs.ink);
-  const method = usePreviewValue(knobs.method);
-  const sharpen = usePreviewValue(knobs.sharpen);
-  const invert = usePreviewValue(knobs.invert);
+  const photo = knobs.PHOTOS[usePreviewValue(knobs.photo)];
+  const charset = usePreviewValue(knobs.charset);
+  const colorMode = usePreviewValue(knobs.colorMode);
+  const cell = usePreviewValue(knobs.cell);
+  const reveal = usePreviewValue(knobs.reveal);
+  const autoLevels = usePreviewValue(knobs.autoLevels);
 
   return (
     <AsciiImage
-      src="/examples/aldrin.jpg"
-      alt="Buzz Aldrin standing on the Moon during Apollo 11, his visor reflecting the photographer"
-      preset={preset}
-      color={color}
-      method={method === "preset" ? undefined : method}
-      sharpen={sharpen}
-      invert={invert}
-      ratio={4 / 5}
-      className="w-full max-w-sm rounded-xl"
+      src={photo.src}
+      alt={photo.alt}
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      reveal={reveal}
+      autoLevels={autoLevels}
+      className="w-full"
+      // Fit the photo's own shape inside a stage about 520px tall.
+      style={{ aspectRatio: photo.ratio, maxWidth: 520 * photo.ratio }}
     />
   );
 }

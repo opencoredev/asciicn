@@ -3,25 +3,31 @@
 import { AsciiLogo } from "@/components/asciicn/ascii-logo";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-logo-controls";
+import { LOGOS } from "@/examples/ascii-logo-data";
 
 export default function AsciiLogoDemo() {
-  const fill = usePreviewValue(knobs.fill);
+  const name = usePreviewValue(knobs.logo);
+  const charset = usePreviewValue(knobs.charset);
   const effect = usePreviewValue(knobs.effect);
   const color = usePreviewValue(knobs.ink);
+  const colorMode = usePreviewValue(knobs.colorMode);
   const cell = usePreviewValue(knobs.cell);
-  const outline = usePreviewValue(knobs.outline);
+  const logo = LOGOS.find((item) => item.alt === name) ?? LOGOS[0];
 
   return (
     <AsciiLogo
-      src="/examples/logos/halcyra.svg"
-      alt="Halcyra"
-      ratio={163 / 40}
-      fill={fill}
+      // Remount on a new logo or effect so one-shot effects play again.
+      key={`${logo.src}-${effect}`}
+      src={logo.src}
+      alt={logo.alt}
+      ratio={logo.ratio}
+      charset={charset}
       effect={effect}
       color={color}
+      colorMode={colorMode}
+      ramp="glacier"
       cell={cell}
-      outline={outline}
-      className="h-16 max-w-full sm:h-24"
+      className="w-full max-w-2xl"
     />
   );
 }

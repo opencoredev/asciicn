@@ -3,27 +3,27 @@
 import { AsciiGlobe } from "@/components/asciicn/ascii-globe";
 import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/ascii-globe-controls";
-import { OFFICES, ROUTES } from "@/examples/dot-map-data";
+import { LINKS, REGIONS } from "@/examples/ascii-globe-data";
 
 export default function AsciiGlobeDemo() {
-  const color = usePreviewValue(knobs.ink);
-  const accent = usePreviewValue(knobs.accent);
+  const charset = usePreviewValue(knobs.charset);
+  const colorMode = usePreviewValue(knobs.colorMode);
   const speed = usePreviewValue(knobs.speed);
-  const tilt = usePreviewValue(knobs.tilt);
+  const light = usePreviewValue(knobs.light);
   const cell = usePreviewValue(knobs.cell);
   const arcs = usePreviewValue(knobs.arcs);
-  const animate = usePreviewValue(knobs.animate);
+  const graticule = usePreviewValue(knobs.graticule);
 
   return (
     <AsciiGlobe
-      color={color}
-      accent={accent}
+      charset={charset}
+      colorMode={colorMode}
       speed={speed}
-      tilt={tilt}
+      light={light}
       cell={cell}
-      markers={OFFICES}
-      arcs={arcs ? ROUTES : undefined}
-      animate={animate}
+      graticule={graticule}
+      markers={REGIONS}
+      arcs={arcs ? LINKS : undefined}
       className="absolute inset-0"
     />
   );

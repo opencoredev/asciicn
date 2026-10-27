@@ -1,5 +1,5 @@
 /**
- * A compact land mask of the world, shared by the dither globe and the dot
+ * A compact land mask of the world, shared by the ASCII globe and the dot
  * map. Rasterised from Natural Earth's 1:50m land polygons (public domain,
  * naturalearthdata.com) onto a 480 by 240 equirectangular grid, 0.75° per
  * cell, then run-length encoded. No network fetch: the whole mask is this

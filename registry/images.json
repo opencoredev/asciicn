@@ -2,8 +2,8 @@
   {
     "name": "ascii-image",
     "type": "registry:component",
-    "title": "Dither image",
-    "description": "Any image dithered to a preset (ink, duotone, newsprint, gameboy, riso) or your own palette, resolving from coarse to fine.",
+    "title": "ASCII image",
+    "description": "Any photo redrawn in live glyphs, with every charset and colour mode, auto levels and a pointer spotlight.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
@@ -14,10 +14,28 @@
     ]
   },
   {
+    "name": "ascii-video",
+    "type": "registry:component",
+    "title": "ASCII video",
+    "description": "Video, a dropped file or the webcam sampled into glyphs at up to 60 fps, with audio-reactive contrast and jitter.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-video.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-video.tsx"
+      }
+    ]
+  },
+  {
     "name": "image-compare",
     "type": "registry:component",
     "title": "Image compare",
-    "description": "A draggable, keyboard-accessible before and after slider between a dithered image and the original or another dither.",
+    "description": "A draggable, keyboard-accessible slider between a photo's glyphs and the photo itself, or between two looks.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-image.json"
@@ -34,7 +52,7 @@
     "name": "scroll-reveal-image",
     "type": "registry:component",
     "title": "Scroll reveal image",
-    "description": "An image that sharpens from coarse dithered blocks to the full photo as it scrolls into view.",
+    "description": "A photo that resolves from coarse blocks to fine Braille as it scrolls into view, then fades into the original.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-image.json"
@@ -50,8 +68,8 @@
   {
     "name": "ascii-logo",
     "type": "registry:component",
-    "title": "Dithered logo",
-    "description": "An SVG or PNG logo redrawn on a pixel grid with exact edges, a dithered fill and an optional shimmer or scan line.",
+    "title": "ASCII logo",
+    "description": "An SVG or PNG logo redrawn in crisp glyphs, with shimmer, scan and reveal animations.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-image.json"
@@ -67,8 +85,8 @@
   {
     "name": "ascii-globe",
     "type": "registry:component",
-    "title": "Dither globe",
-    "description": "A rotating dithered globe with land, a lit terminator, and optional pulsing markers and arcs.",
+    "title": "ASCII globe",
+    "description": "A lit, rotating planet in glyphs with a day and night terminator, ocean glints, an atmosphere, markers and arcs.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/world-land.json"
@@ -85,21 +103,35 @@
     "name": "world-land",
     "type": "registry:lib",
     "title": "World land mask",
-    "description": "A 3.8 KB land mask of the world from Natural Earth (public domain), shared by the dither globe and the dot map.",
+    "description": "A 3.8 KB land mask of the world from Natural Earth (public domain), shared by the ASCII globe and the dot map.",
+    "registryDependencies": [],
     "files": [
       {
         "path": "components/asciicn/world-land.ts",
         "type": "registry:lib",
         "target": "components/asciicn/world-land.ts"
       }
-    ],
-    "registryDependencies": []
+    ]
+  },
+  {
+    "name": "ascii-donut",
+    "type": "registry:component",
+    "title": "ASCII donut",
+    "description": "A lit, ray-marched torus spinning in glyphs, with specular highlights, a rim light and drag to spin.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-donut.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-donut.tsx"
+      }
+    ]
   },
   {
     "name": "ascii-orb",
     "type": "registry:component",
-    "title": "Dither orb",
-    "description": "A lit, dithered orb that slowly morphs and leans towards the pointer.",
+    "title": "ASCII orb",
+    "description": "A glyph orb for voice interfaces that breathes when idle, listens and speaks, driven by a microphone or your audio.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

@@ -5,19 +5,18 @@ import { usePreviewValue } from "@/components/preview-controls";
 import * as knobs from "@/examples/image-compare-controls";
 
 export default function ImageCompareDemo() {
-  const preset = usePreviewValue(knobs.preset);
-  const color = usePreviewValue(knobs.ink);
+  const charset = usePreviewValue(knobs.charset);
+  const colorMode = usePreviewValue(knobs.colorMode);
   const cell = usePreviewValue(knobs.cell);
-  const labels = usePreviewValue(knobs.labels);
 
   return (
     <ImageCompare
-      src="/examples/tetons.jpg"
-      alt="The Grand Teton range above the Snake River, dithered on the left and original on the right"
-      before={{ cell, color, kind: "dither", preset }}
-      labels={labels}
-      ratio={5 / 4}
-      className="w-full max-w-xl rounded-xl"
+      src="/examples/earthrise.jpg"
+      alt="Earthrise from Apollo 8, as glyphs on the left and the photo on the right"
+      charset={charset}
+      colorMode={colorMode}
+      cell={cell}
+      className="aspect-[4/3] w-full max-w-2xl"
     />
   );
 }

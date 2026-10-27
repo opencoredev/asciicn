@@ -1,12 +1,12 @@
 ---
-title: "Dither image"
-description: "Any photo dithered to a preset or your own palette, with crisp pixels and a coarse-to-fine reveal as it loads."
+title: "ASCII image"
+description: "Any photo redrawn in live glyphs, with every charset and colour mode, auto levels and a pointer spotlight."
 ---
 
 import AsciiImageDemo from "@/examples/ascii-image-demo";
-import AsciiImagePresets from "@/examples/ascii-image-presets";
-import AsciiImageDuotone from "@/examples/ascii-image-duotone";
-import AsciiImageNewsprint from "@/examples/ascii-image-newsprint";
+import AsciiImagePhosphor from "@/examples/ascii-image-phosphor";
+import AsciiImageReveal from "@/examples/ascii-image-reveal";
+import AsciiImageEdge from "@/examples/ascii-image-edge";
 import { controls as asciiImageControls } from "@/examples/ascii-image-controls";
 
 <ComponentPreview
@@ -31,52 +31,46 @@ export function Cover() {
     <AsciiImage
       src="/photos/launch.jpg"
       alt="The launch pad at dawn"
-      preset="duotone"
-      color="blue"
-      className="aspect-video w-full rounded-xl"
+      charset="dense"
+      reveal="spotlight"
+      className="aspect-video w-full"
     />
   );
 }
 ```
 
-The default `duotone` preset suits most photos. Pick another `preset`, then override any part of it. The image fills its box like `object-fit: cover`; give the box a width and a height or aspect ratio, or set `ratio` so the space is reserved before the image loads.
+The image is sampled on the CPU. Each glyph takes the area average of the pixels under its cell, so fine detail averages out instead of flickering into noise. Braille samples 2×4 dots per cell and quadrants 2×2, which gives those charsets four to eight times the detail of a ramp at the same cell size.
 
-Every cell is a whole number of device pixels and the canvas is scaled up with `image-rendering: pixelated`, so edges stay sharp at any zoom. Before dithering, the tones are stretched to fill the palette and edges get a light sharpen, which keeps faces and horizons readable at a 2px cell. Turn these off with `normalize={false}` and `sharpen={0}`.
+Switching `charset` or `colorMode` redraws from the samples already taken. Resizing, a new `fit` or a new `src` samples the image again, once.
 
-While the file loads the box shows a faint dotted field. When it arrives the image resolves from 16× blocks to full detail in about a third of a second.
+On a dark page, bright pixels draw dense glyphs. On a light page it flips, so dark pixels draw dense glyphs and the photo still reads the right way round. Set `invert` to pick one yourself. Phosphor and duotone looks bring their own dark glass and never flip.
+
+`autoLevels` stretches the image so its darkest and brightest 1% of pixels reach the ends of the ramp. Flat, foggy photos gain the most. Turn it off to keep a photo's own exposure, then use `grade` to adjust it.
 
 ## Examples
 
-### Presets
+### Amber phosphor in Braille
 
-| Preset      | Look                                                                    |
-| ----------- | ----------------------------------------------------------------------- |
-| `ink`       | Atkinson diffusion, one ink on the page colour. Follows the theme.      |
-| `duotone`   | Blue noise over the page colour, a tint and the ink. Follows the theme. |
-| `newsprint` | An ordered 8×8 screen, near black on warm paper, in both themes.        |
-| `gameboy`   | Four greens on a 3px Bayer grid.                                        |
-| `riso`      | Navy, blue and pink on cream, like a two-drum print.                    |
+Two by four dots per cell in one ink, with the P3 amber glass behind it.
 
-<ComponentPreview src="examples/ascii-image-presets.tsx" size="lg">
-  <AsciiImagePresets />
+<ComponentPreview src="examples/ascii-image-phosphor.tsx" size="lg">
+  <AsciiImagePhosphor />
 </ComponentPreview>
 
-### Palettes from colour names
+### See the photo under the pointer
 
-`color` takes any palette name: `blue`, `purple`, `green`, `pink`, `orange`, `red`, `grey` or `ink`. Each is tuned for light and dark. Here the duotone preset gives each mission its own hue.
+`reveal="photo"` opens a soft window onto the original file around the pointer.
 
-<ComponentPreview src="examples/ascii-image-duotone.tsx" size="lg">
-  <AsciiImageDuotone />
+<ComponentPreview src="examples/ascii-image-reveal.tsx" size="lg">
+  <AsciiImageReveal />
 </ComponentPreview>
 
-For full control, pass `palette` with two to four colours. Names, CSS variables and CSS colours all work: `palette={["--ascii-paper", "purple", "oklch(0.9 0.05 300)"]}`.
+### Edges and blocks
 
-### Newsprint article
+`charset="edge"` draws strong contours as `- / | \` strokes across the gradient and fills the rest from a ramp. Next to it, ANSI blocks through the sodium ramp.
 
-A fixed palette ignores the theme, so the newsprint card looks the same on a black page and a white one.
-
-<ComponentPreview src="examples/ascii-image-newsprint.tsx" size="lg">
-  <AsciiImageNewsprint />
+<ComponentPreview src="examples/ascii-image-edge.tsx" size="lg">
+  <AsciiImageEdge />
 </ComponentPreview>
 
 ## Props
@@ -87,107 +81,158 @@ A fixed palette ignores the theme, so the newsprint card looks the same on a bla
       name: "src",
       type: "string",
       description:
-        "Image URL. Images from another origin need CORS headers, because the pixels are read from a canvas.",
-      required: true,
+        "Image URL. Files on another origin need CORS headers, or the canvas can't read their pixels.",
     },
     {
       name: "alt",
       type: "string",
       description:
-        'Describes the image for screen readers. Pass "" when it is decorative.',
-      required: true,
+        'What the image shows. Read out by screen readers. Pass "" for a decorative image.',
     },
     {
-      name: "preset",
-      type: '"ink" | "duotone" | "newsprint" | "gameboy" | "riso"',
-      default: '"duotone"',
-      description: "A starting look: method, cell, contrast and palette.",
+      name: "charset",
+      type: '"standard" | "dense" | "blocks" | "quadrants" | "braille" | "cp437" | "petscii" | "katakana" | "dots" | "edge"',
+      default: '"standard"',
+      description: "Which glyphs draw the tones.",
     },
     {
-      name: "color",
-      type: "AsciiColor",
-      default: '"ink"',
+      name: "chars",
+      type: "string",
       description:
-        "The ink for the ink and duotone presets. A palette name or any CSS colour.",
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
     },
     {
-      name: "palette",
-      type: "[AsciiColor, AsciiColor, ...AsciiColor[]]",
-      default: "From the preset",
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
       description:
-        'Two to four colours that replace the preset palette. Sorted dark to light. Use "transparent" to let the background show through.',
+        "truecolor takes each cell's own colour. ansi16 snaps it to 16 terminal colours. mono draws in one ink. duotone and palette colour glyphs by tone.",
     },
     {
-      name: "method",
-      type: '"bayer4" | "bayer8" | "blue-noise" | "floyd-steinberg" | "atkinson" | "sierra-lite"',
-      default: "From the preset",
-      description: "The dither algorithm.",
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      description: "With mono: a CRT ink and its dark glass.",
     },
     {
-      name: "cell",
-      type: "number",
-      default: "From the preset (2 or 3)",
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"mainframe"',
       description:
-        "Size of one cell in CSS pixels, rounded to whole device pixels.",
+        "With duotone: a named ramp or your own stops, dark to light.",
     },
     {
-      name: "contrast",
-      type: "number",
-      default: "From the preset",
-      description: "1 leaves contrast alone. Higher values push tones apart.",
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "With ansi16: which 16-colour table.",
     },
     {
-      name: "brightness",
-      type: "number",
-      default: "0",
-      description: "Added to every tone, from -1 to 1.",
-    },
-    {
-      name: "normalize",
-      type: "boolean",
-      default: "true",
-      description:
-        "Stretch the image's darkest and lightest tones to the ends of the palette.",
-    },
-    {
-      name: "sharpen",
-      type: "number",
-      default: "0.3",
-      description: "Edge sharpening before dithering, 0 to 1.",
+      name: "grade",
+      type: "{ brightness?, contrast?, gamma?, saturation? }",
+      description: "Tone and colour grading before glyphs are chosen.",
     },
     {
       name: "invert",
       type: "boolean",
-      default: "false",
-      description: "Swap light and dark.",
+      default: "follows the theme",
+      description:
+        "true: dark pixels draw dense glyphs. false: bright pixels do. Unset, it follows the page.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a contour must be to draw a stroke.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description:
+        "Ordered dithering between glyph levels, which smooths gradients in short ramps.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description: "transparent draws glyphs only, over whatever is behind.",
     },
     {
       name: "fit",
-      type: '"cover" | "contain"',
+      type: '"cover" | "contain" | "fill"',
       default: '"cover"',
       description: "How the image fills its box, as in object-fit.",
     },
     {
-      name: "ratio",
-      type: "number",
-      default: "The image's ratio",
+      name: "focus",
+      type: "[x, y]",
+      default: "[0.5, 0.5]",
       description:
-        "Width over height. Reserves space before the image loads. A height in className wins.",
+        "Where the image sits when it overflows or underfills, 0 to 1 per axis.",
     },
     {
-      name: "resolve",
+      name: "autoLevels",
       type: "boolean",
       default: "true",
+      description: "Stretch the image's tones to use the whole ramp.",
+    },
+    {
+      name: "reveal",
+      type: '"none" | "spotlight" | "photo"',
+      default: '"none"',
       description:
-        "Resolve from coarse blocks to full detail the first time the image appears.",
+        "spotlight thins glyphs away from the pointer. photo shows the original file around it.",
+    },
+    {
+      name: "revealRadius",
+      type: "number",
+      default: "120",
+      description: "Radius of the reveal in CSS pixels.",
+    },
+    {
+      name: "intro",
+      type: "boolean",
+      default: "true",
+      description: "Glyphs resolve in from noise once the image has loaded.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false skips the intro and the loading sweep.",
+    },
+    {
+      name: "crossOrigin",
+      type: '"anonymous" | "use-credentials"',
+      default: '"anonymous"',
+      description: "Passed to the image request.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the current frame as text, ANSI, SVG or PNG.",
     },
   ]}
 />
 
 ## Notes
 
-- The root has `role="img"` and your `alt` text as its label, and `aria-busy` while it loads. With `alt=""` it is hidden from assistive technology.
-- `data-state` on the root is `idle`, `loading`, `resolving`, `ready` or `error`.
-- The image loads when it comes within about 300px of the viewport. It redraws when the box resizes, the page zooms or the theme changes, without resolving again.
-- Under reduced motion the image appears at full detail with no resolve.
-- Dithering runs on the main thread at one pixel per cell. A 1200 by 800 pixel box at a 2px cell is 240,000 pixels, a few milliseconds of work. Coarse frames are much cheaper.
+- The wrapper is announced as an image labelled with `alt`. The canvas inside is hidden from assistive technology. With `alt=""` the whole thing is decorative.
+- While the file loads, a faint sweep of glyphs and a spinner hold its place. If it fails to load, the box says so in glyphs.
+- With reduced motion, the image appears without the intro. The spotlight still follows the pointer.
+- A still image draws once and then stops. Only the intro, the loading sweep and `reveal="spotlight"` keep a frame loop running, and that loop pauses offscreen and in hidden tabs.
+- Give the box a size, such as `aspect-video w-full`. The image fills it and never sets its own height.

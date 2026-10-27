@@ -1,261 +1,223 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ComponentProps, CSSProperties, RefObject } from "react";
+import type { ComponentProps, RefObject } from "react";
 
 import {
-  CANVAS_CLASS,
-  LoadingField,
-  paintFrame,
+  AsciiMedia,
   splitLook,
-  useAsciiSource,
+  useLoadedImage,
 } from "@/components/asciicn/ascii-image";
-import type { AsciiLook } from "@/components/asciicn/ascii-image";
-import {
-  asciiMaskStyle,
-  useInView,
-  usePrefersReducedMotion,
+import type {
+  MediaDrawContext,
+  MediaFit,
+} from "@/components/asciicn/ascii-image";
+import { usePrefersReducedMotion } from "@/lib/ascii";
+import type {
+  AsciiHandle,
+  AsciiLook,
+  CharsetName,
+  ToneField,
 } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-export type ScrollRevealImageProps = Omit<ComponentProps<"div">, "children"> &
-  AsciiLook & {
-    /** Image URL. Cross-origin images need CORS headers. */
-    src: string;
-    /** Describes the image. Pass `""` for a decorative image. */
-    alt: string;
-    /**
-     * Where the reveal ends: the photo itself, or the finest dither.
-     * Default `"photo"`.
-     */
-    end?: "photo" | "dither";
-    /** How many cells wide the first, coarsest blocks are. Default 24. */
-    coarsest?: number;
-    /**
-     * Where the image's top edge is when the reveal starts, as a share of
-     * the scroll area's height from the top. 1 is the bottom edge.
-     * Default 1.
-     */
-    start?: number;
-    /** Where the top edge is when the reveal finishes. Default 0.3. */
-    finish?: number;
-    /**
-     * The element that scrolls, if not the page. The reveal measures
-     * against its box instead of the viewport.
-     */
-    scrollRoot?: RefObject<HTMLElement | null>;
-    /**
-     * Set the progress yourself, 0 to 1, instead of following the scroll.
-     */
-    progress?: number;
-    /** Called when the scroll progress changes, 0 to 1. */
-    onProgressChange?: (progress: number) => void;
-    /** Width over height. Default: the image's own ratio. */
-    ratio?: number;
-  };
+/**
+ * Where the scroll leads.
+ * - `photo`: coarse glyphs sharpen into finer ones, then the photo fades in.
+ * - `glyphs`: the same sharpening, ending on the finest glyphs.
+ */
+export type ScrollRevealTarget = "photo" | "glyphs";
 
-// The share of the progress spent on dither; the rest dissolves to the photo.
-const ASCII_SHARE = 0.78;
-// Coarseness steps between the first blocks and full detail.
-const LADDER_STEPS = 9;
-// Progress is kept to this many steps, so a scroll pass makes few renders.
-const PRECISION = 240;
+/** One stage of the sweep: a cell size and the charset drawn at it. */
+export interface RevealStage {
+  readonly cell: number;
+  readonly charset: CharsetName;
+}
+
+export interface ScrollRevealImageProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
+  /** Image URL. Cross-origin files need CORS headers. */
+  src: string;
+  /** What the image shows, read by screen readers. */
+  alt: string;
+  /** Where the sweep ends. Default `"photo"`. */
+  to?: ScrollRevealTarget;
+  /**
+   * Cell sizes and charsets from first to last. Default: blocks at 28px,
+   * then 20px and 14px classic, then 10px and 7px Braille. `charset`, when
+   * set, replaces every stage's charset.
+   */
+  stages?: readonly RevealStage[];
+  /** How the image fills its box. Default `"cover"`. */
+  fit?: MediaFit;
+  /**
+   * The share of the viewport the image travels through while it
+   * resolves, 0 to 1. Default 0.7: it finishes when its top edge is 30%
+   * down the screen.
+   */
+  distance?: number;
+  /** The scrolling element, when it isn't the page. Default: the window. */
+  scrollRoot?: RefObject<Element | null>;
+  /** Called with the progress, 0 to 1, as it changes. */
+  onProgressChange?: (progress: number) => void;
+  /** Filled with a handle for export. */
+  handle?: RefObject<AsciiHandle | null>;
+}
+
+export const DEFAULT_STAGES = [
+  { cell: 28, charset: "blocks" },
+  { cell: 20, charset: "standard" },
+  { cell: 14, charset: "standard" },
+  { cell: 10, charset: "braille" },
+  { cell: 7, charset: "braille" },
+] as const satisfies readonly RevealStage[];
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
+// The photo fades in over the last stretch of the scroll.
+const PHOTO_FROM = 0.82;
+
 /**
- * Coarseness from `coarsest` down to 1 in even steps on a log scale, so
- * every step looks like the same amount of sharpening.
+ * An image that resolves as it scrolls into view: coarse blocks sharpen
+ * stage by stage into fine Braille, and (by default) the original photo
+ * fades in at the end. Scroll back and it coarsens again.
  */
-const ladderOf = (coarsest: number): readonly number[] => {
-  const top = Math.max(1, coarsest);
-  const steps = Array.from({ length: LADDER_STEPS }, (_, index) =>
-    Math.max(1, Math.round(top ** (1 - index / (LADDER_STEPS - 1))))
-  );
-  return [...new Set(steps)];
-};
-
-/** What the image shows at `progress`. */
-const stageAt = (
-  progress: number,
-  ladder: readonly number[],
-  end: "photo" | "dither"
-) => {
-  const asciiEnd = end === "photo" ? ASCII_SHARE : 1;
-  const along = clamp01(progress / asciiEnd);
-  const index = Math.min(ladder.length - 1, Math.floor(along * ladder.length));
-  const photo =
-    end === "photo" ? clamp01((progress - asciiEnd) / (1 - asciiEnd)) : 0;
-  return { factor: ladder[index] ?? 1, photo };
-};
-
-/** The photo arrives through a dither mask on a grid of double cells. */
-const photoStyleAt = ({
-  photo,
-  fit,
-  cell,
-}: {
-  photo: number;
-  fit: CSSProperties["objectFit"];
-  cell: number;
-}): CSSProperties =>
-  photo >= 1
-    ? { objectFit: fit }
-    : { objectFit: fit, ...asciiMaskStyle(photo, { cell: cell * 2 }) };
-
-/** Progress from the scroll position, only while the image is near view. */
-const useScrollProgress = ({
-  rootRef,
-  scrollRoot,
-  start,
-  finish,
-  enabled,
-}: {
-  rootRef: RefObject<HTMLElement | null>;
-  scrollRoot: RefObject<HTMLElement | null> | undefined;
-  start: number;
-  finish: number;
-  enabled: boolean;
-}) => {
-  const inView = useInView(rootRef, { rootMargin: "80px" });
-  const [progress, setProgress] = useState(0);
+export const ScrollRevealImage = (props: ScrollRevealImageProps) => {
+  const [
+    look,
+    {
+      src,
+      alt,
+      to = "photo",
+      stages = DEFAULT_STAGES,
+      fit = "cover",
+      distance = 0.7,
+      scrollRoot,
+      onProgressChange,
+      handle,
+      className,
+      ...rest
+    },
+  ] = splitLook(props);
+  const image = useLoadedImage(src);
+  const reducedMotion = usePrefersReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLImageElement>(null);
+  const progress = useRef(0);
+  const last = Math.max(0, stages.length - 1);
+  const [stage, setStage] = useState(reducedMotion ? last : 0);
+  const [moving, setMoving] = useState(false);
+  const onProgress = useRef(onProgressChange);
+  useEffect(() => {
+    onProgress.current = onProgressChange;
+  });
 
   useEffect(() => {
-    if (!(enabled && inView)) {
+    const root = rootRef.current;
+    if (!root) {
       return;
     }
+    if (reducedMotion) {
+      progress.current = 1;
+      setStage(last);
+      photoRef.current?.style.setProperty("opacity", "1");
+      onProgress.current?.(1);
+      return;
+    }
+    const scroller = scrollRoot?.current ?? null;
+    const target: Element | Window = scroller ?? window;
     let frame = 0;
-    const measure = () => {
+    let idle = 0;
+    const update = () => {
       frame = 0;
-      const el = rootRef.current;
-      if (!el) {
-        return;
+      const box = root.getBoundingClientRect();
+      const frameBox = scroller?.getBoundingClientRect();
+      const viewport = frameBox ? frameBox.height : window.innerHeight || 1;
+      const top = box.top - (frameBox?.top ?? 0);
+      const value = clamp01(
+        (viewport - top) / (viewport * Math.max(0.1, distance))
+      );
+      if (value !== progress.current) {
+        onProgress.current?.(value);
       }
-      const box = scrollRoot?.current?.getBoundingClientRect();
-      const top = box?.top ?? 0;
-      const height = box?.height ?? window.innerHeight;
-      const edge = (el.getBoundingClientRect().top - top) / height;
-      const span = start - finish || 1;
-      const next = clamp01((start - edge) / span);
-      setProgress(Math.round(next * PRECISION) / PRECISION);
+      progress.current = value;
+      setStage(Math.min(last, Math.floor((value / PHOTO_FROM) * (last + 1))));
+      photoRef.current?.style.setProperty(
+        "opacity",
+        String(clamp01((value - PHOTO_FROM) / (1 - PHOTO_FROM)))
+      );
+      // Draw every frame while scrolling, then rest.
+      setMoving(true);
+      window.clearTimeout(idle);
+      idle = window.setTimeout(() => setMoving(false), 160);
     };
     const schedule = () => {
-      if (frame === 0) {
-        frame = window.requestAnimationFrame(measure);
+      if (!frame) {
+        frame = requestAnimationFrame(update);
       }
     };
-    measure();
-    // Capture catches scrolls of any container, not only the page.
-    window.addEventListener("scroll", schedule, {
-      capture: true,
-      passive: true,
-    });
-    window.addEventListener("resize", schedule, { passive: true });
+    update();
+    target.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
     return () => {
-      window.removeEventListener("scroll", schedule, { capture: true });
+      cancelAnimationFrame(frame);
+      window.clearTimeout(idle);
+      target.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
-      window.cancelAnimationFrame(frame);
     };
-  }, [enabled, inView, rootRef, scrollRoot, start, finish]);
+    // Runs again once the image loads, so the photo starts at the right opacity.
+  }, [distance, last, reducedMotion, scrollRoot, image.status]);
 
-  return progress;
-};
-
-/**
- * An image that resolves as it scrolls into view: coarse dithered blocks
- * that sharpen to full detail and then dissolve, cell by cell, into the
- * photo. Progress follows the scroll position, so scrolling back reverses
- * it. Under reduced motion it shows the finished image.
- */
-export const ScrollRevealImage = (allProps: ScrollRevealImageProps) => {
-  const { look, rest } = splitLook(allProps);
-  const {
-    src,
-    alt,
-    end = "photo",
-    coarsest = 24,
-    start = 1,
-    finish = 0.3,
-    scrollRoot,
-    progress: controlled,
-    onProgressChange,
-    ratio,
-    className,
-    style,
-    ...props
-  } = rest;
-  const { fit } = look.tone;
-  const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const reducedMotion = usePrefersReducedMotion();
-  const { image, render, status } = useAsciiSource(rootRef, src, look);
-  const scrolled = useScrollProgress({
-    enabled: controlled === undefined && !reducedMotion,
-    finish,
-    rootRef,
-    scrollRoot,
-    start,
-  });
-  const progress = reducedMotion ? 1 : clamp01(controlled ?? scrolled);
-  const { factor, photo } = stageAt(progress, ladderOf(coarsest), end);
-
-  const onChangeRef = useRef(onProgressChange);
-  useEffect(() => {
-    onChangeRef.current = onProgressChange;
-  }, [onProgressChange]);
-  useEffect(() => {
-    onChangeRef.current?.(progress);
-  }, [progress]);
-
-  useEffect(() => {
-    if (render) {
-      paintFrame(canvasRef.current, render(factor));
+  // Within a stage, glyphs grow from sparse to full as it nears the next.
+  const densify = (field: ToneField, _context: MediaDrawContext) => {
+    const span = PHOTO_FROM / (last + 1);
+    const within = clamp01((progress.current - stage * span) / span);
+    const gain = 0.55 + 0.45 * Math.min(1, within * 1.6);
+    if (gain >= 1) {
+      return;
     }
-  }, [render, factor]);
-
-  const naturalRatio = image ? image.naturalWidth / image.naturalHeight : null;
-  const rootStyle: CSSProperties = {
-    aspectRatio: ratio ?? naturalRatio ?? undefined,
-    ...style,
+    for (let index = 0; index < field.tones.length; index += 1) {
+      field.tones[index] = (field.tones[index] ?? 0) * gain;
+    }
   };
-  const photoStyle = photoStyleAt({ cell: look.cell, fit, photo });
-  const decorative = alt === "";
-  let stage = factor === 1 ? "fine" : "coarse";
-  if (photo >= 1) {
-    stage = "photo";
-  }
+
+  const current = stages[Math.min(stage, last)] ?? DEFAULT_STAGES[0];
 
   return (
     <div
-      {...props}
       ref={rootRef}
-      role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : alt}
-      aria-hidden={decorative ? true : undefined}
-      data-state={status}
-      data-stage={stage}
+      role="img"
+      aria-label={alt}
       className={cn("relative overflow-hidden", className)}
-      style={rootStyle}
+      {...rest}
     >
-      <LoadingField visible={!render} cell={look.cell} />
-      <canvas
-        ref={canvasRef}
-        aria-hidden
-        className={cn(CANVAS_CLASS, render ? "opacity-100" : "opacity-0")}
+      <AsciiMedia
+        {...look}
+        charset={look.charset ?? current.charset}
+        source={image.status === "ready" ? image.source : null}
+        status={image.status}
+        fit={fit}
+        cell={current.cell}
+        animate={moving}
+        shape={reducedMotion ? undefined : densify}
+        handle={handle}
+        className="absolute inset-0"
       />
-      {end === "photo" && photo > 0 && status === "ready" && (
-        // The finished state is the real photo, not a canvas copy.
-        // oxlint-disable-next-line nextjs/no-img-element
+      {to === "photo" && image.status === "ready" ? (
+        // oxlint-disable-next-line nextjs/no-img-element -- the photo must be the exact file the glyphs were sampled from.
         <img
+          ref={photoRef}
           src={src}
           alt=""
-          aria-hidden
-          draggable={false}
-          decoding="async"
-          className="pointer-events-none absolute inset-0 size-full"
-          style={photoStyle}
+          crossOrigin="anonymous"
+          className="absolute inset-0 size-full"
+          style={{
+            objectFit: fit,
+            // Scrolling sets the opacity directly; this is only the start.
+            opacity: reducedMotion ? 1 : 0,
+          }}
         />
-      )}
+      ) : null}
     </div>
   );
 };

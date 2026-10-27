@@ -1,11 +1,11 @@
 ---
 title: "Image compare"
-description: "A draggable before and after slider: the dithered image on one side, the original or another dither on the other."
+description: "A draggable, keyboard-accessible slider between a photo's glyphs and the photo itself, or between two looks."
 ---
 
 import ImageCompareDemo from "@/examples/image-compare-demo";
-import ImageComparePresets from "@/examples/image-compare-presets";
-import ImageCompareFeature from "@/examples/image-compare-feature";
+import ImageCompareLooks from "@/examples/image-compare-looks";
+import ImageComparePhosphor from "@/examples/image-compare-phosphor";
 import { controls as imageCompareControls } from "@/examples/image-compare-controls";
 
 <ComponentPreview
@@ -25,129 +25,120 @@ import { controls as imageCompareControls } from "@/examples/image-compare-contr
 ```tsx
 import { ImageCompare } from "@/components/asciicn/image-compare";
 
-export function Showcase() {
+export function BeforeAfter() {
   return (
     <ImageCompare
-      src="/photos/launch.jpg"
-      alt="The launch pad at dawn, dithered and original"
-      className="w-full rounded-xl"
+      src="/photos/harbour.jpg"
+      alt="The harbour at night, as glyphs and as a photo"
+      charset="braille"
+      className="aspect-video w-full"
     />
   );
 }
 ```
 
-Drag the divider, click anywhere on the image to send it there, or tab to the handle and use the arrow keys. By default the left side is dithered with the `duotone` preset and the right side is the original photo. When the image first comes into view, the divider nudges left and right once so readers see that it moves.
+The left side draws glyphs in the look you pass, with the same props as [ASCII image](/docs/images/ascii-image). The right side is the original file. Pass `against` with a second look to compare two looks instead, such as a charset against another charset.
 
-Each side is either `{ kind: "original" }` or `{ kind: "dither", ...look }`, where the look takes the same props as [Dither image](/docs/images/ascii-image): `preset`, `color`, `palette`, `method`, `cell` and the rest.
+Drag anywhere on the image to move the divider. The divider moves without re-rendering React, so both sides keep their frame rate while you drag. On touch screens a vertical swipe still scrolls the page.
 
 ## Examples
 
-### Two dither looks
+### Two looks
 
-Both sides can be dithered. Here newsprint meets Game Boy greens.
+Braille in one ink against ANSI blocks through the sodium ramp. `labels` names each side.
 
-<ComponentPreview src="examples/image-compare-presets.tsx" size="lg">
-  <ImageComparePresets />
+<ComponentPreview src="examples/image-compare-looks.tsx" size="lg">
+  <ImageCompareLooks />
 </ComponentPreview>
 
-### Feature section
+### Phosphor and print
 
-A landing page block that shows what the brand treatment does to a photo.
+Green phosphor glyphs against the original black and white print, with the divider starting right of centre.
 
-<ComponentPreview src="examples/image-compare-feature.tsx" size="lg">
-  <ImageCompareFeature />
+<ComponentPreview src="examples/image-compare-phosphor.tsx" size="lg">
+  <ImageComparePhosphor />
 </ComponentPreview>
 
 ## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop (`charset`, `chars`, `colorMode`, `phosphor`, `ramp`, `ansi`, `grade`, `invert`, `threshold`, `edgeThreshold`, `dither`, `background`) styles the left side.
 
 <PropsTable
   rows={[
     {
       name: "src",
       type: "string",
-      description: "Image URL. Cross-origin images need CORS headers.",
-      required: true,
+      description: "Image URL. Files on another origin need CORS headers.",
     },
     {
       name: "alt",
       type: "string",
       description:
-        "Describes the image and the comparison. Used as the group's label.",
-      required: true,
+        "What the image shows. Labels the comparison for screen readers.",
     },
     {
-      name: "before",
-      type: '{ kind: "original" } | { kind: "dither", ...AsciiLook }',
-      default: '{ kind: "dither" }',
-      description: "The left side.",
-    },
-    {
-      name: "after",
-      type: '{ kind: "original" } | { kind: "dither", ...AsciiLook }',
-      default: '{ kind: "original" }',
-      description: "The right side.",
-    },
-    {
-      name: "beforeLabel",
-      type: "string",
-      default: '"Dithered" or "Original"',
-      description: "Label on the left side, also used in the slider's name.",
-    },
-    {
-      name: "afterLabel",
-      type: "string",
-      default: '"Dithered" or "Original"',
-      description: "Label on the right side.",
+      name: "against",
+      type: '"photo" | AsciiLook',
+      default: '"photo"',
+      description: "The right side: the original file, or a second look.",
     },
     {
       name: "labels",
-      type: "boolean",
-      default: "true",
-      description:
-        "Show the corner labels. They fade out when the divider covers them.",
+      type: "[string, string]",
+      default: '["ascii", "photo"]',
+      description: "Captions for the left and right sides.",
     },
     {
-      name: "value",
+      name: "defaultPosition",
       type: "number",
-      description:
-        "Divider position from the left, 0 to 100. Makes the slider controlled.",
+      default: "0.5",
+      description: "Where the divider starts, from 0 (left) to 1 (right).",
     },
     {
-      name: "defaultValue",
-      type: "number",
-      default: "50",
-      description: "Starting position when uncontrolled.",
-    },
-    {
-      name: "onValueChange",
-      type: "(value: number) => void",
-      description: "Called on every move, from pointer or keyboard.",
-    },
-    {
-      name: "hint",
-      type: "boolean",
-      default: "true",
-      description:
-        "Nudge the divider once when the image first comes into view.",
-    },
-    {
-      name: "ratio",
-      type: "number",
-      default: "The image's ratio",
-      description: "Width over height.",
+      name: "onPositionChange",
+      type: "(position: number) => void",
+      description: "Called as the divider moves.",
     },
     {
       name: "fit",
-      type: '"cover" | "contain"',
+      type: '"cover" | "contain" | "fill"',
       default: '"cover"',
-      description: "How the image fills its box, on both sides.",
+      description: "How the image fills its box. Both sides use the same fit.",
+    },
+    {
+      name: "autoLevels",
+      type: "boolean",
+      default: "true",
+      description: "Stretch the image's tones to use the whole ramp.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How the left side's glyphs are coloured.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the left side.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels, for both sides.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for exporting the left side.",
     },
   ]}
 />
 
 ## Notes
 
-- The handle is a `role="slider"` with a value from 0 to 100. Arrow keys move it by 1, Shift and arrow or Page Up and Page Down by 10, Home and End to the ends.
-- Clicks glide the divider over 200ms; drags and key presses follow exactly.
-- On touch screens a sideways drag moves the divider and a vertical swipe still scrolls the page.
-- Under reduced motion there is no hint and no glide.
+- The divider is a `slider` with a visible focus ring. Arrow keys move it 2%, Page Up and Page Down 10%, Home and End jump to the edges. Screen readers hear the share given to the left side.
+- The whole comparison is a group labelled with `alt`. The canvases inside are hidden from assistive technology.
+- Both sides sample the image once and redraw only when a prop or the size changes. Nothing animates, so there is no frame loop to pause.

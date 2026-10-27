@@ -1,30 +1,42 @@
+"use client";
+
+import { useState } from "react";
+
 import { AsciiOrb } from "@/components/asciicn/ascii-orb";
+import type { OrbState } from "@/components/asciicn/ascii-orb";
+
+const NEXT: Record<OrbState, OrbState> = {
+  idle: "listening",
+  listening: "speaking",
+  speaking: "idle",
+};
+
+const LABEL: Record<OrbState, string> = {
+  idle: "tap to talk",
+  listening: "listening…",
+  speaking: "answering…",
+};
 
 export default function AsciiOrbAssistant() {
+  const [state, setState] = useState<OrbState>("idle");
+
   return (
-    <section className="relative isolate flex size-full flex-col items-center justify-end gap-5 overflow-hidden px-6 pb-10 text-center">
+    <div className="flex w-full max-w-xs flex-col items-center gap-4 border bg-background px-6 pt-4 pb-6">
       <AsciiOrb
-        color="purple"
-        highlight="color-mix(in oklch, var(--ascii-color-purple) 30%, #fff)"
-        size={0.3}
-        className="absolute inset-x-0 top-0 bottom-[45%] -z-10 sm:bottom-1/4"
+        state={state}
+        charset="braille"
+        colors={["pink", "orange"]}
+        size={0.7}
+        cell={8}
+        className="aspect-square w-full"
       />
-      <div className="flex max-w-sm flex-col items-center gap-2">
-        <h3 className="text-2xl font-medium tracking-[-0.03em] text-balance">
-          Ask anything about your workspace
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          Answers cite the docs and tickets they came from.
-        </p>
-      </div>
-      <div className="bg-background flex w-full max-w-sm items-center gap-2 rounded-xl border px-3 py-2 text-left">
-        <span className="text-muted-foreground flex-1 truncate text-sm">
-          Why did the deploy on Friday fail?
-        </span>
-        <kbd className="bg-muted text-muted-foreground rounded-sm px-1.5 py-0.5 font-mono text-[10px]">
-          ⏎
-        </kbd>
-      </div>
-    </section>
+      <button
+        type="button"
+        onClick={() => setState(NEXT[state])}
+        className="border px-3 py-1.5 font-mono text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        [ {LABEL[state]} ]
+      </button>
+    </div>
   );
 }

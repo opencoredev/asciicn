@@ -1,18 +1,18 @@
 ---
-title: "Dither orb"
-description: "A lit, dithered orb that breathes slowly and leans towards the pointer, for AI and assistant surfaces."
+title: "ASCII orb"
+description: "A glyph orb for voice interfaces that breathes when idle, listens and speaks, driven by a microphone or your audio."
 ---
 
 import AsciiOrbDemo from "@/examples/ascii-orb-demo";
-import { controls as orbControls } from "@/examples/ascii-orb-controls";
 import AsciiOrbAssistant from "@/examples/ascii-orb-assistant";
-import AsciiOrbVoice from "@/examples/ascii-orb-voice";
+import AsciiOrbPhosphor from "@/examples/ascii-orb-phosphor";
+import { controls as asciiOrbControls } from "@/examples/ascii-orb-controls";
 
 <ComponentPreview
   src="examples/ascii-orb-demo.tsx"
   size="full"
   align="stretch"
-  controls={orbControls}
+  controls={asciiOrbControls}
 >
   <AsciiOrbDemo />
 </ComponentPreview>
@@ -26,70 +26,76 @@ import AsciiOrbVoice from "@/examples/ascii-orb-voice";
 ```tsx
 import { AsciiOrb } from "@/components/asciicn/ascii-orb";
 
-export function Hero() {
+export function Assistant({ talking }: { talking: boolean }) {
   return (
-    <section className="relative isolate min-h-[480px]">
-      <AsciiOrb color="purple" className="absolute inset-0 -z-10" />
-      <h1>Your headline</h1>
-    </section>
+    <AsciiOrb
+      state={talking ? "speaking" : "listening"}
+      audio="mic"
+      className="aspect-square w-64"
+    />
   );
 }
 ```
 
-The orb is a sphere shaded by one light, with a soft terminator, a thin rim light on the shadow side and a dithered glow that falls off around it. Its outline breathes with two slow harmonics and a little noise (`morph`). When the pointer moves anywhere on the page, the orb and its light ease towards it, then drift back to the centre when the pointer leaves.
+`state` sets what the orb is doing, and changes cross-fade over about half a second.
 
-Pass `highlight` for a third, brighter tone on the specular spot, such as `"#fff"` or a pale mix of the orb colour. Pick a colour that is light in both themes: `"--foreground"` turns black in light mode.
+- `idle` breathes slowly, its outline drifting.
+- `listening` draws rings inwards and swells with the input level.
+- `speaking` pulses four lobes with the bass and sends waves outwards.
+
+Without `audio`, the listening and speaking states move on a soft built-in rhythm. Pass `audio="mic"` to follow the microphone, a `<audio>` element or `MediaStream` to follow your text-to-speech, or bands you already analyse with `useAudioBands` from `@/lib/ascii/audio`. `"synth"` is a silent demo tone that needs no permission.
+
+The light and the orb lean gently towards the pointer. Set `lean={0}` to keep them still.
 
 ## Examples
 
-### Assistant hero
+### In an assistant panel
 
-A purple orb with a pale highlight above a prompt.
+Press the button to step through the states.
 
-<ComponentPreview
-  src="examples/ascii-orb-assistant.tsx"
-  size="full"
-  align="stretch"
->
+<ComponentPreview src="examples/ascii-orb-assistant.tsx">
   <AsciiOrbAssistant />
 </ComponentPreview>
 
-### Voice status
+### Blueprint phosphor
 
-A 64px orb on a transparent background, with more `morph` and no lean, as a listening indicator.
+A classic ramp in one ink, with more morph and a stronger halo.
 
-<ComponentPreview src="examples/ascii-orb-voice.tsx">
-  <AsciiOrbVoice />
+<ComponentPreview src="examples/ascii-orb-phosphor.tsx" size="lg">
+  <AsciiOrbPhosphor />
 </ComponentPreview>
 
 ## Props
 
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"dots"`, plus `fx` for a CRT finish.
+
 <PropsTable
   rows={[
     {
-      name: "color",
-      type: "AsciiColor",
-      default: '"ink"',
-      description: "Colour of the orb and its glow.",
+      name: "state",
+      type: '"idle" | "listening" | "speaking"',
+      default: '"idle"',
+      description: "What the assistant is doing.",
     },
     {
-      name: "highlight",
-      type: "AsciiColor",
-      default: "–",
-      description: "A third, brighter tone for the specular highlight.",
-    },
-    {
-      name: "background",
-      type: "AsciiColor",
-      default: '"--ascii-paper"',
+      name: "audio",
+      type: '"mic" | "synth" | HTMLMediaElement | MediaStream | AudioBands | null',
+      default: "null",
       description:
-        'Colour behind the orb. "transparent" floats it over the page.',
+        "Sound that drives the orb. Without it, the states move on their own.",
+    },
+    {
+      name: "colors",
+      type: "[AsciiColor, AsciiColor]",
+      default: '["purple", "blue"]',
+      description: "The two colours the surface drifts between, in truecolor.",
     },
     {
       name: "size",
       type: "number",
-      default: "0.26",
-      description: "Radius as a share of the box's shorter side, 0.1 to 0.5.",
+      default: "0.62",
+      description:
+        "Radius as a share of half the box's shorter side, 0.2 to 0.9.",
     },
     {
       name: "morph",
@@ -102,44 +108,55 @@ A 64px orb on a transparent background, with more `morph` and no lean, as a list
       type: "number",
       default: "1",
       description:
-        "How far the orb and its light lean towards the pointer. 0 turns it off.",
+        "How far the light and the orb lean towards the pointer. 0 turns it off.",
     },
     {
       name: "glow",
       type: "number",
-      default: "0.5",
-      description: "Strength of the dithered glow around the orb, 0 to 1.",
+      default: "0.6",
+      description: "Strength of the halo around the orb, 0 to 1.",
     },
     {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold matrix.",
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the orb.",
     },
     {
-      name: "cell",
-      type: "number",
-      default: "--ascii-cell",
-      description: "Size of one dither cell in CSS pixels.",
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the outline breathes.",
+      description: "Time multiplier.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
     },
     {
       name: "animate",
       type: "boolean",
       default: "true",
-      description:
-        "false draws one still frame and stops following the pointer.",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
     },
   ]}
 />
 
 ## Notes
 
-- The orb is decorative and hidden from assistive technology.
-- With reduced motion turned on, it draws one still, centred frame and ignores the pointer.
-- One WebGL context per orb. It pauses offscreen and in hidden tabs, and the pointer listener is passive and eased in one animation frame loop that stops once the orb settles.
+- It is announced as an image labelled "Voice assistant" and its state. Pass `aria-label` for your own wording, and announce state changes in text as well, since the motion alone is not enough.
+- The microphone needs a secure context (`https://` or `localhost`) and a permission prompt. Ask for it from a button press, not on page load.
+- Under reduced motion it draws one still frame and does not lean.
+- It draws at up to 60 fps and pauses offscreen and in hidden tabs. Samples far outside the halo are skipped.

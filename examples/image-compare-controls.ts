@@ -1,44 +1,32 @@
-import type { AsciiImagePreset } from "@/components/asciicn/ascii-image";
-import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, segmented, slider, toggle } from "@/lib/preview-controls";
+import { CHARSET_NAMES } from "@/lib/ascii/charsets";
+import { COLOR_MODES } from "@/lib/ascii/palettes";
+import { segmented, select, slider } from "@/lib/preview-controls";
 
-// Spelled out here: the component module is a client module, and this
-// file is also read by the server-rendered docs page.
-const ASCII_IMAGE_PRESETS = [
-  "ink",
-  "duotone",
-  "newsprint",
-  "gameboy",
-  "riso",
-] as const satisfies readonly AsciiImagePreset[];
+// Knobs for the image compare demo, shared by the page and the demo.
 
-// Knobs for the image compare's main demo, shared by the page and the demo.
-
-export const preset = segmented({
-  default: "duotone",
-  id: "preset",
-  label: "Dithered side",
-  options: ASCII_IMAGE_PRESETS,
+export const charset = select({
+  default: "dense",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
 });
 
-export const ink = color({
-  default: "blue",
-  id: "color",
-  label: "Ink",
-  options: ASCII_COLOR_NAMES,
+export const colorMode = segmented({
+  default: "truecolor",
+  id: "colorMode",
+  label: "Colour",
+  options: COLOR_MODES,
 });
 
 export const cell = slider({
-  default: 2,
+  default: 9,
   id: "cell",
   label: "Cell",
-  max: 6,
-  min: 1,
+  max: 18,
+  min: 6,
   step: 1,
   unit: "px",
 });
 
-export const labels = toggle({ default: true, id: "labels", label: "Labels" });
-
 /** Display order of the tray. */
-export const controls = [preset, ink, cell, labels];
+export const controls = [charset, colorMode, cell];

@@ -1,20 +1,21 @@
-import { ASCII_COLOR_NAMES } from "@/lib/ascii";
-import { color, slider, toggle } from "@/lib/preview-controls";
+import { CHARSET_NAMES } from "@/lib/ascii/charsets";
+import { COLOR_MODES } from "@/lib/ascii/palettes";
+import { segmented, select, slider, toggle } from "@/lib/preview-controls";
 
-// Knobs for the dither globe's main demo, shared by the page and the demo.
+// Knobs for the ASCII globe's main demo, shared by the page and the demo.
 
-export const ink = color({
-  default: "ink",
-  id: "color",
-  label: "Land",
-  options: ASCII_COLOR_NAMES,
+export const charset = select({
+  default: "braille",
+  id: "charset",
+  label: "Charset",
+  options: CHARSET_NAMES,
 });
 
-export const accent = color({
-  default: "orange",
-  id: "accent",
-  label: "Accent",
-  options: ASCII_COLOR_NAMES,
+export const colorMode = segmented({
+  default: "truecolor",
+  id: "colorMode",
+  label: "Colour",
+  options: COLOR_MODES,
 });
 
 export const speed = slider({
@@ -27,33 +28,41 @@ export const speed = slider({
   unit: "°/s",
 });
 
-export const tilt = slider({
-  default: 18,
-  id: "tilt",
-  label: "Tilt",
-  max: 40,
-  min: -40,
-  step: 2,
+export const light = slider({
+  default: 300,
+  id: "light",
+  label: "Sun",
+  max: 360,
+  min: 0,
+  step: 15,
   unit: "°",
 });
 
 export const cell = slider({
-  default: 2,
+  default: 10,
   id: "cell",
   label: "Cell",
-  max: 5,
-  min: 1,
+  max: 18,
+  min: 6,
   step: 1,
   unit: "px",
 });
 
 export const arcs = toggle({ default: true, id: "arcs", label: "Arcs" });
 
-export const animate = toggle({
-  default: true,
-  id: "animate",
-  label: "Animate",
+export const graticule = toggle({
+  default: false,
+  id: "graticule",
+  label: "Graticule",
 });
 
 /** Display order of the tray. */
-export const controls = [ink, accent, speed, tilt, cell, arcs, animate];
+export const controls = [
+  charset,
+  colorMode,
+  speed,
+  light,
+  cell,
+  arcs,
+  graticule,
+];

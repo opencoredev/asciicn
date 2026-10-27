@@ -1,13 +1,12 @@
 ---
-title: "Dither globe"
-description: "A rotating dithered globe with a lit terminator, pulsing markers and arcs, for global sections of a landing page."
+title: "ASCII globe"
+description: "A lit, rotating planet in glyphs with a day and night terminator, ocean glints, an atmosphere, markers and arcs."
 ---
 
 import AsciiGlobeDemo from "@/examples/ascii-globe-demo";
+import AsciiGlobeHorizon from "@/examples/ascii-globe-horizon";
+import AsciiGlobePhosphor from "@/examples/ascii-globe-phosphor";
 import { controls as globeControls } from "@/examples/ascii-globe-controls";
-import AsciiGlobeHero from "@/examples/ascii-globe-hero";
-import AsciiGlobeSplit from "@/examples/ascii-globe-split";
-import AsciiGlobeCard from "@/examples/ascii-globe-card";
 
 <ComponentPreview
   src="examples/ascii-globe-demo.tsx"
@@ -41,64 +40,42 @@ export function Global() {
 }
 ```
 
-The globe is drawn on a 2D canvas at ascii-cell resolution: every cell on the sphere gets a tone from the land mask and the light, then an ordered threshold decides whether it's inked. Land is bright on the day side and fades to a sparse grid past the terminator; the sea is a faint dither that thickens towards the rim. It uses no WebGL context, so it doesn't count against the page's shader budget.
+Each sample casts a ray at the sphere and reads land from the shared `world-land` mask. The sun, set by `light`, draws a soft terminator. Past it, the land keeps a faint outline so the night side never goes blank. The sea catches a specular glint near the sun, the air thickens at the lit limb, and a thin halo glows outside it. Land above 70° fades to ice.
 
-The globe stays round and centred in its box and takes 84% of the shorter side. Make the box larger than its section and offset it to show only the top of the globe, as in the first example.
+In truecolor, land takes `color` and sea and air take `oceanColor`. Markers and arcs keep their `accent` in every colour mode, mono included.
 
-Visitors can turn the globe. Dragging sideways spins it and dragging up or down tilts it, with the land staying under the pointer. Let go mid-drag and it coasts to a stop, then picks its idle spin back up. On phones, a horizontal swipe turns it and a vertical swipe still scrolls the page. When it has keyboard focus, the arrow keys turn it. Set `draggable={false}` for a globe that should only spin on its own.
+The globe stays round and centred and takes 86% of the box's shorter side. Make the box larger than its section and offset it to show only the top, as in the first example.
 
-Land comes from the shared `world-land` mask (Natural Earth, public domain), installed with the component. Nothing is fetched at runtime.
+Drag sideways to spin it and up or down to tilt it. Let go mid-drag and it coasts, then picks its spin back up. On phones a horizontal swipe turns it and a vertical swipe still scrolls the page. With keyboard focus, the arrow keys turn it. Set `draggable={false}` for a globe that only spins on its own.
 
 ## Examples
 
 ### Horizon behind a headline
 
-A globe 150% of the section's width, pushed below the bottom edge so only its lit top shows.
+A globe 150% of the section's width, pushed below the bottom edge so only its lit top shows, on a transparent background.
 
 <ComponentPreview
-  src="examples/ascii-globe-hero.tsx"
+  src="examples/ascii-globe-horizon.tsx"
   size="full"
   align="stretch"
 >
-  <AsciiGlobeHero />
+  <AsciiGlobeHorizon />
 </ComponentPreview>
 
-### Beside copy
+### Amber phosphor with a graticule
 
-A square globe in a two-column section. Drag it to spin.
+`speed={0}` and `start` at the marker's longitude hold one region in view, while the graticule draws a line every 30°.
 
-<ComponentPreview
-  src="examples/ascii-globe-split.tsx"
-  size="lg"
-  align="stretch"
->
-  <AsciiGlobeSplit />
-</ComponentPreview>
-
-### Turned to one place, in a card
-
-`speed={0}` and `start` at the marker's longitude hold one region in view while the marker keeps pulsing.
-
-<ComponentPreview src="examples/ascii-globe-card.tsx">
-  <AsciiGlobeCard />
+<ComponentPreview src="examples/ascii-globe-phosphor.tsx">
+  <AsciiGlobePhosphor />
 </ComponentPreview>
 
 ## Props
 
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"braille"`, plus `fx` for a CRT finish.
+
 <PropsTable
   rows={[
-    {
-      name: "color",
-      type: "AsciiColor",
-      default: '"ink"',
-      description: "Colour of the land, sea and atmosphere.",
-    },
-    {
-      name: "accent",
-      type: "AsciiColor",
-      default: '"orange"',
-      description: "Colour of markers and arcs that don't set their own.",
-    },
     {
       name: "markers",
       type: "{ at: [lat, lon]; color?: AsciiColor }[]",
@@ -110,7 +87,25 @@ A square globe in a two-column section. Drag it to spin.
       type: "{ from: [lat, lon]; to: [lat, lon]; color?: AsciiColor }[]",
       default: "[]",
       description:
-        "Great-circle arcs lifted off the surface, with a stretch of light running along them.",
+        "Great-circle arcs lifted off the surface, with a light running along them.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"green"',
+      description: "Land colour in truecolor.",
+    },
+    {
+      name: "oceanColor",
+      type: "AsciiColor",
+      default: '"blue"',
+      description: "Sea and atmosphere colour in truecolor.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "Colour of markers and arcs that don't set their own.",
     },
     {
       name: "speed",
@@ -136,39 +131,44 @@ A square globe in a two-column section. Drag it to spin.
       name: "light",
       type: "number",
       default: "300",
-      description:
-        "Where the light comes from, in degrees clockwise from the top.",
+      description: "Where the sun is, in degrees clockwise from the top.",
     },
     {
       name: "ocean",
       type: "number",
-      default: "0.18",
-      description: "Brightness of the sea on the lit side, 0 to 1.",
+      default: "0.3",
+      description: "Brightness of the sea on the day side, 0 to 1.",
     },
     {
       name: "atmosphere",
       type: "boolean",
       default: "true",
-      description: "A thin dithered glow around the lit rim.",
+      description: "Limb light and a halo on the lit side.",
+    },
+    {
+      name: "graticule",
+      type: "boolean",
+      default: "false",
+      description: "Faint latitude and longitude lines every 30° over the sea.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
     },
     {
       name: "draggable",
       type: "boolean",
       default: "true",
       description:
-        "Drag or use the arrow keys to turn and tilt the globe. It coasts after a drag, then eases back into its idle spin.",
+        "Drag or use the arrow keys to turn and tilt it. It coasts after a drag.",
     },
     {
       name: "cell",
       type: "number",
-      default: "2",
-      description: "Size of one dither cell in CSS pixels.",
-    },
-    {
-      name: "matrix",
-      type: '"bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4"',
-      description: "Threshold matrix.",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
     },
     {
       name: "animate",
@@ -176,11 +176,17 @@ A square globe in a two-column section. Drag it to spin.
       default: "true",
       description: "Spin and pulse. false draws one still frame.",
     },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
   ]}
 />
 
 ## Notes
 
-- A draggable globe is focusable and announced as an image labelled "Globe. Drag it or use the arrow keys to turn it." Pass your own `aria-label` to say what it shows. With `draggable={false}` it's decorative and hidden from assistive technology, so say what it shows in the copy next to it.
-- With reduced motion turned on, it draws one still frame. Dragging and the arrow keys still turn it, without the coasting.
-- It pauses when scrolled out of view or when the tab is hidden. A 600px globe at 2px cells is about 70,000 cells per frame at 30 fps, well within budget on a phone; raise `cell` for very large globes.
+- A draggable globe is focusable and announced as an image labelled "Globe. Drag it or use the arrow keys to turn it." Pass your own `aria-label` to say what it shows.
+- Under reduced motion it draws one still frame, markers included. Dragging and the arrow keys still turn it.
+- It draws at up to 60 fps and pauses offscreen and in hidden tabs. A 600px globe in Braille at 10px cells shades about 58,000 samples per frame.
+- Land comes from the `world-land` mask (Natural Earth, public domain), installed with the component. Nothing is fetched at runtime.

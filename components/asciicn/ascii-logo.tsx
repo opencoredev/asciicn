@@ -1,25 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ComponentProps, CSSProperties } from "react";
+import type { ComponentProps, RefObject } from "react";
 
 import {
-  CANVAS_CLASS,
-  FADE_CLASS,
-  rasterize,
-  sizeCanvas,
-  useAsciiGrid,
+  AsciiMedia,
+  splitLook,
   useLoadedImage,
-  useSeen,
 } from "@/components/asciicn/ascii-image";
-import type { AsciiGrid } from "@/components/asciicn/ascii-image";
+import type { MediaDrawContext } from "@/components/asciicn/ascii-image";
 import {
-  cssColor,
-  thresholdAt,
-  useAsciiColors,
-  useFrameLoop,
+  QUADRANT_GLYPHS,
+  useInView,
+  usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { AsciiColor, DitherMatrix, FillVariant, Rgba } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiHandle,
+  AsciiLook,
+  Charset,
+  MutableFrame,
+} from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,38 +34,29 @@ export type LogoSource = "alpha" | "dark";
 export type LogoTone = "mono" | "original";
 
 /**
- * Motion over the logo. `shimmer` sweeps a diagonal band of solid ink
- * across it; `scan` runs a bright line down it that leaves solid ink
- * behind for a moment.
+ * Motion over the logo.
+ * - `shimmer`: a diagonal band of solid glyphs sweeps across, again and again.
+ * - `scan`: a line runs down the logo and leaves solid glyphs behind it.
+ * - `reveal`: the logo assembles from scrambled glyphs, left to right, once.
  */
-export const LOGO_EFFECTS = ["none", "shimmer", "scan"] as const;
+export const LOGO_EFFECTS = ["none", "shimmer", "scan", "reveal"] as const;
 export type LogoEffect = (typeof LOGO_EFFECTS)[number];
 
-export type AsciiLogoProps = Omit<ComponentProps<"div">, "children"> & {
+export interface AsciiLogoProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
   /** SVG or PNG URL. Cross-origin files need CORS headers. */
   src: string;
-  /** The brand name, read out by screen readers. `""` hides it. */
+  /** The brand name, read by screen readers. `""` hides it. */
   alt: string;
-  /** Ink colour when `tone` is `"mono"`. Default `"ink"`. */
+  /** Ink when `tone` is `"mono"`. Default `"ink"`. */
   color?: AsciiColor;
   /** One ink, or the file's own colours. Default `"mono"`. */
   tone?: LogoTone;
   /** Which pixels belong to the logo. Default `"alpha"`. */
   source?: LogoSource;
-  /** Texture inside the letterforms. Default `"gradient"`. */
-  fill?: FillVariant;
   /**
-   * Keep a solid outline one cell wide, so the shapes stay exact however
-   * open the fill is. Default `true`.
-   */
-  outline?: boolean;
-  /** Gradient fill: how much ink is left at the bottom, 0 to 1. Default 0.3. */
-  floor?: number;
-  /** Threshold pattern for the gradient fill. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /**
-   * Size of one cell in CSS pixels. Default 1, fine enough for small
-   * type. Larger cells give a chunkier, pixel-art mark.
+   * Cell height in CSS pixels. Default: about a tenth of the logo's
+   * height, between 4 and 12.
    */
   cell?: number;
   /** Motion over the logo. Off under reduced motion. Default `"none"`. */
@@ -73,405 +65,184 @@ export type AsciiLogoProps = Omit<ComponentProps<"div">, "children"> & {
   period?: number;
   /** Where in the sweep this logo starts, 0 to 1. Offsets logos in a row. Default 0. */
   phase?: number;
-  /**
-   * Width over height. Default: the logo's own ratio, once it loads. Set
-   * it to reserve the space up front.
-   */
+  /** Width over height. Default: the file's own ratio once it loads. */
   ratio?: number;
   /**
    * Load only when the logo nears the viewport. Turn it off inside a
-   * clipped, moving row, where logos only intersect once they slide in.
-   * Default `true`.
+   * clipped, moving row. Default `true`.
    */
   lazy?: boolean;
-};
-
-/** The logo on its cell grid, worked out once per size. */
-interface LogoShape {
-  readonly grid: AsciiGrid;
-  /** 1 where a cell is inside the logo. */
-  readonly inside: Uint8Array;
-  /** 1 where an inside cell touches the outside. */
-  readonly rim: Uint8Array;
-  /** The file's colour per cell, for `tone="original"`. */
-  readonly pixels: ImageData;
-  /** First and last rows with any ink. */
-  readonly top: number;
-  readonly bottom: number;
+  /** Filled with a handle for export. */
+  handle?: RefObject<AsciiHandle | null>;
 }
 
-const coverageAt = (
-  data: Uint8ClampedArray,
-  index: number,
-  source: LogoSource
-) => {
-  const offset = index * 4;
-  const alpha = (data[offset + 3] ?? 0) / 255;
-  if (source === "alpha") {
-    return alpha;
+/** The densest glyph a charset draws, for solid strokes. */
+const solidGlyph = (charset: Charset): string => {
+  if (charset.kind === "braille") {
+    return "⣿";
   }
-  const light =
-    (0.2126 * (data[offset] ?? 0) +
-      0.7152 * (data[offset + 1] ?? 0) +
-      0.0722 * (data[offset + 2] ?? 0)) /
-    255;
-  return (1 - light) * alpha;
+  if (charset.kind === "quadrants") {
+    return QUADRANT_GLYPHS[15] ?? "█";
+  }
+  return charset.glyphs.at(-1) ?? "@";
 };
 
-// Colour distance, 0 to 3 in summed RGB, that counts as a new part.
-const COLOR_SEAM = 0.3;
-
-/** Summed RGB distance between two pixels, 0 to 3. */
-const colorGap = (data: Uint8ClampedArray, a: number, b: number) =>
-  (Math.abs((data[a] ?? 0) - (data[b] ?? 0)) +
-    Math.abs((data[a + 1] ?? 0) - (data[b + 1] ?? 0)) +
-    Math.abs((data[a + 2] ?? 0) - (data[b + 2] ?? 0))) /
-  255;
-
-/**
- * Threshold the rasterised logo at half coverage, so every edge lands on
- * a cell boundary instead of fraying into dither.
- */
-const shapeOf = (
-  pixels: ImageData,
-  grid: AsciiGrid,
-  source: LogoSource
-): LogoShape => {
-  const { columns, rows } = grid;
-  const inside = new Uint8Array(columns * rows);
-  let top = rows;
-  let bottom = 0;
-  for (let index = 0; index < inside.length; index += 1) {
-    if (coverageAt(pixels.data, index, source) >= 0.5) {
-      inside[index] = 1;
-      const row = Math.floor(index / columns);
-      top = Math.min(top, row);
-      bottom = Math.max(bottom, row);
-    }
-  }
-  const at = (x: number, y: number) =>
-    x >= 0 && y >= 0 && x < columns && y < rows
-      ? (inside[y * columns + x] ?? 0)
-      : 0;
-  // Inner edges too: where the file changes colour, as between the parts
-  // of a multicolour mark, so the parts stay apart in one ink.
-  const seam = (x: number, y: number, dx: number, dy: number) =>
-    at(x + dx, y + dy) === 1 &&
-    colorGap(
-      pixels.data,
-      (y * columns + x) * 4,
-      ((y + dy) * columns + x + dx) * 4
-    ) > COLOR_SEAM;
-  const rim = new Uint8Array(inside.length);
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < columns; x += 1) {
-      const edge =
-        at(x, y) === 1 &&
-        (at(x - 1, y) === 0 ||
-          at(x + 1, y) === 0 ||
-          at(x, y - 1) === 0 ||
-          at(x, y + 1) === 0 ||
-          seam(x, y, 1, 0) ||
-          seam(x, y, 0, 1));
-      rim[y * columns + x] = edge ? 1 : 0;
-    }
-  }
-  return { bottom, grid, inside, pixels, rim, top };
+const hash = (x: number, y: number) => {
+  const value = Math.sin(x * 91.3 + y * 47.7) * 24_634.634;
+  return value - Math.floor(value);
 };
 
-/** Whether a textured fill inks this cell at `density` (0 to 1). */
-const fillInks = (
-  fill: FillVariant,
-  matrix: DitherMatrix,
-  x: number,
-  y: number,
-  density: number
-) => {
-  switch (fill) {
-    case "solid": {
-      return true;
-    }
-    case "dotted": {
-      return y % 2 === 0 && (x + y / 2) % 2 === 0;
-    }
-    case "hatched": {
-      return (x + y) % 4 === 3;
-    }
-    case "gradient": {
-      return density > thresholdAt(matrix, x, y);
-    }
-    default: {
-      const exhaustive: never = fill;
-      return exhaustive;
-    }
-  }
-};
-
-// Width of the shimmer band, as a share of the logo.
+// Shimmer band width and scan trail, as shares of the logo.
 const BAND = 0.14;
-// Rows of solid ink the scan line leaves behind it, as a share of the logo.
-const TRAIL = 0.35;
+const TRAIL = 0.22;
+
+const AUTO_ROWS = 10;
 
 /**
- * How much the effect fills in each cell at `sweep` (0 to 1 through one
- * pass), and whether the cell sits on the scan line itself.
+ * A logo redrawn in glyphs. Braille by default, which keeps letterforms
+ * crisp at small sizes; `charset="edge"` outlines the shapes with
+ * directional strokes instead.
  */
-const effectAt = ({
-  effect,
-  sweep,
-  x,
-  y,
-  columns,
-  top,
-  height,
-}: {
-  effect: LogoEffect;
-  sweep: number;
-  x: number;
-  y: number;
-  columns: number;
-  top: number;
-  height: number;
-}) => {
-  if (effect === "shimmer") {
-    const along = x / columns - ((y - top) / height) * 0.3;
-    const center = -BAND * 2 + sweep * (1 + BAND * 4);
-    return { boost: Math.exp(-(((along - center) / BAND) ** 2)), line: false };
-  }
-  if (effect === "scan") {
-    // The line travels from above the logo to below it.
-    const row = top - height * TRAIL + sweep * height * (1 + TRAIL * 2);
-    const behind = row - y;
-    const line = Math.round(row) === y;
-    const boost =
-      behind >= 0 && behind < height * TRAIL
-        ? 1 - behind / (height * TRAIL)
-        : 0;
-    return { boost, line };
-  }
-  return { boost: 0, line: false };
-};
-
-interface PaintOptions {
-  shape: LogoShape;
-  work: ImageData;
-  ink: Rgba;
-  glint: Rgba;
-  tone: LogoTone;
-  fill: FillVariant;
-  outline: boolean;
-  floor: number;
-  matrix: DitherMatrix;
-  effect: LogoEffect;
-  sweep: number;
-}
-
-const writeCell = (
-  out: Uint8ClampedArray,
-  offset: number,
-  color: Rgba | readonly number[]
-) => {
-  out[offset] = (color[0] ?? 0) * 255;
-  out[offset + 1] = (color[1] ?? 0) * 255;
-  out[offset + 2] = (color[2] ?? 0) * 255;
-  out[offset + 3] = (color[3] ?? 1) * 255;
-};
-
-/** The file's colour at a cell, 0 to 1. */
-const sourceColor = (data: Uint8ClampedArray, offset: number) =>
-  [
-    (data[offset] ?? 0) / 255,
-    (data[offset + 1] ?? 0) / 255,
-    (data[offset + 2] ?? 0) / 255,
-    1,
-  ] as const;
-
-const paintLogo = ({
-  shape,
-  work,
-  ink,
-  glint,
-  tone,
-  fill,
-  outline,
-  floor,
-  matrix,
-  effect,
-  sweep,
-}: PaintOptions) => {
-  const { columns, rows } = shape.grid;
-  const out = work.data;
-  const height = Math.max(1, shape.bottom - shape.top);
-  for (let y = 0; y < rows; y += 1) {
-    const fall =
-      1 - (1 - floor) * Math.min(1, Math.max(0, (y - shape.top) / height));
-    for (let x = 0; x < columns; x += 1) {
-      const index = y * columns + x;
-      const offset = index * 4;
-      if (shape.inside[index] !== 1) {
-        out[offset + 3] = 0;
-        continue;
-      }
-      const { boost, line } = effectAt({
-        columns,
-        effect,
-        height,
-        sweep,
-        top: shape.top,
-        x,
-        y,
-      });
-      const density = fall + (1 - fall) * boost;
-      const inked =
-        (outline && shape.rim[index] === 1) ||
-        fillInks(fill, matrix, x, y, density) ||
-        boost > thresholdAt(matrix, x, y);
-      if (!inked) {
-        out[offset + 3] = 0;
-        continue;
-      }
-      const base =
-        tone === "original" ? sourceColor(shape.pixels.data, offset) : ink;
-      writeCell(out, offset, line ? glint : base);
-    }
-  }
-};
-
-/** The drawing options with their defaults, and the remaining props. */
-const splitLogoProps = ({
-  color = "ink",
-  tone = "mono",
-  source = "alpha",
-  fill = "gradient",
-  outline = true,
-  floor = 0.3,
-  matrix = "bayer4",
-  cell = 1,
-  effect = "none",
-  period = 6,
-  phase = 0,
-  ...rest
-}: AsciiLogoProps) => ({
-  options: {
-    cell,
-    color,
-    effect,
-    fill,
-    floor,
-    matrix,
-    outline,
-    period,
-    phase,
-    source,
-    tone,
-  },
-  rest,
-});
-
-/**
- * A logo drawn in dithered ink. Edges land on whole cells, so the shapes
- * stay sharp while the inside takes a dither texture, with an optional
- * shimmer or scan line. Size it with a height in `className`; the width
- * follows the logo's own ratio.
- */
-export const AsciiLogo = (allProps: AsciiLogoProps) => {
-  const { options, rest } = splitLogoProps(allProps);
-  const { color, tone, source, fill, outline, floor, matrix, cell } = options;
-  const { effect, period, phase } = options;
-  const { src, alt, ratio, lazy = true, className, style, ...props } = rest;
+// oxlint-disable-next-line complexity -- each prop default counts as a branch.
+export const AsciiLogo = (props: AsciiLogoProps) => {
+  const [
+    look,
+    {
+      src,
+      alt,
+      color = "ink",
+      tone = "mono",
+      source = "alpha",
+      cell,
+      effect = "none",
+      period = 6,
+      phase = 0,
+      ratio,
+      lazy = true,
+      handle,
+      className,
+      style,
+      ...rest
+    },
+  ] = splitLook(props);
   const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const seen = useSeen(rootRef);
-  const { image, status } = useLoadedImage(src, seen || !lazy);
-  const grid = useAsciiGrid(rootRef, cell);
-  const colors = useAsciiColors(rootRef, [
-    color,
-    `color-mix(in oklch, ${cssColor(color)} 35%, white)`,
-  ]);
-  const [shape, setShape] = useState<LogoShape | null>(null);
-  const workRef = useRef<ImageData | null>(null);
-
+  const inView = useInView(rootRef, { rootMargin: "300px" });
+  const [seen, setSeen] = useState(!lazy);
   useEffect(() => {
-    if (!(image && grid)) {
+    if (inView) {
+      setSeen(true);
+    }
+  }, [inView]);
+  const image = useLoadedImage(seen ? src : null);
+  const reducedMotion = usePrefersReducedMotion();
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || cell !== undefined) {
       return;
     }
-    const pixels = rasterize(image, grid.columns, grid.rows, "contain");
-    if (pixels) {
-      workRef.current = new ImageData(grid.columns, grid.rows);
-      setShape(shapeOf(pixels, grid, source));
-    }
-  }, [image, grid, source]);
+    const observer = new ResizeObserver(() => setHeight(root.clientHeight));
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [cell]);
 
-  const paint = (time: number) => {
-    const context = canvasRef.current?.getContext("2d");
-    const work = workRef.current;
-    if (!(context && work && shape && colors)) {
+  const moving = effect !== "none" && !reducedMotion;
+  const autoCell = Math.round(
+    Math.min(12, Math.max(4, height / AUTO_ROWS || 8))
+  );
+  const fileRatio =
+    image.status === "ready"
+      ? image.source.width / image.source.height
+      : undefined;
+  const revealStart = useRef({ at: 0, key: "" });
+
+  const finish = (frame: MutableFrame, context: MediaDrawContext) => {
+    if (!moving) {
       return;
     }
-    const [ink, glint] = colors;
-    const moving = effect !== "none";
-    const sweep = moving
-      ? (((time / Math.max(0.5, period) + phase) % 1) + 1) % 1
-      : 0;
-    paintLogo({
-      effect: moving ? effect : "none",
-      fill,
-      floor,
-      glint,
-      ink,
-      matrix,
-      outline,
-      shape,
-      sweep,
-      tone,
-      work,
-    });
-    context.putImageData(work, 0, 0);
+    const { columns, rows, glyphs } = frame;
+    const solid = solidGlyph(context.charset);
+    if (effect === "reveal") {
+      if (revealStart.current.key !== src) {
+        revealStart.current = { at: context.time, key: src };
+      }
+      const progress = (context.time - revealStart.current.at) / 1.2;
+      if (progress >= 1.2) {
+        return;
+      }
+      for (let index = 0; index < glyphs.length; index += 1) {
+        const column = index % columns;
+        const row = (index - column) / columns;
+        const order = column / columns + hash(column, row) * 0.18;
+        if (order > progress + 0.1) {
+          glyphs[index] = " ";
+        } else if (order > progress && glyphs[index] !== " ") {
+          glyphs[index] = hash(row, column + progress * 40) > 0.5 ? solid : "·";
+        }
+      }
+      return;
+    }
+    const cycle = (context.time / Math.max(0.5, period) + phase) % 1;
+    for (let index = 0; index < glyphs.length; index += 1) {
+      if (glyphs[index] === " ") {
+        continue;
+      }
+      const column = index % columns;
+      const row = (index - column) / columns;
+      const u = column / Math.max(1, columns);
+      const v = row / Math.max(1, rows);
+      if (effect === "shimmer") {
+        // Runs from off the left edge to off the right, slanted.
+        const at = cycle * (1 + BAND * 4) - BAND * 2;
+        if (Math.abs(u + (v - 0.5) * 0.35 - at) < BAND / 2) {
+          glyphs[index] = solid;
+        }
+      } else {
+        const line = cycle * (1 + TRAIL) - TRAIL / 2;
+        const behind = line - v;
+        if (behind >= 0 && behind < TRAIL * (1 - hash(column, row) * 0.6)) {
+          glyphs[index] = solid;
+        }
+      }
+    }
   };
 
-  const loop = useFrameLoop((time) => paint(time), {
-    enabled: effect !== "none" && shape !== null,
-    fps: 30,
-    // The still frame under reduced motion has no band or line in view.
-    stillTime: -phase * period,
-    target: rootRef,
-  });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!(canvas && shape)) {
-      return;
-    }
-    sizeCanvas(canvas, shape.grid);
-    paint(-phase * period);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [shape, colors, tone, fill, outline, floor, matrix]);
-
-  const aspectRatio =
-    ratio ?? (image ? image.naturalWidth / image.naturalHeight : undefined);
-  const rootStyle: CSSProperties = { aspectRatio, ...style };
   const decorative = alt === "";
+  const shownRatio = ratio ?? fileRatio;
 
   return (
     <div
-      {...props}
       ref={rootRef}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : alt}
       aria-hidden={decorative ? true : undefined}
-      data-state={status === "ready" && !shape ? "loading" : status}
-      data-loop={effect === "none" ? undefined : loop}
-      className={cn("relative h-8 shrink-0 overflow-hidden", className)}
-      style={rootStyle}
+      className={cn("relative", className)}
+      style={{
+        aspectRatio: shownRatio === undefined ? undefined : String(shownRatio),
+        ...style,
+      }}
+      {...rest}
     >
-      <canvas
-        ref={canvasRef}
-        aria-hidden
-        className={cn(
-          CANVAS_CLASS,
-          FADE_CLASS,
-          shape ? "opacity-100" : "opacity-0"
-        )}
+      <AsciiMedia
+        {...look}
+        charset={look.charset ?? "braille"}
+        background={look.background ?? "transparent"}
+        colorMode={
+          look.colorMode ?? (tone === "original" ? "truecolor" : "mono")
+        }
+        invert={source === "dark" ? true : look.invert}
+        ink={color}
+        tone={source === "alpha" ? "alpha" : "luma"}
+        autoLevels={source === "dark"}
+        fit="contain"
+        source={image.status === "ready" ? image.source : null}
+        status={image.status}
+        placeholder={false}
+        cell={cell ?? autoCell}
+        animate={moving}
+        finish={finish}
+        handle={handle}
+        className="absolute inset-0"
       />
     </div>
   );

@@ -1,905 +1,854 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, CSSProperties, RefObject } from "react";
 
 import {
-  cssColor,
-  ditherImage,
-  fillStyle,
-  readAsciiCell,
+  AsciiGrid,
+  autoLevels as stretchLevels,
+  CrtOverlay,
+  createToneField,
+  hexToRgb,
+  luma,
+  mapTones,
+  PHOSPHORS,
+  RAMPS,
+  resolveCharset,
+  sampleToField,
+  SPINNERS,
   useAsciiColors,
-  useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { AsciiColor, DitherMethod, AsciiPalette, Rgba } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiGridDrawContext,
+  AsciiHandle,
+  AsciiLook,
+  Charset,
+  MapOptions,
+  MutableFrame,
+  Rgb8,
+  SampleCrop,
+  ToneField,
+} from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/**
- * The cell grid an image is dithered on. One cell is `scale` device
- * pixels, a whole number, so cells stay crisp at any zoom. The canvas is
- * `width` x `height` CSS pixels, which can overshoot its box by less than
- * one cell.
- */
-export interface AsciiGrid {
-  readonly columns: number;
-  readonly rows: number;
-  readonly scale: number;
-  readonly width: number;
-  readonly height: number;
+/* -------------------------------------------------------------------------- */
+/* Colour: ink, paper and which way tones run                                  */
+/* -------------------------------------------------------------------------- */
+
+/** Ink and paper for a look, and whether dark source pixels draw dense glyphs. */
+export interface GlyphPaint {
+  readonly ink: AsciiColor;
+  readonly paper: AsciiColor | "transparent";
+  /**
+   * Dense glyphs stand for dark pixels. True on a light page, where ink is
+   * dark, so a photo still reads the right way round.
+   */
+  readonly darkIsDense: boolean;
+  /** Paper then ink as bytes, for `colorMode="palette"`. */
+  readonly palette: readonly Rgb8[];
 }
 
-export type ImageFit = "cover" | "contain";
+const toBytes = ([r, g, b]: readonly number[]): Rgb8 => [
+  Math.round((r ?? 0) * 255),
+  Math.round((g ?? 0) * 255),
+  Math.round((b ?? 0) * 255),
+];
 
-/** The looks `AsciiImage` ships with. */
-export const ASCII_IMAGE_PRESETS = [
-  "ink",
-  "duotone",
-  "newsprint",
-  "gameboy",
-  "riso",
-] as const;
-export type AsciiImagePreset = (typeof ASCII_IMAGE_PRESETS)[number];
-
-/** What a preset decides. Every field can be overridden by a prop. */
-export interface PresetRecipe {
-  method: DitherMethod;
-  /** Cell size in CSS pixels. */
-  cell: number;
-  contrast: number;
-  /** The palette, given the `color` prop. */
-  palette: (color: AsciiColor) => AsciiPalette;
-}
-
-// A share of `color` mixed into the page colour, for in-between tones.
-const tint = (color: AsciiColor, share: number) =>
-  `color-mix(in oklch, ${cssColor(color)} ${share}%, var(--ascii-paper))`;
-
-const NEWSPRINT = [
-  "oklch(0.22 0.012 70)",
-  "oklch(0.93 0.022 88)",
-] as const satisfies AsciiPalette;
-
-const GAMEBOY = [
-  "oklch(0.27 0.06 145)",
-  "oklch(0.43 0.09 140)",
-  "oklch(0.68 0.15 125)",
-  "oklch(0.75 0.16 122)",
-] as const satisfies AsciiPalette;
-
-const RISO = [
-  "oklch(0.3 0.1 268)",
-  "oklch(0.56 0.2 262)",
-  "oklch(0.73 0.17 2)",
-  "oklch(0.95 0.02 85)",
-] as const satisfies AsciiPalette;
-
-export const IMAGE_PRESETS = {
-  // Two tones: the page colour and one ink. Follows the theme.
-  duotone: {
-    cell: 2,
-    contrast: 1.1,
-    method: "blue-noise",
-    palette: (color) => ["--ascii-paper", tint(color, 42), color],
-  },
-  // Clean highlights in one ink on the page colour. Follows the theme.
-  gameboy: {
-    cell: 3,
-    contrast: 1.15,
-    method: "bayer4",
-    palette: () => GAMEBOY,
-  },
-  ink: {
-    cell: 2,
-    contrast: 1,
-    method: "atkinson",
-    palette: (color) => ["--ascii-paper", color],
-  },
-  // A regular ordered screen, black on warm paper, in both themes.
-  newsprint: {
-    cell: 2,
-    contrast: 1.25,
-    method: "bayer8",
-    palette: () => NEWSPRINT,
-  },
-  // Navy, blue and pink on cream, like a two-drum print.
-  riso: {
-    cell: 2,
-    contrast: 1.15,
-    method: "atkinson",
-    palette: () => RISO,
-  },
-} as const satisfies Record<AsciiImagePreset, PresetRecipe>;
-
-/** How a photo's tones become palette colours. */
-export interface ToneOptions {
-  method: DitherMethod;
-  /** 1 leaves contrast alone; higher values push tones apart. */
-  contrast: number;
-  /** Added to every tone, from -1 to 1. */
-  brightness: number;
-  /** Swap light and dark. */
-  invert: boolean;
-  /** Stretch the darkest and lightest tones to the ends of the palette. */
-  normalize: boolean;
-  /** Edge sharpening before dithering, 0 to 1. */
-  sharpen: number;
-  fit: ImageFit;
-}
+const rampPaper = (ramp: AsciiLook["ramp"]): string => {
+  if (ramp === undefined) {
+    return RAMPS.mainframe[0];
+  }
+  if (typeof ramp === "string") {
+    return (RAMPS[ramp as keyof typeof RAMPS] ?? RAMPS.mainframe)[0];
+  }
+  return ramp[0] ?? RAMPS.mainframe[0];
+};
 
 /**
- * The props that decide how a dithered image looks, shared by every image
- * component in asciicn.
+ * Ink and paper for a look, following the theme. Phosphors and duotone
+ * ramps are screen looks: they bring their own dark glass, whatever the
+ * page theme. Everything else draws in `--ascii-ink` on `--ascii-paper`.
  */
-export interface AsciiLook {
-  /** A starting look. Default `"duotone"`. */
-  preset?: AsciiImagePreset;
-  /** The ink for the `ink` and `duotone` presets. Default `"ink"`. */
-  color?: AsciiColor;
-  /**
-   * Two to four colours, which replace the preset's. Palette names such
-   * as `"green"` work. Sorted from dark to light, so dark parts of the
-   * image take the darkest colour.
-   */
-  palette?: AsciiPalette;
-  /** Dither algorithm. Default from the preset. */
-  method?: DitherMethod;
-  /** Size of one cell in CSS pixels. Default from the preset. */
-  cell?: number;
-  /** 1 leaves contrast alone. Default from the preset. */
-  contrast?: number;
-  /** Shifts every tone, from -1 to 1. Default 0. */
-  brightness?: number;
-  /** Swap light and dark. Default `false`. */
-  invert?: boolean;
-  /** Stretch the image's tones to fill the palette. Default `true`. */
-  normalize?: boolean;
-  /** Edge sharpening before dithering, 0 to 1. Default 0.3. */
-  sharpen?: number;
-  /** How the image fills its box, as in `object-fit`. Default `"cover"`. */
-  fit?: ImageFit;
-}
+export const useGlyphPaint = (
+  ref: RefObject<Element | null>,
+  {
+    colorMode,
+    phosphor,
+    ramp,
+    invert,
+    background = "paper",
+  }: Pick<
+    AsciiLook,
+    "colorMode" | "phosphor" | "ramp" | "invert" | "background"
+  >
+): GlyphPaint => {
+  const theme = useAsciiColors(ref);
+  const transparent = background === "transparent";
+  const themeInk: Rgb8 = theme ? toBytes(theme[0]) : [230, 230, 230];
+  const themePaper: Rgb8 = theme ? toBytes(theme[1]) : [10, 10, 10];
+  const pageIsLight = luma(...themePaper) > 0.5;
 
-// A preset's cell shrinks, down to 1px, to keep at least this many columns.
-const MIN_COLUMNS = 200;
-
-/** A `AsciiLook` with the preset applied and every default filled in. */
-export interface ResolvedLook {
-  palette: AsciiPalette;
-  cell: number;
-  /**
-   * Fewest columns before the cell shrinks below `cell`, so a small
-   * thumbnail keeps enough detail to read. 0 when `cell` was set.
-   */
-  minColumns: number;
-  tone: ToneOptions;
-}
-
-export const resolveLook = ({
-  preset = "duotone",
-  color = "ink",
-  palette,
-  method,
-  cell,
-  contrast,
-  brightness = 0,
-  invert = false,
-  normalize = true,
-  sharpen = 0.3,
-  fit = "cover",
-}: AsciiLook): ResolvedLook => {
-  const recipe: PresetRecipe = IMAGE_PRESETS[preset];
+  if (colorMode === "duotone") {
+    const paper = rampPaper(ramp);
+    return {
+      darkIsDense: invert ?? (transparent ? pageIsLight : false),
+      ink: "--ascii-ink",
+      palette: [hexToRgb(paper), themeInk],
+      paper: transparent ? "transparent" : paper,
+    };
+  }
+  if (phosphor && (colorMode === undefined || colorMode === "mono")) {
+    const preset = PHOSPHORS[phosphor];
+    return {
+      darkIsDense: invert ?? (transparent ? pageIsLight : false),
+      ink: preset.ink,
+      palette: [hexToRgb(preset.paper), hexToRgb(preset.ink)],
+      paper: transparent ? "transparent" : preset.paper,
+    };
+  }
   return {
-    cell: cell ?? recipe.cell,
-    minColumns: cell === undefined ? MIN_COLUMNS : 0,
-    palette: palette ?? recipe.palette(color),
-    tone: {
-      brightness,
-      contrast: contrast ?? recipe.contrast,
-      fit,
-      invert,
-      method: method ?? recipe.method,
-      normalize,
-      sharpen,
-    },
+    darkIsDense: invert ?? pageIsLight,
+    ink: "--ascii-ink",
+    palette: [themePaper, themeInk],
+    paper: transparent ? "transparent" : "--ascii-paper",
   };
 };
 
 /**
- * Split a component's props into its `AsciiLook` and everything else,
- * so the look can be resolved once and the rest spread onto the root.
+ * Braille and quadrants light a dot or leave it dark, so without help a
+ * soft gradient collapses to one hard edge. Blue-noise ordered dithering
+ * keeps the gradient as a stipple; a ramp charset needs none.
  */
-export const splitLook = <Props extends AsciiLook>({
-  preset,
-  color,
-  palette,
-  method,
-  cell,
-  contrast,
-  brightness,
-  invert,
-  normalize,
-  sharpen,
-  fit,
-  ...rest
-}: Props) => ({
-  look: resolveLook({
-    brightness,
-    cell,
-    color,
-    contrast,
-    fit,
-    invert,
-    method,
-    normalize,
-    palette,
-    preset,
-    sharpen,
-  }),
-  rest,
+export const packedDither = (
+  look: Pick<AsciiLook, "charset" | "chars">
+): "none" | "blue-noise" => {
+  const { kind } = resolveCharset(look.charset ?? "standard", look.chars);
+  return kind === "braille" || kind === "quadrants" ? "blue-noise" : "none";
+};
+
+/**
+ * The `mapTones` options for a look. Inversion is left to the sampler,
+ * which knows which samples are empty (transparent or letterboxed) and
+ * must stay empty either way round.
+ */
+export const lookToMapOptions = (
+  look: AsciiLook,
+  paint: GlyphPaint,
+  fallbackMode: NonNullable<AsciiLook["colorMode"]> = "truecolor"
+): MapOptions => ({
+  ansi: look.ansi,
+  chars: look.chars,
+  charset: look.charset ?? "standard",
+  colorMode: look.colorMode ?? fallbackMode,
+  dither: look.dither ?? packedDither(look),
+  edgeThreshold: look.edgeThreshold,
+  grade: look.grade,
+  invert: false,
+  palette: paint.palette,
+  ramp: look.ramp,
+  threshold: look.threshold,
 });
 
-const imageCache = new Map<string, Promise<HTMLImageElement>>();
+/**
+ * Split the look props from everything else, so a component can hand the
+ * look to its renderer and the rest to its wrapper element.
+ */
+export const splitLook = <Props extends AsciiLook>({
+  charset,
+  chars,
+  colorMode,
+  phosphor,
+  ramp,
+  ansi,
+  grade,
+  invert,
+  threshold,
+  edgeThreshold,
+  dither,
+  background,
+  fx,
+  ...rest
+}: Props) =>
+  [
+    {
+      ansi,
+      background,
+      chars,
+      charset,
+      colorMode,
+      dither,
+      edgeThreshold,
+      fx,
+      grade,
+      invert,
+      phosphor,
+      ramp,
+      threshold,
+    } satisfies AsciiLook,
+    rest,
+  ] as const;
+
+/* -------------------------------------------------------------------------- */
+/* Sampling: any image, video or canvas into a tone field                      */
+/* -------------------------------------------------------------------------- */
+
+/** How media fills its box, as in `object-fit`. */
+export type MediaFit = "cover" | "contain" | "fill";
 
 /**
- * Load and decode an image once per URL. Cross-origin images need CORS
- * headers, as the pixels are read back from a canvas.
+ * What a sample's tone measures. `luma` suits photos and video; `alpha`
+ * suits logos and icons on a transparent background, where the shape is
+ * the coverage and colour only tints it.
  */
-const decode = async (src: string) => {
-  const image = new Image();
-  image.crossOrigin = "anonymous";
-  image.decoding = "async";
-  image.src = src;
-  try {
-    await image.decode();
-    return image;
-  } catch (error) {
-    // Let a later call try again.
-    imageCache.delete(src);
-    throw error;
+export type MediaTone = "luma" | "alpha";
+
+/** Something drawable and its natural size. `key` changes when the content does. */
+export interface MediaInput {
+  readonly element: CanvasImageSource;
+  readonly width: number;
+  readonly height: number;
+  readonly key: string;
+}
+
+export interface MediaSampleOptions {
+  readonly columns: number;
+  readonly rows: number;
+  readonly charset: Charset;
+  /** The grid's width over height in CSS pixels. */
+  readonly aspect: number;
+  readonly fit: MediaFit;
+  /** Where the media sits when it overflows, 0 to 1 per axis. */
+  readonly focus: readonly [number, number];
+  readonly mirror: boolean;
+  readonly tone: MediaTone;
+  readonly darkIsDense: boolean;
+  /** Stretch the darkest and brightest 1% of tones to the ends of the ramp. */
+  readonly levels: boolean;
+}
+
+/** The part of the source `cover` keeps, slid towards `focus`. */
+const coverCrop = (
+  { width, height }: Pick<MediaInput, "width" | "height">,
+  aspect: number,
+  [focusX, focusY]: readonly [number, number]
+): SampleCrop => {
+  const sourceAspect = width / Math.max(1, height);
+  if (sourceAspect > aspect) {
+    const keep = aspect / sourceAspect;
+    return { height: 1, width: keep, x: (1 - keep) * focusX, y: 0 };
+  }
+  const keep = sourceAspect / aspect;
+  return { height: keep, width: 1, x: 0, y: (1 - keep) * focusY };
+};
+
+/**
+ * Sample media into a tone field with the engine's area-averaging
+ * sampler, then set which way tones run. Samples outside the media
+ * (letterboxing, transparent pixels) stay at tone 0 either way round, so
+ * they draw nothing.
+ */
+export const sampleMedia = (
+  source: MediaInput,
+  field: ToneField,
+  options: MediaSampleOptions
+): void => {
+  const { aspect, fit } = options;
+  sampleToField(source.element, {
+    aspect,
+    charset: options.charset,
+    columns: options.columns,
+    crop:
+      fit === "cover" ? coverCrop(source, aspect, options.focus) : undefined,
+    fit: fit === "cover" ? "fill" : fit,
+    into: field,
+    mirror: options.mirror,
+    rows: options.rows,
+  });
+  const { tones, colors } = field;
+  if (options.tone === "alpha") {
+    for (let index = 0; index < tones.length; index += 1) {
+      tones[index] = (colors?.[index * 4 + 3] ?? 0) / 255;
+    }
+    return;
+  }
+  if (options.levels) {
+    stretchLevels(field, 1);
+  }
+  if (options.darkIsDense) {
+    for (let index = 0; index < tones.length; index += 1) {
+      const cover = (colors?.[index * 4 + 3] ?? 255) / 255;
+      tones[index] = Math.max(0, cover - (tones[index] ?? 0));
+    }
   }
 };
 
-export const loadImage = (src: string): Promise<HTMLImageElement> => {
-  const cached = imageCache.get(src);
-  if (cached) {
-    return cached;
-  }
-  const promise = decode(src);
-  imageCache.set(src, promise);
-  return promise;
-};
+/* -------------------------------------------------------------------------- */
+/* Loading media                                                               */
+/* -------------------------------------------------------------------------- */
 
-export type ImageStatus = "idle" | "loading" | "ready" | "error";
+/** Where an image is in loading. */
+export type ImageState =
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly source: MediaInput }
+  | { readonly status: "error" };
 
 /**
- * Load an image when `enabled` turns true (usually when its box nears the
- * viewport). `status` is `"idle"` until then.
+ * Load and decode an image for sampling. Cross-origin files need CORS
+ * headers, or the canvas can't read their pixels. `null` waits, for
+ * images that load lazily.
  */
-export const useLoadedImage = (src: string, enabled: boolean) => {
-  const [result, setResult] = useState<{
-    src: string;
-    image: HTMLImageElement | null;
-  } | null>(null);
-
+export const useLoadedImage = (
+  src: string | null,
+  crossOrigin: ComponentProps<"img">["crossOrigin"] = "anonymous"
+): ImageState => {
+  const [state, setState] = useState<ImageState>({ status: "loading" });
   useEffect(() => {
-    if (!enabled) {
+    let current = true;
+    setState({ status: "loading" });
+    if (src === null) {
       return;
     }
-    let cancelled = false;
+    const image = new Image();
+    if (crossOrigin !== undefined) {
+      image.crossOrigin = crossOrigin;
+    }
+    image.decoding = "async";
+    image.src = src;
     const load = async () => {
-      let image: HTMLImageElement | null = null;
       try {
-        image = await loadImage(src);
+        await image.decode();
       } catch {
-        image = null;
+        if (current) {
+          setState({ status: "error" });
+        }
+        return;
       }
-      if (!cancelled) {
-        setResult({ image, src });
+      if (current) {
+        setState({
+          source: {
+            element: image,
+            height: image.naturalHeight || 1,
+            key: src,
+            width: image.naturalWidth || 1,
+          },
+          status: "ready",
+        });
       }
     };
     load();
     return () => {
-      cancelled = true;
+      current = false;
     };
-  }, [src, enabled]);
-
-  if (!enabled || result?.src !== src) {
-    return { image: null, status: enabled ? "loading" : "idle" } as const;
-  }
-  return result.image
-    ? ({ image: result.image, status: "ready" } as const)
-    : ({ image: null, status: "error" } as const);
+  }, [src, crossOrigin]);
+  return state;
 };
 
-/** `true` once the element has come within `rootMargin` of the viewport. */
-export const useSeen = (
-  ref: RefObject<Element | null>,
-  rootMargin = "320px"
-) => {
-  const inView = useInView(ref, { rootMargin });
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    if (inView) {
-      setSeen(true);
-    }
-  }, [inView]);
-  return seen || inView;
-};
+/* -------------------------------------------------------------------------- */
+/* AsciiMedia: the shared renderer                                             */
+/* -------------------------------------------------------------------------- */
 
-const gridFor = (width: number, height: number, cell: number): AsciiGrid => {
-  const ratio = window.devicePixelRatio || 1;
-  const scale = Math.max(1, Math.round(cell * ratio));
-  const columns = Math.max(1, Math.ceil((width * ratio) / scale));
-  const rows = Math.max(1, Math.ceil((height * ratio) / scale));
-  return {
-    columns,
-    height: (rows * scale) / ratio,
-    rows,
-    scale,
-    width: (columns * scale) / ratio,
-  };
-};
-
-const sameGrid = (a: AsciiGrid | null, b: AsciiGrid) =>
-  a !== null &&
-  a.columns === b.columns &&
-  a.rows === b.rows &&
-  a.scale === b.scale;
-
-/**
- * The same box on a grid `factor` times coarser, for the blocky first
- * frames of a resolve. Cells stay whole device pixels.
- */
-export const coarsen = (grid: AsciiGrid, factor: number): AsciiGrid => {
-  const step = Math.max(1, Math.round(factor));
-  if (step === 1) {
-    return grid;
-  }
-  const ratio = (grid.columns * grid.scale) / grid.width;
-  const scale = grid.scale * step;
-  const columns = Math.max(1, Math.ceil(grid.columns / step));
-  const rows = Math.max(1, Math.ceil(grid.rows / step));
-  return {
-    columns,
-    height: (rows * scale) / ratio,
-    rows,
-    scale,
-    width: (columns * scale) / ratio,
-  };
-};
-
-/**
- * The cell grid for the element's current size, updated on resize and
- * zoom. `cell` is in CSS pixels; omit it to read `--ascii-cell`.
- */
-export const useAsciiGrid = (
-  ref: RefObject<HTMLElement | null>,
-  cell?: number,
-  minColumns = 0
-): AsciiGrid | null => {
-  const [grid, setGrid] = useState<AsciiGrid | null>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) {
-      return;
-    }
-    const measure = () => {
-      const { width, height } = el.getBoundingClientRect();
-      if (width < 1 || height < 1) {
-        return;
-      }
-      const base = cell ?? readAsciiCell(el);
-      const size =
-        minColumns > 0 ? Math.min(base, Math.max(1, width / minColumns)) : base;
-      const next = gridFor(width, height, size);
-      setGrid((current) => (sameGrid(current, next) ? current : next));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref, cell, minColumns]);
-
-  return grid;
-};
-
-const makeCanvas = (width: number, height: number) => {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-};
-
-/** Where the image lands in a `columns` x `rows` box, as object-fit does. */
-const fitRect = (
-  image: HTMLImageElement,
-  columns: number,
-  rows: number,
-  fit: ImageFit
-) => {
-  const scaleX = columns / image.naturalWidth;
-  const scaleY = rows / image.naturalHeight;
-  const scale =
-    fit === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  return {
-    height,
-    width,
-    x: (columns - width) / 2,
-    y: (rows - height) / 2,
-  };
-};
-
-/**
- * Draw `image` into a `columns` x `rows` buffer, one pixel per cell.
- * Large downscales halve in steps first, which keeps fine detail from
- * aliasing into noise.
- */
-export const rasterize = (
-  image: HTMLImageElement,
-  columns: number,
-  rows: number,
-  fit: ImageFit
-): ImageData | null => {
-  const rect = fitRect(image, columns, rows, fit);
-  let source: CanvasImageSource = image;
-  let sourceWidth = image.naturalWidth;
-  let sourceHeight = image.naturalHeight;
-  while (sourceWidth / 2 > rect.width && sourceHeight / 2 > rect.height) {
-    const half = makeCanvas(
-      Math.ceil(sourceWidth / 2),
-      Math.ceil(sourceHeight / 2)
-    );
-    const context = half.getContext("2d");
-    if (!context) {
-      break;
-    }
-    context.imageSmoothingQuality = "high";
-    context.drawImage(source, 0, 0, half.width, half.height);
-    source = half;
-    sourceWidth = half.width;
-    sourceHeight = half.height;
-  }
-
-  const canvas = makeCanvas(columns, rows);
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) {
-    return null;
-  }
-  context.imageSmoothingQuality = "high";
-  context.drawImage(source, rect.x, rect.y, rect.width, rect.height);
-  return context.getImageData(0, 0, columns, rows);
-};
-
-const luminance = (color: Rgba) =>
-  0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
-
-/**
- * Palette colours from darkest to lightest, so dark parts of a photo take
- * the darkest colour in both light and dark themes.
- */
-export const byLuminance = (colors: readonly Rgba[]): Rgba[] =>
-  colors.toSorted((a, b) => luminance(a) - luminance(b));
-
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
-/** Lightness of every pixel, 0 to 1. */
-const lightnessOf = ({ data, width, height }: ImageData) => {
-  const light = new Float32Array(width * height);
-  for (let index = 0; index < light.length; index += 1) {
-    const offset = index * 4;
-    light[index] =
-      (0.2126 * (data[offset] ?? 0) +
-        0.7152 * (data[offset + 1] ?? 0) +
-        0.0722 * (data[offset + 2] ?? 0)) /
-      255;
-  }
-  return light;
-};
-
-/**
- * The tones at the 0.5th and 99.5th percentiles, ignoring transparent
- * pixels. Stretching between them fills the palette without letting a few
- * specks of white or black set the range.
- */
-const toneRange = (light: Float32Array, data: Uint8ClampedArray) => {
-  const histogram = new Uint32Array(256);
-  let total = 0;
-  for (let index = 0; index < light.length; index += 1) {
-    if ((data[index * 4 + 3] ?? 0) > 127) {
-      histogram[Math.round((light[index] ?? 0) * 255)] += 1;
-      total += 1;
-    }
-  }
-  const edge = total * 0.005;
-  let low = 0;
-  let seen = 0;
-  while (low < 255 && seen + (histogram[low] ?? 0) <= edge) {
-    seen += histogram[low] ?? 0;
-    low += 1;
-  }
-  let high = 255;
-  seen = 0;
-  while (high > low && seen + (histogram[high] ?? 0) <= edge) {
-    seen += histogram[high] ?? 0;
-    high -= 1;
-  }
-  return { high: high / 255, low: low / 255 };
-};
-
-// Share of the tone range left free at each end after normalising.
-const HEADROOM = 0.04;
-
-/** A 3 x 3 box blur, for unsharp masking. Edges clamp. */
-const boxBlur = (light: Float32Array, width: number, height: number) => {
-  const out = new Float32Array(light.length);
-  for (let y = 0; y < height; y += 1) {
-    const up = Math.max(0, y - 1) * width;
-    const row = y * width;
-    const down = Math.min(height - 1, y + 1) * width;
-    for (let x = 0; x < width; x += 1) {
-      const left = Math.max(0, x - 1);
-      const right = Math.min(width - 1, x + 1);
-      out[row + x] =
-        ((light[up + left] ?? 0) +
-          (light[up + x] ?? 0) +
-          (light[up + right] ?? 0) +
-          (light[row + left] ?? 0) +
-          (light[row + x] ?? 0) +
-          (light[row + right] ?? 0) +
-          (light[down + left] ?? 0) +
-          (light[down + x] ?? 0) +
-          (light[down + right] ?? 0)) /
-        9;
-    }
-  }
-  return out;
-};
-
-/**
- * The tone of every pixel after levels, sharpening, contrast, brightness
- * and invert, 0 to 1.
- */
-export const prepareTones = (
-  pixels: ImageData,
-  {
-    contrast,
-    brightness,
-    invert,
-    normalize,
-    sharpen,
-  }: Omit<ToneOptions, "fit" | "method">
-): Float32Array => {
-  const { width, height, data } = pixels;
-  const light = lightnessOf(pixels);
-  const { low, high } = normalize
-    ? toneRange(light, data)
-    : { high: 1, low: 0 };
-  const span = high - low > 0.1 ? high - low : 1;
-  const base = span === 1 ? 0 : low;
-  const blur = sharpen > 0 ? boxBlur(light, width, height) : light;
-  // Sharpening pushes each pixel away from its neighbourhood average.
-  const amount = sharpen * 1.5;
-  for (let index = 0; index < light.length; index += 1) {
-    const value = light[index] ?? 0;
-    const sharp = value + amount * (value - (blur[index] ?? value));
-    // Normalised tones stop short of the ends, so the brightest and
-    // darkest areas keep a little grain instead of going flat.
-    const level = normalize
-      ? HEADROOM + ((sharp - base) / span) * (1 - HEADROOM * 2)
-      : (sharp - base) / span;
-    const tone = clamp01((level - 0.5) * contrast + 0.5 + brightness);
-    light[index] = invert ? 1 - tone : tone;
-  }
-  return light;
-};
-
-/**
- * Dither a rasterised image to `colors` (darkest first). Works in tone
- * only: the photo becomes grey, the grey is dithered to as many steps as
- * there are colours, and each step takes its colour.
- */
-export const asciiPixels = (
-  pixels: ImageData,
-  colors: readonly Rgba[],
-  { method, ...tone }: Omit<ToneOptions, "fit">
-): ImageData => {
-  const { data, width, height } = pixels;
-  const steps = Math.max(2, colors.length);
-  const tones = prepareTones(pixels, tone);
-  const greys = new Uint8ClampedArray(data.length);
-  for (let index = 0; index < tones.length; index += 1) {
-    const offset = index * 4;
-    const value = (tones[index] ?? 0) * 255;
-    greys[offset] = value;
-    greys[offset + 1] = value;
-    greys[offset + 2] = value;
-    greys[offset + 3] = data[offset + 3] ?? 0;
-  }
-
-  const levels = Array.from({ length: steps }, (_, index) => {
-    const grey = index / (steps - 1);
-    return [grey, grey, grey] as const;
-  });
-  const [first = [0, 0, 0] as const, second = [1, 1, 1] as const, ...rest] =
-    levels;
-  const result = ditherImage(
-    { data: greys, height, width },
-    { method, palette: [first, second, ...rest] }
-  );
-
-  const out = result.data;
-  for (let offset = 0; offset < out.length; offset += 4) {
-    const step = Math.round(((out[offset] ?? 0) / 255) * (steps - 1));
-    const color = colors[step] ?? colors[0];
-    if (!color) {
-      continue;
-    }
-    out[offset] = color[0] * 255;
-    out[offset + 1] = color[1] * 255;
-    out[offset + 2] = color[2] * 255;
-    out[offset + 3] = color[3] * (out[offset + 3] ?? 0);
-  }
-  return result;
-};
-
-/** Rasterise and dither in one go. */
-export const renderDitheredImage = (
-  image: HTMLImageElement,
-  grid: AsciiGrid,
-  colors: readonly Rgba[],
-  { fit, ...tone }: ToneOptions
-): ImageData | null => {
-  const pixels = rasterize(image, grid.columns, grid.rows, fit);
-  return pixels ? asciiPixels(pixels, colors, tone) : null;
-};
-
-/** Size a canvas to the grid: one canvas pixel per cell, scaled up crisp. */
-export const sizeCanvas = (canvas: HTMLCanvasElement, grid: AsciiGrid) => {
-  if (canvas.width !== grid.columns || canvas.height !== grid.rows) {
-    canvas.width = grid.columns;
-    canvas.height = grid.rows;
-  }
-  canvas.style.width = `${grid.width}px`;
-  canvas.style.height = `${grid.height}px`;
-};
-
-/** One dithered image at one grid. */
-export interface AsciiFrame {
-  readonly pixels: ImageData;
-  readonly grid: AsciiGrid;
+/** What the `shape` and `finish` hooks of `AsciiMedia` get each frame. */
+export interface MediaDrawContext extends AsciiGridDrawContext {
+  readonly charset: Charset;
+  /** The element's size in CSS pixels. */
+  readonly box: { readonly width: number; readonly height: number };
 }
 
-/** Put a frame on a canvas, resizing the canvas to its grid. */
-export const paintFrame = (
-  canvas: HTMLCanvasElement | null,
-  frame: AsciiFrame | null
+export type MediaStatus = "loading" | "ready" | "error";
+
+export interface AsciiMediaProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
+  /** What to draw, or `null` while it loads. */
+  source: MediaInput | null;
+  /** Drawn as a glyph placeholder until `"ready"`. Default `"ready"`. */
+  status?: MediaStatus;
+  /** Draw a loading sweep and error text in glyphs. Default `true`. */
+  placeholder?: boolean;
+  /** Shown in glyphs when `status` is `"error"`. Default `"image unavailable"`. */
+  message?: string;
+  /** Default `"cover"`. */
+  fit?: MediaFit;
+  /** Media position when it overflows its box, 0 to 1 per axis. Default centred. */
+  focus?: readonly [number, number];
+  /** Flip horizontally, as a webcam preview does. Default `false`. */
+  mirror?: boolean;
+  /** Default `"luma"`. */
+  tone?: MediaTone;
+  /** Stretch the media's tones to fill the ramp. Default `true`. */
+  autoLevels?: boolean;
+  /** Sample the source again every frame, for video. Default `false`. */
+  live?: boolean;
+  /** Glyph colour in `mono`, overriding the theme ink and any phosphor. */
+  ink?: AsciiColor;
+  /** Colour mode when `colorMode` is unset. Default `"truecolor"`. */
+  defaultColorMode?: NonNullable<AsciiLook["colorMode"]>;
+  /** Adjust tones after sampling, before glyphs are chosen. Runs every frame. */
+  shape?: (field: ToneField, context: MediaDrawContext) => void;
+  /** Adjust glyphs after mapping. Runs every frame. */
+  finish?: (frame: MutableFrame, context: MediaDrawContext) => void;
+  /** Cell height in CSS pixels. Default 10. */
+  cell?: number;
+  /** Keep drawing every frame. Default `false`: one frame per change. */
+  animate?: boolean;
+  /** Frame rate cap while animating. Default 30. */
+  fps?: number;
+  /** Filled with a handle for export. */
+  handle?: RefObject<AsciiHandle | null>;
+}
+
+interface FieldCache {
+  key: string;
+  base: ToneField;
+  work: ToneField;
+}
+
+const hash = (x: number, y: number) => {
+  const value = Math.sin(x * 127.1 + y * 311.7) * 43_758.5453;
+  return value - Math.floor(value);
+};
+
+/** A sweeping band of faint glyphs and a status line, while media loads. */
+const drawPlaceholder = (
+  context: AsciiGridDrawContext,
+  status: Exclude<MediaStatus, "ready">,
+  message: string
 ) => {
-  if (!(canvas && frame)) {
-    return;
+  const { frame, columns, rows, time } = context;
+  const sweep = (time * 0.45) % 1.6;
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const u = column / Math.max(1, columns - 1);
+      const v = row / Math.max(1, rows - 1);
+      const band =
+        status === "loading"
+          ? Math.exp(-((u + v * 0.35 - sweep + 0.2) ** 2) * 60)
+          : 0;
+      const grain = hash(column, row);
+      const tone = 0.06 + band * 0.5;
+      if (grain < tone) {
+        frame.put(column, row, grain < tone * 0.4 ? ":" : "·");
+      }
+    }
   }
-  sizeCanvas(canvas, frame.grid);
-  canvas.getContext("2d")?.putImageData(frame.pixels, 0, 0);
+  const spinner = SPINNERS.braille;
+  const label =
+    status === "loading"
+      ? `${spinner[Math.floor(time * 12) % spinner.length] ?? ""} loading`
+      : `[ ${message} ]`;
+  const text = label.slice(0, columns);
+  const x = Math.floor((columns - text.length) / 2);
+  const y = Math.floor(rows / 2);
+  frame.fillRect(x - 1, y, text.length + 2, 1, " ");
+  frame.write(x, y, text);
 };
 
-export const CANVAS_CLASS =
-  "pointer-events-none absolute top-0 left-0 max-w-none [image-rendering:pixelated]";
-
-/** Fades a canvas in once its first frame is drawn. */
-export const FADE_CLASS =
-  "transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none";
+const CENTRE = [0.5, 0.5] as const;
 
 /**
- * Renders a frame at `factor` times the cell size; 1 is full detail.
- * Results are cached, so scrubbing back and forth costs nothing.
+ * The renderer behind every media component: samples an image, video or
+ * canvas into glyphs on an `AsciiGrid`. Charset and colour switch without
+ * sampling again; size, fit and source changes sample once.
  */
-export type FrameRenderer = (factor: number) => AsciiFrame | null;
+// oxlint-disable-next-line complexity -- each prop default counts as a branch.
+export const AsciiMedia = (props: AsciiMediaProps) => {
+  const [
+    look,
+    {
+      source,
+      status = "ready",
+      placeholder = true,
+      message = "image unavailable",
+      fit = "cover",
+      focus = CENTRE,
+      mirror = false,
+      tone = "luma",
+      autoLevels = true,
+      live = false,
+      ink,
+      defaultColorMode = "truecolor",
+      shape,
+      finish,
+      cell = 10,
+      animate = false,
+      fps = 30,
+      handle,
+      className,
+      ...rest
+    },
+  ] = splitLook(props);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const cacheRef = useRef<FieldCache | null>(null);
+  const paint = useGlyphPaint(rootRef, look);
+  const options = lookToMapOptions(look, paint, defaultColorMode);
+  const resolved = resolveCharset(options.charset, options.chars);
+  const mode = options.colorMode ?? "mono";
 
-/**
- * Everything a component needs to show a dithered image: lazy loading,
- * the cell grid and theme colours, and a cached renderer for any
- * coarseness. The renderer is `null` until all three are ready, and
- * changes identity when any of them, or the look, changes.
- */
-export const useAsciiSource = (
-  ref: RefObject<HTMLElement | null>,
-  src: string,
-  { palette, cell, minColumns, tone }: ResolvedLook
-) => {
-  const seen = useSeen(ref);
-  const { image, status } = useLoadedImage(src, seen);
-  const grid = useAsciiGrid(ref, cell, minColumns);
-  const colors = useAsciiColors(ref, palette);
-  const { method, contrast, brightness, invert, normalize, sharpen, fit } =
-    tone;
-
-  const render = useMemo<FrameRenderer | null>(() => {
-    if (!(image && grid && colors)) {
-      return null;
-    }
-    const sorted = byLuminance(colors);
-    const cache = new Map<number, AsciiFrame | null>();
-    return (factor) => {
-      const step = Math.max(1, Math.round(factor));
-      const cached = cache.get(step);
-      if (cached !== undefined) {
-        return cached;
+  const draw = (context: AsciiGridDrawContext) => {
+    if (status !== "ready" || !source) {
+      if (!placeholder) {
+        return;
       }
-      const target = coarsen(grid, step);
-      const pixels = renderDitheredImage(image, target, sorted, {
-        brightness,
-        contrast,
+      drawPlaceholder(
+        context,
+        status === "ready" ? "loading" : status,
+        message
+      );
+      return;
+    }
+    const root = rootRef.current;
+    const { columns, rows, metrics } = context;
+    const box = {
+      height: root?.clientHeight || rows * metrics.height,
+      width: root?.clientWidth || columns * metrics.width,
+    };
+    const [gx, gy] = resolved.grid;
+    const key = [
+      source.key,
+      columns,
+      rows,
+      gx,
+      gy,
+      metrics.width,
+      metrics.height,
+      box.width,
+      box.height,
+      fit,
+      focus[0],
+      focus[1],
+      mirror,
+      tone,
+      autoLevels,
+      paint.darkIsDense,
+    ].join("|");
+    let cache = cacheRef.current;
+    if (!cache || cache.key !== key || live) {
+      if (
+        !cache ||
+        cache.base.width !== columns * gx ||
+        cache.base.height !== rows * gy
+      ) {
+        cache = {
+          base: createToneField(columns, rows, resolved, { color: true }),
+          key,
+          work: createToneField(columns, rows, resolved, { color: true }),
+        };
+      }
+      cache.key = key;
+      sampleMedia(source, cache.base, {
+        aspect: (columns * metrics.width) / (rows * metrics.height),
+        charset: resolved,
+        columns,
+        darkIsDense: paint.darkIsDense,
         fit,
-        invert,
-        method,
-        normalize,
-        sharpen,
+        focus,
+        levels: autoLevels,
+        mirror,
+        rows,
+        tone,
       });
-      const frame = pixels ? { grid: target, pixels } : null;
-      cache.set(step, frame);
-      return frame;
+      cacheRef.current = cache;
+    }
+    const mediaContext: MediaDrawContext = {
+      ...context,
+      box,
+      charset: resolved,
     };
-  }, [
-    image,
-    grid,
-    colors,
-    method,
-    contrast,
-    brightness,
-    invert,
-    normalize,
-    sharpen,
-    fit,
-  ]);
-
-  return { image, render, status };
-};
-
-/**
- * The quiet dotted field shown while an image loads, so the box never
- * reads as empty.
- */
-export const LoadingField = ({
-  visible,
-  cell,
-}: {
-  visible: boolean;
-  cell: number;
-}) => (
-  <div
-    aria-hidden
-    className={cn(
-      "pointer-events-none absolute inset-0 transition-opacity duration-300 ease-(--ease-out) motion-reduce:transition-none",
-      visible ? "opacity-25" : "opacity-0"
-    )}
-    style={fillStyle("dotted", { cell: cell * 2, color: "grey" })}
-  />
-);
-
-// Coarseness of each frame of the first resolve, then full detail.
-const RESOLVE_STEPS = [16, 8, 4, 2, 1] as const;
-const RESOLVE_INTERVAL = 70;
-
-/**
- * Paints the image, resolving from coarse to fine the first time each
- * `src` appears. Later changes (palette, theme, size) repaint at once.
- */
-const useResolve = ({
-  canvasRef,
-  render,
-  src,
-  resolve,
-}: {
-  canvasRef: RefObject<HTMLCanvasElement | null>;
-  render: FrameRenderer | null;
-  src: string;
-  resolve: boolean;
-}) => {
-  const reducedMotion = usePrefersReducedMotion();
-  const resolvedRef = useRef<string | null>(null);
-  const [painted, setPainted] = useState(false);
-  const [resolving, setResolving] = useState(false);
-
-  useEffect(() => {
-    if (!render) {
-      return;
-    }
-    const steps =
-      resolve && !reducedMotion && resolvedRef.current !== src
-        ? RESOLVE_STEPS
-        : [1];
-    resolvedRef.current = src;
-    let index = 0;
-    paintFrame(canvasRef.current, render(steps[0] ?? 1));
-    setPainted(true);
-    if (steps.length === 1) {
-      return;
-    }
-    setResolving(true);
-    const timer = window.setInterval(() => {
-      index += 1;
-      paintFrame(canvasRef.current, render(steps[index] ?? 1));
-      if (index >= steps.length - 1) {
-        window.clearInterval(timer);
-        setResolving(false);
+    let field = cache.base;
+    if (shape) {
+      cache.work.tones.set(cache.base.tones);
+      if (cache.work.colors && cache.base.colors) {
+        cache.work.colors.set(cache.base.colors);
       }
-    }, RESOLVE_INTERVAL);
-    // An interrupted resolve stops here; the next run paints full detail.
-    return () => {
-      window.clearInterval(timer);
-      setResolving(false);
-    };
-  }, [render, src, resolve, reducedMotion, canvasRef]);
-
-  return { painted, resolving };
-};
-
-export type AsciiImageProps = Omit<ComponentProps<"div">, "children"> &
-  AsciiLook & {
-    /** Image URL. Cross-origin images need CORS headers. */
-    src: string;
-    /** Describes the image. Pass `""` for a decorative image. */
-    alt: string;
-    /**
-     * Width over height. Default: the image's own ratio, once it loads. A
-     * height set in `className` wins.
-     */
-    ratio?: number;
-    /**
-     * Resolve from coarse blocks to full detail when the image first
-     * appears. Off under reduced motion. Default `true`.
-     */
-    resolve?: boolean;
+      shape(cache.work, mediaContext);
+      field = cache.work;
+    }
+    mapTones(field, columns, rows, options, context.frame);
+    finish?.(context.frame, mediaContext);
   };
 
-/**
- * Any image, dithered on the CPU to a preset or your own palette. It
- * loads near the viewport, resolves from coarse to fine, redraws on resize
- * and theme change, and keeps its alt text for assistive technology.
- */
-export const AsciiImage = (allProps: AsciiImageProps) => {
-  const { look, rest } = splitLook(allProps);
-  const { src, alt, ratio, resolve = true, className, style, ...props } = rest;
-  const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { image, render, status } = useAsciiSource(rootRef, src, look);
-  const { painted, resolving } = useResolve({
-    canvasRef,
-    render,
-    resolve,
-    src,
-  });
+  const grid = (
+    <AsciiGrid
+      ref={rootRef}
+      draw={draw}
+      cell={cell}
+      ink={ink ?? paint.ink}
+      paper={paint.paper}
+      colored={mode !== "mono"}
+      animate={animate || live || (placeholder && status === "loading")}
+      fps={fps}
+      handle={handle}
+      data-status={status}
+      className={cn("size-full", look.fx ? "absolute inset-0" : className)}
+      {...(look.fx ? {} : rest)}
+    />
+  );
+  if (!look.fx) {
+    return grid;
+  }
+  // The CRT finish is a CSS layer over the canvas, so it needs a wrapper.
+  return (
+    <div className={cn("relative", className)} {...rest}>
+      {grid}
+      <CrtOverlay fx={look.fx} />
+    </div>
+  );
+};
 
-  const naturalRatio = image ? image.naturalWidth / image.naturalHeight : null;
-  const aspectRatio = ratio ?? naturalRatio ?? undefined;
-  const rootStyle: CSSProperties = { aspectRatio, ...style };
-  const state = status === "ready" && resolving ? "resolving" : status;
+/* -------------------------------------------------------------------------- */
+/* AsciiImage                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What the pointer does over the image.
+ * - `none`: nothing.
+ * - `spotlight`: glyphs thin out away from the pointer and run full
+ *   density under it, like a torch over the page.
+ * - `photo`: a soft window around the pointer shows the original photo.
+ */
+export const IMAGE_REVEALS = ["none", "spotlight", "photo"] as const;
+export type ImageReveal = (typeof IMAGE_REVEALS)[number];
+
+export interface AsciiImageProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
+  /** Image URL. Cross-origin files need CORS headers. */
+  src: string;
+  /** What the image shows, read by screen readers. `""` marks it decorative. */
+  alt: string;
+  /** How the image fills its box. Default `"cover"`. */
+  fit?: MediaFit;
+  /** Image position when it overflows, 0 to 1 per axis. Default centred. */
+  focus?: readonly [number, number];
+  /** Stretch the image's tones to use the whole ramp. Default `true`. */
+  autoLevels?: boolean;
+  /** Pointer effect. Default `"none"`. */
+  reveal?: ImageReveal;
+  /** Radius of the reveal in CSS pixels. Default 120. */
+  revealRadius?: number;
+  /** Glyphs resolve in from noise once the image loads. Default `true`. */
+  intro?: boolean;
+  /** Cell height in CSS pixels. Default 10. */
+  cell?: number;
+  /** `false` skips the intro and the loading sweep. Default `true`. */
+  animate?: boolean;
+  /** Passed to the image request. Default `"anonymous"`. */
+  crossOrigin?: ComponentProps<"img">["crossOrigin"];
+  /** Filled with a handle for export. */
+  handle?: RefObject<AsciiHandle | null>;
+}
+
+const INTRO_MS = 900;
+
+// What braille and quadrant cells flicker through while they resolve.
+const SCRAMBLE = [..."⠁⠂⠄⡀⠈⠐⠠⢀·:"];
+
+/** Hide cells that haven't resolved yet and scramble the ones resolving. */
+const resolveIn = (frame: MutableFrame, charset: Charset, progress: number) => {
+  const { glyphs, columns } = frame;
+  const ramp = charset.kind === "ramp" || charset.kind === "edge";
+  const pool = ramp ? charset.glyphs.slice(1) : SCRAMBLE;
+  for (let index = 0; index < glyphs.length; index += 1) {
+    const column = index % columns;
+    const row = (index - column) / columns;
+    // Cells resolve roughly top to bottom, in a ragged order.
+    const order = hash(column, row) * 0.7 + (row / frame.rows) * 0.3;
+    if (order > progress + 0.12) {
+      glyphs[index] = " ";
+    } else if (order > progress && glyphs[index] !== " ") {
+      glyphs[index] =
+        pool[Math.floor(hash(row + progress * 31, column) * pool.length)] ??
+        "·";
+    }
+  }
+};
+
+const smoothstep = (edge0: number, edge1: number, value: number) => {
+  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * An image redrawn in glyphs, sampled on the CPU: every glyph is the area
+ * average of the pixels under its cell. Charset and colour switch live.
+ */
+// oxlint-disable-next-line complexity -- each prop default counts as a branch.
+export const AsciiImage = (props: AsciiImageProps) => {
+  const [
+    look,
+    {
+      src,
+      alt,
+      fit = "cover",
+      focus,
+      autoLevels = true,
+      reveal = "none",
+      revealRadius = 120,
+      intro = true,
+      cell = 10,
+      animate = true,
+      crossOrigin = "anonymous",
+      handle,
+      className,
+      style,
+      ...rest
+    },
+  ] = splitLook(props);
+  const image = useLoadedImage(src, crossOrigin);
+  const reducedMotion = usePrefersReducedMotion();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const pointer = useRef({ eased: 0, inside: false, x: 0, y: 0 });
+  const intro0 = useRef({ at: 0, key: "" });
+  const [introRunning, setIntroRunning] = useState(false);
+  const playIntro = intro && animate && !reducedMotion;
+
+  // Keep the loop running for the length of the intro, then let it rest.
+  useEffect(() => {
+    if (image.status !== "ready" || !playIntro) {
+      setIntroRunning(false);
+      return;
+    }
+    setIntroRunning(true);
+    const timer = window.setTimeout(
+      () => setIntroRunning(false),
+      INTRO_MS + 120
+    );
+    return () => window.clearTimeout(timer);
+  }, [image.status, playIntro]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper || reveal === "none") {
+      return;
+    }
+    const move = (event: PointerEvent) => {
+      const box = wrapper.getBoundingClientRect();
+      pointer.current.x = event.clientX - box.left;
+      pointer.current.y = event.clientY - box.top;
+      pointer.current.inside = true;
+      wrapper.style.setProperty("--reveal-x", `${pointer.current.x}px`);
+      wrapper.style.setProperty("--reveal-y", `${pointer.current.y}px`);
+      wrapper.style.setProperty("--reveal-r", `${revealRadius}px`);
+    };
+    const leave = () => {
+      pointer.current.inside = false;
+      wrapper.style.setProperty("--reveal-r", "0px");
+    };
+    wrapper.addEventListener("pointermove", move, { passive: true });
+    wrapper.addEventListener("pointerdown", move, { passive: true });
+    wrapper.addEventListener("pointerleave", leave);
+    wrapper.addEventListener("pointercancel", leave);
+    return () => {
+      wrapper.removeEventListener("pointermove", move);
+      wrapper.removeEventListener("pointerdown", move);
+      wrapper.removeEventListener("pointerleave", leave);
+      wrapper.removeEventListener("pointercancel", leave);
+    };
+  }, [reveal, revealRadius]);
+
+  const spotlight = (field: ToneField, context: MediaDrawContext) => {
+    const state = pointer.current;
+    // Ease the light in and out instead of snapping when the pointer enters.
+    const target = state.inside ? 1 : 0;
+    const rate = context.delta > 0 ? Math.min(1, context.delta * 6) : 1;
+    state.eased += (target - state.eased) * rate;
+    if (state.eased < 0.01) {
+      return;
+    }
+    const [gx, gy] = context.charset.grid;
+    const sampleWidth = context.metrics.width / gx;
+    const sampleHeight = context.metrics.height / gy;
+    const floor = 1 - 0.75 * state.eased;
+    for (let y = 0; y < field.height; y += 1) {
+      const dy = (y + 0.5) * sampleHeight - state.y;
+      for (let x = 0; x < field.width; x += 1) {
+        const dx = (x + 0.5) * sampleWidth - state.x;
+        const light = smoothstep(
+          revealRadius,
+          revealRadius * 0.35,
+          Math.hypot(dx, dy)
+        );
+        const index = y * field.width + x;
+        field.tones[index] =
+          (field.tones[index] ?? 0) * (floor + (1 - floor) * light);
+      }
+    }
+  };
+
+  const finish = (frame: MutableFrame, context: MediaDrawContext) => {
+    if (!playIntro) {
+      return;
+    }
+    // The intro clock starts on the first frame drawn from this image.
+    if (intro0.current.key !== src) {
+      intro0.current = { at: performance.now(), key: src };
+    }
+    const progress = (performance.now() - intro0.current.at) / INTRO_MS;
+    if (progress < 1) {
+      resolveIn(frame, context.charset, progress * 1.12);
+    }
+  };
+
   const decorative = alt === "";
+  const showPhoto = reveal === "photo" && image.status === "ready";
 
   return (
     <div
-      {...props}
-      ref={rootRef}
+      ref={wrapperRef}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : alt}
       aria-hidden={decorative ? true : undefined}
-      aria-busy={status === "loading" || resolving ? true : undefined}
-      data-state={status === "ready" && !painted ? "loading" : state}
+      data-status={image.status}
       className={cn("relative overflow-hidden", className)}
-      style={rootStyle}
+      style={
+        {
+          "--reveal-r": "0px",
+          "--reveal-x": "50%",
+          "--reveal-y": "50%",
+          ...style,
+        } as CSSProperties
+      }
+      {...rest}
     >
-      <LoadingField visible={!painted} cell={look.cell} />
-      <canvas
-        ref={canvasRef}
-        aria-hidden
-        className={cn(
-          CANVAS_CLASS,
-          FADE_CLASS,
-          painted ? "opacity-100" : "opacity-0"
-        )}
+      {showPhoto ? (
+        // oxlint-disable-next-line nextjs/no-img-element -- the photo under the glyphs must match the sampled file exactly.
+        <img
+          src={src}
+          alt=""
+          crossOrigin={crossOrigin}
+          className="absolute inset-0 size-full"
+          style={{
+            objectFit: fit,
+            objectPosition: focus
+              ? `${focus[0] * 100}% ${focus[1] * 100}%`
+              : undefined,
+          }}
+        />
+      ) : null}
+      <AsciiMedia
+        {...look}
+        source={image.status === "ready" ? image.source : null}
+        status={image.status}
+        fit={fit}
+        focus={focus}
+        autoLevels={autoLevels}
+        cell={cell}
+        animate={
+          animate &&
+          (introRunning || reveal === "spotlight" || image.status === "loading")
+        }
+        shape={reveal === "spotlight" ? spotlight : undefined}
+        finish={finish}
+        handle={handle}
+        className="absolute inset-0"
+        style={
+          showPhoto
+            ? {
+                maskImage:
+                  "radial-gradient(circle at var(--reveal-x) var(--reveal-y), transparent calc(var(--reveal-r) * 0.5), black var(--reveal-r))",
+              }
+            : undefined
+        }
       />
     </div>
   );

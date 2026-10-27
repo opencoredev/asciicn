@@ -1,11 +1,10 @@
 ---
 title: "Scroll reveal image"
-description: "An image that sharpens from coarse dithered blocks to the full photo as you scroll it into view."
+description: "A photo that resolves from coarse blocks to fine Braille as it scrolls into view, then fades into the original."
 ---
 
 import ScrollRevealImageDemo from "@/examples/scroll-reveal-image-demo";
-import ScrollRevealImageStory from "@/examples/scroll-reveal-image-story";
-import ScrollRevealImageGallery from "@/examples/scroll-reveal-image-gallery";
+import ScrollRevealImageGlyphs from "@/examples/scroll-reveal-image-glyphs";
 import { controls as scrollRevealControls } from "@/examples/scroll-reveal-image-controls";
 
 <ComponentPreview
@@ -28,106 +27,103 @@ import { ScrollRevealImage } from "@/components/asciicn/scroll-reveal-image";
 export function Chapter() {
   return (
     <ScrollRevealImage
-      src="/photos/launch.jpg"
-      alt="The launch pad at dawn"
-      className="aspect-video w-full rounded-xl"
+      src="/photos/summit.jpg"
+      alt="The summit ridge at first light"
+      className="aspect-[3/2] w-full"
     />
   );
 }
 ```
 
-Progress follows the scroll position, not a timer. When the top of the image enters at the bottom of the viewport it is a few large blocks. It sharpens in nine steps to full dither detail, then the photo dissolves in cell by cell. It is finished when its top edge is 30% down the viewport. Scroll back and it runs in reverse.
+The image moves through `stages` as it travels up the screen. Each stage is a cell size and a charset. The default runs from 28px ANSI blocks through classic ramps to 7px Braille. Within a stage, glyphs grow from sparse to full before the next one takes over. With `to="photo"`, the original file fades in over the last part of the scroll.
 
-`start` and `finish` move those two points, as a share of the viewport height from the top. Inside a scrolling panel, pass the panel's ref as `scrollRoot`, as the demo above does.
+Scroll back up and it coarsens again. Progress is worked out from the image's position, not from time, so it always matches where the reader is.
+
+Set `charset` to keep one charset at every stage and only change the cell size. Inside a scrolling panel instead of the page, pass that panel as `scrollRoot`.
 
 ## Examples
 
-### In a long read
+### Ending on glyphs
 
-The image resolves as the reader reaches it. `finish={0.4}` completes it a little lower on the screen.
+Halftone dots, katakana, a dense ramp, then Braille, all through the orchid ramp. It never shows the photo.
 
-<ComponentPreview src="examples/scroll-reveal-image-story.tsx" size="lg">
-  <ScrollRevealImageStory />
-</ComponentPreview>
-
-### Ending on dither
-
-`end="dither"` stops at full dither detail and never shows the photo. A later `start` on the second image staggers the pair.
-
-<ComponentPreview src="examples/scroll-reveal-image-gallery.tsx" size="lg">
-  <ScrollRevealImageGallery />
+<ComponentPreview src="examples/scroll-reveal-image-glyphs.tsx" size="lg">
+  <ScrollRevealImageGlyphs />
 </ComponentPreview>
 
 ## Props
 
-Takes every look prop of [Dither image](/docs/images/ascii-image) (`preset`, `color`, `palette`, `method`, `cell`, `contrast`, `brightness`, `normalize`, `sharpen`, `invert`, `fit`), plus:
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies.
 
 <PropsTable
   rows={[
     {
       name: "src",
       type: "string",
-      description: "Image URL. Cross-origin images need CORS headers.",
-      required: true,
+      description: "Image URL. Files on another origin need CORS headers.",
     },
     {
       name: "alt",
       type: "string",
-      description: 'Describes the image. Pass "" when it is decorative.',
-      required: true,
+      description: "What the image shows, read by screen readers.",
     },
     {
-      name: "end",
-      type: '"photo" | "dither"',
+      name: "to",
+      type: '"photo" | "glyphs"',
       default: '"photo"',
-      description: "Finish on the original photo, or on the finest dither.",
+      description: "End on the original photo, or on the finest glyphs.",
     },
     {
-      name: "coarsest",
-      type: "number",
-      default: "24",
-      description: "How many cells wide the first blocks are.",
+      name: "stages",
+      type: "{ cell: number; charset: CharsetName }[]",
+      default: "blocks 28, standard 20, standard 14, braille 10, braille 7",
+      description: "Cell sizes and charsets, from first to last.",
     },
     {
-      name: "start",
+      name: "charset",
+      type: "CharsetName",
+      description: "One charset for every stage, replacing the stages' own.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "fit",
+      type: '"cover" | "contain" | "fill"',
+      default: '"cover"',
+      description: "How the image fills its box.",
+    },
+    {
+      name: "distance",
       type: "number",
-      default: "1",
+      default: "0.7",
       description:
-        "Where the image's top edge is when the reveal starts, 0 (top) to 1 (bottom of the viewport).",
-    },
-    {
-      name: "finish",
-      type: "number",
-      default: "0.3",
-      description: "Where the top edge is when the reveal finishes.",
+        "The share of the viewport the image travels while it resolves. At 0.7 it finishes when its top edge is 30% down the screen.",
     },
     {
       name: "scrollRoot",
-      type: "RefObject<HTMLElement | null>",
-      description: "The scrolling element, when it is not the page.",
-    },
-    {
-      name: "progress",
-      type: "number",
-      description:
-        "Set the progress yourself, 0 to 1, instead of following the scroll.",
+      type: "RefObject<Element | null>",
+      default: "the window",
+      description: "The scrolling element, when it isn't the page.",
     },
     {
       name: "onProgressChange",
       type: "(progress: number) => void",
-      description: "Called when the progress changes.",
+      description: "Called with the progress, 0 to 1, as it changes.",
     },
     {
-      name: "ratio",
-      type: "number",
-      default: "The image's ratio",
-      description: "Width over height.",
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
     },
   ]}
 />
 
 ## Notes
 
-- Under reduced motion the image is shown finished: the photo, or the fine dither with `end="dither"`.
-- The root has `role="img"` and your `alt` text as its label, so screen readers hear the image once, whatever stage it is at. `data-stage` is `coarse`, `fine` or `photo`.
-- Each coarseness is dithered once and cached, so scrolling back and forth costs nothing after the first pass. Scroll handling only runs while the image is near the viewport, at most once per frame.
+- With reduced motion, the image shows its last stage straight away, and the photo when `to="photo"`.
+- It draws only while the reader scrolls and rests in between. Each stage change measures a new grid, so keep `stages` to a handful.
+- The wrapper is announced as an image labelled with `alt`.

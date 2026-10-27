@@ -1,0 +1,182 @@
+---
+title: "ASCII video"
+description: "Video, a dropped file or the webcam sampled into glyphs at up to 60 fps, with audio-reactive contrast and jitter."
+---
+
+import AsciiVideoDemo from "@/examples/ascii-video-demo";
+import AsciiVideoFile from "@/examples/ascii-video-file";
+import AsciiVideoWebcam from "@/examples/ascii-video-webcam";
+import { controls as asciiVideoControls } from "@/examples/ascii-video-controls";
+
+<ComponentPreview
+  src="examples/ascii-video-demo.tsx"
+  size="lg"
+  controls={asciiVideoControls}
+>
+  <AsciiVideoDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-video" />
+
+## Usage
+
+```tsx
+import { AsciiVideo } from "@/components/asciicn/ascii-video";
+
+export function Reel() {
+  return (
+    <AsciiVideo
+      src="/media/reel.mp4"
+      alt="Our product reel"
+      charset="dense"
+      className="aspect-video w-full"
+    />
+  );
+}
+```
+
+Each frame is drawn into a small canvas at the size of the glyph grid and area-averaged into one tone and colour per sample. A 120 by 50 grid reads about 6,000 samples per frame, so sampling stays cheap even at 60 fps. `fps` caps how often a new frame is sampled; between samples nothing redraws.
+
+The video plays muted and inline, so browsers allow autoplay. Pause stops sampling and holds the last frame.
+
+`src` takes a URL or a `File` from an `<input type="file">` or a drop. Files on another origin need CORS headers, or the browser won't let the canvas read their pixels.
+
+### Camera
+
+The camera button (or `webcam`) swaps the video for the visitor's camera, mirrored like a selfie view. Browsers only offer the camera in a secure context: `https://` or `localhost`. On plain `http://`, such as a dev server reached by its LAN or Tailscale address, the box says so instead of failing silently. The camera turns off when the button is pressed again or the component unmounts.
+
+### Sound
+
+With `audioReactive`, a sound button appears. Turning it on unmutes the soundtrack (or opens the microphone, with the camera) and lets it move the glyphs. The bass raises contrast, the overall level lifts brightness and the treble shifts random rows sideways for a frame. `reactivity` scales all three.
+
+## Examples
+
+### Your own file
+
+Pick any video on your machine. It stays in the browser: nothing is uploaded.
+
+<ComponentPreview src="examples/ascii-video-file.tsx" size="lg">
+  <AsciiVideoFile />
+</ComponentPreview>
+
+### Camera in phosphor Braille
+
+Press the camera button. With sound on, the microphone drives the glyphs.
+
+<ComponentPreview src="examples/ascii-video-webcam.tsx" size="lg">
+  <AsciiVideoWebcam />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies.
+
+<PropsTable
+  rows={[
+    {
+      name: "src",
+      type: "string | Blob",
+      description: "A video URL, or a File the visitor picked.",
+    },
+    {
+      name: "alt",
+      type: "string",
+      description: "What the video shows, read by screen readers.",
+    },
+    {
+      name: "webcam",
+      type: "boolean",
+      default: "false",
+      description: "Start with the camera instead of src.",
+    },
+    {
+      name: "mirror",
+      type: "boolean",
+      default: "true for the camera, false for files",
+      description: "Flip left to right.",
+    },
+    {
+      name: "autoPlay",
+      type: "boolean",
+      default: "true",
+      description: "Play muted on load. Off under reduced motion.",
+    },
+    {
+      name: "controls",
+      type: "boolean",
+      default: "true",
+      description: "Show the play, camera and sound buttons.",
+    },
+    {
+      name: "audioReactive",
+      type: "boolean",
+      default: "false",
+      description:
+        "Add a sound button that lets audio drive contrast, brightness and row jitter.",
+    },
+    {
+      name: "audio",
+      type: '"track" | "mic"',
+      default: '"track", or "mic" with the camera',
+      description: "Where the sound comes from.",
+    },
+    {
+      name: "reactivity",
+      type: "number",
+      default: "0.6",
+      description: "How strongly sound moves the glyphs, 0 to 1.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the frames.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "fit",
+      type: '"cover" | "contain" | "fill"',
+      default: '"cover"',
+      description: "How the video fills its box.",
+    },
+    {
+      name: "autoLevels",
+      type: "boolean",
+      default: "false",
+      description:
+        "Stretch every frame's tones to the whole ramp. Helps dim webcams.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frames sampled per second, 12 to 60.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export, including video recording from the canvas.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The glyphs are labelled as an image with `alt`. The buttons sit outside that image, so screen readers reach them, and each says whether it is on.
+- Under reduced motion the video loads paused on its first frame. Play still works.
+- Sampling pauses when the video is offscreen or the tab is hidden; playback itself continues.
+- The sample clip is NASA footage of the Apollo 11 launch (public domain) with a synthesised rumble added for the sound demo.

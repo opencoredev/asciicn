@@ -1,22 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  ComponentProps,
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
-  RefObject,
-} from "react";
+import { useEffect, useRef } from "react";
+import type { ComponentProps, KeyboardEvent, RefObject } from "react";
 
 import { landCoverage } from "@/components/asciicn/world-land";
 import type { LatLon } from "@/components/asciicn/world-land";
 import {
-  thresholdAt,
+  AsciiGrid,
+  CrtOverlay,
+  createToneField,
+  hexToRgb,
+  mapTones,
+  PHOSPHORS,
+  RAMPS,
+  resolveCharset,
   useAsciiColors,
-  useFrameLoop,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
-import type { AsciiColor, DitherMatrix, Rgba } from "@/lib/ascii";
+import type {
+  AsciiColor,
+  AsciiGridDrawContext,
+  AsciiHandle,
+  AsciiLook,
+  MapOptions,
+  MutableFrame,
+  Rgb8,
+  ToneField,
+} from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
 export type { LatLon } from "@/components/asciicn/world-land";
@@ -37,10 +47,13 @@ export interface GlobeArc {
   color?: AsciiColor;
 }
 
-export type AsciiGlobeProps = Omit<ComponentProps<"div">, "children"> & {
-  /** Colour of the land and the atmosphere. Default `"ink"`. */
+export interface AsciiGlobeProps
+  extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
+  /** Land colour in truecolor. Default `"green"`. */
   color?: AsciiColor;
-  /** Colour of markers and arcs unless they set their own. Default `"orange"`. */
+  /** Sea and atmosphere colour in truecolor. Default `"blue"`. */
+  oceanColor?: AsciiColor;
+  /** Markers and arcs that don't set their own colour. Default `"orange"`. */
   accent?: AsciiColor;
   /** Locations to mark. Markers on the far side are hidden. */
   markers?: readonly GlobeMarker[];
@@ -52,639 +65,472 @@ export type AsciiGlobeProps = Omit<ComponentProps<"div">, "children"> & {
   start?: number;
   /** How far the north pole leans towards the viewer, in degrees. Default 18. */
   tilt?: number;
-  /** Where the light comes from, in degrees clockwise from the top. Default 300 (upper left). */
+  /** Where the sun is, in degrees clockwise from the top. Default 300 (upper left). */
   light?: number;
-  /** Brightness of the sea on the lit side, 0 to 1. Default 0.18. */
+  /** Brightness of the sea on the day side, 0 to 1. Default 0.3. */
   ocean?: number;
-  /** A thin dithered glow around the lit rim. Default true. */
+  /** A glow around the lit limb. Default `true`. */
   atmosphere?: boolean;
-  /** Let people drag sideways to spin the globe. Default true. */
+  /** Faint latitude and longitude lines every 30°. Default `false`. */
+  graticule?: boolean;
+  /** Drag or use the arrow keys to turn and tilt it; it coasts after a drag. Default `true`. */
   draggable?: boolean;
-  /** Size of one dither cell in CSS pixels. Default 2. */
+  /** Cell height in CSS pixels. Default 10. */
   cell?: number;
-  /** Threshold matrix. Default `"bayer4"`. */
-  matrix?: DitherMatrix;
-  /** Spin and pulse. false draws one still frame; reduced motion does the same. Default true. */
+  /** `false` holds one still frame. Default `true`. */
   animate?: boolean;
+  /** Filled with a handle for export. */
+  handle?: RefObject<AsciiHandle | null>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Look                                                                        */
+/* -------------------------------------------------------------------------- */
+
+const toBytes = ([r, g, b]: readonly number[]): Rgb8 => [
+  Math.round((r ?? 0) * 255),
+  Math.round((g ?? 0) * 255),
+  Math.round((b ?? 0) * 255),
+];
+
+const rampPaper = (ramp: AsciiLook["ramp"]): string => {
+  if (typeof ramp === "string") {
+    return (RAMPS[ramp as keyof typeof RAMPS] ?? RAMPS.mainframe)[0];
+  }
+  return ramp?.[0] ?? RAMPS.mainframe[0];
 };
 
+/**
+ * Braille and quadrants light a dot or leave it dark; blue-noise ordered
+ * dithering keeps soft shading as a stipple instead of one hard edge.
+ */
+const packedDither = (look: AsciiLook): "none" | "blue-noise" => {
+  const { kind } = resolveCharset(look.charset ?? "standard", look.chars);
+  return kind === "braille" || kind === "quadrants" ? "blue-noise" : "none";
+};
+
+/**
+ * On a light page, near-white glyphs vanish into the paper. Scale a
+ * colour down so its luma stays at or under `limit`; dark pages pass 1.
+ */
+const capLuma = (out: Float64Array, limit: number) => {
+  const value =
+    (0.2126 * (out[1] ?? 0) + 0.7152 * (out[2] ?? 0) + 0.0722 * (out[3] ?? 0)) /
+    255;
+  if (value > limit) {
+    const scale = limit / value;
+    out[1] = (out[1] ?? 0) * scale;
+    out[2] = (out[2] ?? 0) * scale;
+    out[3] = (out[3] ?? 0) * scale;
+  }
+};
+
+/** Ink, paper and map options for a look; phosphor and duotone bring their own glass. */
+const sceneLook = (
+  look: AsciiLook,
+  theme: readonly (readonly number[])[] | null
+) => {
+  const transparent = look.background === "transparent";
+  const themeInk = theme?.[0] ? toBytes(theme[0]) : ([230, 230, 230] as Rgb8);
+  const themePaper = theme?.[1] ? toBytes(theme[1]) : ([10, 10, 10] as Rgb8);
+  let ink: AsciiColor = "--ascii-ink";
+  let paper: AsciiColor = "--ascii-paper";
+  let palette: readonly Rgb8[] = [themePaper, themeInk];
+  if (look.colorMode === "duotone") {
+    paper = rampPaper(look.ramp);
+    palette = [hexToRgb(paper), themeInk];
+  } else if (look.phosphor && (look.colorMode ?? "mono") === "mono") {
+    const preset = PHOSPHORS[look.phosphor];
+    ({ ink } = preset);
+    ({ paper } = preset);
+    palette = [hexToRgb(preset.paper), hexToRgb(preset.ink)];
+  }
+  const options: MapOptions = {
+    ansi: look.ansi,
+    chars: look.chars,
+    charset: look.charset,
+    colorMode: look.colorMode,
+    dither: look.dither ?? packedDither(look),
+    edgeThreshold: look.edgeThreshold,
+    grade: look.grade,
+    invert: look.invert,
+    palette,
+    ramp: look.ramp,
+    threshold: look.threshold,
+  };
+  // Phosphor and duotone glass is dark, so only the theme paper can be light.
+  const lightPaper =
+    paper === "--ascii-paper" &&
+    (0.2126 * themePaper[0] + 0.7152 * themePaper[1] + 0.0722 * themePaper[2]) /
+      255 >
+      0.5;
+  return {
+    ink,
+    lumaLimit: lightPaper ? 0.5 : 1,
+    options,
+    paper: transparent ? ("transparent" as const) : paper,
+  };
+};
+
+/* -------------------------------------------------------------------------- */
+/* Turning                                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface Turn {
+  /** Longitude facing the viewer, in degrees. */
+  lon: number;
+  /** Tilt in degrees. */
+  tilt: number;
+  /** Extra spin from a drag, degrees per second, fading to 0. */
+  velocity: number;
+  dragging: boolean;
+}
+
+const MAX_TILT = 70;
+
+/** Horizontal drags spin, vertical drags tilt; a flick coasts and fades. */
+const useGlobeDrag = (
+  ref: RefObject<HTMLDivElement | null>,
+  turn: RefObject<Turn>,
+  enabled: boolean
+) => {
+  useEffect(() => {
+    const root = ref.current;
+    if (!(root && enabled)) {
+      return;
+    }
+    let last = { t: 0, x: 0, y: 0 };
+    const down = (event: PointerEvent) => {
+      turn.current.dragging = true;
+      turn.current.velocity = 0;
+      last = { t: event.timeStamp, x: event.clientX, y: event.clientY };
+      root.setPointerCapture(event.pointerId);
+    };
+    const move = (event: PointerEvent) => {
+      if (!turn.current.dragging) {
+        return;
+      }
+      // Degrees per pixel so the land stays roughly under the pointer.
+      const perPixel =
+        120 / Math.max(120, Math.min(root.clientWidth, root.clientHeight));
+      const dx = (event.clientX - last.x) * perPixel;
+      const dy = (event.clientY - last.y) * perPixel;
+      const dt = Math.max(1, event.timeStamp - last.t) / 1000;
+      turn.current.lon -= dx;
+      turn.current.tilt = Math.max(
+        -MAX_TILT,
+        Math.min(MAX_TILT, turn.current.tilt + dy)
+      );
+      turn.current.velocity = -dx / dt;
+      last = { t: event.timeStamp, x: event.clientX, y: event.clientY };
+    };
+    const up = () => {
+      turn.current.dragging = false;
+    };
+    root.addEventListener("pointerdown", down);
+    root.addEventListener("pointermove", move);
+    root.addEventListener("pointerup", up);
+    root.addEventListener("pointercancel", up);
+    return () => {
+      root.removeEventListener("pointerdown", down);
+      root.removeEventListener("pointermove", move);
+      root.removeEventListener("pointerup", up);
+      root.removeEventListener("pointercancel", up);
+    };
+  }, [ref, turn, enabled]);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Rendering                                                                   */
+/* -------------------------------------------------------------------------- */
+
 const RADIANS = Math.PI / 180;
-const RADIUS_SHARE = 0.42;
+// Globe radius as a share of half the box's shorter side; the rest is halo.
+const RADIUS_SHARE = 0.86;
+const HALO = 0.07;
+const PULSE = 2.4;
 
-type Vec3 = readonly [number, number, number];
+const clamp01 = (value: number) => (value > 0 ? Math.min(value, 1) : 0);
 
-interface Disc {
-  columns: number;
-  rows: number;
+const smoothstep = (edge0: number, edge1: number, value: number) => {
+  const t = clamp01((value - edge0) / (edge1 - edge0));
+  return t * t * (3 - 2 * t);
+};
+
+interface Colors {
+  land: Rgb8;
+  sea: Rgb8;
+  accent: Rgb8;
+}
+
+interface View {
+  /** Centre and radius in CSS pixels. */
   cx: number;
   cy: number;
   radius: number;
-  /** Pixel index, then the view-space normal, for every pixel on the sphere. */
-  sphere: Float32Array;
-  /** Pixel index and glow strength for the atmosphere ring. */
-  halo: Float32Array;
+  lon: number;
+  sinTilt: number;
+  cosTilt: number;
+  /** Sun direction and the half vector to the viewer, in view space (z towards the viewer). */
+  sun: readonly [number, number, number];
+  half: readonly [number, number, number];
 }
-
-const buildDisc = (columns: number, rows: number): Disc => {
-  const cx = columns / 2;
-  const cy = rows / 2;
-  const radius = Math.min(columns, rows) * RADIUS_SHARE;
-  const sphere: number[] = [];
-  const halo: number[] = [];
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < columns; x += 1) {
-      const nx = (x + 0.5 - cx) / radius;
-      const ny = (cy - y - 0.5) / radius;
-      const r2 = nx * nx + ny * ny;
-      if (r2 <= 1) {
-        sphere.push(y * columns + x, nx, ny, Math.sqrt(1 - r2));
-      } else if (r2 < 1.16) {
-        halo.push(y * columns + x, 1 - (Math.sqrt(r2) - 1) / 0.077);
-      }
-    }
-  }
-  return {
-    columns,
-    cx,
-    cy,
-    halo: Float32Array.from(halo),
-    radius,
-    rows,
-    sphere: Float32Array.from(sphere),
-  };
-};
-
-/** The globe's orientation, as sines and cosines worked out once a frame. */
-interface View {
-  cosS: number;
-  sinS: number;
-  cosT: number;
-  sinT: number;
-}
-
-/** `spin` turns about the axis, `tilt` leans it towards the viewer; radians. */
-const makeView = (spin: number, tilt: number): View => ({
-  cosS: Math.cos(spin),
-  cosT: Math.cos(tilt),
-  sinS: Math.sin(spin),
-  sinT: Math.sin(tilt),
-});
-
-/** View space to the globe's own frame: undo the tilt, then the spin. */
-const toWorld = ({ cosS, sinS, cosT, sinT }: View, [x, y, z]: Vec3): Vec3 => {
-  const y1 = y * cosT - z * sinT;
-  const z1 = y * sinT + z * cosT;
-  return [x * cosS + z1 * sinS, y1, -x * sinS + z1 * cosS];
-};
-
-/** The globe's frame to view space. */
-const toView = ({ cosS, sinS, cosT, sinT }: View, [x, y, z]: Vec3): Vec3 => {
-  const x1 = x * cosS - z * sinS;
-  const z1 = x * sinS + z * cosS;
-  return [x1, y * cosT + z1 * sinT, -y * sinT + z1 * cosT];
-};
-
-const fromLatLon = ([lat, lon]: LatLon): Vec3 => {
-  const phi = lat * RADIANS;
-  const lambda = lon * RADIANS;
-  return [
-    Math.cos(phi) * Math.sin(lambda),
-    Math.sin(phi),
-    Math.cos(phi) * Math.cos(lambda),
-  ];
-};
-
-const lightVector = (degrees: number): Vec3 => {
-  const angle = degrees * RADIANS;
-  const x = Math.sin(angle) * 0.75;
-  const y = Math.cos(angle) * 0.75;
-  const length = Math.hypot(x, y, 0.62);
-  return [x / length, y / length, 0.62 / length];
-};
 
 interface Paint {
-  land: Rgba;
-  accent: Rgba;
-  extra: ReadonlyMap<AsciiColor, Rgba>;
-}
-
-interface Scene {
-  disc: Disc;
-  view: View;
-  light: Vec3;
   ocean: number;
-  matrix: DitherMatrix;
-  paint: Paint;
+  atmosphere: boolean;
+  graticule: boolean;
+  colors: Colors;
 }
 
-const put = (data: Uint8ClampedArray, index: number, [r, g, b, a]: Rgba) => {
-  const at = index * 4;
-  data[at] = r * 255;
-  data[at + 1] = g * 255;
-  data[at + 2] = b * 255;
-  data[at + 3] = a * 255;
-};
-
-const surfaceTone = (scene: Scene, normal: Vec3) => {
-  const { view, light, ocean } = scene;
-  const lit =
-    normal[0] * light[0] + normal[1] * light[1] + normal[2] * light[2];
-  // Lambert light with a short soft edge past the terminator.
-  const shade = Math.min(1, Math.max(0, (lit + 0.08) / 1.08));
-  const [wx, wy, wz] = toWorld(view, normal);
-  const lat = Math.asin(Math.max(-1, Math.min(1, wy))) / RADIANS;
-  const lon = Math.atan2(wx, wz) / RADIANS;
-  if (landCoverage(lat, lon) >= 0.5) {
-    return 0.07 + 0.93 * shade;
-  }
-  const rim = (1 - normal[2]) ** 3;
-  return shade * (ocean * (0.5 + rim) + rim * 0.1);
-};
-
-/** Land, sea and terminator: one dithered tone per pixel of the sphere. */
-const paintSphere = (image: ImageData, scene: Scene) => {
-  const { disc, matrix, paint } = scene;
-  const { sphere, columns } = disc;
-  for (let i = 0; i < sphere.length; i += 4) {
-    const index = sphere[i] ?? 0;
-    const tone = surfaceTone(scene, [
-      sphere[i + 1] ?? 0,
-      sphere[i + 2] ?? 0,
-      sphere[i + 3] ?? 0,
-    ]);
-    const x = index % columns;
-    if (tone > thresholdAt(matrix, x, (index - x) / columns)) {
-      put(image.data, index, paint.land);
+/** Tone and colour of one sample at (u, v), in globe radii from the centre, y up. */
+const shadeGlobe = (
+  view: View,
+  paint: Paint,
+  u: number,
+  v: number,
+  out: Float64Array
+) => {
+  const r2 = u * u + v * v;
+  const [lx, ly, lz] = view.sun;
+  const { land: landRgb, sea } = paint.colors;
+  out[0] = 0;
+  if (r2 > 1) {
+    if (!paint.atmosphere) {
+      return;
     }
+    const r = Math.sqrt(r2);
+    if (r > 1 + HALO * 2.5) {
+      return;
+    }
+    const lit = smoothstep(-0.35, 0.7, (u * lx + v * ly) / r);
+    const glow = Math.exp(-(r - 1) / HALO) * (0.12 + 0.88 * lit);
+    out[0] = glow * 0.5;
+    [out[1], out[2], out[3]] = sea;
+    return;
   }
-};
+  const z = Math.sqrt(1 - r2);
+  // View normal (u, v, z) back into the globe's own frame.
+  const gy = v * view.cosTilt + z * view.sinTilt;
+  const gz = -v * view.sinTilt + z * view.cosTilt;
+  const lat = Math.asin(Math.max(-1, Math.min(1, gy))) / RADIANS;
+  const lon = view.lon + Math.atan2(u, gz) / RADIANS;
+  const land = smoothstep(0.3, 0.7, landCoverage(lat, lon));
 
-/** A thin glow around the sphere, strongest towards the light. */
-const paintAtmosphere = (image: ImageData, scene: Scene) => {
-  const { disc, light, matrix, paint } = scene;
-  const { halo, columns, cx, cy, radius } = disc;
-  for (let i = 0; i < halo.length; i += 2) {
-    const index = halo[i] ?? 0;
-    const x = index % columns;
-    const y = (index - x) / columns;
-    const nx = (x + 0.5 - cx) / radius;
-    const ny = (cy - y - 0.5) / radius;
-    const facing = Math.max(
-      0,
-      (nx * light[0] + ny * light[1]) / Math.hypot(nx, ny)
+  const light = u * lx + v * ly + z * lz;
+  const day = smoothstep(-0.12, 0.22, light);
+  const lit = Math.max(0, light);
+  const [hx, hy, hz] = view.half;
+  const glint = Math.max(0, u * hx + v * hy + z * hz) ** 70 * (1 - land) * day;
+  // Thicker air at the limb lifts the lit edge.
+  const limb = (1 - z) ** 3 * day;
+
+  const ice = smoothstep(68, 78, Math.abs(lat)) * land;
+  let landTone = day * (0.34 + 0.62 * lit ** 0.8) + (1 - day) * 0.09;
+  landTone += ice * 0.15 * day;
+  const seaTone = day * paint.ocean * (0.35 + 0.65 * lit) + (1 - day) * 0.015;
+  let tone = land * landTone + (1 - land) * seaTone + glint * 0.9 + limb * 0.35;
+
+  let grid = 0;
+  if (paint.graticule) {
+    const latLine = Math.abs(((lat + 90) % 30) - 15) > 14.2 ? 1 : 0;
+    const lonLine =
+      Math.abs((((lon % 30) + 30) % 30) - 15) >
+      15 - 0.8 / Math.max(0.15, Math.cos(lat * RADIANS))
+        ? 1
+        : 0;
+    grid = Math.max(latLine, lonLine) * (1 - land) * 0.16;
+    tone = Math.max(tone, grid);
+  }
+  out[0] = clamp01(tone);
+
+  // Colour: land and sea by daylight, ice towards white, glints and limb light.
+  const shadeLand = 0.25 + 0.9 * day * (0.4 + 0.6 * lit);
+  const shadeSea = 0.18 + 0.75 * day * (0.35 + 0.65 * lit);
+  const mixIce = ice * 0.8;
+  for (let channel = 0; channel < 3; channel += 1) {
+    const landChannel =
+      ((landRgb[channel] ?? 0) * (1 - mixIce) + 235 * mixIce) * shadeLand;
+    const seaChannel = (sea[channel] ?? 0) * shadeSea;
+    out[channel + 1] = Math.min(
+      255,
+      land * landChannel +
+        (1 - land) * seaChannel +
+        glint * 255 +
+        limb * (sea[channel] ?? 0) * 0.6 +
+        grid * (sea[channel] ?? 0)
     );
-    const tone = (halo[i + 1] ?? 0) ** 2 * (0.12 + 0.5 * facing);
-    if (tone > thresholdAt(matrix, x, y)) {
-      put(image.data, index, paint.land);
-    }
   }
 };
 
-interface Projected {
-  x: number;
-  y: number;
-  /** Depth towards the viewer, -1 to 1 on the surface. */
-  z: number;
-  /** In front of the globe, or beside it where the globe can't hide it. */
-  visible: boolean;
-}
-
-const projectPoint = (disc: Disc, view: View, point: Vec3): Projected => {
-  const [x, y, z] = toView(view, point);
-  return {
-    visible: z > 0 || x * x + y * y > 1,
-    x: disc.cx + x * disc.radius,
-    y: disc.cy - y * disc.radius,
-    z,
-  };
-};
-
-const rgba = (color: Rgba) =>
-  `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
-
-const fillCell = (
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  size = 1
-) => {
-  const offset = Math.floor(size / 2);
-  context.fillRect(Math.round(x) - offset, Math.round(y) - offset, size, size);
-};
-
-const PULSE = 2.6;
-
-const paintMarker = (
-  context: CanvasRenderingContext2D,
-  scene: Scene,
-  point: Projected,
-  phase: number
-) => {
-  // An expanding ring of dithered cells that fades as it grows.
-  const ring = 2 + phase * Math.max(6, scene.disc.radius * 0.1);
-  const fade = (1 - phase) ** 1.5;
-  const steps = Math.ceil(ring * 6);
-  for (let s = 0; s < steps; s += 1) {
-    const angle = (s / steps) * Math.PI * 2;
-    const x = Math.round(point.x + Math.cos(angle) * ring);
-    // Flattened by depth, so rings near the limb lie on the surface.
-    const y = Math.round(point.y + Math.sin(angle) * ring * point.z);
-    if (fade > thresholdAt(scene.matrix, x, y)) {
-      fillCell(context, x, y);
-    }
-  }
-  fillCell(context, point.x, point.y, 3);
-};
-
-const paintMarkers = (
-  context: CanvasRenderingContext2D,
-  scene: Scene,
-  markers: readonly GlobeMarker[],
-  time: number
-) => {
-  const { disc, view, paint } = scene;
-  for (const [index, marker] of markers.entries()) {
-    const point = projectPoint(disc, view, fromLatLon(marker.at));
-    if (point.z > 0.05) {
-      context.fillStyle = rgba(
-        (marker.color && paint.extra.get(marker.color)) || paint.accent
-      );
-      paintMarker(context, scene, point, (time / PULSE + index * 0.37) % 1);
-    }
-  }
-};
-
-/** A point on the great circle from `a` to `b`, lifted in the middle. */
-const arcPoint = (a: Vec3, b: Vec3, angle: number, s: number): Vec3 => {
-  const sin = Math.sin(angle) || 1;
-  const wa = Math.sin((1 - s) * angle) / sin;
-  const wb = Math.sin(s * angle) / sin;
-  const lift = 1 + Math.sin(Math.PI * s) * (0.06 + angle * 0.1);
+/** A point at `lat`, `lon`, lifted to `height` radii, in view space. */
+const project = (
+  view: View,
+  [lat, lon]: LatLon,
+  height = 1
+): readonly [number, number, number] => {
+  const phi = lat * RADIANS;
+  const lambda = (lon - view.lon) * RADIANS;
+  const x = Math.cos(phi) * Math.sin(lambda) * height;
+  const y = Math.sin(phi) * height;
+  const z = Math.cos(phi) * Math.cos(lambda) * height;
   return [
-    (a[0] * wa + b[0] * wb) * lift,
-    (a[1] * wa + b[1] * wb) * lift,
-    (a[2] * wa + b[2] * wb) * lift,
+    x,
+    y * view.cosTilt - z * view.sinTilt,
+    y * view.sinTilt + z * view.cosTilt,
   ];
 };
 
-const paintArcs = (
-  context: CanvasRenderingContext2D,
-  scene: Scene,
+/** Hidden by the globe: behind it and inside its disc. */
+const occluded = ([x, y, z]: readonly [number, number, number]) =>
+  z < 0 && x * x + y * y < 1;
+
+const toUnit = ([lat, lon]: LatLon): readonly [number, number, number] => [
+  Math.cos(lat * RADIANS) * Math.cos(lon * RADIANS),
+  Math.cos(lat * RADIANS) * Math.sin(lon * RADIANS),
+  Math.sin(lat * RADIANS),
+];
+
+/** A point `t` of the way along the great circle from `a` to `b`. */
+const slerp = (a: LatLon, b: LatLon, t: number): LatLon => {
+  const p = toUnit(a);
+  const q = toUnit(b);
+  const dot = Math.max(
+    -1,
+    Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2])
+  );
+  const omega = Math.acos(dot);
+  if (omega < 1e-6) {
+    return a;
+  }
+  const sin = Math.sin(omega);
+  const wa = Math.sin((1 - t) * omega) / sin;
+  const wb = Math.sin(t * omega) / sin;
+  const x = p[0] * wa + q[0] * wb;
+  const y = p[1] * wa + q[1] * wb;
+  const z = p[2] * wa + q[2] * wb;
+  return [
+    Math.atan2(z, Math.hypot(x, y)) / RADIANS,
+    Math.atan2(y, x) / RADIANS,
+  ];
+};
+
+interface Overlay {
+  frame: MutableFrame;
+  view: View;
+  cellWidth: number;
+  cellHeight: number;
+}
+
+const plot = (
+  { frame, view, cellWidth, cellHeight }: Overlay,
+  point: readonly [number, number, number],
+  glyph: string,
+  rgb: Rgb8
+) => {
+  const x = view.cx + point[0] * view.radius;
+  const y = view.cy - point[1] * view.radius;
+  frame.put(Math.floor(x / cellWidth), Math.floor(y / cellHeight), glyph, rgb);
+};
+
+const ARC_POINTS = 56;
+
+const drawArcs = (
+  overlay: Overlay,
   arcs: readonly GlobeArc[],
+  colorOf: (color: AsciiColor | undefined) => Rgb8,
   time: number
 ) => {
-  const { disc, view, paint } = scene;
   for (const [index, arc] of arcs.entries()) {
-    const a = fromLatLon(arc.from);
-    const b = fromLatLon(arc.to);
-    const angle = Math.acos(
-      Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
+    const rgb = colorOf(arc.color);
+    const [ax, ay, az] = toUnit(arc.from);
+    const [bx, by, bz] = toUnit(arc.to);
+    // Longer arcs fly higher.
+    const span = Math.acos(
+      Math.max(-1, Math.min(1, ax * bx + ay * by + az * bz))
     );
-    context.fillStyle = rgba(
-      (arc.color && paint.extra.get(arc.color)) || paint.accent
-    );
-    const steps = Math.max(12, Math.ceil(angle * disc.radius * 1.3));
-    // A bright stretch travels along each arc; the rest is dotted.
-    const head = (time / 3.2 + index * 0.41) % 1.5;
-    for (let s = 0; s <= steps; s += 1) {
-      const t = s / steps;
-      const point = projectPoint(disc, view, arcPoint(a, b, angle, t));
-      const lit = t <= head && t > head - 0.25;
-      if (point.visible && (lit || s % 3 === 0)) {
-        fillCell(context, point.x, point.y);
+    const lift = 0.06 + 0.22 * (span / Math.PI);
+    const head = (time * 0.35 + index * 0.29) % 1.4;
+    for (let step = 0; step <= ARC_POINTS; step += 1) {
+      const t = step / ARC_POINTS;
+      const point = project(
+        overlay.view,
+        slerp(arc.from, arc.to, t),
+        1 + lift * Math.sin(Math.PI * t)
+      );
+      if (occluded(point)) {
+        continue;
       }
+      const near = head - t;
+      let glyph = "·";
+      if (near >= 0 && near < 0.05) {
+        glyph = "•";
+      } else if (near >= 0.05 && near < 0.14) {
+        glyph = "∙";
+      } else if (step % 2 === 1) {
+        continue;
+      }
+      plot(overlay, point, glyph, rgb);
     }
   }
 };
 
-interface CanvasSize {
-  columns: number;
-  rows: number;
-}
-
-const useCanvasSize = (
-  wrapper: RefObject<HTMLDivElement | null>,
-  cell: number
+const drawMarkers = (
+  overlay: Overlay,
+  markers: readonly GlobeMarker[],
+  colorOf: (color: AsciiColor | undefined) => Rgb8,
+  time: number
 ) => {
-  const [size, setSize] = useState<CanvasSize | null>(null);
-  useEffect(() => {
-    const element = wrapper.current;
-    if (!element) {
-      return;
+  const { view, cellWidth } = overlay;
+  for (const [index, marker] of markers.entries()) {
+    const point = project(view, marker.at);
+    if (point[2] <= 0.02) {
+      continue;
     }
-    const observer = new ResizeObserver(([entry]) => {
-      const box = entry?.contentRect;
-      if (box) {
-        setSize({
-          columns: Math.max(8, Math.floor(box.width / cell)),
-          rows: Math.max(8, Math.floor(box.height / cell)),
-        });
+    const rgb = colorOf(marker.color);
+    // A ring of dots that grows and fades, flattened towards the limb.
+    const phase = (time / PULSE + index * 0.37) % 1;
+    const ring = (phase * 3.2 * cellWidth) / view.radius;
+    if (phase < 0.8) {
+      const dots = 14;
+      for (let dot = 0; dot < dots; dot += 1) {
+        const angle = (dot / dots) * Math.PI * 2;
+        plot(
+          overlay,
+          [
+            point[0] + Math.cos(angle) * ring * point[2],
+            point[1] + Math.sin(angle) * ring,
+            point[2],
+          ],
+          phase < 0.45 ? "∙" : "·",
+          rgb
+        );
       }
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [wrapper, cell]);
-  return size;
+    }
+    plot(overlay, point, "●", rgb);
+  }
 };
 
-/** Steepest the globe can be tilted by hand, in degrees either way. */
-const TILT_LIMIT = 60;
-/** Touch travel in px before a gesture counts as a drag or a scroll. */
-const TOUCH_SLOP = 8;
-/** How quickly a fling slows, per second. */
-const FRICTION = 3.5;
-/** Fastest fling, in degrees per second. */
-const MAX_FLING = 600;
-/** How quickly the idle spin comes back after a drag, per second. */
-const IDLE_RETURN = 1.2;
-/** Degrees one arrow key press turns the globe. */
-const KEY_SPIN = 20;
-const KEY_TILT = 10;
-/** Arrow keys turn the globe the way a drag in that direction would. */
-const KEY_STEPS: ReadonlyMap<string, Turn> = new Map([
-  ["ArrowDown", { spin: 0, tilt: KEY_TILT }],
-  ["ArrowLeft", { spin: KEY_SPIN, tilt: 0 }],
-  ["ArrowRight", { spin: -KEY_SPIN, tilt: 0 }],
-  ["ArrowUp", { spin: 0, tilt: -KEY_TILT }],
-]);
-/** A pointer that rested this long before release doesn't fling. */
-const FLING_WINDOW = 80;
-
-type Gesture =
-  | { kind: "none" }
-  /** A touch that hasn't moved far enough to say if it's a drag or a scroll. */
-  | { kind: "pending"; pointerId: number; x: number; y: number }
-  | {
-      kind: "dragging";
-      pointerId: number;
-      x: number;
-      y: number;
-      /** `event.timeStamp` of the last move, for the fling. */
-      time: number;
-    };
-
-/** How far the globe has been turned, in degrees, on top of `start` and `tilt`. */
-interface Turn {
-  spin: number;
-  tilt: number;
-}
-
-interface GlobeTurnOptions {
-  /** Base tilt from props, so the total stays inside the limit. */
-  tilt: number;
-  /** Fling and ease back into the idle spin, or follow the pointer only. */
-  moving: boolean;
-  /** Degrees per CSS pixel that keep the surface under the pointer. */
-  degreesPerPixel: () => number;
-  /** Paint now, for still globes and between frames while dragging. */
-  redraw: () => void;
-}
-
-interface GlobeTurn {
-  /** Move the idle spin and any fling on by `delta` seconds. */
-  advance: (delta: number, speed: number) => Turn;
-  handlers: Pick<
-    ComponentProps<"div">,
-    | "onKeyDown"
-    | "onLostPointerCapture"
-    | "onPointerCancel"
-    | "onPointerDown"
-    | "onPointerMove"
-    | "onPointerUp"
-  >;
-}
-
-const clampTilt = (base: number, extra: number) => {
-  const low = Math.min(-TILT_LIMIT, base);
-  const high = Math.max(TILT_LIMIT, base);
-  return Math.min(high, Math.max(low, base + extra)) - base;
-};
-
-const clampFling = (velocity: number) =>
-  Math.max(-MAX_FLING, Math.min(MAX_FLING, velocity));
-
-/**
- * Drag, fling and arrow keys for the globe. Dragging sideways turns it about
- * its axis and up or down tilts it, with the surface kept under the pointer.
- * On touch, a gesture that starts mostly vertical is left to the page so it
- * scrolls. The idle spin stops while dragging and eases back afterwards.
- */
-const useGlobeTurn = ({
-  tilt,
-  moving,
-  degreesPerPixel,
-  redraw,
-}: GlobeTurnOptions): GlobeTurn => {
-  const turn = useRef<Turn>({ spin: 0, tilt: 0 });
-  const fling = useRef<Turn>({ spin: 0, tilt: 0 });
-  const idle = useRef(1);
-  const gesture = useRef<Gesture>({ kind: "none" });
-  // Pointers down on the globe; a second one means a pinch, never a drag.
-  const pointers = useRef(new Set<number>());
-
-  const turnBy = (spin: number, lean: number) => {
-    turn.current.spin += spin;
-    turn.current.tilt = clampTilt(tilt, turn.current.tilt + lean);
-  };
-
-  const advance = (delta: number, speed: number): Turn => {
-    if (gesture.current.kind === "dragging") {
-      idle.current = 0;
-      return turn.current;
-    }
-    const decay = Math.exp(-delta * FRICTION);
-    const before = turn.current.tilt;
-    turnBy(
-      (fling.current.spin * (1 - decay)) / FRICTION,
-      (fling.current.tilt * (1 - decay)) / FRICTION
-    );
-    // A fling that ran into the tilt limit stops there.
-    if (turn.current.tilt === before) {
-      fling.current.tilt = 0;
-    }
-    fling.current.spin *= decay;
-    fling.current.tilt *= decay;
-    idle.current += (1 - idle.current) * (1 - Math.exp(-delta * IDLE_RETURN));
-    turn.current.spin += speed * idle.current * delta;
-    return turn.current;
-  };
-
-  /** Drop the gesture without a fling. */
-  const cancel = (element: HTMLDivElement) => {
-    const { current } = gesture;
-    if (
-      current.kind === "dragging" &&
-      element.hasPointerCapture(current.pointerId)
-    ) {
-      element.releasePointerCapture(current.pointerId);
-    }
-    gesture.current = { kind: "none" };
-    fling.current = { spin: 0, tilt: 0 };
-    delete element.dataset.dragging;
-  };
-
-  const end = (
-    event: ReactPointerEvent<HTMLDivElement>,
-    flingAway: boolean
-  ) => {
-    pointers.current.delete(event.pointerId);
-    const { current } = gesture;
-    if (current.kind === "none" || current.pointerId !== event.pointerId) {
-      return;
-    }
-    const resting =
-      current.kind !== "dragging" ||
-      event.timeStamp - current.time > FLING_WINDOW;
-    if (!(flingAway && moving) || resting) {
-      fling.current = { spin: 0, tilt: 0 };
-    }
-    gesture.current = { kind: "none" };
-    delete event.currentTarget.dataset.dragging;
-  };
-
-  const startDrag = (
-    event: ReactPointerEvent<HTMLDivElement>,
-    x: number,
-    y: number
-  ) => {
-    gesture.current = {
-      kind: "dragging",
-      pointerId: event.pointerId,
-      time: event.timeStamp,
-      x,
-      y,
-    };
-    fling.current = { spin: 0, tilt: 0 };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    event.currentTarget.dataset.dragging = "";
-  };
-
-  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    // The first pointer of a new touch or click: nothing else is down.
-    if (event.isPrimary) {
-      pointers.current.clear();
-    }
-    pointers.current.add(event.pointerId);
-    if (pointers.current.size > 1) {
-      cancel(event.currentTarget);
-      return;
-    }
-    if (gesture.current.kind !== "none" || event.button !== 0) {
-      return;
-    }
-    if (event.pointerType === "touch") {
-      gesture.current = {
-        kind: "pending",
-        pointerId: event.pointerId,
-        x: event.clientX,
-        y: event.clientY,
-      };
-      return;
-    }
-    // Keep a mouse drag from selecting text around the globe.
-    event.preventDefault();
-    startDrag(event, event.clientX, event.clientY);
-  };
-
-  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const { current } = gesture;
-    if (current.kind === "none" || current.pointerId !== event.pointerId) {
-      return;
-    }
-    if (current.kind === "pending") {
-      const dx = event.clientX - current.x;
-      const dy = event.clientY - current.y;
-      if (Math.hypot(dx, dy) < TOUCH_SLOP) {
-        return;
-      }
-      if (Math.abs(dy) >= Math.abs(dx)) {
-        // A scroll: the browser takes it and cancels this pointer.
-        gesture.current = { kind: "none" };
-        return;
-      }
-      if (pointers.current.size > 1) {
-        return;
-      }
-      startDrag(event, current.x, current.y);
-    }
-    const dragging = gesture.current;
-    if (dragging.kind !== "dragging") {
-      return;
-    }
-    const scale = degreesPerPixel();
-    const spin = -(event.clientX - dragging.x) * scale;
-    const lean = (event.clientY - dragging.y) * scale;
-    const seconds = Math.max((event.timeStamp - dragging.time) / 1000, 1 / 240);
-    // Smoothed so one uneven event doesn't decide the fling.
-    fling.current = {
-      spin: clampFling(fling.current.spin * 0.3 + (spin / seconds) * 0.7),
-      tilt: clampFling(fling.current.tilt * 0.3 + (lean / seconds) * 0.7),
-    };
-    turnBy(spin, lean);
-    gesture.current = {
-      ...dragging,
-      time: event.timeStamp,
-      x: event.clientX,
-      y: event.clientY,
-    };
-    redraw();
-  };
-
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const step = KEY_STEPS.get(event.key);
-    if (!step || event.altKey || event.ctrlKey || event.metaKey) {
-      return;
-    }
-    event.preventDefault();
-    if (moving) {
-      // A fling that covers exactly one step, so held keys glide.
-      fling.current = {
-        spin: step.spin ? step.spin * FRICTION : fling.current.spin,
-        tilt: step.tilt ? step.tilt * FRICTION : fling.current.tilt,
-      };
-    } else {
-      turnBy(step.spin, step.tilt);
-      redraw();
-    }
-  };
-
-  return {
-    advance,
-    handlers: {
-      onKeyDown,
-      // Capture can go without a pointerup (an alert, a removed node):
-      // stop where it is. The pointer itself may still be down. Taking
-      // capture from the canvas, where a touch lands, fires this on the
-      // canvas too; that one isn't ours to act on.
-      onLostPointerCapture: (event) => {
-        if (
-          event.target === event.currentTarget &&
-          gesture.current.kind !== "none" &&
-          gesture.current.pointerId === event.pointerId
-        ) {
-          cancel(event.currentTarget);
-        }
-      },
-      onPointerCancel: (event) => end(event, false),
-      onPointerDown,
-      onPointerMove,
-      onPointerUp: (event) => end(event, true),
-    },
-  };
+const KEYS: Partial<Record<string, readonly [number, number]>> = {
+  ArrowDown: [0, -6],
+  ArrowLeft: [8, 0],
+  ArrowRight: [-8, 0],
+  ArrowUp: [0, 6],
 };
 
 const NO_MARKERS: readonly GlobeMarker[] = [];
 const NO_ARCS: readonly GlobeArc[] = [];
 
 /**
- * A rotating dithered globe: land from a built-in mask, a lit terminator
- * and a thin atmosphere, with optional pulsing markers and arcs between
- * places. Drawn on a small 2D canvas at ascii-cell resolution, so it uses
- * no WebGL context. The globe stays round and centred in its box: size the
- * box with `className` (for example `aspect-square w-full`).
+ * A lit, rotating planet in glyphs, drawn on the CPU: every sample casts
+ * a ray at the sphere and reads land from the `world-land` mask. The sun
+ * draws a soft terminator, the night side keeps a faint outline of the
+ * land, the sea catches a specular glint, and the lit limb glows.
  */
+// oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const AsciiGlobe = ({
-  color = "ink",
+  color = "green",
+  oceanColor = "blue",
   accent = "orange",
   markers = NO_MARKERS,
   arcs = NO_ARCS,
@@ -692,147 +538,215 @@ export const AsciiGlobe = ({
   start = 10,
   tilt = 18,
   light = 300,
-  ocean = 0.18,
+  ocean = 0.3,
   atmosphere = true,
+  graticule = false,
   draggable = true,
-  cell = 2,
-  matrix = "bayer4",
+  cell = 10,
   animate = true,
+  handle,
+  charset = "braille",
+  chars,
+  colorMode = "truecolor",
+  phosphor,
+  ramp,
+  ansi,
+  grade,
+  invert,
+  threshold,
+  edgeThreshold,
+  dither,
+  background,
+  fx,
   className,
+  "aria-label": ariaLabel,
   ...props
 }: AsciiGlobeProps) => {
-  const wrapper = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const cellSize = Math.max(1, cell);
-  const size = useCanvasSize(wrapper, cellSize);
-  const extraNames = [
-    ...new Set(
-      [...markers, ...arcs].flatMap((item) =>
-        item.color === undefined ? [] : [item.color]
-      )
-    ),
+  const rootRef = useRef<HTMLDivElement>(null);
+  const markerColors = [
+    ...new Set([...markers, ...arcs].map((item) => item.color ?? accent)),
   ];
-  const colors = useAsciiColors(wrapper, [color, accent, ...extraNames]);
+  const theme = useAsciiColors(rootRef, [
+    "--ascii-ink",
+    "--ascii-paper",
+    color,
+    oceanColor,
+    accent,
+    ...markerColors,
+  ]);
   const reducedMotion = usePrefersReducedMotion();
-  const clock = useRef(0);
-  const disc = useRef<Disc | null>(null);
-  // Reused across frames; reallocated only when the cell grid changes size.
-  const frame = useRef<ImageData | null>(null);
-  const drawRef = useRef<(time: number, delta: number) => void>(() => {
-    // Replaced on the first render.
-  });
-  // One paint per frame while dragging, however fast pointer events arrive.
-  const pendingDraw = useRef(0);
-  const redraw = useCallback(() => {
-    if (pendingDraw.current) {
-      return;
-    }
-    pendingDraw.current = requestAnimationFrame(() => {
-      pendingDraw.current = 0;
-      drawRef.current(clock.current, 0);
-    });
-  }, []);
-  useEffect(() => () => cancelAnimationFrame(pendingDraw.current), []);
-  const turn = useGlobeTurn({
-    degreesPerPixel: () =>
-      disc.current ? 1 / (disc.current.radius * cellSize * RADIANS) : 0,
-    moving: animate && !reducedMotion,
-    redraw,
+  const turnRef = useRef<Turn>({
+    dragging: false,
+    lon: start,
     tilt,
+    velocity: 0,
   });
+  useGlobeDrag(rootRef, turnRef, draggable);
+  // A new start or tilt from props moves the globe there.
+  useEffect(() => {
+    turnRef.current.lon = start;
+  }, [start]);
+  useEffect(() => {
+    turnRef.current.tilt = tilt;
+  }, [tilt]);
+  const fieldRef = useRef<ToneField | null>(null);
+  const sample = useRef(new Float64Array(4));
 
-  const extra = new Map(
-    colors
-      ? extraNames.map((name, index) => [name, colors[index + 2] ?? colors[1]])
-      : []
-  );
-
-  const draw = (time: number, delta: number) => {
-    const context = canvas.current?.getContext("2d");
-    const { current } = disc;
-    if (!context || !current || !colors) {
-      return;
-    }
-    clock.current = time;
-    const turned = turn.advance(delta, speed);
-    const scene: Scene = {
-      disc: current,
-      light: lightVector(light),
-      matrix,
-      ocean,
-      paint: { accent: colors[1], extra, land: colors[0] },
-      view: makeView(
-        (start + turned.spin) * RADIANS,
-        -(tilt + turned.tilt) * RADIANS
-      ),
-    };
-    let image = frame.current;
-    if (image?.width !== current.columns || image.height !== current.rows) {
-      image = context.createImageData(current.columns, current.rows);
-      frame.current = image;
-    } else {
-      image.data.fill(0);
-    }
-    paintSphere(image, scene);
-    if (atmosphere) {
-      paintAtmosphere(image, scene);
-    }
-    context.putImageData(image, 0, 0);
-    paintArcs(context, scene, arcs, time);
-    paintMarkers(context, scene, markers, time);
+  const look: AsciiLook = {
+    ansi,
+    background,
+    chars,
+    charset,
+    colorMode,
+    dither,
+    edgeThreshold,
+    grade,
+    invert,
+    phosphor,
+    ramp,
+    threshold,
   };
-  useEffect(() => {
-    drawRef.current = draw;
-  });
+  const { ink, paper, options, lumaLimit } = sceneLook(look, theme);
+  const resolved = resolveCharset(charset, chars);
+  const colors: Colors = {
+    accent: theme?.[4] ? toBytes(theme[4]) : [255, 150, 60],
+    land: theme?.[2] ? toBytes(theme[2]) : [90, 200, 120],
+    sea: theme?.[3] ? toBytes(theme[3]) : [70, 140, 255],
+  };
+  const colorOf = (value: AsciiColor | undefined): Rgb8 => {
+    const at = markerColors.indexOf(value ?? accent);
+    const resolvedColor = at === -1 ? undefined : theme?.[5 + at];
+    return resolvedColor ? toBytes(resolvedColor) : colors.accent;
+  };
 
-  // Resize, and repaint whenever a prop or the theme changes, so a still
-  // frame stays current too.
-  useEffect(() => {
-    const element = canvas.current;
-    if (!element || !size) {
+  // oxlint-disable-next-line complexity -- one pass per frame: turning, view setup, the sample loop and overlays read best together.
+  const draw = ({
+    frame,
+    columns,
+    rows,
+    metrics,
+    delta,
+    time,
+  }: AsciiGridDrawContext) => {
+    const turn = turnRef.current;
+    if (!turn.dragging && delta > 0) {
+      turn.lon -= (speed + turn.velocity) * delta;
+      turn.velocity *= Math.exp(-delta * 1.4);
+    }
+    const [gx, gy] = resolved.grid;
+    let field = fieldRef.current;
+    if (!field || field.width !== columns * gx || field.height !== rows * gy) {
+      field = createToneField(columns, rows, resolved, { color: true });
+      fieldRef.current = field;
+    }
+    const width = columns * metrics.width;
+    const height = rows * metrics.height;
+    const box = rootRef.current;
+    // Centre on the element, not the grid, which overshoots by part of a cell.
+    const boxWidth = box?.clientWidth || width;
+    const boxHeight = box?.clientHeight || height;
+    const angle = light * RADIANS;
+    const sun = [Math.sin(angle) * 0.82, Math.cos(angle) * 0.82, 0.58] as const;
+    const halfLength = Math.hypot(sun[0], sun[1], sun[2] + 1);
+    const view: View = {
+      cosTilt: Math.cos(turn.tilt * RADIANS),
+      cx: boxWidth / 2,
+      cy: boxHeight / 2,
+      half: [
+        sun[0] / halfLength,
+        sun[1] / halfLength,
+        (sun[2] + 1) / halfLength,
+      ],
+      lon: turn.lon,
+      radius: (Math.min(boxWidth, boxHeight) / 2) * RADIUS_SHARE,
+      sinTilt: Math.sin(turn.tilt * RADIANS),
+      sun,
+    };
+    const paint: Paint = { atmosphere, colors, graticule, ocean };
+    const sampleWidth = metrics.width / gx;
+    const sampleHeight = metrics.height / gy;
+    const { tones } = field;
+    const fieldColors = field.colors;
+    const out = sample.current;
+    for (let y = 0; y < field.height; y += 1) {
+      const v = (view.cy - (y + 0.5) * sampleHeight) / view.radius;
+      for (let x = 0; x < field.width; x += 1) {
+        const u = ((x + 0.5) * sampleWidth - view.cx) / view.radius;
+        shadeGlobe(view, paint, u, v, out);
+        if (lumaLimit < 1) {
+          capLuma(out, lumaLimit);
+        }
+        const index = y * field.width + x;
+        tones[index] = out[0] ?? 0;
+        if (fieldColors && (out[0] ?? 0) > 0) {
+          const at = index * 4;
+          fieldColors[at] = out[1] ?? 0;
+          fieldColors[at + 1] = out[2] ?? 0;
+          fieldColors[at + 2] = out[3] ?? 0;
+          fieldColors[at + 3] = 255;
+        }
+      }
+    }
+    mapTones(field, columns, rows, options, frame);
+    if (markers.length > 0 || arcs.length > 0) {
+      // Markers keep their accent even in mono, so give the frame colour.
+      frame.setColored(true);
+      const overlay = {
+        cellHeight: metrics.height,
+        cellWidth: metrics.width,
+        frame,
+        view,
+      };
+      const clock = animate && !reducedMotion ? time : 1.2;
+      drawArcs(overlay, arcs, colorOf, clock);
+      drawMarkers(overlay, markers, colorOf, clock);
+    }
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = KEYS[event.key];
+    if (!(draggable && step)) {
       return;
     }
-    if (element.width !== size.columns || element.height !== size.rows) {
-      element.width = size.columns;
-      element.height = size.rows;
-      disc.current = buildDisc(size.columns, size.rows);
-    }
-    drawRef.current(clock.current, 0);
-  });
-
-  useFrameLoop((time, delta) => drawRef.current(time, delta), {
-    enabled: animate,
-    target: wrapper,
-  });
+    event.preventDefault();
+    turnRef.current.lon += step[0];
+    turnRef.current.tilt = Math.max(
+      -MAX_TILT,
+      Math.min(MAX_TILT, turnRef.current.tilt + step[1])
+    );
+  };
 
   return (
     <div
-      ref={wrapper}
+      ref={rootRef}
+      role="img"
+      aria-label={
+        ariaLabel ??
+        (draggable
+          ? "Globe. Drag it or use the arrow keys to turn it."
+          : "Globe")
+      }
+      tabIndex={draggable ? 0 : undefined}
+      onKeyDown={onKeyDown}
       className={cn(
-        "relative overflow-hidden select-none",
-        draggable &&
-          "focus-visible:outline-ring cursor-grab outline-none [touch-action:pan-y_pinch-zoom] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid data-dragging:cursor-grabbing",
+        "relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        draggable && "cursor-grab touch-pan-y active:cursor-grabbing",
         className
       )}
-      {...(draggable
-        ? {
-            "aria-label": "Globe. Drag it or use the arrow keys to turn it.",
-            role: "img",
-            tabIndex: 0,
-            ...turn.handlers,
-          }
-        : { "aria-hidden": true })}
       {...props}
     >
-      <canvas
-        ref={canvas}
-        className="absolute top-1/2 left-1/2 -translate-1/2 [image-rendering:pixelated]"
-        style={
-          size
-            ? { height: size.rows * cellSize, width: size.columns * cellSize }
-            : undefined
-        }
+      <AsciiGrid
+        draw={draw}
+        cell={cell}
+        ink={ink}
+        paper={paper}
+        colored={colorMode !== "mono" || markers.length > 0 || arcs.length > 0}
+        animate={animate}
+        fps={60}
+        handle={handle}
+        className="absolute inset-0"
       />
+      {fx ? <CrtOverlay fx={fx} /> : null}
     </div>
   );
 };

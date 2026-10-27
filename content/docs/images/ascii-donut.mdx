@@ -1,0 +1,156 @@
+---
+title: "ASCII donut"
+description: "A lit, ray-marched torus spinning in glyphs, with specular highlights, a rim light and drag to spin."
+---
+
+import AsciiDonutDemo from "@/examples/ascii-donut-demo";
+import AsciiDonutRibbed from "@/examples/ascii-donut-ribbed";
+import AsciiDonutTerminal from "@/examples/ascii-donut-terminal";
+import { controls as asciiDonutControls } from "@/examples/ascii-donut-controls";
+
+<ComponentPreview
+  src="examples/ascii-donut-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={asciiDonutControls}
+>
+  <AsciiDonutDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-donut" />
+
+## Usage
+
+```tsx
+import { AsciiDonut } from "@/components/asciicn/ascii-donut";
+
+export function Spinner() {
+  return <AsciiDonut className="aspect-square w-80" />;
+}
+```
+
+Every sample casts a ray from a perspective camera and marches it into the torus, so the silhouette, the hole and the near side overlapping the far side are exact at any cell size. Braille and quadrants sample 2×4 and 2×2 times per cell, which sharpens the outline further.
+
+The shading is built for glyphs. A key light sets the body tone, a cool rim light from behind outlines the far edge, the inside of the ring sits in soft shadow, and a tight specular highlight is the only place the densest glyphs appear. In truecolor, the body takes `color`, the rim takes `rim`, and highlights go white.
+
+Drag to spin it. Let go mid-drag and it coasts, then settles back into its own spin. With keyboard focus, the arrow keys turn it.
+
+## Examples
+
+### Ribbed, in Braille
+
+`surface="ribbed"` winds grooves around the tube, which flash as they turn through the light.
+
+<ComponentPreview src="examples/ascii-donut-ribbed.tsx" size="lg">
+  <AsciiDonutRibbed />
+</ComponentPreview>
+
+### CP437 on a green phosphor
+
+Mono with the P1 phosphor and a CRT finish from `fx`.
+
+<ComponentPreview src="examples/ascii-donut-terminal.tsx" size="lg">
+  <AsciiDonutTerminal />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"standard"`, plus `fx` for a CRT finish.
+
+<PropsTable
+  rows={[
+    {
+      name: "radius",
+      type: "number",
+      default: "0.5",
+      description: "Ring radius as a share of half the box's shorter side.",
+    },
+    {
+      name: "thickness",
+      type: "number",
+      default: "0.46",
+      description: "Tube radius over ring radius, 0.1 to 0.9.",
+    },
+    {
+      name: "spin",
+      type: "[number, number]",
+      default: "[0.7, 0.45]",
+      description:
+        "Spin around the horizontal and vertical axes, in radians per second.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Multiplies the spin. 0 holds it still until dragged.",
+    },
+    {
+      name: "surface",
+      type: '"smooth" | "ribbed"',
+      default: '"smooth"',
+      description: "A plain ring, or grooves wound around the tube.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "Body colour in truecolor.",
+    },
+    {
+      name: "rim",
+      type: "AsciiColor",
+      default: '"blue"',
+      description: "Rim light colour in truecolor.",
+    },
+    {
+      name: "light",
+      type: "number",
+      default: "315",
+      description:
+        "Where the key light comes from, in degrees clockwise from the top.",
+    },
+    {
+      name: "floor",
+      type: "boolean",
+      default: "true",
+      description: "A soft shadow on an unseen floor below the ring.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "draggable",
+      type: "boolean",
+      default: "true",
+      description: "Drag or use the arrow keys to turn it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is announced as an image. Pass `aria-label` to describe what it stands for on your page.
+- Under reduced motion it draws one still frame. Dragging and the arrow keys still turn it.
+- It draws at up to 60 fps and pauses offscreen and in hidden tabs. Rays that miss the ring's bounding sphere skip the march, so empty space costs almost nothing.
