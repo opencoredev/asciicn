@@ -1,6 +1,6 @@
 ---
 title: "London"
-description: "Big Ben, the Houses of Parliament and Tower Bridge in evening fog over the Thames, with amber lamps and a red bus crossing."
+description: "Westminster at night across the Thames: the Elizabeth Tower with its lit clock, the Palace of Westminster, Tower Bridge and the Shard, with amber lamps on the embankment."
 ---
 
 import LondonDemo from "@/examples/london-demo";
@@ -36,19 +36,17 @@ export function Hero() {
 }
 ```
 
-The Elizabeth Tower stands on the far bank of the Thames with its clock face lit. The minute hand goes round once every two minutes, so you can see it move. The Houses of Parliament run upstream from it: a long front of lit windows under a row of pinnacles, the Central Tower's spire and the square Victoria Tower at the end. Downstream, Tower Bridge shows its two towers, high walkways and suspension chains, paler because it sits deeper in the fog.
+The view looks across the Thames from the South Bank. The Elizabeth Tower stands right of centre: a floodlit Gothic shaft, the clock stage with its glowing dial and hands, the gilded belfry and a slate spire with gold edges. The Palace of Westminster runs to its left, a long front of lit windows in bays with a pinnacle over every buttress, the Central Tower's lantern and spire, and the square Victoria Tower at the far end. Further down the river, Tower Bridge shows its two towers, the blue walkways between them and the chains sweeping down to each bank, with the Shard behind it.
 
-In front, a green bridge crosses the river on low arches, with three-lantern lamp standards over each pier. A red double-decker drives across it with both decks lit. Fog banks drift through every layer, thicker on the far ones, and each lamp wears an amber halo. The lamps on the embankment drop long streaks into the water, and the tower and Parliament show in the ripples.
+The buildings never move. A few windows switch on or off at a time, the clock hands keep real time from ten past ten, car lights cross Tower Bridge slowly, the red light on the Shard pulses about once every two seconds and a river boat passes in about two minutes. The embankment lamps drop amber streaks into the water, and the reflections break and shift a sample at a time. A faint haze lies on the water and the bank. It never moves and never crosses a building. Nothing follows the pointer.
 
-On wide boxes the tower sits right of centre, so a headline fits on the left. On tall boxes it stands in the middle. Moving the pointer slides the near layers further than the far ones.
-
-It draws in `standard` glyphs by default. `braille` gives the finest detail, `blocks` and `dense` solid shapes, and `edge` an outline drawing. In `truecolor`, the default, it paints amber lamps in grey-blue fog on a dark night blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `quadrants` at a 9px cell by default, so every edge and window lands on a 2x2 sub-cell. `blocks` and `dense` give solid shapes, `standard` a classic ASCII look and `braille` fine outlines. In `truecolor`, the default, floodlit gold stone and blue steel sit on a night blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.6}` thins the glyphs so white text on the left reads first, and `fog={0.7}` thickens the fog banks a little.
+`intensity={0.6}` dims the city so white text over the river reads first.
 
 <ComponentPreview src="examples/london-headline.tsx" size="lg" align="stretch">
   <LondonHeadline />
@@ -56,7 +54,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
 
 ### Sodium duotone
 
-`colorMode="duotone"` with `ramp="sodium"` runs every tone through one amber ramp, from shadow to lamp flame. `braille` glyphs keep the fine detail in a small box, `grade={{ gamma: 1.7 }}` lifts the stone out of the dark end of the ramp, and thick fog with no bus keeps it quiet.
+`colorMode="duotone"` with `ramp="sodium"` runs every tone through one amber ramp, from shadow to lamp flame. `braille` glyphs draw fine outlines, `grade={{ gamma: 1.7 }}` lifts the stone out of the dark end of the ramp, and `fog={1}` with no boat keeps it quiet.
 
 <ComponentPreview src="examples/london-duotone.tsx">
   <LondonDuotone />
@@ -76,22 +74,23 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "fog",
       type: "number",
-      default: "0.6",
+      default: "0.5",
       description:
-        "How thick the fog banks are, from 0 (a clear night) to 1. Far layers take more of it than near ones.",
+        "How much still haze lies on the water and the bank, from 0 (none) to 1. It only fills empty space and never moves.",
     },
     {
-      name: "bus",
+      name: "boat",
       type: "boolean",
       default: "true",
-      description: "The red double-decker that crosses the bridge.",
+      description:
+        "The river boat heading upstream, once every two minutes or so.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a foggy night blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -102,7 +101,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -154,9 +153,8 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "threshold",
       type: "number",
-      default: "0.3",
-      description:
-        "Braille and quadrants: the tone that lights a dot. Lower than the engine's 0.5, so the stone and the bridge still draw.",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
     },
     {
       name: "edgeThreshold",
@@ -186,21 +184,9 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "What the pointer does to the glyphs.",
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description: "false turns off the parallax and any pointer interaction.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -225,7 +211,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
     {
       name: "stillTime",
       type: "number",
-      default: "8",
+      default: "30",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -248,6 +234,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest detail, `bl
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime`, with the bus on the bridge, and stops.
+- The buildings never move and nothing reacts to the pointer. Only lights, stars, the clock hands, the reflections and the boat change.
+- With reduced motion turned on, it draws one still frame at `stillTime`, with the boat on the river, and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
-- The whole city is one shader pass on the GPU. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
+- The whole city is one shader pass on the GPU. The river reflection reads the skyline a second time, and in `quadrants` and `braille` an empty sample also reads its neighbours so cell colours stay true at edges. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).

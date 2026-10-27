@@ -2,670 +2,770 @@
 
 import type { ReactNode } from "react";
 
-import type {
-  AsciiColor,
-  AsciiSceneProps,
-  ColorMode,
-  Interaction,
-} from "@/lib/ascii";
+import { resolveCharset } from "@/lib/ascii";
+import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// The whole view is one function of p = (x in box heights, y up), with the
-// Thames embankment at LONDON_BANK. Layers are tested near to far and the
-// first one that covers a sample wins: the green bridge with its lamps and
-// the bus, then the river, the Elizabeth Tower, the Houses of Parliament,
-// Tower Bridge downstream and the low city behind it, then the sky. Fog is
-// laid over every layer afterwards, thicker the further away it is, and the
-// lamps burn through it with amber halos. Sizes that must survive coarse
-// charsets are measured against `px`, one sample row, so thin lines never
-// vanish between samples. `londonScene` returns colour and tone, cached per
-// sample so the field and colour passes share one evaluation.
+// Westminster at night from the South Bank, across the Thames. The view is
+// one function of p = (x in box heights, y up) with the far embankment at
+// ldShore. Every shape is measured in whole samples (`ldCw` wide, `ldPx`
+// tall) and tested at sample centres, so edges land on the sample grid and
+// window rows stay rectilinear at any size. Layers are tested near to far
+// and the first one that covers a sample wins: the river boat, the river,
+// the embankment lamps, the Elizabeth Tower, the Palace of Westminster,
+// Tower Bridge, the Shard and the low city behind, then the sky. A faint
+// haze sits on the water and the bank, only where nothing else is drawn,
+// and never moves. `ldScene` returns colour and tone, cached per sample so
+// the field and colour passes share one evaluation.
+//
+// Cells that hold several samples (Braille, quadrants) light a dot only
+// above tone 0.5 and average the colour of all their samples, so `ldMulti`
+// keeps structure above 0.5 and lets empty samples borrow a lit
+// neighbour's colour. Ramp charsets get lower tones, so stone reads as mid
+// glyphs and lamps as dense ones.
 const SCENE = `
-const float LONDON_BANK = 0.34;
-const float LONDON_WATER = 0.328;
-const float LONDON_TOWER = 0.56;
-const float LONDON_DECK = 0.2;
-const float LONDON_SPAN = 0.34;
-const float LONDON_LAMPS = 0.07;
-const vec3 LONDON_AMBER = vec3(1.0, 0.68, 0.3);
-const vec3 LONDON_FOG = vec3(0.6, 0.67, 0.8);
+const float LD_PI = 3.14159265;
+const vec3 LD_AMBER = vec3(1.0, 0.66, 0.28);
+const vec3 LD_STONE = vec3(0.98, 0.76, 0.44);
+const vec3 LD_GOLD = vec3(1.0, 0.8, 0.36);
+const vec3 LD_WINDOW = vec3(1.0, 0.86, 0.56);
+const vec3 LD_STEEL = vec3(0.46, 0.66, 1.0);
 
-// Right of centre on wide boxes, so a headline can sit beside it; centred on tall ones.
-float londonTowerX(float aspect) {
-  return aspect * mix(0.5, 0.6, smoothstep(0.9, 1.5, aspect));
+// Set once per sample by ldScene, read by every layer.
+float ldPx = 0.0;
+float ldCw = 0.0;
+float ldTime = 0.0;
+float ldShore = 0.0;
+float ldMulti = 0.0;
+float ldEtX = 0.0;
+float ldPalL = 0.0;
+float ldPalR = 0.0;
+float ldTbX = 0.0;
+float ldTbS = 1.0;
+float ldShX = 0.0;
+
+// Sizes rounded to whole samples, never below one. They divide back into
+// whole samples only up to float rounding, so edge tests round the count
+// again instead of trusting the division.
+float ldSnapW(float w) {
+  return max(1.0, floor(w / ldCw + 0.5)) * ldCw;
 }
 
-// Downstream, where Tower Bridge stands in the fog: left of the tower.
-float londonBridgeX(float aspect, float cx) {
-  return cx - mix(0.62, 0.78, smoothstep(1.2, 2.0, aspect));
+float ldSnapH(float h) {
+  return max(1.0, floor(h / ldPx + 0.5)) * ldPx;
 }
 
-// The clock hands as angles from twelve, clockwise. The minute hand turns
-// once every two minutes, so the motion is plain to see.
-vec2 londonHands(float t) {
-  float minute = 6.28318 * (t / 120.0 + 0.17);
-  float hour = 6.28318 * (t / 1440.0 + 10.17 / 12.0);
-  return vec2(minute, hour);
+float ldCount(float w) {
+  return floor(w / ldCw + 0.5);
 }
 
-float londonHand(vec2 rel, float angle, float len, float thick) {
-  vec2 dir = vec2(sin(angle), cos(angle));
-  float along = dot(rel, dir);
-  float across = abs(rel.x * dir.y - rel.y * dir.x);
-  return step(-0.006, along) * step(along, len) * step(across, thick);
+float ldRows(float h) {
+  return floor(h / ldPx + 0.5);
 }
 
-// The Elizabeth Tower in its own units: x across from the axis, y up from 0
-// to 1, both in tower heights. Returns the tone; cover is 1 on the tower and
-// kind tells the stone (0) from the clock face (1), a light (2) and the
-// hands (3).
-float londonTower(vec2 tp, float px, float t, out float cover, out float kind) {
+// A centre line on a boundary between two sample columns, so shapes around
+// it come out symmetric.
+float ldSnapX(float x) {
+  return floor(x / ldCw + 0.5) * ldCw;
+}
+
+// Structure tone: above the dot threshold in Braille and quadrants, a mid
+// glyph in ramp charsets.
+float ldLine(float multi, float ramp) {
+  return mix(ramp, multi, ldMulti);
+}
+
+// Whether a window is lit. Most hold their state; about one in sixteen
+// re-rolls on its own clock of 30 to 70 seconds. Hash inputs stay small:
+// hash21 loses its spread on large floats.
+float ldLit(float id, float gx, float gy, float share) {
+  vec2 cell = vec2(mod(id, 113.0) * 1.37 + mod(gx, 89.0) * 0.61, mod(gy, 97.0) * 0.73 + 3.1);
+  float clock = hash21(cell + 17.3);
+  float roll = 0.0;
+  if (clock < 0.06) {
+    float epoch = floor(ldTime / (30.0 + 660.0 * clock) + clock * 97.0);
+    roll = mod(epoch, 37.0) * 0.371;
+  }
+  return step(hash21(cell + vec2(roll, roll * 0.7)), share);
+}
+
+// A slow red aviation light: one soft pulse every 1.8 seconds.
+float ldBeacon(float phase) {
+  float f = fract(ldTime / 1.8 + phase);
+  return smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.25, 0.6, f));
+}
+
+vec4 ldRed(float b) {
+  return vec4(mix(vec3(0.55, 0.13, 0.11), vec3(1.0, 0.22, 0.16), b), ldLine(0.55 + 0.4 * b, 0.3 + 0.6 * b));
+}
+
+// Distance in samples from a sample to the segment a-b, both in box units.
+float ldSegment(vec2 p, vec2 a, vec2 b) {
+  vec2 scale = vec2(ldCw, ldPx);
+  vec2 pa = (p - a) / scale;
+  vec2 ba = (b - a) / scale;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+
+// Gothic stone: floodlit piers on every third column, string courses every
+// eight rows, and a dark slit window in each panel. u and row count
+// samples from the centre line and the ground.
+vec4 ldStone(float u, float row, vec3 tint, float bright) {
+  float course = mod(row, 8.0);
+  if (course < 1.0) {
+    return vec4(tint, ldLine(0.86, 0.6) * bright);
+  }
+  if (mod(u, 3.0) < 1.0) {
+    return vec4(tint, ldLine(0.78, 0.5) * bright);
+  }
+  if (course > 2.5 && course < 6.5) {
+    return vec4(tint * 0.75, ldLine(0.0, 0.18));
+  }
+  return vec4(tint * 0.92, ldLine(0.66, 0.4) * bright);
+}
+
+// The Elizabeth Tower: a floodlit Gothic shaft, the clock stage with its
+// glowing dial and hands, the gilded belfry with its tall openings, a
+// gallery, then the steep spire with corner pinnacles and the finial.
+vec4 ldBigBen(vec2 p, out float cover) {
   cover = 0.0;
-  kind = 0.0;
-  float q = abs(tp.x);
-  float v = tp.y;
-  if (v < 0.0 || v > 1.0) {
-    return 0.0;
-  }
-  float line = max(px * 0.55, 0.004);
-  // The finial: a thin rod with a cross bar.
-  if (v > 0.955) {
-    if (q < line || (abs(v - 0.975) < line * 0.6 && q < line * 2.4)) {
-      cover = 1.0;
-      return 0.6;
-    }
-    return 0.0;
-  }
-  // The iron spire curves in as it rises; the Ayrton light burns in it.
-  if (v > 0.83) {
-    float s = (v - 0.83) / 0.125;
-    float w = max(mix(0.084, 0.012, pow(s, 0.7)), line);
-    if (q > w) {
-      return 0.0;
-    }
-    cover = 1.0;
-    if (abs(v - 0.89) < max(0.012, px * 0.6) && q < max(w * 0.75, line)) {
-      kind = 2.0;
-      return 1.0;
-    }
-    float rib = step(0.5, fract(tp.x / max(px * 1.3, 0.014)));
-    float rim = 1.0 - smoothstep(line * 0.6, line * 2.0, w - q);
-    return 0.34 + 0.1 * rib + 0.3 * rim;
-  }
-  // The belfry, with a pinnacle on each corner and its arches dimly lit.
-  if (v > 0.78) {
-    float pin = abs(q - 0.09);
-    float pinHalf = max(0.009 * (1.0 - (v - 0.78) / 0.055), line * 0.5);
-    if (pin < pinHalf && v < 0.835) {
-      cover = 1.0;
-      return 0.62;
-    }
-    if (q > 0.08) {
-      return 0.0;
-    }
-    cover = 1.0;
-    float bay = abs(mod(tp.x + 0.027, 0.054) - 0.027);
-    float point = 0.825 - bay * 1.2;
-    if (bay < 0.014 && v > 0.788 && v < point) {
-      kind = 2.0;
-      return 0.55;
-    }
-    return 0.4 + 0.25 * (1.0 - smoothstep(line * 0.6, line * 2.0, 0.08 - q));
-  }
-  // The clock stage, a little wider than the shaft.
-  if (v > 0.6) {
-    if (q > 0.098) {
-      return 0.0;
-    }
-    cover = 1.0;
-    vec2 rel = tp - vec2(0.0, 0.69);
-    float d = length(rel);
-    float r = 0.08;
-    if (d < r) {
-      float thick = max(px * 0.3, 0.005);
-      vec2 hands = londonHands(t);
-      float on = max(londonHand(rel, hands.x, r * 0.86, thick), londonHand(rel, hands.y, r * 0.56, thick * 1.5));
-      if (on > 0.5 || d < 0.008) {
-        kind = 3.0;
-        return 0.1;
-      }
-      // The gilt frame around the opal glass.
-      if (d > r - max(line * 1.1, 0.008)) {
-        return 0.62;
-      }
-      kind = 1.0;
-      return 0.86 + 0.1 * (1.0 - d / r);
-    }
-    float cornice = max(1.0 - smoothstep(line * 0.6, line * 2.0, abs(v - 0.6)), 1.0 - smoothstep(line * 0.6, line * 2.0, abs(v - 0.78)));
-    float rim = 1.0 - smoothstep(line * 0.6, line * 2.0, 0.098 - q);
-    return 0.36 + 0.3 * max(cornice, rim);
-  }
-  // The shaft: three tall panels a side, string courses, and a few lit slits.
-  float w = mix(0.088, 0.078, smoothstep(0.0, 0.06, v));
-  if (q > w) {
-    return 0.0;
-  }
-  cover = 1.0;
-  float panel = fract((tp.x + w) / (w * 2.0 / 3.0));
-  float mullion = 1.0 - smoothstep(0.08, 0.16, min(panel, 1.0 - panel));
-  float course = 1.0 - smoothstep(line * 0.5, line * 1.6, abs(fract(v / 0.1 + 0.5) - 0.5) * 0.1);
-  float rim = 1.0 - smoothstep(line * 0.6, line * 2.0, w - q);
-  float storey = floor(v / 0.1);
-  if (q < 0.01 && fract(v / 0.1) > 0.35 && fract(v / 0.1) < 0.75 && hash21(vec2(storey, 2.7)) > 0.45) {
-    kind = 2.0;
-    return 0.7;
-  }
-  return 0.3 + 0.16 * max(mullion, course) + 0.3 * rim;
-}
-
-vec3 londonTowerColor(float kind, float v) {
-  vec3 stone = mix(vec3(0.86, 0.66, 0.4), vec3(0.95, 0.8, 0.52), smoothstep(0.0, 0.8, v));
-  if (kind > 2.5) {
-    return vec3(0.32, 0.24, 0.16);
-  }
-  if (kind > 1.5) {
-    return vec3(1.0, 0.86, 0.56);
-  }
-  if (kind > 0.5) {
-    return vec3(1.0, 0.92, 0.7);
-  }
-  return stone;
-}
-
-// The Houses of Parliament, running upstream from the tower: a long gothic
-// front of buttresses and lit windows under a roofline of pinnacles, the
-// Central Tower's spire halfway and the square Victoria Tower at the end.
-// x is measured from the clock tower's axis.
-vec4 londonParliament(vec2 p, float px, float cx, float t, out float cover) {
-  cover = 0.0;
-  float x = p.x - cx;
-  float h = p.y - LONDON_BANK;
-  if (x < 0.02 || x > 0.68 || h < -0.001 || h > 0.36) {
+  float c = ldSnapX(ldEtX);
+  float x = p.x - c;
+  float q = abs(x);
+  float v = p.y - ldShore;
+  float tip = ldSnapH(0.735);
+  if (v < 0.0 || v > tip || q > ldSnapW(0.055)) {
     return vec4(0.0);
   }
-  float line = max(px * 0.55, 0.003);
-  vec3 stone = vec3(0.88, 0.7, 0.46);
-  vec3 slate = vec3(0.5, 0.52, 0.62);
-
-  // Victoria Tower: a square block with corner turrets and a flagpole.
-  float vx = x - 0.6;
-  float aq = abs(vx);
-  if (aq < 0.046) {
-    float turret = abs(aq - 0.036);
-    if (h > 0.29 && h < 0.318 && turret < max(0.006 * (1.0 - (h - 0.29) / 0.028), line * 0.5)) {
-      cover = 1.0;
-      return vec4(stone, 0.55);
+  float u = floor(q / ldCw);
+  float row = floor(v / ldPx);
+  float shaft = ldSnapH(0.4);
+  float stage = ldSnapH(0.505);
+  float belfry = ldSnapH(0.56);
+  float gallery = belfry + ldSnapH(0.012);
+  float spireTop = ldSnapH(0.7);
+  if (v < shaft) {
+    float hw = ldSnapW(0.042);
+    if (q > hw) {
+      return vec4(0.0);
     }
-    if (h > 0.29 && h < 0.345 && aq < line * 0.5) {
-      cover = 1.0;
-      return vec4(stone, 0.45);
+    cover = 1.0;
+    if (u >= ldCount(hw) - 1.0) {
+      return vec4(LD_GOLD, ldLine(0.9, 0.62));
     }
-    if (aq < 0.04 && h < 0.29) {
-      cover = 1.0;
-      float rim = 1.0 - smoothstep(line * 0.6, line * 2.0, 0.04 - aq);
-      float crown = 1.0 - smoothstep(line * 0.6, line * 2.0, abs(h - 0.285));
-      float col = fract((vx + 0.04) / 0.02);
-      float slit = step(0.38, col) * step(col, 0.62) * step(0.1, h) * step(h, 0.26) * step(0.25, fract(h / 0.05));
-      if (slit > 0.5) {
-        float on = step(0.55, hash21(vec2(floor((vx + 0.04) / 0.02), floor(h / 0.05))));
-        return mix(vec4(stone, 0.18), vec4(LONDON_AMBER, 0.75), on);
+    return ldStone(u, row, LD_STONE, 1.0);
+  }
+  if (v < stage) {
+    float hw = ldSnapW(0.049);
+    if (q > hw) {
+      return vec4(0.0);
+    }
+    cover = 1.0;
+    // The dial: opal glass lit from behind, with a gold rim, four hour
+    // marks and the two hands, which keep real clock time from ten past
+    // ten.
+    vec2 centre = vec2(c, ldShore + (shaft + stage) * 0.5);
+    vec2 d = p - centre;
+    float radius = 0.037 / ldPx;
+    float r = length((p - centre) / ldPx);
+    if (r < radius) {
+      // A dark ring keeps the round dial apart from its square gold frame.
+      if (r > radius - 1.0) {
+        return vec4(0.45, 0.32, 0.16, ldLine(0.0, 0.2));
       }
-      return vec4(stone, 0.32 + 0.3 * max(rim, crown));
+      float minute = 2.0 * LD_PI * fract(ldTime / 3600.0 + 0.1667);
+      float hour = 2.0 * LD_PI * fract(ldTime / 43200.0 + 0.847);
+      vec2 mHand = centre + vec2(sin(minute), cos(minute)) * 0.032;
+      vec2 hHand = centre + vec2(sin(hour), cos(hour)) * 0.021;
+      float hands = min(ldSegment(p, centre, mHand), ldSegment(p, centre, hHand));
+      float ang = atan(d.x, d.y);
+      float tick = abs(fract(ang / (LD_PI * 0.5) + 0.5) - 0.5);
+      bool mark = r > radius - 2.6 && tick < 0.05;
+      if (hands < 0.5 || mark) {
+        return vec4(0.3, 0.22, 0.12, ldLine(0.0, 0.15));
+      }
+      return vec4(1.0, 0.97, 0.86, ldLine(0.92, 0.84));
     }
+    // A gold frame round the dial and dark stone in the corners.
+    if (u >= ldCount(hw) - 1.0 || row == ldRows(shaft) || row == ldRows(stage) - 1.0) {
+      return vec4(LD_GOLD, ldLine(0.88, 0.6));
+    }
+    return vec4(LD_STONE * 0.8, ldLine(0.58, 0.32));
   }
-
-  // The Central Tower: an octagonal lantern under a short spire.
-  float ox = x - 0.31;
-  float oq = abs(ox);
-  if (h > 0.08 && h < 0.24) {
-    float spireHalf = 0.02 * (1.0 - (h - 0.16) / 0.07);
-    if (h < 0.16 && oq < 0.02) {
-      cover = 1.0;
-      float lancet = step(abs(mod(ox + 0.005, 0.01) - 0.005), 0.0022) * step(0.1, h) * step(h, 0.145);
-      return lancet > 0.5 ? vec4(LONDON_AMBER, 0.6) : vec4(stone, 0.38 + 0.25 * (1.0 - smoothstep(line * 0.6, line * 2.0, 0.02 - oq)));
+  if (v < belfry) {
+    float hw = ldSnapW(0.043);
+    if (q > hw) {
+      return vec4(0.0);
     }
-    if (h >= 0.16 && oq < max(spireHalf, line * 0.5) && h < 0.23) {
-      cover = 1.0;
-      return vec4(stone, 0.46);
+    cover = 1.0;
+    // Gilded panels with three tall openings a side, dark against the gold.
+    float open = mod(u, 3.0);
+    float local = row - ldRows(stage);
+    float rows = ldRows(belfry) - ldRows(stage);
+    if (u < ldCount(hw) - 1.0 && open > 0.5 && open < 1.5 && local > 1.0 && local < rows - 2.0) {
+      return vec4(LD_GOLD * 0.6, ldLine(0.0, 0.2));
     }
-    float corner = abs(oq - 0.022);
-    if (h >= 0.14 && h < 0.18 && corner < max(0.004 * (1.0 - (h - 0.14) / 0.04), line * 0.5)) {
-      cover = 1.0;
-      return vec4(stone, 0.55);
-    }
+    return vec4(LD_GOLD, ldLine(0.9, 0.7));
   }
-
-  // The long front. Blocks step up and down a little; every buttress ends in
-  // a pinnacle, every fourth one taller.
-  if (x > 0.555) {
-    return vec4(0.0);
+  if (v < gallery) {
+    if (q > ldSnapW(0.047)) {
+      return vec4(0.0);
+    }
+    cover = 1.0;
+    return vec4(1.0, 0.9, 0.62, ldLine(0.95, 0.8));
   }
-  float block = floor(x / 0.09);
-  float top = 0.072 + 0.014 * step(0.5, hash21(vec2(block, 6.1)));
-  float bayW = 0.02;
-  float bay = mod(x, bayW) - bayW * 0.5;
-  float bi = floor(x / bayW);
-  float tall = step(3.0, mod(bi, 4.0));
-  float pinH = mix(0.03, 0.05, tall);
-  float roof = top + 0.01;
-  if (h > top) {
-    float pinHalf = max(0.0048 * (1.0 - (h - top) / pinH), line * 0.5);
-    if (abs(bay) < pinHalf && h < top + pinH) {
+  if (v < spireTop) {
+    float t = (v - gallery) / (spireTop - gallery);
+    float hw = ldSnapW(mix(0.036, 0.004, t));
+    // Pinnacles at the corners of the spire's foot.
+    float pin = ldSnapW(0.045);
+    if (q <= pin && q > pin - ldCw && v < gallery + ldSnapH(0.045)) {
       cover = 1.0;
-      return vec4(stone, 0.5 + 0.15 * tall);
+      return vec4(LD_GOLD, ldLine(0.82, 0.55));
     }
-    if (h < roof) {
-      // Steep slate roofs between the pinnacles, with a ridge of iron cresting.
-      cover = 1.0;
-      float crest = 1.0 - smoothstep(line * 0.5, line * 1.5, roof - h);
-      return vec4(slate, 0.2 + 0.18 * crest);
+    if (q > hw) {
+      return vec4(0.0);
     }
+    cover = 1.0;
+    if (u >= ldCount(hw) - 1.0) {
+      return vec4(LD_GOLD, ldLine(0.84, 0.58));
+    }
+    // Dark slate with lit dormer slits low down.
+    if (t < 0.3 && mod(u, 2.0) < 1.0 && mod(row, 4.0) < 2.0) {
+      return vec4(LD_WINDOW, ldLine(0.8, 0.6));
+    }
+    return vec4(0.42, 0.4, 0.5, ldLine(0.56, 0.28));
+  }
+  if (q > ldCw) {
     return vec4(0.0);
   }
   cover = 1.0;
-  float buttress = 1.0 - smoothstep(line * 0.5, line * 1.5, abs(bay));
-  float parapet = 1.0 - smoothstep(line * 0.5, line * 1.6, top - h);
-  float floorH = 0.022;
-  float fi = floor(h / floorH);
-  float fy = fract(h / floorH);
-  if (abs(bay) > bayW * 0.2 && abs(bay) < bayW * 0.38 && fy > 0.25 && fy < 0.8 && h > 0.008 && h < top - 0.01) {
-    float on = step(0.5, hash21(vec2(bi * 3.0 + sign(bay), fi + floor(t / 19.0 + hash21(vec2(bi, fi)) * 4.0))));
-    return mix(vec4(stone, 0.16), vec4(LONDON_AMBER, 0.78), on);
-  }
-  return vec4(stone, 0.32 + 0.18 * max(buttress, parapet));
+  return vec4(LD_GOLD, ldLine(0.88, 0.62));
 }
 
-// Tower Bridge downstream, smaller and paler: two towers with steep roofs
-// and corner turrets, the high walkways between them, the road deck and the
-// suspension chains swinging down to either shore.
-vec4 londonTowerBridge(vec2 p, float px, float bx, out float cover) {
+// The Palace of Westminster: a long floodlit front of tall lit windows in
+// bays, a pinnacle over every buttress, two raised pavilions, the Central
+// Tower's lantern and spire, and the square Victoria Tower at the far end.
+vec4 ldPalace(vec2 p, out float cover) {
   cover = 0.0;
-  float x = p.x - bx;
-  float h = p.y - LONDON_BANK;
-  float ox = abs(x);
-  if (ox > 0.34 || h < -0.001 || h > 0.215) {
+  float v = p.y - ldShore;
+  if (v < 0.0 || p.x < ldPalL - 0.08 || p.x > ldPalR) {
     return vec4(0.0);
   }
-  float line = max(px * 0.5, 0.0025);
-  vec3 stone = vec3(0.72, 0.76, 0.86);
-  float tq = abs(ox - 0.1);
-  if (tq < 0.024) {
-    if (h < 0.15 && tq < 0.019) {
+  float col = floor((p.x - ldSnapX(ldPalL)) / ldCw);
+  float row = floor(v / ldPx);
+  float len = ldCount(ldPalR - ldSnapX(ldPalL));
+  float bay = max(4.0, ldCount(0.03));
+  // The Victoria Tower: square, with corner turrets and a flagpole.
+  float vc = ldSnapX(ldPalL + 0.02);
+  float vq = abs(p.x - vc);
+  float vhw = ldSnapW(0.046);
+  float vtop = ldSnapH(0.45);
+  if (vq <= vhw + ldCw && v < vtop + ldSnapH(0.08)) {
+    float vu = floor(vq / ldCw);
+    float edge = ldCount(vhw) - 1.0;
+    if (v < vtop && vq <= vhw) {
       cover = 1.0;
-      // The arch the road runs through, then lancet windows above it.
-      if (tq < 0.011 && h > 0.03 && h < 0.05 + 0.01 * (1.0 - tq / 0.011)) {
-        return vec4(stone, 0.12);
+      if (vu >= edge || row >= ldRows(vtop) - 1.0) {
+        return vec4(LD_STONE, ldLine(0.86, 0.58) * 0.92);
       }
-      float slit = step(tq, 0.005) * step(0.08, h) * step(h, 0.12);
-      if (slit > 0.5 && fract(h / 0.02) < 0.6) {
-        return vec4(LONDON_AMBER, 0.62);
+      // Tall arched windows in pairs up the tower.
+      float band = mod(row, 10.0);
+      if (mod(vu, 3.0) > 0.5 && band > 2.0 && band < 8.0 && vu < edge - 1.0) {
+        float lit = ldLit(7.0, vu + (p.x < vc ? 0.0 : 20.0), floor(row / 10.0), 0.55);
+        return lit > 0.5 ? vec4(LD_WINDOW, 0.8) : vec4(LD_STONE * 0.6, ldLine(0.0, 0.15));
       }
-      float rim = 1.0 - smoothstep(line * 0.6, line * 2.0, 0.019 - tq);
-      return vec4(stone, 0.3 + 0.25 * rim);
+      return vec4(LD_STONE * 0.92, ldLine(0.66, 0.38) * 0.92);
     }
-    if (h >= 0.15) {
-      float s = (h - 0.15) / 0.045;
-      if (tq < max(0.019 * (1.0 - s), line * 0.5) && h < 0.198) {
-        cover = 1.0;
-        return vec4(stone, 0.42);
+    // Turrets at the corners, then the flagpole.
+    if (v < vtop + ldSnapH(0.04) && vq <= vhw && vu >= ldCount(vhw) - 2.0) {
+      cover = 1.0;
+      return vec4(LD_STONE, ldLine(0.82, 0.55));
+    }
+    if (vq < ldCw && v < vtop + ldSnapH(0.08)) {
+      cover = 1.0;
+      return vec4(0.8, 0.78, 0.85, ldLine(0.6, 0.35));
+    }
+  }
+  if (col < 0.0 || col >= len) {
+    return vec4(0.0);
+  }
+  // The Central Tower, a little past the middle: an octagonal lantern
+  // with tall lit windows and a spire.
+  float cc = ldSnapX(ldSnapX(ldPalL) + (ldPalR - ldPalL) * 0.56);
+  float cq = abs(p.x - cc);
+  float cu = floor(cq / ldCw);
+  float lantern = ldSnapH(0.29);
+  float roof = ldSnapH(0.16);
+  if (v >= roof && v < ldSnapH(0.4)) {
+    float chw = ldSnapW(0.022);
+    if (v < lantern && cq <= chw) {
+      cover = 1.0;
+      if (cu >= ldCount(chw) - 1.0 || row == ldRows(lantern) - 1.0) {
+        return vec4(LD_STONE, ldLine(0.84, 0.55));
       }
-      float turret = abs(tq - 0.018);
-      if (turret < max(0.004 * (1.0 - (h - 0.15) / 0.026), line * 0.5) && h < 0.176) {
-        cover = 1.0;
-        return vec4(stone, 0.5);
+      if (mod(cu, 2.0) < 1.0 && mod(row, 6.0) > 1.0) {
+        return vec4(LD_WINDOW, ldLine(0.82, 0.7));
       }
-      if (tq < line * 0.5 && h < 0.21) {
+      return vec4(LD_STONE * 0.85, ldLine(0.62, 0.35));
+    }
+    if (v >= lantern) {
+      float t = (v - lantern) / (ldSnapH(0.4) - lantern);
+      float shw = ldSnapW(mix(0.02, 0.0, t));
+      if (cq <= shw || (cq < ldCw && t < 0.98)) {
         cover = 1.0;
-        return vec4(stone, 0.45);
+        return vec4(LD_STONE * 0.95, ldLine(0.74, 0.48));
       }
     }
   }
-  // The high walkways: two girders with lattice between.
-  if (ox < 0.082 && h > 0.122 && h < 0.142) {
+  // Two pavilions rise a little above the main front.
+  float pav1 = abs(col - floor(len * 0.3));
+  float pav2 = abs(col - floor(len * 0.8));
+  float pavHalf = bay;
+  bool pavilion = pav1 < pavHalf || pav2 < pavHalf;
+  float top = pavilion ? ldRows(0.19) : ldRows(0.16);
+  float u = mod(col, bay);
+  if (row < top) {
     cover = 1.0;
-    float chord = max(1.0 - smoothstep(line * 0.5, line * 1.5, abs(h - 0.123)), 1.0 - smoothstep(line * 0.5, line * 1.5, abs(h - 0.141)));
-    float lattice = step(0.5, fract((x + h) / max(px * 1.6, 0.012)));
-    return vec4(stone, 0.18 + 0.12 * lattice + 0.24 * chord);
-  }
-  // The road deck, lamps along it.
-  if (h > 0.028 && h < 0.036 + line) {
-    cover = 1.0;
-    float lamp = step(abs(mod(x, 0.04) - 0.02), max(0.003, px * 0.4));
-    return mix(vec4(stone, 0.32), vec4(LONDON_AMBER, 0.9), lamp);
-  }
-  // The chains over the side spans, with hangers down to the deck.
-  if (ox > 0.12 && ox < 0.32) {
-    float s = (ox - 0.12) / 0.2;
-    float chain = 0.034 + 0.1 * (1.0 - s) * (1.0 - s);
-    if (abs(h - chain) < line) {
-      cover = 1.0;
-      return vec4(stone, 0.4);
+    // Buttresses at every bay, a parapet along the top and the river
+    // terrace along the bottom.
+    if (row >= top - 1.0 || row < 2.0) {
+      return vec4(LD_STONE, ldLine(0.84, 0.55));
     }
-    if (h > 0.036 && h < chain && abs(mod(x, 0.02) - 0.01) < line * 0.4) {
+    if (u < 1.0) {
+      return vec4(LD_STONE, ldLine(0.76, 0.48));
+    }
+    // Tall windows: three rows lit, one row of stone, in each bay.
+    float floor4 = mod(row - 2.0, 4.0);
+    if (floor4 < 3.0 && u > 0.5 && u < bay - 0.5) {
+      float lit = ldLit(19.0, floor(col / bay) * 3.0 + u, floor((row - 2.0) / 4.0), 0.72);
+      if (lit > 0.5) {
+        return vec4(LD_WINDOW, ldLine(0.84, 0.72));
+      }
+      return vec4(LD_STONE * 0.55, ldLine(0.0, 0.16));
+    }
+    return vec4(LD_STONE * 0.9, ldLine(0.64, 0.36));
+  }
+  // A slim pinnacle over each buttress, and corner pinnacles on the
+  // pavilions.
+  float spike = pavilion ? ldRows(0.03) : ldRows(0.035);
+  if (u < 1.0 && row < top + spike) {
+    cover = 1.0;
+    return vec4(LD_STONE, ldLine(0.8, 0.5));
+  }
+  // The steep roofs behind the parapet, dark slate.
+  if (row < top + 2.0 && !pavilion && u > 0.5) {
+    cover = 1.0;
+    return vec4(0.34, 0.34, 0.46, ldLine(0.52, 0.22));
+  }
+  return vec4(0.0);
+}
+
+// Tower Bridge, further down the river: two Gothic towers with steep
+// roofs and corner turrets, the high walkways between them, the road deck,
+// and the suspension chains sweeping down to the banks on each side.
+vec4 ldBridge(vec2 p, out float cover) {
+  cover = 0.0;
+  float v = p.y - ldShore;
+  float s = ldTbS;
+  float c = ldSnapX(ldTbX);
+  float span = ldSnapW(0.078 * s);
+  float reach = ldSnapW(0.21 * s);
+  float x = p.x - c;
+  float q = abs(x);
+  if (v < 0.0 || q > reach + ldCw || v > ldSnapH(0.33 * s)) {
+    return vec4(0.0);
+  }
+  float row = floor(v / ldPx);
+  float hw = ldSnapW(0.023 * s);
+  float t = abs(q - span);
+  float tu = floor(t / ldCw);
+  float body = ldSnapH(0.24 * s);
+  float peak = ldSnapH(0.31 * s);
+  vec3 stone = vec3(0.92, 0.86, 0.72);
+  // The two towers.
+  if (t <= hw) {
+    if (v < body) {
       cover = 1.0;
-      return vec4(stone, 0.18);
+      if (tu >= ldCount(hw) - 1.0 || row >= ldRows(body) - 1.0) {
+        return vec4(stone, ldLine(0.84, 0.55));
+      }
+      float band = mod(row, 7.0);
+      if (mod(tu, 2.0) > 0.5 && band > 2.0 && band < 6.0) {
+        return vec4(LD_WINDOW * 0.9, ldLine(0.0, 0.2));
+      }
+      return vec4(stone * 0.9, ldLine(0.68, 0.4));
+    }
+    // A steep roof up the middle, with a turret spike at each corner.
+    float roofT = (v - body) / (peak - body);
+    float rhw = ldSnapW(mix(0.015 * s, 0.0, roofT));
+    if (t <= rhw || (t < ldCw && v < peak + ldSnapH(0.012))) {
+      cover = 1.0;
+      return vec4(stone * 0.85, ldLine(0.72, 0.45));
+    }
+    if (tu >= ldCount(hw) - 1.0 && v < body + ldSnapH(0.04 * s)) {
+      cover = 1.0;
+      return vec4(stone, ldLine(0.8, 0.5));
+    }
+    return vec4(0.0);
+  }
+  // The high walkways between the towers, lit blue.
+  float walk = ldSnapH(0.19 * s);
+  float walkTop = walk + ldSnapH(0.025 * s);
+  if (q < span - hw && v >= walk && v < walkTop) {
+    float wr = row - ldRows(walk);
+    float wrows = ldRows(walkTop) - ldRows(walk);
+    if (wr < 1.0 || wr >= wrows - 1.0) {
+      cover = 1.0;
+      return vec4(LD_STEEL, ldLine(0.84, 0.55));
+    }
+    if (mod(floor(q / ldCw), 3.0) < 1.0) {
+      cover = 1.0;
+      return vec4(LD_STEEL * 0.85, ldLine(0.62, 0.32));
+    }
+    return vec4(0.0);
+  }
+  // The road deck, with car lights crossing slowly.
+  float deck = ldSnapH(0.05 * s);
+  if (row == ldRows(deck) || row == ldRows(deck) - 1.0) {
+    cover = 1.0;
+    float car = fract((p.x - ldTime * 0.01 * (row == ldRows(deck) ? 1.0 : -1.0)) / 0.09);
+    if (car < ldCw / 0.09 && row == ldRows(deck)) {
+      return vec4(1.0, 0.9, 0.7, ldLine(0.9, 0.8));
+    }
+    if (car < ldCw / 0.09) {
+      return vec4(1.0, 0.25, 0.18, ldLine(0.8, 0.6));
+    }
+    return vec4(LD_STEEL * 0.8, ldLine(0.6, 0.3));
+  }
+  // The side spans: the chains leave each tower high and sweep down to a
+  // small tower on the bank, with hangers down to the deck.
+  if (q > span + hw && q <= reach) {
+    float k = (q - span - hw) / (reach - span - hw);
+    float hi = ldSnapH(0.18 * s);
+    float chainRow = (deck + (hi - deck) * (1.0 - k) * (1.0 - k)) / ldPx;
+    float slope = 2.0 * (hi - deck) * (1.0 - k) / (reach - span - hw) * ldCw / ldPx;
+    if (abs(row + 0.5 - chainRow) < 0.5 * sqrt(1.0 + slope * slope) + 0.1) {
+      cover = 1.0;
+      return vec4(LD_STEEL, ldLine(0.86, 0.6));
+    }
+    if (row < chainRow && row > ldRows(deck) && mod(floor(q / ldCw), 4.0) < 1.0) {
+      cover = 1.0;
+      return vec4(LD_STEEL * 0.7, ldLine(0.56, 0.25));
+    }
+    float abut = reach - ldSnapW(0.012 * s);
+    if (q > abut && v < ldSnapH(0.085 * s)) {
+      cover = 1.0;
+      return vec4(stone * 0.85, ldLine(0.66, 0.4));
     }
   }
   return vec4(0.0);
 }
 
-// Low roofs on the far shore, a few windows lit.
-vec4 londonCity(vec2 p, float px, out float cover) {
+// The Shard in the distance: a slim glass spike, a few lit floors and a
+// red light on its needle.
+vec4 ldShard(vec2 p, out float cover) {
   cover = 0.0;
-  float h = p.y - LONDON_BANK;
-  if (h < 0.0 || h > 0.07) {
+  float c = ldSnapX(ldShX);
+  float x = p.x - c;
+  float q = abs(x);
+  float v = p.y - ldShore;
+  float tip = ldSnapH(0.56 * ldTbS);
+  if (v < 0.0 || v > tip || q > ldSnapW(0.04)) {
     return vec4(0.0);
   }
-  float id = floor(p.x * 26.0);
-  float top = 0.012 + 0.05 * hash21(vec2(id, 3.1)) * hash21(vec2(id, 8.3));
-  if (h > top) {
+  float t = v / tip;
+  float hw = ldSnapW(mix(0.036 * ldTbS, 0.0, t));
+  float u = floor(q / ldCw);
+  float row = floor(v / ldPx);
+  if (q > hw && !(q < ldCw && t > 0.92)) {
     return vec4(0.0);
   }
   cover = 1.0;
-  vec2 win = floor(p / (px * vec2(1.6, 2.0)));
-  float on = step(0.85, hash21(win + 5.0)) * step(px * 1.5, top - h);
-  return mix(vec4(0.5, 0.56, 0.72, 0.1), vec4(LONDON_AMBER, 0.55), on);
+  if (v > tip - ldSnapH(ldPx * 1.5)) {
+    return ldRed(ldBeacon(0.45));
+  }
+  vec3 glass = vec3(0.46, 0.55, 0.78);
+  if (u >= ldCount(hw) - 1.0) {
+    return vec4(glass, ldLine(0.62, 0.36));
+  }
+  float lit = ldLit(53.0, u + (x < 0.0 ? 0.0 : 30.0), floor(row / 2.0), 0.3);
+  if (mod(row, 2.0) < 1.0 && lit > 0.5) {
+    return vec4(vec3(0.78, 0.86, 1.0), ldLine(0.72, 0.55));
+  }
+  return vec4(glass * 0.7, ldLine(0.0, 0.1));
 }
 
-// The near bridge, painted green like Westminster Bridge: low arches, a
-// balustrade and lamp standards over each pier.
-vec4 londonBridge(vec2 q, float px, out float cover, out float light) {
+// The low city behind: dim blocks with a few lit windows.
+vec4 ldBack(vec2 p, out float cover) {
   cover = 0.0;
-  light = 0.0;
-  if (q.y < 0.04 || q.y > 0.34) {
+  float col = floor(p.x / ldCw);
+  float row = floor((p.y - ldShore) / ldPx);
+  float w = max(5.0, ldCount(0.05));
+  float k = floor(col / w);
+  float r = hash21(vec2(mod(k, 97.0), 3.7));
+  float top = ldRows(0.035 + 0.075 * r);
+  float u = col - k * w;
+  if (row < 0.0 || row >= top || u > w - 1.0 - step(0.5, hash21(vec2(mod(k, 97.0), 8.1)))) {
     return vec4(0.0);
   }
-  float line = max(px * 0.5, 0.0025);
-  vec3 green = vec3(0.46, 0.66, 0.52);
-  float pier = mod(q.x + LONDON_SPAN * 0.5, LONDON_SPAN) - LONDON_SPAN * 0.5;
-  if (q.y > LONDON_DECK) {
-    // A standard with three lanterns: one on top, two on short arms.
-    float post = max(0.0026, px * 0.42);
-    if (abs(pier) < post && q.y < 0.286) {
-      cover = 1.0;
-      return vec4(green, 0.36);
-    }
-    // Each lantern is at least one sample row tall, so it never falls between rows.
-    float head = max(0.0055, px * 0.65);
-    float lantern = max(0.016, px * 1.02);
-    float side = abs(abs(pier) - 0.018);
-    if ((abs(pier) < head && q.y > 0.286 && q.y < 0.286 + lantern) || (side < head && q.y > 0.262 && q.y < 0.262 + lantern)) {
-      cover = 1.0;
-      light = 1.0;
-      return vec4(LONDON_AMBER, 1.0);
-    }
-    if (abs(pier) < 0.018 && abs(q.y - 0.262) < line * 0.6) {
-      cover = 1.0;
-      return vec4(green, 0.36);
-    }
+  cover = 1.0;
+  if (row == top - 1.0) {
+    return vec4(0.3, 0.33, 0.5, ldLine(0.52, 0.22));
+  }
+  float lit = ldLit(k + 61.0, u, floor(row / 2.0), 0.35);
+  if (u > 0.5 && mod(u, 2.0) < 1.0 && mod(row, 2.0) < 1.0 && lit > 0.5) {
+    return vec4(LD_WINDOW * 0.7, ldLine(0.62, 0.5));
+  }
+  return vec4(0.16, 0.18, 0.3, ldLine(0.0, 0.08));
+}
+
+// Lamp standards along the embankment wall: an iron post and an amber head.
+float ldLampGap() {
+  return max(7.0, ldCount(0.055));
+}
+
+vec4 ldLamps(vec2 p, out float cover) {
+  cover = 0.0;
+  float row = floor((p.y - ldShore) / ldPx);
+  float col = floor(p.x / ldCw);
+  if (row < 0.0 || row > 3.0) {
     return vec4(0.0);
   }
-  if (q.y > 0.17) {
+  if (row < 1.0) {
     cover = 1.0;
-    float coping = 1.0 - smoothstep(line * 0.5, line * 1.5, LONDON_DECK - q.y);
-    if (q.y > 0.184) {
-      float baluster = step(0.5, fract(q.x / max(px * 1.4, 0.012)));
-      return vec4(green, max(0.16 + 0.12 * baluster, 0.42 * coping));
-    }
-    float fascia = 1.0 - smoothstep(line * 0.5, line * 1.5, abs(q.y - 0.177));
-    return vec4(green, 0.34 + 0.16 * fascia);
+    return vec4(0.5, 0.46, 0.5, ldLine(0.56, 0.3));
   }
-  float a = mod(q.x, LONDON_SPAN) - LONDON_SPAN * 0.5;
-  float halfSpan = LONDON_SPAN * 0.5 - 0.024;
-  float s = a / halfSpan;
-  float crown = 0.06 + 0.104 * sqrt(max(0.0, 1.0 - s * s));
-  if (abs(a) < halfSpan && q.y < crown) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  // The arch rings catch the lamplight; the spandrels stay dark.
-  float ring = abs(a) < halfSpan ? 1.0 - smoothstep(line * 0.8, line * 2.2, q.y - crown) : 0.0;
-  float cutwater = 1.0 - smoothstep(line * 0.6, line * 1.8, abs(pier));
-  return vec4(green * 0.9, 0.2 + 0.26 * max(ring, cutwater * step(q.y, 0.08)));
-}
-
-// A red double-decker crossing the bridge, both decks lit, its headlamp
-// throwing a short beam into the fog.
-vec4 londonBus(vec2 q, float px, float aspect, float t, out float cover) {
-  cover = 0.0;
-  // Measured in u, never less than half a sample row, so each band of
-  // windows is at least one row tall and always lands on samples.
-  float u = max(0.011, px * 0.5);
-  float len = u * 13.0;
-  float tall = u * 8.0;
-  float travel = aspect + 0.6;
-  float x0 = mod(t * 0.04 + aspect * 0.4, travel) - 0.3;
-  float lx = q.x - x0;
-  float y = q.y - LONDON_DECK;
-  if (lx < 0.0 || lx > len + 0.12 || y < 0.0 || y > tall) {
-    return vec4(0.0);
-  }
-  vec3 red = vec3(0.92, 0.14, 0.1);
-  vec3 glass = vec3(1.0, 0.8, 0.5);
-  if (lx > len) {
-    float dist = lx - len;
-    float spread = u * 0.6 + dist * 0.22;
-    float by = (y - u * 1.4) / spread;
-    float beam = exp(-by * by) * exp(-dist * 18.0);
-    if (beam > 0.08) {
-      cover = 1.0;
-      return vec4(1.0, 0.92, 0.72, 0.55 * beam);
-    }
-    return vec4(0.0);
-  }
-  // A rounded roof at the front.
-  float rr = u * 1.4;
-  vec2 corner = vec2(lx - (len - rr), y - (tall - rr));
-  if (corner.x > 0.0 && corner.y > 0.0 && length(corner) > rr) {
-    return vec4(0.0);
-  }
-  float wheel = min(length(vec2(lx - u * 2.6, y - u)), length(vec2(lx - (len - u * 2.8), y - u)));
-  if (wheel < u) {
+  if (mod(col, ldLampGap()) < 1.0) {
     cover = 1.0;
-    return vec4(0.3, 0.3, 0.34, wheel < u * 0.35 ? 0.4 : 0.12);
+    if (row > 2.5) {
+      return vec4(LD_AMBER, ldLine(0.96, 0.9));
+    }
+    return vec4(0.36, 0.32, 0.36, ldLine(0.52, 0.25));
   }
-  if (y < u * 0.6) {
+  return vec4(0.0);
+}
+
+// Everything on the far bank, near to far. Also read by the river for its
+// reflections, so it never touches the sky.
+vec4 ldCity(vec2 p, out float cover) {
+  cover = 0.0;
+  if (p.y < ldShore) {
+    return vec4(0.0);
+  }
+  vec4 hit = ldLamps(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = ldBigBen(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = ldPalace(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = ldBridge(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  hit = ldShard(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  return ldBack(p, cover);
+}
+
+// A faint, still haze on the water and the bank: a sparse ordered stipple
+// that thins with height. It only fills empty samples, so it never crosses
+// a building.
+vec4 ldHaze(vec2 p) {
+  float h = abs(p.y - ldShore);
+  float reach = 0.07;
+  if (h > reach) {
+    return vec4(0.0);
+  }
+  vec2 s = mod(floor(p / vec2(ldCw, ldPx)), 4.0);
+  // A 4 by 4 Bayer rank, from 0 to 15.
+  float bx = mod(s.x, 2.0);
+  float by = mod(s.y, 2.0);
+  float rank = 8.0 * mod(bx + by, 2.0) + 4.0 * by + 2.0 * mod(floor(s.x / 2.0) + floor(s.y / 2.0), 2.0) + floor(s.y / 2.0);
+  float density = ldFog * 0.16 * (1.0 - h / reach);
+  if ((rank + 0.5) / 16.0 < density) {
+    return vec4(0.3, 0.33, 0.42, ldLine(0.52, 0.08));
+  }
+  return vec4(0.0);
+}
+
+// A sparse field of faint stars, each one sample in a block of five by
+// five, brightening and fading slowly.
+vec4 ldSky(vec2 p) {
+  vec2 s = floor(p / vec2(ldCw, ldPx));
+  vec2 block = floor(s / 5.0);
+  float pick = hash21(mod(block, 97.0) + 41.3);
+  vec2 spot = floor(vec2(hash21(mod(block, 89.0) + 2.9), hash21(mod(block, 83.0) + 7.1)) * 5.0);
+  if (pick > 0.95 && s == block * 5.0 + spot && p.y - ldShore > 0.36) {
+    float twinkle = 0.7 + 0.3 * sin(ldTime * (0.35 + pick * 0.4) + pick * 60.0);
+    return vec4(vec3(0.8, 0.84, 1.0) * twinkle, ldLine(0.58, 0.18 + 0.1 * twinkle));
+  }
+  return ldHaze(p);
+}
+
+// A river cruiser heading slowly upstream: a dark hull, a pale rail and a
+// row of lit cabin windows.
+vec4 ldBoat(vec2 p, float aspect, out float cover) {
+  cover = 0.0;
+  float len = ldSnapW(0.12);
+  float travel = aspect + 0.4;
+  float x0 = ldSnapX(mod(ldTime * 0.008 + aspect * 0.55, travel) - 0.2);
+  float u = floor((p.x - x0) / ldCw);
+  float cols = len / ldCw;
+  float y = floor((p.y - ldShore * 0.45) / ldPx);
+  if (u < 0.0 || u >= cols || y < 0.0 || y > 3.0) {
+    return vec4(0.0);
+  }
+  if (u < 2.0 - y || u >= cols - 1.0 + min(0.0, 1.0 - y)) {
+    return vec4(0.0);
+  }
+  if (y < 1.0) {
+    cover = 1.0;
+    return vec4(vec3(0.42, 0.46, 0.66), ldLine(0.55, 0.3));
+  }
+  if (y < 2.0) {
+    cover = 1.0;
+    return vec4(vec3(0.72, 0.74, 0.86), ldLine(0.58, 0.4));
+  }
+  if (u < 3.0 || u >= cols - 3.0) {
     return vec4(0.0);
   }
   cover = 1.0;
-  float pillar = max(0.002, px * 0.18);
-  float bayW = u * 3.0;
-  bool between = abs(mod(lx - u, bayW) - bayW * 0.5) > pillar;
-  // Headlamp and tail lamp.
-  if (lx > len - u * 0.5 && y > u && y < u * 2.0) {
-    return vec4(1.0, 0.96, 0.84, 1.0);
-  }
-  if (lx < u * 0.5 && y > u && y < u * 2.0) {
-    return vec4(1.0, 0.2, 0.12, 0.85);
-  }
-  // The windscreen, the destination blind, then two bands of windows.
-  if (lx > len - u * 1.3 && y > u * 2.2 && y < u * 4.4) {
-    return vec4(glass, 0.8);
-  }
-  if (lx > len - u * 1.3 && y > u * 5.2 && y < u * 7.2) {
-    return vec4(1.0, 0.94, 0.7, 0.9);
-  }
-  if (lx > u && lx < len - u * 1.8 && between && ((y > u * 2.2 && y < u * 4.2) || (y > u * 5.2 && y < u * 7.2))) {
-    return vec4(glass, 0.82);
-  }
-  return vec4(red, 0.56);
+  return mod(u, 2.0) < 1.0 ? vec4(LD_WINDOW, ldLine(0.85, 0.8)) : vec4(LD_WINDOW * 0.5, ldLine(0.0, 0.15));
 }
 
-vec4 londonWater(vec2 p, float px, float cx, float t) {
-  float depth = LONDON_WATER - p.y;
-  // Ripples: short streaks that drift and shimmer.
-  float wave = snoise(vec2(p.x * 6.0 + t * 0.04, p.y * 80.0 + t * 0.5 + sin(p.x * 9.0) * 2.0));
-  float rip = smoothstep(0.0, 0.8, wave);
-  // The clock tower and Parliament in the river, broken up by the ripples.
-  vec2 rp = vec2(p.x + 0.009 * snoise(vec2(p.y * 60.0, t * 0.6)), LONDON_WATER + depth * 1.08);
+// The Thames: the city mirrored in calm water and broken into horizontal
+// streaks that come and go slowly, with long amber streaks under the lamps.
+vec4 ldWater(vec2 p) {
+  float row = floor((ldShore - p.y) / ldPx);
+  float col = floor(p.x / ldCw);
+  float depth = row * ldPx;
+  float fade = 1.0 - smoothstep(0.0, ldShore * 0.95, depth);
+  float rowKey = mod(row, 97.0);
+  float clock = hash21(vec2(rowKey, 4.1));
+  float epoch = floor(ldTime / (6.0 + 8.0 * clock) + clock * 11.0);
+  float keep = hash21(vec2(rowKey * 0.37 + mod(epoch, 29.0) * 0.17, 8.3));
+  // The lamps' streaks run deeper than the rest of the mirror.
+  if (mod(col, ldLampGap()) < 1.0 && depth < 0.11 && keep > 0.3) {
+    return vec4(LD_AMBER * mix(0.5, 0.85, fade), ldLine(0.6 + 0.2 * fade, 0.3 + 0.35 * fade));
+  }
+  if (keep < 0.55 + 0.35 * (1.0 - fade)) {
+    return ldHaze(p);
+  }
+  float slide = floor((hash21(vec2(rowKey, mod(epoch, 31.0) * 0.21 + 1.7)) - 0.5) * (1.0 + depth * 10.0) + 0.5);
+  // Mirror row r below the shore onto row r above it, at its centre.
+  vec2 rp = vec2((col + slide + 0.5) * ldCw, ldShore + depth + ldPx * 0.5);
   float rc;
-  float kind;
-  float rt = londonTower(vec2(rp.x - cx, rp.y - LONDON_BANK) / LONDON_TOWER, px / LONDON_TOWER, t, rc, kind);
-  float fade = exp(-depth * 3.0);
-  float tower = rc * rt * (0.2 + 0.8 * rip) * fade;
-  float pc;
-  vec4 front = londonParliament(rp, px, cx, t, pc);
-  float hall = pc * front.a * (0.2 + 0.8 * rip) * fade * 0.55;
-  // Each lamp on the embankment drops a long amber streak.
-  float wobble = 0.004 * snoise(vec2(p.y * 50.0, t * 0.8 + p.x));
-  float lane = abs(mod(p.x + wobble, LONDON_LAMPS) - LONDON_LAMPS * 0.5);
-  float streak = step(lane, max(0.004, px * 0.55)) * rip * exp(-depth * 7.0);
-  // The bridge lamps reflect in the strip of river in front of it.
-  float pier = abs(mod(p.x + wobble + LONDON_SPAN * 0.5, LONDON_SPAN) - LONDON_SPAN * 0.5);
-  float near = step(p.y, 0.04) * step(pier, max(0.007, px * 0.8)) * rip * exp(-(0.04 - p.y) * 14.0);
-  float glow = max(streak * 0.75, near * 0.85);
-  float tone = max(max(tower * 0.85, hall), max(glow, rip * 0.085));
-  vec3 col = vec3(0.44, 0.54, 0.72);
-  col = mix(col, LONDON_AMBER, step(0.05, max(max(tower, hall), glow)));
-  return vec4(col, tone);
+  vec4 city = ldCity(rp, rc);
+  if (rc * step(0.83, city.a) < 0.5) {
+    return ldHaze(p);
+  }
+  return vec4(city.rgb * mix(0.3, 0.55, fade), ldLine(0.52 + 0.2 * fade, 0.16 + 0.28 * fade));
 }
 
-vec4 londonSky(vec2 p) {
-  // The fog over the city glows faintly from the streetlights below.
-  float glow = exp(-max(p.y - LONDON_BANK, 0.0) * 6.0);
-  vec3 col = mix(LONDON_FOG, vec3(0.95, 0.7, 0.46), glow * 0.7);
-  return vec4(col, glow * 0.07);
+// Every layer at one sample, near to far.
+vec4 ldLayers(vec2 p, float aspect) {
+  float cover = 0.0;
+  if (ldBoatOn > 0.5) {
+    vec4 boat = ldBoat(p, aspect, cover);
+    if (cover > 0.5) {
+      return boat;
+    }
+  }
+  if (p.y < ldShore) {
+    return ldWater(p);
+  }
+  vec4 hit = ldCity(p, cover);
+  if (cover > 0.5) {
+    return hit;
+  }
+  return ldSky(p);
 }
 
-// Fog in banks: two warped noise layers drifting at different speeds, one
-// lying low on the river and one across the towers.
-float londonFogDensity(vec2 p, float t) {
-  vec2 q = vec2(p.x * 1.3 - t * 0.022, p.y * 5.0);
-  float n = fbm(q + vec2(fbm(q * 0.5 + vec2(3.1, t * 0.01)) * 1.4, 0.0));
-  float ly = (p.y - 0.37) / 0.1;
-  float hy = (p.y - 0.64) / 0.12;
-  float low = exp(-ly * ly);
-  float high = 0.75 * exp(-hy * hy);
-  float bank = smoothstep(0.7 - londonFog * 0.24, 0.9 - londonFog * 0.16, n);
-  return bank * max(low, high) * smoothstep(0.0, 0.08, londonFog);
-}
+vec2 ldCacheUv = vec2(-1.0);
+float ldCacheT = -1.0;
+vec4 ldCacheValue = vec4(0.0);
 
-vec2 londonCacheUv = vec2(-1.0);
-float londonCacheT = -1.0;
-vec4 londonCacheValue = vec4(0.0);
-
-vec4 londonScene(vec2 uv, vec2 res, float t) {
-  if (uv == londonCacheUv && t == londonCacheT) {
-    return londonCacheValue;
+vec4 ldScene(vec2 uv, vec2 res, float t) {
+  if (uv == ldCacheUv && t == ldCacheT) {
+    return ldCacheValue;
   }
   float aspect = res.x / res.y;
-  float px = 1.0 / res.y;
+  ldPx = 1.0 / res.y;
+  // One sample column in the same units, from the engine's sample grid.
+  ldCw = aspect / ascii_samples.x;
+  ldTime = t;
+  ldMulti = step(1.5, ldGrid.x * ldGrid.y);
+  ldShore = floor(0.26 / ldPx) * ldPx;
+  // Parliament runs from the left to the Elizabeth Tower right of centre;
+  // Tower Bridge and the Shard fill the right, smaller in narrow boxes.
+  ldTbS = clamp(aspect / 1.3, 0.72, 1.0);
+  ldEtX = aspect * mix(0.42, 0.5, smoothstep(0.8, 1.3, aspect));
+  ldPalL = max(0.06, ldEtX - 0.75);
+  ldPalR = ldEtX - 0.045;
+  ldTbX = min(aspect * 0.8, aspect - 0.21 * ldTbS - 0.02);
+  ldShX = min(ldTbX + 0.21 * ldTbS, aspect - 0.03);
   vec2 p = vec2(uv.x * aspect, uv.y);
-  float cx = londonTowerX(aspect);
-  float bx = londonBridgeX(aspect, cx);
-  // Nearer layers slide further with the pointer.
-  float ptr = (u_pointer.x - 0.5) * u_pointer.z * londonParallax;
-  float cover;
-  float light = 0.0;
-  // How much fog sits between the eye and the layer that won.
-  float depth = 1.0;
-  vec4 hit = vec4(0.0);
-  bool done = false;
-
-  vec2 nq = p + vec2(ptr * 0.05, 0.0);
-  hit = londonBridge(nq, px, cover, light);
-  done = cover > 0.5;
-  depth = 0.18;
-  if (!done && londonBusOn > 0.5) {
-    hit = londonBus(nq, px, aspect, t, cover);
-    done = cover > 0.5;
-    depth = 0.12;
-  }
-  if (!done && p.y < LONDON_WATER) {
-    hit = londonWater(p + vec2(ptr * (p.y < 0.17 ? 0.05 : 0.03), 0.0), px, cx, t);
-    done = true;
-    depth = p.y < 0.17 ? 0.25 : 0.5;
-  }
-  vec2 mq = p + vec2(ptr * 0.03, 0.0);
-  if (!done && p.y < LONDON_BANK) {
-    // The embankment wall, with its string of lamps along the top.
-    float lane = mod(mq.x, LONDON_LAMPS) - LONDON_LAMPS * 0.5;
-    bool lamp = abs(lane) < max(0.0045, px * 0.6) && p.y > LONDON_BANK - 0.007;
-    hit = lamp ? vec4(LONDON_AMBER, 1.0) : vec4(0.62, 0.6, 0.62, 0.22);
-    light = lamp ? 1.0 : 0.0;
-    done = true;
-    depth = 0.5;
-  }
-  if (!done) {
-    vec2 tp = vec2(mq.x - cx, mq.y - LONDON_BANK) / LONDON_TOWER;
-    float kind;
-    float tone = londonTower(tp, px / LONDON_TOWER, t, cover, kind);
-    if (cover > 0.5) {
-      hit = vec4(londonTowerColor(kind, tp.y), tone);
-      light = (kind > 0.5 && kind < 2.5) ? 1.0 : 0.0;
-      done = true;
-      depth = 0.42;
+  vec4 hit = ldLayers(p, aspect);
+  // A cell averages the colour of all its samples, lit or not, so an empty
+  // sample borrows the colour of a lit neighbour in the same cell. Edges
+  // and stars then keep their colour instead of fading toward the paper.
+  if (ldMulti > 0.5 && hit.a <= 0.5) {
+    float col = floor(p.x / ldCw);
+    float rowTop = floor((1.0 - uv.y) * res.y);
+    vec4 side = ldLayers(p + vec2((mod(col, 2.0) < 1.0 ? 1.0 : -1.0) * ldCw, 0.0), aspect);
+    if (side.a > 0.5) {
+      hit.rgb = side.rgb;
+    } else {
+      vec4 below = ldLayers(p + vec2(0.0, (mod(rowTop, 2.0) < 1.0 ? -1.0 : 1.0) * ldPx), aspect);
+      if (below.a > 0.5) {
+        hit.rgb = below.rgb;
+      }
     }
   }
-  if (!done) {
-    hit = londonParliament(mq, px, cx, t, cover);
-    done = cover > 0.5;
-    light = hit.a > 0.7 ? 1.0 : 0.0;
-    depth = 0.5;
+  // Intensity dims colour linearly. Ramp charsets also thin their glyphs
+  // by the square root of it. Braille and quadrants only have dots on or
+  // off, so scaling tone would cut the outlines first: they keep every dot
+  // above a cut that rises as intensity falls, and drop the rest.
+  float tone = hit.a < 0.04 ? 0.0 : clamp(hit.a, 0.0, 1.0);
+  if (ldMulti > 0.5) {
+    float cut = 0.5 + 0.48 * (1.0 - ldIntensity) * (1.0 - ldIntensity);
+    tone = tone > cut && ldIntensity > 0.01 ? mix(0.51, tone, ldIntensity) : min(tone, 0.5) * ldIntensity;
+  } else {
+    tone *= sqrt(ldIntensity);
   }
-  vec2 fq = p + vec2(ptr * 0.015, 0.0);
-  if (!done) {
-    hit = londonTowerBridge(fq, px, bx, cover);
-    done = cover > 0.5;
-    light = hit.a > 0.6 ? 1.0 : 0.0;
-    depth = 0.85;
-  }
-  if (!done) {
-    hit = londonCity(fq, px, cover);
-    done = cover > 0.5;
-    light = hit.a > 0.5 ? 1.0 : 0.0;
-    depth = 0.95;
-  }
-  if (!done) {
-    hit = londonSky(p);
-    depth = 1.0;
-  }
-
-  // Fog over everything, thicker with distance. Lights dim less than stone.
-  float fog = londonFogDensity(p + vec2(ptr * 0.02, 0.0), t);
-  float veil = fog * depth;
-  float fogTone = 0.3 + 0.12 * fog;
-  float tone = light > 0.5 ? hit.a * (1.0 - 0.4 * veil) : mix(hit.a, fogTone, veil);
-  vec3 col = mix(hit.rgb, LONDON_FOG, veil * (light > 0.5 ? 0.3 : 0.85));
-
-  // Amber halos around the lamps and the clock face, wider in thick fog.
-  float pier = mod(nq.x + LONDON_SPAN * 0.5, LONDON_SPAN) - LONDON_SPAN * 0.5;
-  float halo = exp(-length(vec2(pier, nq.y - 0.288)) / 0.024);
-  float lane = mod(mq.x, LONDON_LAMPS) - LONDON_LAMPS * 0.5;
-  halo = max(halo, 0.7 * exp(-length(vec2(lane, mq.y - LONDON_BANK + 0.004)) / 0.012));
-  vec2 face = vec2(cx, LONDON_BANK + LONDON_TOWER * 0.69);
-  halo = max(halo, 0.8 * exp(-max(length(mq - face) - LONDON_TOWER * 0.08, 0.0) / 0.03));
-  halo *= 0.35 + 0.65 * fog;
-  if (light < 0.5 && halo > 0.04) {
-    tone = max(tone, halo * 0.6);
-    col = mix(col, LONDON_AMBER, clamp(halo * 1.3, 0.0, 0.9));
-  }
-
-  // Near-black becomes paper, so the sky keeps clean gaps between glyphs.
-  tone = tone < 0.05 ? 0.0 : clamp(tone, 0.0, 1.0) * londonIntensity;
-  londonCacheUv = uv;
-  londonCacheT = t;
-  londonCacheValue = vec4(col, tone);
-  return londonCacheValue;
+  ldCacheUv = uv;
+  ldCacheT = t;
+  ldCacheValue = vec4(hit.rgb * mix(0.2, 1.0, ldIntensity), tone);
+  return ldCacheValue;
 }
 `;
 
 const FIELD = `${SCENE}
 float field(vec2 uv, vec2 res, float t) {
-  return londonScene(uv, res, t).a;
+  return ldScene(uv, res, t).a;
 }
 `;
 
 const COLOR_FIELD = `${SCENE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
-  return londonScene(uv, res, t).rgb;
+  return ldScene(uv, res, t).rgb;
 }
 `;
 
-// Modes that paint the scene's own colours need its foggy night behind them
+// Modes that paint the scene's own colours need its night sky behind them
 // in both themes; mono and palette keep the theme's paper, or the phosphor's.
-const FOG_NIGHT = "#0a0f17";
-const FOG_NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
+const NIGHT = "#060913";
+const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
   "duotone",
@@ -676,7 +776,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #0a0f17 0%, #1a2230 45%, #4a4038 64%, #0c121c 66%, #0a0f17 100%)",
+        "linear-gradient(to bottom, #060913 0%, #0b1020 72%, #060913 74%, #060913 100%)",
     }}
   />
 );
@@ -684,69 +784,70 @@ const FALLBACK = (
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-export interface LondonProps extends AsciiSceneProps {
+export interface LondonProps extends Omit<AsciiSceneProps, "interactive"> {
   /** How strongly it draws, from 0 (faint, for text on top) to 1. Default 1. */
   intensity?: number;
-  /** How thick the fog banks are, from 0 (clear night) to 1. Default 0.6. */
+  /** How much still haze lies on the water and the bank, from 0 (none) to 1. Default 0.5. */
   fog?: number;
-  /** The red double-decker crossing the bridge. Default `true`. */
-  bus?: boolean;
-  /** An engine pointer effect on top of the parallax. Default `"none"`. */
-  interaction?: Interaction;
+  /** The river boat heading upstream. Default `true`. */
+  boat?: boolean;
   /**
-   * Paper behind the glyphs. Default: the scene's foggy night in `truecolor`,
+   * Paper behind the glyphs. Default: the scene's night blue in `truecolor`,
    * `ansi16` and `duotone`; the theme's paper, or the phosphor's, otherwise.
    */
   paper?: AsciiColor;
   /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
   fallback?: ReactNode;
+  /** Ignored: the city never reacts to the pointer. Accepted so galleries can pass it to every scene. */
+  interactive?: boolean;
 }
 
 /**
- * London on a foggy evening. The Elizabeth Tower keeps time over the
- * Thames beside the Houses of Parliament, Tower Bridge stands downstream,
- * fog banks drift through and a red bus crosses the bridge under amber
- * lamps. Decorative and full-bleed: size it with `className`, usually
- * `absolute inset-0`.
+ * Westminster at night from across the Thames. The Elizabeth Tower's dial
+ * glows beside the floodlit Palace of Westminster, Tower Bridge and the
+ * Shard stand further down the river, and the embankment lamps drop amber
+ * streaks into the water while a boat passes slowly. Nothing reacts to
+ * the pointer. Decorative and full-bleed: size it with `className`,
+ * usually `absolute inset-0`.
  */
 export const London = ({
-  charset = "standard",
+  charset = "quadrants",
+  chars,
   colorMode,
   phosphor,
   paper,
-  cell = 12,
-  // Low, so the stone and the green bridge still light Braille and quadrant dots.
-  threshold = 0.3,
-  stillTime = 8,
-  interactive = true,
-  interaction = "none",
+  cell = 9,
+  stillTime = 30,
   intensity = 1,
-  fog = 0.6,
-  bus = true,
+  fog = 0.5,
+  boat = true,
   fallback = FALLBACK,
+  // The city has no pointer response; keep the flag off the DOM.
+  interactive: _interactive,
   ...props
 }: LondonProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
+  const [gridX, gridY] = resolveCharset(charset, chars).grid;
   return (
     <AsciiShader
+      {...props}
       field={FIELD}
       colorField={COLOR_FIELD}
       uniforms={{
-        londonBusOn: bus ? 1 : 0,
-        londonFog: clamp(fog, 0, 1),
-        londonIntensity: clamp(intensity, 0, 1),
-        londonParallax: interactive ? 1 : 0,
+        ldBoatOn: boat ? 1 : 0,
+        ldFog: clamp(fog, 0, 1),
+        ldGrid: [gridX, gridY],
+        ldIntensity: clamp(intensity, 0, 1),
       }}
       charset={charset}
+      chars={chars}
       colorMode={mode}
       phosphor={phosphor}
-      paper={paper ?? (FOG_NIGHT_MODES.has(mode) ? FOG_NIGHT : undefined)}
+      paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
       cell={cell}
-      threshold={threshold}
       stillTime={stillTime}
-      interaction={interactive ? interaction : "none"}
+      interaction="none"
       fallback={fallback}
-      {...props}
     />
   );
 };

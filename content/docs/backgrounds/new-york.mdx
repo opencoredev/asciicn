@@ -1,6 +1,6 @@
 ---
 title: "New York"
-description: "Manhattan at night from across the East River, with the Empire State and Chrysler buildings, a skyline of lit windows, the Brooklyn Bridge and a ferry."
+description: "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water."
 ---
 
 import NewYorkDemo from "@/examples/new-york-demo";
@@ -36,17 +36,17 @@ export function Hero() {
 }
 ```
 
-The view looks at Manhattan from Brooklyn. The Empire State Building rises with its crown floodlit gold and white and a red light blinking on its mast. To its right, the Chrysler Building shows its stacked steel arches and their triangular windows. Behind and around them, thousands of windows switch on and off over time. In front, the Brooklyn Bridge crosses the view on two stone towers with pointed arches, its cables strung with lights and its deck full of traffic. Below, the East River reflects the city and an orange ferry crosses it.
+The view looks at Manhattan from Brooklyn. One World Trade Center stands at the left, a tapering glass tower with a V of lit glass down its middle, a bright parapet and a spire. Right of centre, the Empire State Building rises in setbacks to its floodlit gold crown, mast and antenna. Beside it, the Chrysler Building's crown steps up in lit arches around triangular windows under its needle. Lower Manhattan and Midtown fill in with towers of window grids, with the low Village between them.
 
-On wide boxes the two landmarks sit right of centre, so a headline fits on the left. On tall boxes they move in and slim down. Moving the pointer slides the near layers further than the far ones.
+The buildings never move. A few windows switch on or off at a time, each on its own slow clock. The red lights on the two spires pulse about once every two seconds, stars brighten and fade, the river's reflections break and shift a sample at a time, and a ferry crosses in about two minutes. Nothing follows the pointer.
 
-It draws in `standard` glyphs by default. `braille` gives the finest windows and cables, `blocks` and `dense` solid shapes, and `edge` an outline drawing. In `truecolor`, the default, it paints warm window light on a deep navy. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `quadrants` at a 9px cell by default, so every edge and window lands on a 2x2 sub-cell. `braille` gives finer outlines, `blocks` and `dense` solid shapes, and `standard` a classic ASCII look. In `truecolor`, the default, warm and cool window light sits on a night navy. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.55}` thins the glyphs so white text on the left reads first, and `windows={0.7}` lights more of the skyline to make up for it.
+`intensity={0.55}` dims the city so white text over the river reads first, and `windows={0.7}` lights more of the skyline to make up for it.
 
 <ComponentPreview
   src="examples/new-york-headline.tsx"
@@ -58,7 +58,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
 
 ### On a green monitor
 
-`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset, a 10px cell and `fx` scanlines, bloom and vignette finish the look.
+`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset, a 9px cell and `fx` scanlines, bloom and vignette finish the look.
 
 <ComponentPreview src="examples/new-york-phosphor.tsx">
   <NewYorkPhosphor />
@@ -78,21 +78,16 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
     {
       name: "windows",
       type: "number",
-      default: "0.5",
+      default: "0.55",
       description:
-        "Share of windows lit across the skyline, from 0 (dark) to 1. Each window changes on its own slow clock.",
+        "Share of windows lit across the skyline, from 0 (dark) to 1. A few windows change at a time, each on its own slow clock.",
     },
     {
       name: "ferry",
       type: "boolean",
       default: "true",
-      description: "The ferry crossing the river.",
-    },
-    {
-      name: "traffic",
-      type: "boolean",
-      default: "true",
-      description: "Car lights on the bridge deck and along the FDR Drive.",
+      description:
+        "The ferry crossing the river, once every two minutes or so.",
     },
     {
       name: "paper",
@@ -110,7 +105,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
     {
       name: "charset",
       type: "CharsetName",
-      default: '"standard"',
+      default: '"quadrants"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -193,21 +188,9 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
-      name: "interaction",
-      type: '"none" | "repel" | "ripple" | "trail"',
-      default: '"none"',
-      description: "What the pointer does to the glyphs.",
-    },
-    {
-      name: "interactive",
-      type: "boolean",
-      default: "true",
-      description: "false turns off the parallax and any pointer interaction.",
-    },
-    {
       name: "cell",
       type: "number",
-      default: "12",
+      default: "9",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -232,7 +215,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
     {
       name: "stillTime",
       type: "number",
-      default: "4",
+      default: "30",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -255,6 +238,7 @@ It draws in `standard` glyphs by default. `braille` gives the finest windows and
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime`, with the ferry mid-river, and stops.
+- The buildings never move and nothing reacts to the pointer. Only lights, stars, the reflections and the ferry change.
+- With reduced motion turned on, it draws one still frame at `stillTime`, with the ferry on the river, and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
-- The whole city is one shader pass on the GPU. The river reflection reads the skyline a second time, and `braille` samples eight times per cell, so that combination costs the most. See [Performance](/docs/engine/performance).
+- The whole city is one shader pass on the GPU. The river reflection reads the skyline a second time, and in `quadrants` and `braille` an empty sample also reads its neighbours so cell colours stay true at edges. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).

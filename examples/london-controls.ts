@@ -4,7 +4,7 @@ import { select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the London main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "standard",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -27,7 +27,7 @@ export const intensity = slider({
 });
 
 export const fog = slider({
-  default: 0.6,
+  default: 0.5,
   id: "fog",
   label: "Fog",
   max: 1,
@@ -35,18 +35,18 @@ export const fog = slider({
   step: 0.05,
 });
 
-export const bus = toggle({
+export const boat = toggle({
   default: true,
-  id: "bus",
-  label: "Bus",
+  id: "boat",
+  label: "Boat",
 });
 
 export const cell = slider({
-  default: 12,
+  default: 9,
   id: "cell",
   label: "Cell",
-  max: 20,
-  min: 8,
+  max: 16,
+  min: 6,
   step: 1,
   unit: "px",
 });
@@ -63,7 +63,7 @@ export const controls = [
   colorMode,
   intensity,
   fog,
-  bus,
+  boat,
   cell,
   animate,
 ];

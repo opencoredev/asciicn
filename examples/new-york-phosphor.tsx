@@ -9,7 +9,7 @@ export default function NewYorkPhosphor() {
         colorMode="mono"
         phosphor="p1"
         windows={0.65}
-        cell={10}
+        cell={9}
         fx={{ bloom: 0.5, scanlines: 0.4, vignette: 0.45 }}
         className="absolute inset-0 -z-10"
       />

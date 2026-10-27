@@ -4,7 +4,7 @@ import { select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the New York main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "standard",
+  default: "quadrants",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -27,7 +27,7 @@ export const intensity = slider({
 });
 
 export const windows = slider({
-  default: 0.5,
+  default: 0.55,
   id: "windows",
   label: "Windows",
   max: 1,
@@ -41,18 +41,12 @@ export const ferry = toggle({
   label: "Ferry",
 });
 
-export const traffic = toggle({
-  default: true,
-  id: "traffic",
-  label: "Traffic",
-});
-
 export const cell = slider({
-  default: 12,
+  default: 9,
   id: "cell",
   label: "Cell",
-  max: 20,
-  min: 8,
+  max: 16,
+  min: 6,
   step: 1,
   unit: "px",
 });
@@ -70,7 +64,6 @@ export const controls = [
   intensity,
   windows,
   ferry,
-  traffic,
   cell,
   animate,
 ];

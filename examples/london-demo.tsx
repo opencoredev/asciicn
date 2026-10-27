@@ -11,7 +11,7 @@ export default function LondonDemo() {
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
       fog={usePreviewValue(knobs.fog)}
-      bus={usePreviewValue(knobs.bus)}
+      boat={usePreviewValue(knobs.boat)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

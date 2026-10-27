@@ -12,7 +12,6 @@ export default function NewYorkDemo() {
       intensity={usePreviewValue(knobs.intensity)}
       windows={usePreviewValue(knobs.windows)}
       ferry={usePreviewValue(knobs.ferry)}
-      traffic={usePreviewValue(knobs.traffic)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
