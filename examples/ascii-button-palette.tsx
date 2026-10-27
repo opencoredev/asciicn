@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ASCII_BUTTON_FRAMES,
   ASCII_BUTTON_VARIANTS,

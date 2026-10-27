@@ -222,11 +222,12 @@ for (const folder of [".agents/skills/asciicn", ".claude/skills/asciicn"]) {
   }
 }
 
-// Docs controls files run on the server: the MDX page passes `controls` to
-// the preview frame. A "use client" module's exports are client references
-// there, so a value imported from one (an option list) breaks prerendering.
-// Type-only imports are fine; copy the values and check them with
-// `satisfies typeof`.
+// Examples without "use client" run on the server: controls files (the MDX
+// page passes `controls` to the preview frame) and server-rendered demos.
+// A "use client" module's exports are client references there, so a value
+// such as an option list breaks prerendering. Components (PascalCase) render
+// fine. Import types only and copy the values (checked with
+// `satisfies typeof`), or mark the example "use client".
 const VALUE_IMPORT =
   /^import\s+(?!type\b)\{([^}]*)\}\s+from\s+["'](@\/[^"']+)["']/gm;
 const isClientModule = (specifier: string) =>
@@ -241,20 +242,28 @@ const isClientModule = (specifier: string) =>
       return false;
     }
   });
+const COMPONENT_NAME = /^[A-Z][a-z]/;
 for (const file of readdirSync(path.join(ROOT, "examples"))) {
-  if (!file.endsWith("-controls.ts")) {
+  if (!/\.tsx?$/.test(file)) {
     continue;
   }
   const code = readFileSync(path.join(ROOT, "examples", file), "utf-8");
+  const head = code.trimStart();
+  if (head.startsWith('"use client"') || head.startsWith("'use client'")) {
+    continue;
+  }
   for (const match of code.matchAll(VALUE_IMPORT)) {
     const names = (match[1] ?? "")
       .split(",")
       .map((name) => name.trim())
-      .filter((name) => name !== "" && !name.startsWith("type "));
+      .filter(
+        (name) =>
+          name !== "" && !name.startsWith("type ") && !COMPONENT_NAME.test(name)
+      );
     const specifier = match[2] ?? "";
     if (names.length > 0 && isClientModule(specifier)) {
       errors.push(
-        `examples/${file} imports ${names.join(", ")} from the "use client" module ${specifier}; it runs on the server, so import types only and copy the values`
+        `examples/${file} imports ${names.join(", ")} from the "use client" module ${specifier}; it runs on the server, so import types only and copy the values, or mark it "use client"`
       );
     }
   }

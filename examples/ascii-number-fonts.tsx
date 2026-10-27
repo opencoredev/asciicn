@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ASCII_NUMBER_FONTS,
   AsciiNumber,
