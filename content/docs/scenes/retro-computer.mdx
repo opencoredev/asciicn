@@ -1,0 +1,155 @@
+---
+title: "Retro computer"
+description: "A vintage workstation in glyphs: a CRT on a desktop unit and a keyboard, its screen typing a live session in real characters."
+---
+
+import RetroComputerDemo from "@/examples/retro-computer-demo";
+import RetroComputerSession from "@/examples/retro-computer-session";
+import RetroComputerClassic from "@/examples/retro-computer-classic";
+import { controls as retroComputerControls } from "@/examples/retro-computer-controls";
+
+<ComponentPreview
+  src="examples/retro-computer-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={retroComputerControls}
+>
+  <RetroComputerDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="retro-computer" />
+
+## Usage
+
+```tsx
+import { RetroComputer } from "@/components/asciicn/retro-computer";
+
+const script = [
+  { command: "DIR", output: ["README.TXT  GAME.EXE"] },
+  { command: "RUN GAME.EXE", output: ["LOADING ..."] },
+];
+
+export function Hero() {
+  return <RetroComputer script={script} className="h-[480px] w-full" />;
+}
+```
+
+The computer is a small 3D model: a desktop unit with two drive bays, vents and a power light, a CRT whose housing tapers back from the bezel, and a keyboard with its keys laid out in rows. It is projected in perspective and rasterised at the charset's sample grid. Each face is flat-shaded from a fixed light, so the top, front and side of the case each get their own glyph density, and a one-sample gap traces every edge where two faces meet.
+
+The glass shows a live session. The computer types each command in `script` after `prompt`, prints its output line by line, then moves on, looping forever. The characters are real glyphs placed where their spot on the tube projects, so the text leans with the monitor as it sways, with a slight bulge like curved glass. A key on the keyboard dips each time a character is typed.
+
+It rests in a three-quarter view and sways a little. Drag to turn it; it coasts and stays where you leave it. With keyboard focus, the arrow keys turn it.
+
+## Examples
+
+### Your own session
+
+Pass `script`, `prompt` and `banner` to type anything. Lines longer than the screen is wide wrap onto the next row, so short lines read best. Here a green phosphor and a shell prompt.
+
+<ComponentPreview src="examples/retro-computer-session.tsx" size="lg">
+  <RetroComputerSession />
+</ComponentPreview>
+
+### Classic ASCII in your theme's ink
+
+The `standard` ramp draws each side of the case with its own glyph, so the faces read as `#`, `+` and `:`. `color="--ascii-ink"` paints the case in the theme's ink instead of beige, and the `ibm` phosphor gives the screen white text.
+
+<ComponentPreview src="examples/retro-computer-classic.tsx" size="lg">
+  <RetroComputerClassic />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies to the case, with `charset` defaulting to `"braille"`, plus `fx` for a CRT finish. The text on the screen is always drawn in real characters, whatever the charset.
+
+<PropsTable
+  rows={[
+    {
+      name: "script",
+      type: "{ command: string; output: string[] }[]",
+      default: "a tour of a disk",
+      description:
+        "The session the computer types, looping: each command after the prompt, then its output.",
+    },
+    {
+      name: "prompt",
+      type: "string",
+      default: '"C:\\\\>"',
+      description: "The prompt before each command.",
+    },
+    {
+      name: "banner",
+      type: "string[]",
+      default: "a memory check",
+      description: "Lines printed at power-on, above the session.",
+    },
+    {
+      name: "screen",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: '"p3"',
+      description: "The screen's phosphor: green, amber, white or cyan.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"#d8cdb1"',
+      description: "Case colour in truecolor, an aged beige by default.",
+    },
+    {
+      name: "typing",
+      type: "number",
+      default: "0.06",
+      description: "Seconds per typed character.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the case.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Drag or use the arrow keys to turn it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "11",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Multiplies the typing and the sway.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is announced as an image. The session on the screen is decoration, so screen readers don't read it; if the text matters, put it on the page as well, and pass `aria-label` to describe the picture.
+- Under reduced motion it draws one still frame, partway through the session, with no sway. Dragging and the arrow keys still turn it.
+- It draws at up to 30 fps on the CPU and pauses offscreen and in hidden tabs. The model has under 40 faces, so the cost is filling the samples they cover.
+- The text grid is sized from the monitor's projected size, so a small box fits fewer characters per line and long lines wrap sooner. Lower `cell` to fit more.

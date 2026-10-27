@@ -1,0 +1,175 @@
+---
+title: "Synthwave sun"
+description: "An outrun grid racing toward a sliced setting sun, between a wireframe ridge and under a glowing horizon, steered by the pointer."
+---
+
+import SynthwaveSunDemo from "@/examples/synthwave-sun-demo";
+import SynthwaveSunHero from "@/examples/synthwave-sun-hero";
+import SynthwaveSunPhosphor from "@/examples/synthwave-sun-phosphor";
+import { controls as synthwaveSunControls } from "@/examples/synthwave-sun-controls";
+
+<ComponentPreview
+  src="examples/synthwave-sun-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={synthwaveSunControls}
+>
+  <SynthwaveSunDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="synthwave-sun" />
+
+## Usage
+
+```tsx
+import { SynthwaveSun } from "@/components/asciicn/synthwave-sun";
+
+export function Hero() {
+  return (
+    <section className="relative isolate h-[560px]">
+      <SynthwaveSun className="absolute inset-0 -z-10" />
+    </section>
+  );
+}
+```
+
+The scene runs on the GPU as one field. The floor is a perspective grid: rows race toward you and columns meet at the vanishing point. A line lights exactly the samples it passes through, so in Braille every grid line is one dot wide and in a glyph ramp one glyph wide. Far from the camera the rows crowd closer than one sample, and there they fade into an even haze instead of flickering.
+
+The sun sets into the horizon in amber at the top and magenta below. Slices cut across its lower half in whole sample rows, so each gap is a clean row of empty cells. They widen as they fall and slide slowly down. A one-row line marks the horizon, the glow above it thins as it climbs, and the sun's reflection breaks into alternate rows on the floor.
+
+Move the pointer across it to steer: the vanishing point, the sun and the grid's columns swing with you. Set `interactive={false}` to keep it centred.
+
+## Examples
+
+### Behind a heading
+
+Lower `mountains` and `travel` for a calmer backdrop behind text. The heading is real text on top; the scene sits behind it at `-z-10`.
+
+<ComponentPreview src="examples/synthwave-sun-hero.tsx" size="lg">
+  <SynthwaveSunHero />
+</ComponentPreview>
+
+### Quadrants on an amber phosphor
+
+`phosphor="p3"` turns it mono on amber glass, and `fx` adds bloom and scanlines. Quadrants split each cell 2×2, which keeps the slices sharp at a larger cell.
+
+<ComponentPreview src="examples/synthwave-sun-phosphor.tsx" size="lg">
+  <SynthwaveSunPhosphor />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"braille"`, plus `fx` for a CRT finish. `dither` defaults to `"bayer4"` for Braille and quadrants, so the glow keeps a dot gradient.
+
+<PropsTable
+  rows={[
+    {
+      name: "travel",
+      type: "number",
+      default: "1",
+      description: "How fast the grid races toward you. 0 parks it.",
+    },
+    {
+      name: "slices",
+      type: "number",
+      default: "1",
+      description:
+        "How wide the gaps across the sun grow, from 0 (a solid disc) to 1.",
+    },
+    {
+      name: "slide",
+      type: "number",
+      default: "1",
+      description: "How fast the slices slide down the sun.",
+    },
+    {
+      name: "glow",
+      type: "number",
+      default: "1",
+      description:
+        "The glow over the horizon, the halo and the sun's reflection, from 0 to 1.",
+    },
+    {
+      name: "mountains",
+      type: "number",
+      default: "1",
+      description: "Height of the ridge on both sides, from 0 (flat) to 2.",
+    },
+    {
+      name: "stars",
+      type: "boolean",
+      default: "true",
+      description: "Twinkling stars in the upper sky.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description: "Which glyphs draw the tones.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        'How glyphs are coloured. "mono" when a phosphor is set and no mode is.',
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs, or the phosphor's glass.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Steer the vanishing point with the pointer.",
+    },
+    {
+      name: "interaction",
+      type: '"none" | "repel" | "ripple" | "trail"',
+      default: '"none"',
+      description:
+        "What the pointer does to the glyphs, on top of the steering.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "60",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "4",
+      description: "The moment drawn under reduced motion, in seconds.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is decorative and hidden from assistive technology. Put your real heading and copy beside or on top of it.
+- Under reduced motion it draws one still frame at `stillTime`. It pauses offscreen and in hidden tabs.
+- On a light page the colours deepen so amber stays visible on white paper.
+- Without WebGL2 it shows `fallback`: by default a gradient with the sun, the sky and the horizon.

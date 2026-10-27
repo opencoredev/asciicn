@@ -1,0 +1,47 @@
+[
+  {
+    "name": "torus-knot",
+    "type": "registry:component",
+    "title": "Torus knot",
+    "description": "A lit 3D torus knot tumbling in glyphs, with p and q windings, a breaks-at-crossings outline and drag to turn.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/torus-knot.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/torus-knot.tsx"
+      }
+    ]
+  },
+  {
+    "name": "synthwave-sun",
+    "type": "registry:component",
+    "title": "Synthwave sun",
+    "description": "An outrun grid racing toward a sliced setting sun, between a wireframe ridge and under a glowing horizon, steered by the pointer.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/synthwave-sun.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/synthwave-sun.tsx"
+      }
+    ]
+  },
+  {
+    "name": "retro-computer",
+    "type": "registry:component",
+    "title": "Retro computer",
+    "description": "A vintage workstation in glyphs: a CRT on a desktop unit and a keyboard, its screen typing a live session in real characters.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/retro-computer.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/retro-computer.tsx"
+      }
+    ]
+  }
+]

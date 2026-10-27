@@ -1,0 +1,180 @@
+---
+title: "Torus knot"
+description: "A lit 3D torus knot tumbling in glyphs, with p and q windings, a breaks-at-crossings outline and drag to turn."
+---
+
+import TorusKnotDemo from "@/examples/torus-knot-demo";
+import TorusKnotBraille from "@/examples/torus-knot-braille";
+import TorusKnotTrefoil from "@/examples/torus-knot-trefoil";
+import { controls as torusKnotControls } from "@/examples/torus-knot-controls";
+
+<ComponentPreview
+  src="examples/torus-knot-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={torusKnotControls}
+>
+  <TorusKnotDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="torus-knot" />
+
+## Usage
+
+```tsx
+import { TorusKnot } from "@/components/asciicn/torus-knot";
+
+export function Hero() {
+  return (
+    <section className="relative h-[520px]">
+      <TorusKnot p={3} q={7} className="absolute inset-0" />
+    </section>
+  );
+}
+```
+
+A torus knot is a closed curve drawn on the surface of a ring. It winds `p` times around the ring's axis and passes `q` times through its hole. When `p` and `q` share no common factor you get one knot, such as the trefoil at `p={2} q={3}`. When they do, you get a link of several loops.
+
+The tube is a real 3D mesh. It is swept along the curve, projected in perspective and rasterised into a depth buffer at the charset's own sample grid, so Braille gets 2×4 samples per cell and quadrants 2×2. Each sample is lit from its surface normal: a key light sets the tone, a tight highlight reaches the densest glyphs, and a rim brightens the edges. Parts farther from the camera fade, which puts the near strands in front.
+
+In truecolor the colour comes from `colors`, the site's orange, pink, purple and blue by default. With `hue="film"` it shifts with the surface angle like oil on water, so the colour slides over the tube as it turns. With `hue="tube"` it runs along the knot instead.
+
+Where one strand crosses over another, the strand underneath breaks just short of the one on top, the way knots are drawn by hand. That keeps every crossing readable even in a coarse charset. With ramp charsets, `contours` traces the silhouette with `- / | \` glyphs that follow the outline.
+
+It turns on its own axis and sways a little, so you see the knot near face on with its depth showing. Drag to tilt it. Let go mid-drag and it coasts, then stays where you left it. With keyboard focus, the arrow keys turn it.
+
+## Examples
+
+### Braille, coloured along the tube
+
+`hue="tube"` lays the `colors` stops along the tube and loops back to the first, so you can follow one strand round the whole knot. Braille samples 2×4 dots per cell, which gives a (3, 4) knot a fine outline and an even dot shading.
+
+<ComponentPreview src="examples/torus-knot-braille.tsx" size="lg">
+  <TorusKnotBraille />
+</ComponentPreview>
+
+### A trefoil beside text
+
+Mono with a transparent background takes your theme's ink, so the knot sits on the page like an illustration. `interactive={false}` makes it decoration only.
+
+<ComponentPreview src="examples/torus-knot-trefoil.tsx" size="lg">
+  <TorusKnotTrefoil />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"blocks"`, plus `fx` for a CRT finish.
+
+<PropsTable
+  rows={[
+    {
+      name: "p",
+      type: "number",
+      default: "2",
+      description:
+        "Times the tube winds around the central axis. Rounded to a whole number.",
+    },
+    {
+      name: "q",
+      type: "number",
+      default: "5",
+      description:
+        "Times the tube passes through the hole. Rounded to a whole number.",
+    },
+    {
+      name: "thickness",
+      type: "number",
+      default: "0.13",
+      description: "Tube radius as a share of the knot's radius, 0.04 to 0.3.",
+    },
+    {
+      name: "size",
+      type: "number",
+      default: "0.86",
+      description:
+        "How much of the box's shorter side the knot spans, 0.3 to 1.",
+    },
+    {
+      name: "spin",
+      type: "number",
+      default: "0.4",
+      description: "Turn around the knot's own axis, in radians per second.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Multiplies the spin and the slow sway. 0 holds it still.",
+    },
+    {
+      name: "colors",
+      type: "AsciiColor[]",
+      default: '["orange", "pink", "purple", "blue"]',
+      description: "Truecolor stops, looping back to the first.",
+    },
+    {
+      name: "hue",
+      type: '"film" | "tube"',
+      default: '"film"',
+      description:
+        "Lay the stops by surface angle, like oil on water, or along the tube.",
+    },
+    {
+      name: "light",
+      type: "number",
+      default: "320",
+      description:
+        "Where the key light comes from, in degrees clockwise from the top.",
+    },
+    {
+      name: "contours",
+      type: "boolean",
+      default: "true",
+      description:
+        "Ramp charsets draw - / | \\ along the silhouette, following the outline.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description: "Which glyphs draw the tones.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description: "How glyphs are coloured.",
+    },
+    {
+      name: "interactive",
+      type: "boolean",
+      default: "true",
+      description: "Drag or use the arrow keys to turn it.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false draws one still frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is announced as an image whose label names the knot. Pass `aria-label` to describe what it stands for on your page.
+- Under reduced motion it draws one still frame. Dragging and the arrow keys still turn it.
+- It draws at up to 60 fps on the CPU and pauses offscreen and in hidden tabs. The mesh is built once per shape; each frame only transforms it and fills the samples it covers. Large boxes in Braille cost the most, so raise `cell` for a full-screen hero.
