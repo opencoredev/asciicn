@@ -1,0 +1,182 @@
+---
+title: "ASCII canvas"
+description: "A glyph pad you paint with the pointer: ink spreads, curls and fades into glowing trails, and clicks send ripples that bend them."
+---
+
+import AsciiCanvasDemo from "@/examples/ascii-canvas-demo";
+import AsciiCanvasSpectrum from "@/examples/ascii-canvas-spectrum";
+import AsciiCanvasHero from "@/examples/ascii-canvas-hero";
+import { controls as asciiCanvasControls } from "@/examples/ascii-canvas-controls";
+
+<ComponentPreview
+  src="examples/ascii-canvas-demo.tsx"
+  size="lg"
+  align="stretch"
+  controls={asciiCanvasControls}
+>
+  <AsciiCanvasDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-canvas" />
+
+## Usage
+
+```tsx
+import { AsciiCanvas } from "@/components/asciicn/ascii-canvas";
+
+export function Playground() {
+  return <AsciiCanvas brushSize={2} decay={2.5} className="h-96 w-full" />;
+}
+```
+
+The pad keeps a grid of ink, one value per sample. Every 60th of a second the ink fades, spreads to its neighbours and drifts on a slow, curling flow. The tones go through the charset like any other field, so the brightest ink draws the densest glyph and a fading tail thins out to dots.
+
+Dragging lays ink along the path. A mouse also paints faintly when it just moves over the pad, unless motion is off. A click or tap drops a ripple: a ring that spreads across a water surface over the ink, bends the trails as it passes and glints on its crest.
+
+Each stroke takes the next colour from `inks`. Where strokes overlap, their colours mix.
+
+When nobody has touched the pad for four seconds, a slow ghost brush draws on its own, and drops a ripple every few seconds. Turn it off with `idle={false}`. The pad always opens with a short stroke already on it, so it is never blank.
+
+## Examples
+
+### Colours in Braille
+
+Five series colours, one per stroke, on 2×4 Braille dots. The trails fade slowly and curl more.
+
+<ComponentPreview src="examples/ascii-canvas-spectrum.tsx" size="lg">
+  <AsciiCanvasSpectrum />
+</ComponentPreview>
+
+### Behind a heading
+
+A custom ramp under a heading, with no hint and no clear button. The text lets pointer events through, so the pad under it still paints.
+
+<ComponentPreview src="examples/ascii-canvas-hero.tsx" size="lg">
+  <AsciiCanvasHero />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "charset",
+      type: '"standard" | "dense" | "blocks" | "quadrants" | "braille" | "cp437" | "petscii" | "katakana" | "dots" | "edge"',
+      default: '"standard"',
+      description:
+        "Which glyphs draw the ink. Braille and quadrants paint finer trails.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'A custom ramp from empty to dense, such as " .:+#". Wins over charset.',
+    },
+    {
+      name: "brushSize",
+      type: "number",
+      default: "1.25",
+      description: "Brush radius in cells.",
+    },
+    {
+      name: "decay",
+      type: "number",
+      default: "1.8",
+      description:
+        "Seconds for a trail to fade to about a third of its brightness.",
+    },
+    {
+      name: "diffusion",
+      type: "number",
+      default: "0.5",
+      description: "How fast ink spreads into its neighbours, 0 to 1.",
+    },
+    {
+      name: "swirl",
+      type: "number",
+      default: "0.35",
+      description: "How much trails curl and drift as they fade, 0 to 1.",
+    },
+    {
+      name: "ripples",
+      type: "boolean",
+      default: "true",
+      description: "Clicks, taps and the space key send ripples.",
+    },
+    {
+      name: "idle",
+      type: "boolean",
+      default: "true",
+      description: "A ghost brush paints after four seconds without input.",
+    },
+    {
+      name: "inks",
+      type: "AsciiColor[]",
+      default: '["--ascii-ink"]',
+      description:
+        'Ink colours, as palette names ("blue"), CSS variables or CSS colours. Each new stroke takes the next one.',
+    },
+    {
+      name: "clearButton",
+      type: "boolean",
+      default: "true",
+      description: "Show a clear button in the bottom-right corner.",
+    },
+    {
+      name: "hint",
+      type: "string | false",
+      default: '"drag to paint · click to ripple"',
+      description:
+        "A short how-to in the top-left corner, shown until the first stroke. false hides it.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description: "transparent draws glyphs only, over whatever is behind.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description:
+        "Simulation speed. 0.5 makes everything fade and spread at half speed.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false freezes fading, spreading, ripples and the idle brush. Painting still works.",
+    },
+    {
+      name: "aria-label",
+      type: "string",
+      default: "describes the pad and its keys",
+      description: "What screen readers announce when the pad has focus.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the current frame as text, ANSI, SVG or PNG.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The pad takes focus with Tab. The arrow keys paint from the centre, Shift paints in longer steps, and Space or Enter sends a ripple. The clear button is a real button.
+- Touch paints too. The pad sets `touch-action: none`, so dragging on it doesn't scroll the page; scroll from outside it.
+- With reduced motion, or `animate={false}`, painting still works, but ink stays where you put it: no fading, spreading, ripples or ghost brush. Clear empties it at once.
+- The loop runs at up to 60 fps and pauses offscreen and in hidden tabs. The idle brush only draws while the pad is on screen.
+- The simulation runs on the CPU over the sample grid. A 700 × 400 pad is about 3,000 samples in the classic charset and 25,000 in Braille, well within a frame.
+- Resizing the pad, or switching between charsets with different sample grids, starts a fresh pad.

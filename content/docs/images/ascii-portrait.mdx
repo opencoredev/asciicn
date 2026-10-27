@@ -1,0 +1,245 @@
+---
+title: "ASCII portrait"
+description: "A face redrawn in fine Braille glyphs, graded for skin and shadow, with contour strokes, a develop reveal and a before/after split with the photo."
+---
+
+import AsciiPortraitDemo from "@/examples/ascii-portrait-demo";
+import AsciiPortraitColor from "@/examples/ascii-portrait-color";
+import AsciiPortraitSketch from "@/examples/ascii-portrait-sketch";
+import { controls as asciiPortraitControls } from "@/examples/ascii-portrait-controls";
+
+<ComponentPreview
+  src="examples/ascii-portrait-demo.tsx"
+  size="lg"
+  controls={asciiPortraitControls}
+>
+  <AsciiPortraitDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-portrait" />
+
+## Usage
+
+```tsx
+import { AsciiPortrait } from "@/components/asciicn/ascii-portrait";
+
+export function TeamCard() {
+  return (
+    <AsciiPortrait
+      src="/team/ada.jpg"
+      alt="Ada, our head of research, smiling at the camera"
+      className="aspect-[4/5] w-72"
+    />
+  );
+}
+```
+
+`AsciiPortrait` is `AsciiImage` set up for faces. It samples the photo the same way, then shapes the tones before glyphs are chosen:
+
+1. A grade of `contrast: 1.2` and `gamma: 0.9` separates skin from shadow without crushing either.
+2. `detail` sharpens each sample against the cell around it, so eyes, lips and the line of the nose survive the cell grid.
+3. With `edges` on, a Sobel filter finds the strongest contours and thins them to one sample wide. In Braille and quadrants they light dots on top of the tones. In a ramp charset such as `standard` they become `- / | \` strokes.
+
+Braille is the default because it draws 2×4 dots per cell. That is eight times the detail of a ramp at the same cell size, which matters most on a face.
+
+On mount the portrait develops: the contours come in first, like a sketch, and the tones rise through them over `developDuration`. Hover the portrait to see the photo left of the pointer. With `compare="drag"` the split stays where it is dropped, which suits touch screens.
+
+## Examples
+
+### Colour, with a split you drag
+
+`colorMode="truecolor"` takes each cell's colour from the photo. `compare="drag"` starts the split at the middle.
+
+<ComponentPreview src="examples/ascii-portrait-color.tsx" size="lg">
+  <AsciiPortraitColor />
+</ComponentPreview>
+
+### Strokes and phosphor
+
+On the left, the classic ramp with contour strokes drawn as `- / | \` glyphs. On the right, Braille on the P3 amber phosphor.
+
+<ComponentPreview src="examples/ascii-portrait-sketch.tsx" size="lg">
+  <AsciiPortraitSketch />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "src",
+      type: "string",
+      description:
+        "Photo URL. Files on another origin need CORS headers, or the canvas can't read their pixels.",
+    },
+    {
+      name: "alt",
+      type: "string",
+      description:
+        'Who the portrait shows. Read out by screen readers. Pass "" for a decorative portrait.',
+    },
+    {
+      name: "charset",
+      type: '"standard" | "dense" | "blocks" | "quadrants" | "braille" | "cp437" | "petscii" | "katakana" | "dots" | "edge"',
+      default: '"braille"',
+      description: "Which glyphs draw the tones.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"mono"',
+      description:
+        "mono draws in one ink. truecolor takes each cell's colour from the photo. duotone reads tones through ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      description: "With mono: a CRT ink and its dark glass.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"mainframe"',
+      description:
+        "With duotone: a named ramp or your own stops, dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "With ansi16: which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "{ brightness?, contrast?, gamma?, saturation? }",
+      default: "{ contrast: 1.2, gamma: 0.9 }",
+      description:
+        "Tone and colour grading before glyphs are chosen. Passing your own replaces the portrait grade.",
+    },
+    {
+      name: "detail",
+      type: "number",
+      default: "0.5",
+      description:
+        "How much to sharpen features before glyphs are chosen, 0 to 1.",
+    },
+    {
+      name: "edges",
+      type: "boolean",
+      default: "true",
+      description:
+        "Draw contour strokes over the tones: lit dots in Braille and quadrants, - / | \\ glyphs in a ramp.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.16; 0.22 for edge; 0.3 for ramps",
+      description:
+        "How strong a contour must be to draw a stroke, 0 to 1. Raise it for fewer, bolder lines.",
+    },
+    {
+      name: "develop",
+      type: "boolean",
+      default: "true",
+      description: "Develop from outline to full tone when the photo loads.",
+    },
+    {
+      name: "developDuration",
+      type: "number",
+      default: "2600",
+      description: "Length of the develop reveal in milliseconds.",
+    },
+    {
+      name: "compare",
+      type: '"hover" | "drag" | "none"',
+      default: '"hover"',
+      description:
+        "hover shows the photo left of the pointer. drag keeps the split where it is dropped. none turns it off.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "follows the theme",
+      description:
+        "true: dark pixels draw dense glyphs. false: bright pixels do. Unset, it follows the page.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"blue-noise" for Braille and quadrants, else "none"',
+      description: "Ordered dithering between glyph levels and dots.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description: "transparent draws glyphs only, over whatever is behind.",
+    },
+    {
+      name: "fit",
+      type: '"cover" | "contain" | "fill"',
+      default: '"cover"',
+      description: "How the photo fills its box, as in object-fit.",
+    },
+    {
+      name: "focus",
+      type: "[x, y]",
+      default: "[0.5, 0.3]",
+      description:
+        "Where the photo sits when it overflows, 0 to 1 per axis. The default keeps the eyes in frame.",
+    },
+    {
+      name: "autoLevels",
+      type: "boolean",
+      default: "true",
+      description: "Stretch the photo's tones to use the whole ramp.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "8",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false skips the develop reveal.",
+    },
+    {
+      name: "crossOrigin",
+      type: '"anonymous" | "use-credentials"',
+      default: '"anonymous"',
+      description: "Passed to the image request.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the current frame as text, ANSI, SVG or PNG.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The portrait is announced as an image labelled with `alt`. The split handle is a slider: focus it with Tab, then move it with the arrow keys, or Home and End. Shift moves it in bigger steps.
+- With reduced motion, or `animate={false}`, the portrait appears fully developed. The split still works.
+- The develop reveal is the only motion. Once it ends the portrait draws nothing until a prop or the box size changes.
+- Sharpening and contour finding run on the CPU once per frame, over the sample grid. A 420 px portrait in Braille at `cell={8}` is about 100,000 samples, which takes a few milliseconds.
+- Give the box a size, such as `aspect-[4/5] w-72`. The photo fills it and never sets its own height.
+- The sample photos are public domain: Abraham Lincoln by Alexander Gardner (1863) and Sally Ride's 1984 NASA portrait, both from Wikimedia Commons.

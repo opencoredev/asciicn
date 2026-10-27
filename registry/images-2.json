@@ -1,0 +1,33 @@
+[
+  {
+    "name": "ascii-portrait",
+    "type": "registry:component",
+    "title": "ASCII portrait",
+    "description": "A face redrawn in fine Braille glyphs, graded for skin and shadow, with contour strokes, a develop reveal and a before/after split with the photo.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-portrait.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-portrait.tsx"
+      }
+    ]
+  },
+  {
+    "name": "ascii-canvas",
+    "type": "registry:component",
+    "title": "ASCII canvas",
+    "description": "A glyph pad you paint with the pointer: ink spreads, curls and fades into glowing trails, and clicks send ripples that bend them.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-canvas.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-canvas.tsx"
+      }
+    ]
+  }
+]
