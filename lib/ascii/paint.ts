@@ -151,11 +151,12 @@ export const paintFrame = (
   const { width, height } = canvas;
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.globalCompositeOperation = "source-over";
+  // Clear first: a translucent paper drawn over the last frame would let
+  // it show through, and animated grids would smear.
+  context.clearRect(0, 0, width, height);
   if (paper) {
     context.fillStyle = paper;
     context.fillRect(0, 0, width, height);
-  } else {
-    context.clearRect(0, 0, width, height);
   }
   const { columns, rows, colors } = frame;
   const scratch = columns * rows === 0 ? null : scratchFor(canvas);

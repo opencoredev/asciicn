@@ -24,7 +24,13 @@ export * from "@/lib/ascii/paint";
 export * from "@/lib/ascii/sample";
 export * from "@/lib/ascii/pre";
 export * from "@/lib/ascii/crt";
-export { getGlyphAtlas, rampLevel, rampPositions } from "@/lib/ascii/atlas";
+export {
+  atlasRampPositions,
+  charsetRampPositions,
+  getGlyphAtlas,
+  rampLevel,
+  rampPositions,
+} from "@/lib/ascii/atlas";
 export type { GlyphAtlas } from "@/lib/ascii/atlas";
 export { trackPointer } from "@/lib/ascii/pointer";
 export type { PointerTracker } from "@/lib/ascii/pointer";

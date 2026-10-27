@@ -223,14 +223,34 @@ export const AsciiGrid = ({
       paintRef.current();
     };
 
+    // A fixed-size grid moved to a screen with another pixel ratio gets no
+    // ResizeObserver call, so watch the ratio too. Each query matches one
+    // ratio only, so it is re-armed for the new ratio after every change.
+    const dprWatch = new AbortController();
+    const watchDpr = () => {
+      const query = window.matchMedia(
+        `(resolution: ${window.devicePixelRatio || 1}dppx)`
+      );
+      const onChange = () => {
+        resize();
+        watchDpr();
+      };
+      query.addEventListener("change", onChange, {
+        once: true,
+        signal: dprWatch.signal,
+      });
+    };
+
     resolveColors();
     resize();
+    watchDpr();
     const observer = new ResizeObserver(resize);
     observer.observe(root);
     const unsubscribe = subscribeToTheme(onTheme);
     document.fonts?.addEventListener?.("loadingdone", resize);
     return () => {
       observer.disconnect();
+      dprWatch.abort();
       unsubscribe();
       document.fonts?.removeEventListener?.("loadingdone", resize);
       canvas.remove();

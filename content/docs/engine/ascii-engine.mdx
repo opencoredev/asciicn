@@ -33,7 +33,7 @@ Drawing a frame takes three steps, and every renderer follows them in the same o
 2. **Map.** Tones are graded (contrast, brightness, gamma), optionally inverted, then turned into glyphs. A ramp such as `" .:-=+*#%@"` picks the level nearest the tone. Braille and quadrants light one dot per sample above `threshold`. The `edge` charset runs a Sobel filter and draws `- / | \` along strong edges.
 3. **Paint.** Each glyph is drawn in its cell, coloured by the [colour mode](/docs/engine/color-modes): one ink, the source colour, the nearest ANSI colour, or a ramp read by tone.
 
-`mapTones` in `lib/ascii/frame.ts` is the reference for step 2. The GPU shader implements the same rules in GLSL, so a frame read back from the GPU and one mapped on the CPU agree glyph for glyph.
+`mapTones` in `lib/ascii/frame.ts` is the reference for step 2. The GPU shader implements the same rules in GLSL, with one difference: it spaces ramp glyphs by the ink they measure in your font, where `mapTones` spaces them evenly. Pass `mapTones` the GPU's spacing with `positions` (see [Charsets](/docs/engine/charsets)) and a frame read back from the GPU and one mapped on the CPU agree glyph for glyph.
 
 With few glyphs, a smooth gradient breaks into bands. Set `dither` to a matrix such as `"bayer4"` and a tone between two glyphs picks the denser one in a share of the cells that matches how far along it is. Turn on **Dither levels** in the demo to see the bands soften.
 

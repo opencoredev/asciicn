@@ -3,10 +3,14 @@ import path from "node:path";
 
 import { createJiti } from "jiti";
 
+import type * as Atlas from "../lib/ascii/atlas";
 import type * as Charsets from "../lib/ascii/charsets";
 import type * as Exporter from "../lib/ascii/export";
 import type * as Frames from "../lib/ascii/frame";
 import type * as Glyphs from "../lib/ascii/glyphs";
+import type * as Paint from "../lib/ascii/paint";
+import type * as Palettes from "../lib/ascii/palettes";
+import type * as Shader from "../lib/ascii/shader";
 import type * as Style from "../lib/ascii/style";
 
 // The CPU engine: tone → glyph mapping, sub-cell masks, edge glyphs, the
@@ -19,12 +23,43 @@ const jiti = createJiti(import.meta.url, {
   jsx: true,
 });
 
+/**
+ * The GLSL `rampLevel` in `lib/ascii/glsl.ts`, step for step (same
+ * 12-step search cap), in float32 like the GPU.
+ */
+const gpuRampLevel = (
+  tone: number,
+  positions: Float32Array,
+  cut: number
+): number => {
+  const f = Math.fround;
+  const last = positions.length - 1;
+  let low = 0;
+  let high = last;
+  for (let step = 0; step < 12 && high - low > 1; step += 1) {
+    const mid = Math.trunc((low + high) / 2);
+    if ((positions[mid] ?? 0) <= f(tone)) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  const from = positions[low] ?? 0;
+  const to = positions[high] ?? 0;
+  const level = f(low + (to > from ? f(f(f(tone) - from) / f(to - from)) : 0));
+  return Math.min(last, Math.max(0, Math.floor(f(level + cut))));
+};
+
 const main = async () => {
   const charsets = await jiti.import<typeof Charsets>("@/lib/ascii/charsets");
   const frames = await jiti.import<typeof Frames>("@/lib/ascii/frame");
   const glyphs = await jiti.import<typeof Glyphs>("@/lib/ascii/glyphs");
   const style = await jiti.import<typeof Style>("@/lib/ascii/style");
   const exporter = await jiti.import<typeof Exporter>("@/lib/ascii/export");
+  const atlas = await jiti.import<typeof Atlas>("@/lib/ascii/atlas");
+  const paint = await jiti.import<typeof Paint>("@/lib/ascii/paint");
+  const palettes = await jiti.import<typeof Palettes>("@/lib/ascii/palettes");
+  const shader = await jiti.import<typeof Shader>("@/lib/ascii/shader");
 
   const { createToneField, fillToneField, mapTones, MutableFrame } = frames;
 
@@ -118,6 +153,116 @@ const main = async () => {
       { charset: "blocks", grade: { contrast: 4 } }
     );
     assert.deepEqual(frame.glyphs, [" ", "█"]);
+  });
+
+  test("ramp: positions make mapTones pick the GPU's level", () => {
+    // Coverage like a real monospace font: uneven, with two near-equal
+    // neighbours and one glyph lighter than the one before it.
+    const denseCount = charsets.resolveCharset("dense").glyphs.length;
+    const coverages = {
+      dense: Array.from(
+        { length: denseCount },
+        (_, index) => (index / (denseCount - 1)) ** 1.7
+      ),
+      standard: [0, 0.03, 0.06, 0.07, 0.13, 0.12, 0.16, 0.3, 0.33, 0.4],
+    } as const satisfies Partial<
+      Record<Charsets.CharsetName, readonly number[]>
+    >;
+    const steps = 1000;
+    for (const [name, coverage] of Object.entries(coverages)) {
+      const charset = charsets.resolveCharset(
+        name === "dense" ? "dense" : "standard"
+      );
+      assert.equal(charset.glyphs.length, coverage.length, name);
+      const positions = atlas.rampPositions(
+        (index) => coverage[index] ?? 0,
+        coverage.length
+      );
+      const tones = field(steps + 1, 1, charset, (x) => x / steps);
+      const calibrated = mapTones(tones, steps + 1, 1, {
+        charset,
+        positions,
+      });
+      const even = mapTones(tones, steps + 1, 1, { charset });
+      let differs = 0;
+      for (let step = 0; step <= steps; step += 1) {
+        const expected =
+          charset.glyphs[gpuRampLevel(step / steps, positions, 0.5)];
+        assert.equal(
+          calibrated.glyphs[step],
+          expected,
+          `${name} tone ${step / steps}`
+        );
+        if (even.glyphs[step] !== expected) {
+          differs += 1;
+        }
+      }
+      // Without positions the CPU really does disagree, so this test can fail.
+      assert.ok(differs > 0, `${name}: even spacing should differ somewhere`);
+    }
+  });
+
+  test("ramp: positions of the wrong length fall back to even spacing", () => {
+    const tones = field(3, 1, "standard", (x) => x / 2);
+    assert.deepEqual(
+      mapTones(tones, 3, 1, { positions: [0, 1] }).glyphs,
+      mapTones(tones, 3, 1).glyphs
+    );
+  });
+
+  // ------------------------------------------------------------ GPU stops
+
+  test("fitStops: long ramps resample to the GPU limit, ends exact", () => {
+    const stops = Array.from(
+      { length: 12 },
+      (_, index) => [index / 11, 1 - index / 11, (index % 3) / 2, 1] as const
+    );
+    const fitted = shader.fitStops(stops);
+    assert.equal(fitted.length, 8);
+    assert.deepEqual(fitted[0], stops[0]);
+    assert.deepEqual(fitted[7], stops[11]);
+    // Each fitted stop is the original ramp sampled where it sits in t.
+    const bytes = stops.map(([r, g, b]) => [r, g, b] as const);
+    for (const [index, stop] of fitted.entries()) {
+      const [r, g, b] = palettes.sampleRamp(bytes, index / 7);
+      assert.ok(Math.abs(stop[0] - r) < 1e-9 && Math.abs(stop[1] - g) < 1e-9);
+      assert.ok(Math.abs(stop[2] - b) < 1e-9, `stop ${index}`);
+    }
+    const short = stops.slice(0, 5);
+    assert.deepEqual(shader.fitStops(short), short);
+  });
+
+  // ------------------------------------------------------------ painting
+
+  test("paintFrame: clears before a translucent paper", () => {
+    // A recording stand-in for the 2D context: only the calls paintFrame
+    // makes before it needs real canvases (an empty frame stops there).
+    const calls: string[] = [];
+    const recorder = {
+      canvas: { height: 4, width: 4 },
+      clearRect: () => calls.push("clear"),
+      fillRect: () => calls.push(`fill ${recorder.fillStyle}`),
+      fillStyle: "",
+      globalCompositeOperation: "source-over",
+      setTransform: () => calls.push("transform"),
+    };
+    const metrics = {
+      deviceHeight: 2,
+      deviceWidth: 1,
+      dpr: 1,
+      font: "monospace",
+      fontSize: 2,
+      height: 2,
+      width: 1,
+    };
+    const paper = "rgba(0, 0, 0, 0.5)";
+    // The stand-in has only the members paintFrame touches on this path.
+    const context = recorder as unknown as CanvasRenderingContext2D;
+    paint.paintFrame(context, new MutableFrame(0, 0), metrics, {
+      ink: "#fff",
+      paper,
+    });
+    assert.deepEqual(calls, ["transform", "clear", `fill ${paper}`]);
   });
 
   // ------------------------------------------------------------ sub-cells

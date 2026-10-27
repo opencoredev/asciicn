@@ -21,11 +21,19 @@
  *   slot's top-left pixel.
  * - `atlas.coverage(glyph)` → the share of the cell the glyph inks, 0..1.
  * - `atlas.drawGlyph(ctx, glyph, x, y, w, h)` copies a glyph into a canvas.
- * - `rampPositions(atlas, glyphs, strength)` and `rampLevel(...)`: the
+ * - `rampPositions(coverage, count, strength)` and `rampLevel(...)`: the
  *   calibrated tone → glyph mapping the GPU uses for ramps.
+ * - `charsetRampPositions({ charset, chars, metrics })`: the positions
+ *   `AsciiShader` uploads for a charset, to pass to `mapTones` as
+ *   `positions` so the CPU picks the same glyphs.
  */
 
-import { BRAILLE_BASE, BRAILLE_DOT_BITS } from "@/lib/ascii/charsets";
+import {
+  BRAILLE_BASE,
+  BRAILLE_DOT_BITS,
+  resolveCharset,
+} from "@/lib/ascii/charsets";
+import type { Charset, CharsetName } from "@/lib/ascii/charsets";
 import { glyphShape, shapePath } from "@/lib/ascii/glyphs";
 import type { GlyphShape } from "@/lib/ascii/glyphs";
 import type { CellMetrics } from "@/lib/ascii/measure";
@@ -478,7 +486,7 @@ export const rampPositions = (
  */
 export const rampLevel = (
   tone: number,
-  positions: Float32Array,
+  positions: ArrayLike<number>,
   cut = 0.5
 ): number => {
   const count = positions.length;
@@ -500,4 +508,33 @@ export const rampLevel = (
   const to = positions[high] ?? 1;
   const level = low + (to > from ? (clamped - from) / (to - from) : 0);
   return Math.min(count - 1, Math.max(0, Math.floor(level + cut)));
+};
+
+/** The calibrated positions of the first `count` glyphs in `atlas`. */
+export const atlasRampPositions = (
+  atlas: GlyphAtlas,
+  count: number
+): Float32Array => rampPositions((index) => atlas.slotCoverage(index), count);
+
+/**
+ * The ramp positions `AsciiShader` uses for a charset at `metrics`, or
+ * `null` for Braille and quadrants, which have no ramp. Pass them to
+ * `mapTones` as `positions` and it picks the glyph the GPU would. Browser
+ * only: the coverage is measured from the glyph atlas.
+ */
+export const charsetRampPositions = ({
+  charset,
+  chars,
+  metrics,
+}: {
+  charset?: CharsetName | Charset;
+  chars?: string;
+  metrics: CellMetrics;
+}): Float32Array | null => {
+  const resolved = resolveCharset(charset, chars);
+  if (resolved.kind === "braille" || resolved.kind === "quadrants") {
+    return null;
+  }
+  const atlas = getGlyphAtlas({ glyphs: resolved.glyphs, metrics });
+  return atlasRampPositions(atlas, resolved.glyphs.length);
 };

@@ -46,6 +46,8 @@ Pass `fx` with any of six effects, each from 0 (off) to 1 (strong):
 
 The effects run in the same pass that draws the glyphs, so they cost almost nothing. Bloom adds two small blur passes at one pixel per cell.
 
+The effects are visual only. `capture()` on the shader's `handle`, and every text, ANSI and SVG export built from it, returns the glyph grid without them: no glitch row shifts, curvature, scanlines, bloom, flicker, vignette or colour split. The few glyphs a glitch frame flips are part of the grid, so a capture on that frame keeps them. PNG and video exports read the canvas, so they do include the effects.
+
 ## Pointer interaction
 
 `interaction` makes the pointer push the field around. Move over the preview, and click it for `ripple`:

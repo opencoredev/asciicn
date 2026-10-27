@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode, RefObject } from "react";
 
-import { getGlyphAtlas, rampPositions } from "@/lib/ascii/atlas";
+import { atlasRampPositions, getGlyphAtlas } from "@/lib/ascii/atlas";
 import type { GlyphAtlas } from "@/lib/ascii/atlas";
 import { EDGE_GLYPHS, resolveCharset } from "@/lib/ascii/charsets";
 import type { Charset } from "@/lib/ascii/charsets";
@@ -228,7 +228,10 @@ export interface AsciiShaderProps
   interaction?: Interaction;
   /** Audio bands from `useAudioBands`, read by fields as `u_audio`. Default none. */
   audio?: AudioInput | null;
-  /** Filled with a handle for export: `capture()` returns the glyphs on screen. */
+  /**
+   * Filled with a handle for export: `capture()` returns the glyph grid,
+   * without post effects such as glitch row shifts or curvature.
+   */
   handle?: RefObject<AsciiHandle | null>;
   /**
    * Painted until the first WebGL frame, while the shader is far offscreen,
@@ -332,6 +335,37 @@ const writeRgb = (into: Float32Array, at: number, [r, g, b]: Rgba) => {
 const toCss = ([r, g, b, a]: Rgba) =>
   `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
 
+/** Stops the fragment shader holds (`u_stops[8]` in glsl.ts). */
+const MAX_STOPS = 8;
+
+/**
+ * `stops` cut down to at most `limit`, sampled evenly in t the way
+ * `sampleRamp` reads them, so both ends stay exact and tone 1 is still the
+ * last stop. Shorter ramps pass through unchanged.
+ */
+export const fitStops = (
+  stops: readonly Rgba[],
+  limit: number = MAX_STOPS
+): readonly Rgba[] => {
+  if (stops.length <= limit || limit < 2) {
+    return stops.slice(0, Math.max(1, limit));
+  }
+  const span = stops.length - 1;
+  return Array.from({ length: limit }, (_, step): Rgba => {
+    const scaled = (step / (limit - 1)) * span;
+    const index = Math.min(span - 1, Math.floor(scaled));
+    const mix = scaled - index;
+    const from = stops[index] ?? [0, 0, 0, 1];
+    const to = stops[index + 1] ?? from;
+    return [
+      from[0] + (to[0] - from[0]) * mix,
+      from[1] + (to[1] - from[1]) * mix,
+      from[2] + (to[2] - from[2]) * mix,
+      from[3] + (to[3] - from[3]) * mix,
+    ];
+  });
+};
+
 /** Ramp stops: duotone reads a named or custom ramp, palette the inks. */
 const writeStops = (
   input: FrameInput,
@@ -357,9 +391,11 @@ const writeStops = (
       return [r / 255, g / 255, b / 255, 1];
     });
   }
-  const count = Math.min(8, Math.max(1, stops.length));
+  // Longer ramps are resampled, not truncated, so their far end still shows.
+  const fitted = fitStops(stops);
+  const count = Math.max(1, fitted.length);
   for (let index = 0; index < count; index += 1) {
-    writeRgb(input.stops, index * 3, stops[index] ?? last);
+    writeRgb(input.stops, index * 3, fitted[index] ?? last);
   }
   input.stopCount = count;
 };
@@ -721,9 +757,7 @@ export const AsciiShader = ({
         count,
         grid: current.grid,
         kind: KIND_CODES[current.kind],
-        positions: isRamp
-          ? rampPositions((index) => atlas.slotCoverage(index), count)
-          : null,
+        positions: isRamp ? atlasRampPositions(atlas, count) : null,
       });
       atlasRef.current = atlas;
       metricsRef.current = metrics;

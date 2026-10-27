@@ -68,7 +68,7 @@ Start with a space so empty tones stay empty. Order the rest by how much ink the
 
 ## Calibration
 
-A font draws `:` and `;` at almost the same weight, so an evenly spaced ramp wastes levels on glyphs you can't tell apart. The GPU renderer measures how much of the cell each glyph inks in your actual font (the glyph atlas does this once per font and size) and spaces the ramp by that coverage, blended with even spacing so every glyph stays reachable. `mapTones` on the CPU spaces glyphs evenly, which is what you want for exported text, because the reader's font is unknown.
+A font draws `:` and `;` at almost the same weight, so an evenly spaced ramp wastes levels on glyphs you can't tell apart. The GPU renderer measures how much of the cell each glyph inks in your actual font (the glyph atlas does this once per font and size) and spaces the ramp by that coverage, blended with even spacing so every glyph stays reachable. `mapTones` on the CPU spaces glyphs evenly by default, which is what you want for exported text, because the reader's font is unknown. So at tone 0.5 the two can pick different glyphs. To match the GPU exactly in the browser, pass `positions: charsetRampPositions({ charset, metrics })` to `mapTones`.
 
 ## Helpers
 

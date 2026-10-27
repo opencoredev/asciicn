@@ -4,10 +4,15 @@
  * charset. Pure and server-safe.
  *
  * `mapTones` is the reference mapping. The GPU shader in `shader.tsx`
- * implements the same rules in GLSL, so a frame captured from the GPU and
- * one mapped here agree glyph for glyph. Change both together.
+ * implements the same rules in GLSL. One difference by default: the GPU
+ * places ramp glyphs on the tone axis by their measured ink coverage
+ * (`rampPositions` in `atlas.ts`), while `mapTones` spaces them evenly,
+ * because it has no font to measure. Pass the GPU's positions as
+ * `positions` (from `charsetRampPositions`) and the two agree glyph for
+ * glyph. Change both together.
  */
 
+import { rampLevel } from "@/lib/ascii/atlas";
 import {
   BRAILLE_BASE,
   BRAILLE_DOT_BITS,
@@ -56,7 +61,13 @@ export interface AsciiFrame {
  * renderer (AsciiShader, AsciiGrid, AsciiImage, ...) fills one.
  */
 export interface AsciiHandle {
-  /** The latest frame as glyphs and colours, or `null` before the first draw. */
+  /**
+   * The latest frame as glyphs and colours, or `null` before the first
+   * draw. Post effects that move or shade pixels (glitch row shifts,
+   * curvature, scanlines, bloom, flicker, vignette, RGB split) are visual
+   * only and never reach the frame; glitch glyph flips do, as they change
+   * the glyph grid itself. `canvas` has the effects, for PNG and video.
+   */
   capture(): AsciiFrame | null;
   /** The canvas being drawn to, for PNG and video capture. */
   readonly canvas: HTMLCanvasElement | null;
@@ -253,6 +264,14 @@ export interface MapOptions {
   invert?: boolean;
   /** Braille and quadrants: the tone that lights a dot. Default 0.5. */
   threshold?: number;
+  /**
+   * Ramps and the edge set's interior: where each glyph sits on the tone
+   * axis, 0 for the first and 1 for the last, one entry per glyph. Default
+   * evenly spaced, so tone 0.5 picks the middle glyph. `AsciiShader`
+   * spaces glyphs by measured ink coverage instead; pass
+   * `charsetRampPositions(...)` here to pick exactly the glyphs it draws.
+   */
+  positions?: ArrayLike<number>;
   /** Edge set: Sobel magnitude, 0 to 1, that draws a directional glyph. Default 0.22. */
   edgeThreshold?: number;
   /**
@@ -385,11 +404,15 @@ const rampCell = (
     }
   }
   const { glyphs } = charset;
+  const cut = sampler.cut(column, row);
+  const { positions } = options;
+  // Positions only apply when there is one per glyph; a stale set from
+  // another charset falls back to even spacing rather than misindexing.
+  if (positions && positions.length === glyphs.length) {
+    return { glyph: glyphs[rampLevel(tone, positions, cut)] ?? " ", tone };
+  }
   const last = glyphs.length - 1;
-  const level = Math.min(
-    last,
-    Math.max(0, Math.floor(tone * last + sampler.cut(column, row)))
-  );
+  const level = Math.min(last, Math.max(0, Math.floor(tone * last + cut)));
   return { glyph: glyphs[level] ?? " ", tone };
 };
 
@@ -452,7 +475,9 @@ const cellColorizer = (
  *
  * Rules, shared with the GPU:
  * - ramps: grade, invert, then level `floor(tone * (n - 1) + t)`, where `t`
- *   is 0.5 or the dither threshold at the cell;
+ *   is 0.5 or the dither threshold at the cell. With `positions`, the
+ *   fractional level is measured between the two glyphs around the tone
+ *   instead (`rampLevel`), which is the GPU's rule;
  * - braille and quadrants: each sample lights its dot when its graded tone
  *   is above `threshold` (or the dither threshold at that sample);
  * - edge: a 3x3 Sobel on graded tones; above `edgeThreshold` the cell
