@@ -341,14 +341,14 @@ const emitStroke = (
 
 /**
  * The idle wanderer: a slow Lissajous loop with a little wobble on top,
- * spanning most of the box. About one sweep across every seven seconds.
+ * spanning most of the box. About one sweep across every six seconds.
  */
 const wanderAt = (
   clock: number,
   width: number,
   height: number
 ): readonly [number, number] => {
-  const a = clock * 0.68;
+  const a = clock * 0.8;
   return [
     width * (0.5 + 0.38 * Math.sin(a + 0.4) + 0.04 * Math.sin(a * 2.3 + 1.1)),
     height * (0.5 + 0.33 * Math.sin(a * 1.37) + 0.05 * Math.cos(a * 2.9 + 0.3)),

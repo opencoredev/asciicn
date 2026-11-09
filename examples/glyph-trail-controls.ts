@@ -27,7 +27,7 @@ export const ramp = select({
 });
 
 export const decay = slider({
-  default: 3.6,
+  default: 4.8,
   id: "decay",
   label: "Decay",
   max: 6,

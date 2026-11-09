@@ -105,7 +105,7 @@ const EXAMPLES: readonly Example[] = [
     Demo: TerminalWindowDemo,
     align: "center",
     span: "sm:col-span-2 lg:col-span-3",
-    stage: "h-[440px]",
+    stage: "h-[300px] sm:h-[440px]",
     url: "/docs/interface/terminal-window",
   },
   {

@@ -676,6 +676,11 @@ export const AsciiGlobe = ({
         shadeGlobe(view, paint, u, v, out);
         if (lumaLimit < 1) {
           capLuma(out, lumaLimit);
+          // Dark dots on light paper read thinner than lit dots on dark
+          // paper, so the sphere draws a little denser there.
+          if ((out[0] ?? 0) > 0) {
+            out[0] = Math.min(1, (out[0] ?? 0) * 1.35 + 0.04);
+          }
         }
         const index = y * field.width + x;
         tones[index] = out[0] ?? 0;
