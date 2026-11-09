@@ -39,22 +39,41 @@ export default function AsciiRevealDemo() {
   }, [loop, reducedMotion, step, revealed, duration]);
 
   return (
-    <AsciiReveal
-      key={`${photo.src}-${trigger}`}
-      src={photo.src}
-      alt={photo.alt}
-      trigger={loop ? "manual" : trigger}
-      revealed={revealed}
-      direction={direction}
-      charset={charset}
-      colorMode={colorMode}
-      ramp="sodium"
-      duration={duration}
-      cell={cell}
-      ratio={photo.ratio}
-      className="w-full"
-      // Fit the photo's own shape inside a stage about 520px tall.
-      style={{ maxWidth: 520 * photo.ratio }}
-    />
+    <div
+      className="flex w-full flex-col items-center gap-3"
+      // Fit the photo's own shape inside a stage about 480px tall.
+      style={{ maxWidth: 480 * photo.ratio }}
+    >
+      <AsciiReveal
+        key={`${photo.src}-${trigger}`}
+        src={photo.src}
+        alt={photo.alt}
+        trigger={loop ? "manual" : trigger}
+        revealed={revealed}
+        direction={direction}
+        charset={charset}
+        colorMode={colorMode}
+        ramp="sodium"
+        duration={duration}
+        cell={cell}
+        ratio={photo.ratio}
+        className="w-full"
+      />
+      {loop ? (
+        // Which end of the loop the sweep is heading for.
+        <p
+          aria-hidden
+          className="text-muted-foreground flex gap-2 font-mono text-[11px] select-none"
+        >
+          <span className={revealed ? undefined : "text-foreground"}>
+            glyphs
+          </span>
+          <span>→</span>
+          <span className={revealed ? "text-foreground" : undefined}>
+            photo
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -6,15 +6,20 @@ import * as knobs from "@/examples/glyph-trail-controls";
 
 export default function GlyphTrailDemo() {
   return (
-    <GlyphTrail
-      charset={usePreviewValue(knobs.charset)}
-      colorMode={usePreviewValue(knobs.colorMode)}
-      ramp={usePreviewValue(knobs.ramp)}
-      decay={usePreviewValue(knobs.decay)}
-      spread={usePreviewValue(knobs.spread)}
-      idle={usePreviewValue(knobs.idle)}
-      cell={usePreviewValue(knobs.cell)}
-      className="absolute inset-0"
-    />
+    <>
+      <GlyphTrail
+        charset={usePreviewValue(knobs.charset)}
+        colorMode={usePreviewValue(knobs.colorMode)}
+        ramp={usePreviewValue(knobs.ramp)}
+        decay={usePreviewValue(knobs.decay)}
+        spread={usePreviewValue(knobs.spread)}
+        idle={usePreviewValue(knobs.idle)}
+        cell={usePreviewValue(knobs.cell)}
+        className="absolute inset-0"
+      />
+      <p className="text-muted-foreground pointer-events-none absolute inset-x-0 bottom-4 text-center font-mono text-[11px] select-none">
+        Move your pointer to draw
+      </p>
+    </>
   );
 }

@@ -28,7 +28,7 @@ export const PHOTOS = {
 } as const;
 
 export const photo = segmented({
-  default: "earthrise",
+  default: "tetons",
   id: "photo",
   label: "Photo",
   options: ["aldrin", "earthrise", "pillars", "tetons"],
