@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 // dusk in both themes, so the copy on top stays light.
 export default function SanFranciscoHero() {
   return (
-    <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-start gap-4 overflow-hidden px-6 pt-[14vh] text-center text-white sm:justify-center sm:pt-0">
+    <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-4 overflow-hidden px-6 pb-[20vh] text-center text-white sm:pb-0">
       <SanFrancisco intensity={0.7} className="absolute inset-0 -z-10" />
       <p className="font-mono text-xs tracking-[0.3em] text-white/70 uppercase">
         San Francisco
