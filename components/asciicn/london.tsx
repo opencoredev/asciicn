@@ -38,6 +38,7 @@ float ldGroundRow;
 float ldGroundY;
 float ldDialRow;
 float ldDialY;
+float ldDialX;
 float ldSunX;
 float ldBridgeX;
 float ldCentralX;
@@ -81,40 +82,77 @@ float ldLit(vec2 id, float chance) {
   return mix(before, now, smoothstep(0.0, 3.0 / period, fract(phase)));
 }
 
-// The clock dial: a glowing face, a dark gold rim and two hands that keep
-// slow time from ten to nine.
-vec4 ldDial(vec2 s, float n) {
-  float dx = (s.x - ldAxis) * ldSw;
-  float dy = (s.y - ldDialRow) * ldSh;
-  float r = n * ldSw + ldSw * 0.5;
-  float k = length(vec2(dx, dy)) / r;
+// The tower is seen a little off square, so two faces show. The face
+// towards the afterglow fills the left of each section and the corner
+// stands ldCorner(n) columns right of the axis, for a section n columns
+// either side of it. The narrow right face is in shadow.
+float ldCorner(float n) {
+  return floor(n * 0.42 + 0.5);
+}
+
+// 1 on the lit face, 0 on the shadow face, 2 on the corner between them.
+float ldFace(vec2 s, float n) {
+  float c = ldCorner(n);
+  float x = s.x - ldAxis;
+  if (abs(x - c) < 0.5) {
+    return 2.0;
+  }
+  return x < c ? 1.0 : 0.0;
+}
+
+// Stone on each face, with lit from 0 to 1: floodlit gold on the lit face,
+// cool violet slate on the shadow face, and a pale gold arris on the corner.
+vec3 ldFaceCol(float face, float lit) {
+  if (face > 1.5) {
+    return vec3(1.0, 0.88, 0.62);
+  }
+  if (face > 0.5) {
+    return ldStone(lit);
+  }
+  return mix(vec3(0.3, 0.3, 0.46), vec3(0.62, 0.58, 0.74), clamp(lit, 0.0, 1.0));
+}
+
+// A clock dial as an ellipse, foreshortened on the narrow face, centred at
+// column cx with half sizes rx columns and ry rows: a dark bronze rim, an
+// opal face glowing brightest at the centre, and two hands keeping slow
+// time from ten to nine. Alpha 0 outside.
+vec4 ldDial(vec2 s, float cx, float rx, float ry, float bright) {
+  vec2 q = vec2((s.x - cx) / (rx + 0.5), (s.y - ldDialRow) / (ry + 0.5));
+  float k = length(q);
   if (k > 1.0) {
     return vec4(0.0);
   }
-  if (k > 0.8) {
-    return vec4(0.9, 0.62, 0.3, 0.86);
+  if (k > 0.84) {
+    return vec4(vec3(0.3, 0.19, 0.12) * mix(0.75, 1.0, bright), 0.46);
   }
   float minutes = 50.0 + ldT / 60.0;
   float am = minutes / 60.0 * 6.28318;
   float ah = (8.0 + minutes / 60.0) / 12.0 * 6.28318;
-  vec2 q = vec2(dx, dy) / r;
   float alongM = dot(q, vec2(sin(am), cos(am)));
   float acrossM = abs(dot(q, vec2(cos(am), -sin(am))));
   float alongH = dot(q, vec2(sin(ah), cos(ah)));
   float acrossH = abs(dot(q, vec2(cos(ah), -sin(ah))));
-  float hand = ldSw / r * 0.7;
-  if ((alongM > -0.05 && alongM < 0.72 && acrossM < hand) || (alongH > -0.05 && alongH < 0.48 && acrossH < hand)) {
-    return vec4(0.42, 0.26, 0.14, 0.5);
+  float hand = 0.5 / (max(rx, ry) + 0.5);
+  if ((alongM > -0.05 && alongM < 0.7 && acrossM < hand) || (alongH > -0.05 && alongH < 0.46 && acrossH < hand)) {
+    return vec4(0.3, 0.18, 0.1, 0.42);
   }
-  return vec4(1.0, 0.95, 0.8, 1.0);
+  vec3 opal = mix(vec3(1.0, 0.88, 0.64), vec3(1.0, 0.98, 0.9), 1.0 - k);
+  return vec4(opal * mix(0.72, 1.0, bright), mix(0.78, 1.0, bright));
 }
 
-// The Elizabeth Tower: the panelled shaft, the clock stage with its dial,
-// the open belfry lit from inside, the gallery with corner pinnacles, the
-// slate spire banded in gold and the finial.
+// A horizontal band (cornice, gallery) across both faces.
+vec4 ldBand(vec2 s, float n, float tone) {
+  float face = ldFace(s, n);
+  return vec4(ldFaceCol(face, face > 0.5 ? 1.0 : 0.6), face > 0.5 ? tone : tone * 0.92);
+}
+
+// The Elizabeth Tower: the panelled shaft with its recessed windows, the
+// clock stage with a dial on each face, the open belfry lit from inside,
+// the gallery with corner pinnacles, the slate spire and the finial.
 vec4 ldTower(vec2 s, out float cover) {
   cover = 0.0;
   float jx = abs(s.x - ldAxis);
+  float x = s.x - ldAxis;
   float ry = s.y - ldGroundRow;
   float v = (ry + 0.5) * ldSh / ldHeight;
   if (ry < 0.0 || v > 1.0 || jx > ldCols(0.1)) {
@@ -127,9 +165,6 @@ vec4 ldTower(vec2 s, out float cover) {
   float c5 = max(ldRows(0.805), c4 + 3.0);
   float c6 = max(ldRows(0.83), c5 + 1.0);
   float c7 = max(ldRows(0.975), c6 + 4.0);
-  // The face nearer the afterglow is a touch darker: the floodlights stand
-  // to the right, by the bridge.
-  float side = s.x < ldAxis ? 0.86 : 1.0;
   if (ry >= c7) {
     if (jx > 0.5) {
       return vec4(0.0);
@@ -138,95 +173,153 @@ vec4 ldTower(vec2 s, out float cover) {
     return vec4(1.0, 0.84, 0.5, 0.75);
   }
   if (ry >= c6) {
-    // The spire: slate, gold at the edges and in bands every third row.
+    // The spire: slate banded in gold, its lit face catching the afterglow.
     float k = (ry - c6) / (c7 - c6);
     float n = floor(ldCols(0.064) * pow(1.0 - k, 1.2) + 0.5);
-    // Corner pinnacles stand clear of the spire's foot.
     float pin = ldCols(0.076);
     if (jx > pin - 0.5 && ry < c6 + max(2.0, ldRows(0.05))) {
       cover = 1.0;
-      return vec4(1.0, 0.8, 0.46, ry < c6 + 1.0 ? 0.9 : 0.7);
+      bool litPin = x < 0.0;
+      return vec4(litPin ? vec3(1.0, 0.8, 0.46) : vec3(0.56, 0.48, 0.58), litPin ? (ry < c6 + 1.0 ? 0.9 : 0.72) : 0.5);
     }
     if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
+    float face = ldFace(s, n);
+    if (face > 1.5) {
+      return vec4(1.0, 0.84, 0.56, 0.8);
+    }
+    bool lit = face > 0.5;
     if (jx > n - 0.5) {
-      return vec4(1.0, 0.8, 0.46, 0.85);
+      return lit ? vec4(1.0, 0.8, 0.46, 0.82) : vec4(0.5, 0.48, 0.66, 0.8);
     }
     if (mod(ry - c6, 3.0) < 0.5) {
-      return vec4(0.86, 0.62, 0.34, 0.62);
+      return lit ? vec4(0.9, 0.64, 0.36, 0.6) : vec4(0.44, 0.36, 0.42, 0.36);
     }
-    return vec4(vec3(0.3, 0.32, 0.44) * side, 0.4);
+    return lit ? vec4(0.46, 0.42, 0.54, 0.5) : vec4(0.28, 0.29, 0.44, 0.6);
   }
   if (ry >= c5) {
-    // The gallery under the spire.
-    if (jx > ldCols(0.078)) {
+    float n = ldCols(0.078);
+    if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
-    return vec4(1.0, 0.84, 0.54, 0.9);
+    return ldBand(s, n, 0.9);
   }
   if (ry >= c4) {
-    // The belfry: an arcade of tall openings, warm inside.
+    // The belfry: an arcade of tall openings, warm inside, between piers.
     float n = ldCols(0.07);
     if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
-    if (jx < n - 0.5 && mod(jx, 2.0) < 0.5 && ry > c4 && ry < c5 - 1.0) {
-      return vec4(1.0, 0.72, 0.4, 0.66);
+    float face = ldFace(s, n);
+    bool open = face < 1.5 && jx < n - 0.5 && mod(s.x - ldAxis + n, 2.0) > 0.5 && ry > c4 && ry < c5 - 1.0;
+    if (open) {
+      return face > 0.5 ? vec4(1.0, 0.7, 0.38, 0.62) : vec4(0.66, 0.42, 0.3, 0.5);
     }
-    return vec4(ldStone(0.85) * side, 0.92);
+    return vec4(ldFaceCol(face, face > 0.5 ? 0.8 : 0.45), face > 0.5 ? 0.84 : 0.8);
   }
   if (ry >= c3) {
-    if (jx > ldCols(0.092)) {
+    float n = ldCols(0.092);
+    if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
-    return vec4(1.0, 0.84, 0.54, 0.95);
+    return ldBand(s, n, 0.95);
   }
   if (ry >= c2) {
-    // The clock stage, a little wider than the shaft, with the dial in the
-    // middle and pinnacled corners.
+    // The clock stage: the big dial in the middle of the lit face and a
+    // narrow, dimmer one on the shadow face, each in a frame of tracery.
     float n = ldCols(0.088);
     if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
-    vec4 dial = ldDial(s, n - 1.0);
-    if (dial.a > 0.0) {
-      return dial;
+    float c = ldCorner(n);
+    float face = ldFace(s, n);
+    float halfRows = max((c3 - c2) * 0.5 - 1.0, 1.0);
+    float rx = (n + c) * 0.5 - 0.8;
+    float ry2 = min(rx * ldSw / ldSh, halfRows);
+    if (face > 0.5 && face < 1.5) {
+      vec4 dial = ldDial(s, ldAxis + (c - 1.0 - n) * 0.5, rx, ry2, 1.0);
+      if (dial.a > 0.0) {
+        return dial;
+      }
+    }
+    if (face < 0.5) {
+      float rs = max((n - c - 1.0) * 0.5 - 0.5, 0.5);
+      vec4 dial = ldDial(s, ldAxis + (c + 1.0 + n) * 0.5, rs, ry2, 0.0);
+      if (dial.a > 0.0) {
+        return dial;
+      }
+    }
+    if (face > 1.5) {
+      return vec4(ldFaceCol(face, 1.0), 0.92);
     }
     if (jx > n - 0.5) {
-      return vec4(1.0, 0.84, 0.54, 0.9);
+      return face > 0.5 ? vec4(ldStone(1.0), 0.88) : vec4(ldFaceCol(0.0, 0.7), 0.86);
     }
-    return vec4(ldStone(0.8) * side, 0.92);
+    // Tracery in the corners around the dial: a fine chequer of stone.
+    float trace = mod(s.x + s.y, 2.0) < 0.5 ? 1.0 : 0.0;
+    if (face > 0.5) {
+      // Set back in shade, so the dial is the brightest thing on the stage.
+      return vec4(ldStone(mix(0.15, 0.45, trace)) * 0.85, mix(0.5, 0.66, trace));
+    }
+    return vec4(ldFaceCol(0.0, mix(0.2, 0.5, trace)), mix(0.62, 0.8, trace));
   }
   if (ry >= c1) {
-    if (jx > ldCols(0.084)) {
+    float n = ldCols(0.084);
+    if (jx > n) {
       return vec4(0.0);
     }
     cover = 1.0;
-    return vec4(ldStone(1.0), 0.9);
+    return ldBand(s, n, 0.9);
   }
-  // The shaft: a plinth, then gothic panels in long vertical strips with a
-  // string course every few metres.
+  // The shaft: a plinth, then long ribs of panelling with recessed windows
+  // between them. Floodlit from below, so it is warmest and fullest at the
+  // foot and dims up the shaft towards the afterglow's rose.
   float n = ldCols(ry < ldRows(0.035) ? 0.08 : 0.072);
   if (jx > n) {
     return vec4(0.0);
   }
   cover = 1.0;
-  // Floodlit from below: warm and full at the foot, softer up the shaft,
-  // with long ribs of panelling between shadowed recesses.
-  float lit = 0.92 - 0.3 * v;
-  if (jx > n - 0.5) {
-    return vec4(ldStone(lit + 0.2) * side, 0.95);
+  float face = ldFace(s, n);
+  float lit = 0.95 - 0.4 * v;
+  if (face > 1.5) {
+    return vec4(ldFaceCol(face, 1.0), 0.94);
   }
-  if (mod(jx, 2.0) < 0.5) {
-    return vec4(ldStone(lit) * side, 0.92);
+  bool rib = mod(s.x - ldAxis + n, 2.0) < 0.5;
+  bool edge = jx > n - 0.5;
+  // Windows two rows tall in the recesses, a band every few metres.
+  float period = max(5.0, ldRows(0.075));
+  bool window = !rib && !edge && mod(ry - ldRows(0.04), period) < 2.0 && ry > ldRows(0.04);
+  if (face > 0.5) {
+    if (edge) {
+      return vec4(ldStone(lit + 0.15), 0.92);
+    }
+    if (window) {
+      float on = ldLit(vec2(s.x, floor(ry / period)) + 61.0, 0.18);
+      return vec4(mix(vec3(0.24, 0.14, 0.1), vec3(1.0, 0.84, 0.54), on), mix(0.28, 0.7, on));
+    }
+    if (rib) {
+      return vec4(ldStone(lit), 0.92 - 0.24 * v);
+    }
+    return vec4(ldStone(lit - 0.35) * 0.86, 0.62 - 0.16 * v);
   }
-  return vec4(ldStone(lit - 0.3) * side * 0.88, 0.66);
+  // The shadow face keeps full dots in cool slate, so the tower stays one
+  // solid mass and the light, not the outline, tells the faces apart.
+  if (edge) {
+    return vec4(ldFaceCol(0.0, 0.7), 0.86);
+  }
+  if (window) {
+    return vec4(0.14, 0.14, 0.24, 0.3);
+  }
+  if (rib) {
+    return vec4(ldFaceCol(0.0, 0.25 + 0.4 * lit), 0.84);
+  }
+  return vec4(ldFaceCol(0.0, 0.1 + 0.2 * lit), 0.62);
 }
 
 // Heights of the palace shrink towards its far end, which stands further off.
@@ -396,8 +489,9 @@ vec4 ldPalace(vec2 s, vec2 p, out float cover) {
   if (cover < 0.5) {
     hit = ldRange(s, y, cover);
   }
-  // The far end stands in more of the evening haze.
-  float haze = 0.45 * clamp((ldAxisX - p.x) / 1.1, 0.0, 1.0);
+  // A little evening haze over all of it, so it stands back from the
+  // tower, and more towards the far end.
+  float haze = 0.16 + 0.4 * clamp((ldAxisX - p.x) / 1.1, 0.0, 1.0);
   hit.rgb = mix(hit.rgb, LD_MIST, haze);
   hit.a = mix(hit.a, 0.36, haze * 0.6);
   return hit;
@@ -427,6 +521,8 @@ vec4 ldSky(vec2 s, vec2 p) {
   vec3 col = ldSkyRamp(hc);
   // The pale gold lies just above the roofline, where the sun has gone down.
   float low = exp(-max(h - 0.16, 0.0) * 7.0);
+  // Broken by irregular mist, so it never lies as one even band.
+  low *= 0.45 + 0.75 * fbm(vec2(p.x * 2.4 - ldT * 0.003, h * 9.0 + 1.7));
   col = mix(col, vec3(1.0, 0.86, 0.6), 0.65 * glow * low);
   // Dots shrink fast up the sky, so the deep slate reads as quiet air.
   float tone = 0.13 + 0.2 * exp(-max(hc - 0.04, 0.0) * 4.0) + 0.12 * glow * low * low;
@@ -600,7 +696,7 @@ vec4 ldBridge(vec2 s, vec2 p, out float cover) {
 // The glow of the clock dial, the focal light: a tight bright core and a
 // wide soft warmth that breathes very slowly.
 float ldHalo(vec2 p) {
-  vec2 d = (p - vec2(ldAxisX, ldDialY)) * vec2(1.0, 0.85);
+  vec2 d = (p - vec2(ldDialX, ldDialY)) * vec2(1.0, 0.85);
   float r = length(d);
   float pulse = 0.92 + 0.08 * sin(ldT * 0.5);
   float wide = min(0.2, ldAspect * 0.24);
@@ -813,6 +909,8 @@ vec4 ldScene(vec2 uv, vec2 res, float t) {
   float c3 = max(ldRows(0.715), c2 + 5.0);
   ldDialRow = ldGroundRow + floor((c2 + c3) * 0.5);
   ldDialY = (ldDialRow + 0.5) * ldSh;
+  float stage = ldCols(0.088);
+  ldDialX = (ldAxis + (ldCorner(stage) - 1.0 - stage) * 0.5 + 0.5) * ldSw;
   ldCentralX = ldAxisX - 0.56;
   ldVictoriaX = ldAxisX - 1.0;
   ldPalaceL = ldVictoriaX - 0.07;
