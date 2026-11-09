@@ -1,0 +1,244 @@
+---
+title: "Lighthouse"
+description: "A lighthouse on a rocky headland at blue hour, its lamp glowing amber over a calm sea, painted in halftone dots."
+---
+
+import LighthouseDemo from "@/examples/lighthouse-demo";
+import { controls as demoControls } from "@/examples/lighthouse-controls";
+import LighthouseHero from "@/examples/lighthouse-hero";
+import LighthouseQuiet from "@/examples/lighthouse-quiet";
+
+<ComponentPreview
+  src="examples/lighthouse-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <LighthouseDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="lighthouse" />
+
+## Usage
+
+```tsx
+import { Lighthouse } from "@/components/asciicn/lighthouse";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Lighthouse intensity={0.7} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+A white lighthouse stands on a rocky headland at blue hour. Its lantern room glows amber with a soft halo that breathes slowly, about every eleven seconds. A keeper's cottage beside it keeps one window lit. Below, the headland drops to the sea in a craggy cliff, with a sea stack off its foot.
+
+The sky runs from a peach afterglow low on the left, through rose and violet, to deep blue with the first stars. Long thin clouds catch the afterglow on their undersides and drift slowly right. A low far shore sits hazy on the horizon. The sea mirrors the sky, pale at the horizon and dark near you, and carries the lamp's light as a warm broken path. Slow swells roll in and break into soft foam on the rocks.
+
+Every cell is painted. The default `dots` charset draws each one as a halftone dot whose size follows the brightness, from a faint `·` in the night sky and the deep water to a full `●` in the lamp, the tower and the afterglow. `square` cells, on by default, are as wide as they are tall, so the dots lie on an even lattice like a printed halftone screen; turn it off and the rows sit twice as far apart as the columns. In `truecolor`, the default, each dot takes the scene's own colour on its own night, so the scene looks the same on light and dark pages. `mono` with a `phosphor` and `duotone` with a `ramp` read it by tone alone. `braille` and `quadrants` light a dot only above half tone, so they keep the bright shapes and drop the dark sea and sky; use them with `square={false}`.
+
+On wide boxes the tower stands right of centre, so a headline fits in the middle. On tall boxes it moves nearer the middle and keeps its size.
+
+`intensity` quiets the scene for text on top: colours dim and dots shrink together.
+
+## Examples
+
+### Hero
+
+`intensity={0.7}` keeps the lamp as the brightest thing on screen while a centred headline and two buttons read first.
+
+<ComponentPreview src="examples/lighthouse-hero.tsx" size="lg" align="stretch">
+  <LighthouseHero />
+</ComponentPreview>
+
+### Quiet strip
+
+`stars={false}` and `clouds={false}` leave only the lamp, the swells and the foam moving. At `intensity={0.45}` the scene sits behind a short line of text.
+
+<ComponentPreview src="examples/lighthouse-quiet.tsx">
+  <LighthouseQuiet />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the scene draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "stars",
+      type: "boolean",
+      default: "true",
+      description: "The first stars coming out high in the sky.",
+    },
+    {
+      name: "clouds",
+      type: "boolean",
+      default: "true",
+      description: "Long thin clouds drifting low over the afterglow.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Cells as wide as they are tall, so the halftone dots lie on an even lattice. Turn it off for Braille, quadrants or typed charsets.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on the scene's own night; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"sodium"',
+      description:
+        "In duotone mode, the colour ramp from dark to light. The default draws amber on the night.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "7",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description:
+        "How fast the lamp, the swells, the clouds and the stars move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds. At 6 the lamp is near its brightest and foam lies along the rocks.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat gradient.
+- The whole scene is one shader pass on the GPU, one sample per cell in `dots`. At the default 7px square cell a 1440px wide box is about 200 columns. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

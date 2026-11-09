@@ -49,5 +49,22 @@
         "target": "components/asciicn/canyon-river.tsx"
       }
     ]
+  },
+  {
+    "name": "lighthouse",
+    "type": "registry:component",
+    "title": "Lighthouse",
+    "description": "A lighthouse on a rocky headland at blue hour, its lamp glowing amber over a calm sea, painted in halftone dots.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/lighthouse.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/lighthouse.tsx"
+      }
+    ]
   }
 ]
