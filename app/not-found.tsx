@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { NotFound } from "@/components/asciicn/not-found";
 import { Icon } from "@/components/icon";
-import { SiteHeader } from "@/components/site-header";
+import { Wordmark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
 
@@ -15,11 +15,20 @@ export const metadata: Metadata = {
 
 /**
  * The site's 404, for unknown URLs and for `notFound()` anywhere below.
- * It renders inside the root layout only, so it brings its own header.
+ * It renders inside the root layout only, so it brings its own top bar.
+ * That bar is a plain link home: the full SiteHeader here breaks hydration
+ * of the real header on every page under `next dev`.
  */
 const NotFoundPage = () => (
   <div className="bg-background relative flex min-h-svh flex-col">
-    <SiteHeader />
+    <header className="flex h-(--header-height) items-end justify-center px-3 pb-2">
+      <Link
+        href={ROUTES.HOME}
+        className="focus-visible:ring-ring/50 flex h-12 items-center rounded-full px-4 outline-none focus-visible:ring-[3px]"
+      >
+        <Wordmark />
+      </Link>
+    </header>
     <main className="flex flex-1 flex-col items-center justify-center pb-[var(--header-height)]">
       <NotFound
         actions={

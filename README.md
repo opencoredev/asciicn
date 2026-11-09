@@ -74,15 +74,15 @@ For grids you compute in JavaScript (3D meshes, simulations, terminal panes), dr
 
 ## What's in the registry
 
-| Group             | Items                                                                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Engine            | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                  |
-| City skylines     | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                           |
-| 3D & scenes       | torus-knot, ascii-globe, ascii-donut, dna-helix, cyber-skull, synthwave-sun, retro-computer, server-rack, mountain-dusk, ocean-waves                          |
-| Shaders & fields  | nebula, prism, ionize, squall, satin                                                                                                                          |
-| Media & filters   | ascii-image, ascii-portrait, ascii-video, ascii-logo, ascii-canvas, avatar                                                                                    |
-| Text & typography | ascii-text, scramble-text, glitch-text, typewriter-text, ascii-marquee                                                                                        |
-| Terminal & UI     | terminal-window, ascii-button, ascii-badge, ascii-card, ascii-box, ascii-tabs, divider, progress-bar, loader, status-dot, kbd-shortcut, skeleton, empty-state |
+| Group             | Items                                                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine            | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                          |
+| City skylines     | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                                                   |
+| 3D & scenes       | torus-knot, ascii-globe, ascii-donut, dna-helix, cyber-skull, synthwave-sun, retro-computer, server-rack, mountain-dusk, ocean-waves, black-hole                                      |
+| Shaders & fields  | nebula, prism, ionize, squall, satin, ember                                                                                                                                           |
+| Media & filters   | ascii-image, ascii-portrait, ascii-video, ascii-logo, ascii-canvas, avatar, ascii-reveal                                                                                              |
+| Text & typography | ascii-text, scramble-text, glitch-text, typewriter-text, ascii-marquee, glyph-rain, ascii-countdown                                                                                   |
+| Terminal & UI     | terminal-window, ascii-button, ascii-badge, ascii-card, ascii-box, ascii-tabs, divider, progress-bar, loader, status-dot, kbd-shortcut, skeleton, empty-state, glyph-trail, not-found |
 
 A few helpers install only as dependencies of the items above: `seed-field` for the shader fields, `world-land` for `ascii-globe`, and `ascii-glow` for `ascii-card`.
 

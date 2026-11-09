@@ -27,7 +27,19 @@ const TerminalWindowDemo = dynamic(
     ssr: false,
   }
 );
-const AsciiTextDemo = dynamic(() => import("@/examples/ascii-text-demo"), {
+const BlackHoleDemo = dynamic(() => import("@/examples/black-hole-demo"), {
+  ssr: false,
+});
+const GlyphRainDemo = dynamic(() => import("@/examples/glyph-rain-demo"), {
+  ssr: false,
+});
+const AsciiCountdownDemo = dynamic(
+  () => import("@/examples/ascii-countdown-demo"),
+  {
+    ssr: false,
+  }
+);
+const GlyphTrailDemo = dynamic(() => import("@/examples/glyph-trail-demo"), {
   ssr: false,
 });
 const DnaHelixDemo = dynamic(() => import("@/examples/dna-helix-demo"), {
@@ -72,18 +84,18 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/scenes/torus-knot",
   },
   {
+    Demo: BlackHoleDemo,
+    align: "stretch",
+    span: "lg:col-span-2",
+    stage: "h-80",
+    url: "/docs/scenes/black-hole",
+  },
+  {
     Demo: AsciiGlobeDemo,
     align: "stretch",
     span: "lg:col-span-2",
     stage: "h-80",
     url: "/docs/scenes/ascii-globe",
-  },
-  {
-    Demo: AsciiPortraitDemo,
-    align: "center",
-    span: "lg:col-span-2",
-    stage: "h-80",
-    url: "/docs/images/ascii-portrait",
   },
   {
     Demo: TerminalWindowDemo,
@@ -93,11 +105,11 @@ const EXAMPLES: readonly Example[] = [
     url: "/docs/interface/terminal-window",
   },
   {
-    Demo: AsciiTextDemo,
-    align: "center",
+    Demo: GlyphRainDemo,
+    align: "stretch",
     span: "sm:col-span-2 lg:col-span-3",
     stage: "h-[440px]",
-    url: "/docs/text/ascii-text",
+    url: "/docs/text/glyph-rain",
   },
   {
     Demo: DnaHelixDemo,
@@ -120,6 +132,28 @@ const EXAMPLES: readonly Example[] = [
     span: "sm:col-span-2 lg:col-span-2",
     stage: "h-[380px]",
     url: "/docs/images/ascii-canvas",
+  },
+  {
+    Demo: AsciiPortraitDemo,
+    align: "center",
+    span: "lg:col-span-2",
+    stage: "h-[380px]",
+    url: "/docs/images/ascii-portrait",
+  },
+  {
+    Demo: AsciiCountdownDemo,
+    align: "center",
+    span: "lg:col-span-2",
+    stage: "h-[380px]",
+    url: "/docs/text/ascii-countdown",
+  },
+  {
+    Demo: GlyphTrailDemo,
+    align: "stretch",
+    span: "sm:col-span-2 lg:col-span-2",
+    stage: "h-[380px]",
+    url: "/docs/interface/glyph-trail",
+    wide: true,
   },
 ];
 
