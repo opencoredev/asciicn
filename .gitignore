@@ -50,3 +50,6 @@ next-env.d.ts
 /public/r/
 # agent skill rendered for the registry by pnpm registry:build
 /.generated/
+
+# hill-climb state
+/.hill-climb/

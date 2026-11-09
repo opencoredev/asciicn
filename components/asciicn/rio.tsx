@@ -688,6 +688,8 @@ export interface RioProps extends Omit<AsciiSceneProps, "interactive"> {
   paper?: AsciiColor;
   /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
   fallback?: ReactNode;
+  /** Ignored: the city never reacts to the pointer. Accepted so galleries can pass it to every scene. */
+  interactive?: boolean;
 }
 
 /**
@@ -709,6 +711,7 @@ export const Rio = ({
   intensity = 1,
   cableCar = true,
   fallback = FALLBACK,
+  interactive: _interactive,
   ...props
 }: RioProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");

@@ -692,6 +692,8 @@ export interface SydneyProps extends Omit<AsciiSceneProps, "interactive"> {
   paper?: AsciiColor;
   /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
   fallback?: ReactNode;
+  /** Ignored: the city never reacts to the pointer. Accepted so galleries can pass it to every scene. */
+  interactive?: boolean;
 }
 
 /**
@@ -712,6 +714,7 @@ export const Sydney = ({
   intensity = 1,
   ferry = true,
   fallback = FALLBACK,
+  interactive: _interactive,
   ...props
 }: SydneyProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
