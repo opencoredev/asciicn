@@ -81,9 +81,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "London",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Dubai at night from the water: the Burj Khalifa stepping up to its spire and beacon, the Emirates Towers, the Marina and the sail of the Burj Al Arab, with lit windows and calm reflections.",
+      "Dubai at dusk from the desert in dots: the Burj Khalifa rising far above a cluster of towers in blue haze, its stepped spire gold in the last light, over rose and amber dunes under a gold-to-blue sky.",
     id: "dubai",
     load: async () => {
       const { Dubai } = await import("@/components/asciicn/dubai");
