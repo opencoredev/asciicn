@@ -192,9 +192,10 @@ export const snippetAttributes = (
   if (grade.length > 0) {
     attributes.push(`grade={{ ${grade.join(", ")} }}`);
   }
-  if (changed("dither")) {
-    attributes.push(stringAttribute("dither", look.dither));
-  }
+  // Always spelled out too: components pick their own dithering default
+  // (the backgrounds use Bayer or blue noise), so leaving it out would
+  // change the look of the pasted component.
+  attributes.push(stringAttribute("dither", look.dither));
   if (look.invert) {
     attributes.push("invert");
   }
