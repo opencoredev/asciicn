@@ -1,0 +1,19 @@
+[
+  {
+    "name": "canyon-river",
+    "type": "registry:component",
+    "title": "Canyon river",
+    "description": "A desert canyon at dusk from a high rim: terraced walls step back to glowing mesas in violet haze while a river winds below, mirroring the sunset.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/canyon-river.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/canyon-river.tsx"
+      }
+    ]
+  }
+]
