@@ -4,7 +4,7 @@ import { Tokyo } from "@/components/asciicn/tokyo";
 // so both stay in view around a centred headline.
 export default function TokyoTall() {
   return (
-    <div className="relative isolate aspect-[9/19] w-56 overflow-hidden rounded-[2rem] border border-white/10 bg-[#070818]">
+    <div className="relative isolate aspect-[9/19] w-56 overflow-hidden rounded-[2rem] border border-white/10 bg-[#050b0e]">
       <Tokyo className="absolute inset-0" />
     </div>
   );

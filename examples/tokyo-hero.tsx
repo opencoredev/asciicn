@@ -4,13 +4,14 @@ import { Tokyo } from "@/components/asciicn/tokyo";
 // where the text sits, drops back most, and the tower and Fuji still read.
 export default function TokyoHero() {
   return (
-    <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-5 overflow-hidden bg-[#070818] px-6 py-16 text-center text-white">
+    <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-5 overflow-hidden bg-[#050b0e] px-6 py-16 text-center text-white">
       <Tokyo intensity={0.6} className="absolute inset-0 -z-10" />
       <h3 className="[text-shadow:0_1px_12px_rgb(7_8_24)] max-w-xl text-4xl font-medium tracking-[-0.03em] text-balance sm:text-5xl">
         Ship before the last train
       </h3>
       <p className="[text-shadow:0_1px_12px_rgb(7_8_24)] max-w-md text-sm text-pretty text-white/90 sm:text-base">
-        Tokyo at dusk in coloured dots, calm enough to sit behind your headline.
+        Tokyo at night in coloured dots, calm enough to sit behind your
+        headline.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <a
