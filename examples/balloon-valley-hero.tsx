@@ -4,11 +4,11 @@ import { BalloonValley } from "@/components/asciicn/balloon-valley";
 export default function BalloonValleyHero() {
   return (
     <section className="relative isolate flex min-h-[560px] w-full flex-col items-center justify-center gap-5 overflow-hidden px-6 py-24 text-center">
-      <BalloonValley intensity={0.85} className="absolute inset-0 -z-10" />
+      <BalloonValley className="absolute inset-0 -z-10" />
       {/* A soft shade behind the text only, so the sun still glows round it. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_40%_30%_at_50%_50%,rgb(13_11_31/0.55),transparent)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_36%_22%_at_50%_46%,rgb(13_11_31/0.5),transparent)]"
       />
       <h1 className="max-w-2xl text-4xl font-medium tracking-[-0.03em] text-balance text-white [text-shadow:0_2px_24px_rgb(13_11_31/0.8)] sm:text-6xl">
         Up before the sun
