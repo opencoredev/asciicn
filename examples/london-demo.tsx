@@ -13,6 +13,7 @@ export default function LondonDemo() {
       fog={usePreviewValue(knobs.fog)}
       boat={usePreviewValue(knobs.boat)}
       cell={usePreviewValue(knobs.cell)}
+      square={usePreviewValue(knobs.square)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
