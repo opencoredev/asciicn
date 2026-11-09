@@ -31,6 +31,7 @@ float sfHz = 0.3;
 float sfHzRow = 0.0;
 float sfS = 0.4;
 float sfTowerX = 0.4;
+float sfShift = 0.0;
 float sfSideX = 0.6;
 float sfDeckRow = 0.0;
 float sfGlowX = 0.0;
@@ -84,16 +85,22 @@ void sfSetup(vec2 res, float t) {
   sfRh = 1.0 / sfN.y;
   sfT = t;
   float tall = 1.0 - smoothstep(0.6, 1.3, sfAsp);
-  sfHzRow = floor(mix(0.27, 0.33, tall) * sfN.y + 0.5);
+  // Portrait boxes frame the bridge close up: the south tower right of
+  // centre and low, below a headline, with the main cable sweeping off the
+  // left edge. Wider boxes show the whole span. The switch is a step: a
+  // blend between the two framings would cut a tower at the edge.
+  float portrait = step(sfAsp, 0.85);
+  sfHzRow = floor(mix(mix(0.27, 0.33, tall), 0.2, portrait) * sfN.y + 0.5);
   sfHz = sfHzRow / sfN.y;
-  sfS = mix(0.5, 0.34, tall);
-  sfTowerX = clamp(sfAsp * 0.29, 0.155, 0.6);
+  sfS = mix(mix(0.5, 0.34, tall), 0.38, portrait);
+  sfTowerX = mix(clamp(sfAsp * 0.29, 0.155, 0.6), 0.44, portrait);
+  sfShift = portrait * (sfAsp * 0.2 - sfTowerX);
   sfSideX = sfTowerX * 1.36;
   sfDeckRow = sfVRow(0.29);
   sfGlowX = -0.12 * min(sfAsp, 1.4);
-  sfColR = sfColOf(sfTowerX);
-  sfColL = sfN.x - 1.0 - sfColR;
-  sfHalfW = max(3.0, floor(mix(0.1, 0.085, tall) * sfS / sfCw + 0.5));
+  sfColR = sfColOf(sfTowerX + sfShift);
+  sfColL = sfColR - floor(2.0 * sfTowerX / sfCw + 0.5);
+  sfHalfW = max(3.0, floor(mix(mix(0.1, 0.085, tall), 0.1, portrait) * sfS / sfCw + 0.5));
   sfLegW = max(2.0, floor(0.052 * sfS / sfCw + 0.5));
   sfPier = sfVRow(0.05);
   sfS1a = sfVRow(0.47);
@@ -108,10 +115,13 @@ void sfSetup(vec2 res, float t) {
   sfCapRow = max(sfVRow(1.0), sfTopRow + 1.0);
 }
 
-// Tone for the atmosphere (sky, fog, land, water) from its brightness, so
-// the darkest sky still draws small dots and the glow draws the largest.
+// Tone for the atmosphere (sky, fog, land, water) from its brightness. The
+// curve is steep: deep sky, fog shadow and far water fall to the smallest
+// dots or none, mid tones to small ones, and only the glow and the lit fog
+// reach the large dots the bridge is drawn in.
 float sfTone(vec3 c) {
-  return 0.09 + 0.8 * dot(c, vec3(0.3, 0.55, 0.15));
+  float l = dot(c, vec3(0.3, 0.55, 0.15));
+  return 0.02 + 0.9 * pow(max(l, 0.0), 1.5);
 }
 
 // The afterglow: a broad warm halo a little left of centre, its bright core
@@ -132,7 +142,7 @@ vec3 sfSky(float x, float y) {
   c = mix(c, vec3(0.44, 0.33, 0.58), smoothstep(0.08, 0.28, h));
   c = mix(c, vec3(0.2, 0.24, 0.52), smoothstep(0.22, 0.48, h));
   c = mix(c, vec3(0.1, 0.14, 0.36), smoothstep(0.45, 0.8, h));
-  c = mix(c, vec3(0.05, 0.07, 0.22), smoothstep(0.78, 1.0, h));
+  c = mix(c, vec3(0.07, 0.08, 0.2), smoothstep(0.78, 1.0, h));
   // Thin streaks of high cloud, their undersides lit pink by the afterglow.
   float band = smoothstep(0.06, 0.2, h) * (1.0 - 0.6 * smoothstep(0.45, 0.9, h));
   float streak = smoothstep(0.5, 0.78, fbm(vec2(x * 1.3 - sfT * 0.004, y * 10.0 + 3.0)));
@@ -177,10 +187,10 @@ float sfFog(float x, float y, float amount) {
 
 // Fog is lit from above by the afterglow: warm white on its tops, blue grey
 // underneath and in the folds.
-vec3 sfFogColor(float x, float y) {
-  float lift = smoothstep(sfHz, sfFogTop(x) + 0.06 * sfS, y);
-  float puff = fbm(vec2(x * 8.0 - sfT * 0.06, y * 16.0 + 2.0));
-  vec3 c = mix(vec3(0.3, 0.33, 0.56), vec3(0.78, 0.74, 0.88), lift);
+vec3 sfFogColor(float x, float bx, float y) {
+  float lift = smoothstep(sfHz, sfFogTop(bx) + 0.06 * sfS, y);
+  float puff = fbm(vec2(bx * 8.0 - sfT * 0.06, y * 16.0 + 2.0));
+  vec3 c = mix(vec3(0.22, 0.24, 0.42), vec3(0.78, 0.74, 0.88), lift * lift);
   c *= 0.75 + 0.5 * puff;
   return c + vec3(1.0, 0.55, 0.34) * sfGlow(x, y) * 0.45 + vec3(1.0, 0.8, 0.6) * sfCore(x, y) * 0.3;
 }
@@ -205,7 +215,8 @@ vec4 sfLand(float col, float row, float x, float y) {
   // Folds in the hillside, lit a little on the side facing the glow.
   float fold = fbm(vec2(x * 9.0, y * 6.0 + 1.3));
   c *= 0.7 + 0.6 * fold;
-  float tone = 0.13 + 0.6 * dot(c, vec3(0.3, 0.55, 0.15));
+  // Deep shadow: the smallest dots, some cells empty, except on the rim.
+  float tone = 0.02 + 0.4 * dot(c, vec3(0.3, 0.55, 0.15));
   // City lights over the hills on the right and along the far shore.
   float city = x > sfTowerX * 1.1 ? 0.3 : (x < -sfTowerX ? 0.015 : 0.14);
   float h = sfHash(vec2(col, row) + 7.1);
@@ -220,7 +231,7 @@ vec4 sfLand(float col, float row, float x, float y) {
 // The bridge at a sample. Writes how much it covers to cover.
 vec4 sfBridge(float col, float row, float traffic, out float cover) {
   cover = 0.0;
-  float x = sfX(col);
+  float x = sfX(col) - sfShift;
   float y = sfY(row);
   float ax = abs(x);
   float right = step(0.0, x);
@@ -239,7 +250,7 @@ vec4 sfBridge(float col, float row, float traffic, out float cover) {
     float lit = 0.45 + 0.55 * smoothstep(0.3, 0.98, v);
     vec3 base = mix(vec3(0.4, 0.09, 0.08), vec3(1.0, 0.52, 0.22), lit);
     // Light from the glow's side catches one edge of each leg.
-    float side = sign(col - tc) * sign(sfGlowX - (right > 0.5 ? sfTowerX : -sfTowerX));
+    float side = sign(col - tc) * sign(sfGlowX - sfShift - (right > 0.5 ? sfTowerX : -sfTowerX));
     float inLeg = step(n - sfLegW + 1.0, jx) * step(jx, n);
     float edge = step(n - 0.5, jx);
     vec3 legCol = base * (edge > 0.5 ? (side > 0.0 ? 1.18 : 0.82) : 1.0);
@@ -322,7 +333,7 @@ vec4 sfBridge(float col, float row, float traffic, out float cover) {
     float off = right > 0.5 ? mod(sfColR - col, m) : mod(col - sfColL, m);
     if (off < 0.5 && y < yc && row > sfDeckRow) {
       cover = 1.0;
-      return vec4(steel * 0.66, 0.3);
+      return vec4(steel * 0.55, 0.2);
     }
   }
 
@@ -366,6 +377,8 @@ float sfBeacon(float tower) {
 // Everything above the water at a sample, without the bay.
 vec4 sfAbove(float col, float row, float fogAmount, float traffic) {
   float x = sfX(col);
+  // The same point in the bridge's own frame, which portrait boxes shift.
+  float bx = x - sfShift;
   float y = sfY(row);
   vec3 sky = sfSky(x, y);
   vec4 c = vec4(sky, sfTone(sky));
@@ -381,19 +394,19 @@ vec4 sfAbove(float col, float row, float fogAmount, float traffic) {
   // The beacons' soft red halo in the sky around each tower top.
   float topY = (sfCapRow + 0.5) * sfRh;
   for (int i = 0; i < 2; i++) {
-    float tx = i == 0 ? -sfTowerX : sfTowerX;
+    float tx = (i == 0 ? -sfTowerX : sfTowerX) + sfShift;
     vec2 d = vec2((x - tx) / sfCw, (y - topY) / sfRh * 2.0);
     float b = sfBeacon(float(i));
     c.rgb += vec3(0.9, 0.14, 0.1) * exp(-dot(d, d) / (sfHalfW * sfHalfW * 1.5)) * b * 0.35;
   }
 
-  vec4 land = sfLand(col, row, x, y);
+  vec4 land = sfLand(col, row, bx, y);
   if (land.a > 0.0) {
     c = land;
   }
 
-  float fog = sfFog(x, y, fogAmount);
-  vec3 fogCol = sfFogColor(x, y);
+  float fog = sfFog(bx, y, fogAmount);
+  vec3 fogCol = sfFogColor(x, bx, y);
   float fogTone = sfTone(fogCol);
   c = mix(c, vec4(fogCol, fogTone), fog * 0.85);
 
@@ -409,11 +422,11 @@ vec4 sfAbove(float col, float row, float fogAmount, float traffic) {
 
   // The aircraft warning lights: one red dot above each leg.
   if (row == sfCapRow) {
-    float tc = x > 0.0 ? sfColR : sfColL;
+    float tc = bx > 0.0 ? sfColR : sfColL;
     float jx = abs(col - tc);
     float n = sfHalfW - 1.0;
     if (abs(jx - (n - floor(sfLegW * 0.5))) < 0.5) {
-      float b2 = sfBeacon(x > 0.0 ? 1.0 : 0.0);
+      float b2 = sfBeacon(bx > 0.0 ? 1.0 : 0.0);
       c = vec4(mix(c.rgb, vec3(1.0, 0.18, 0.12), b2), mix(c.a, 0.95, b2));
     }
   }
@@ -476,7 +489,7 @@ vec4 sfScene(vec2 uv, vec2 res, float t, float fogAmount, float traffic, float b
   vec3 water = vec3(0.07, 0.09, 0.22);
   float k = clamp(0.75 * streak * (1.0 - 0.3 * depth), 0.0, 1.0);
   vec3 c = mix(water, m.rgb * vec3(0.8, 0.82, 0.96), k);
-  float tone = mix(sfTone(water), m.a * 0.88, k);
+  float tone = mix(sfTone(water), m.a * 0.8, k);
   // The afterglow's path on the water: a warm column that widens toward the
   // viewer, broken into glints by the ripples.
   float path = exp(-pow((x - sfGlowX) * 3.2 / (0.5 + 0.9 * depth), 2.0));
@@ -505,11 +518,13 @@ vec4 sfShade(vec2 uv, vec2 res, float t) {
   vec4 c = sfScene(uv, res, t, sfFogAmount, sfTraffic, sfBoatOn);
   // A little per-dot variation in brightness and hue, as in a print, so
   // wide gradients don't read as flat bands.
+  // Dark air stays even, so it reads as quiet rather than as texture.
   vec2 cell = floor(uv * sfN);
   float j = sfHash(cell + 31.7) - 0.5;
   float k = sfHash(cell + 77.1) - 0.5;
-  c.rgb *= 1.0 + j * 0.22;
-  c.rgb += vec3(k, -k * 0.3, -k) * 0.05;
+  float lit = smoothstep(0.15, 0.5, max(max(c.r, c.g), c.b));
+  c.rgb *= 1.0 + j * 0.22 * lit;
+  c.rgb += vec3(k, -k * 0.3, -k) * 0.05 * lit;
   sfCacheUv = uv;
   sfCacheT = t;
   sfCacheValue = vec4(c.rgb * sfIntensity, c.a * sqrt(sfIntensity));
@@ -523,13 +538,15 @@ float field(vec2 uv, vec2 res, float t) {
 }
 `;
 
-// Dots carry tone by size, so a dim colour on a small dot almost vanishes.
-// Lifting the dark colours keeps the night sky a visible field of dots.
+// Mid tones are lifted a little so small dots keep their hue. Dark air is
+// left dim and greyed, a shade above the paper, so it reads as quiet.
 const COLOR_FIELD = `${SCENE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
   vec3 c = sfShade(uv, res, t).rgb;
   float peak = max(max(c.r, c.g), c.b);
-  return clamp(c / pow(max(peak, 0.2), 0.45), 0.0, 1.0);
+  c = clamp(c / pow(max(peak, 0.2), 0.3), 0.0, 1.0);
+  float grey = dot(c, vec3(0.3, 0.55, 0.15));
+  return mix(c, vec3(grey) * vec3(0.9, 0.95, 1.2), (1.0 - smoothstep(0.12, 0.4, peak)) * 0.45);
 }
 `;
 
