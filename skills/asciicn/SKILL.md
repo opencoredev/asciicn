@@ -1,6 +1,6 @@
 ---
 name: asciicn
-description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana, halftone glyphs, a terminal or CRT look, an ASCII background, hero, city skyline, 3D object, terminal window, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
+description: Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (lib/ascii, a WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app. Use when the user wants ASCII, ANSI, Braille, CP437, PETSCII, katakana, halftone glyphs, a terminal or CRT look, an ASCII background, hero, painted landscape or city scene, halftone dots, 3D object, terminal window, meter, card, loader, text effect, or image/video/webcam to ASCII, or a .txt/.ans/.svg/.png/.webm export, or when code imports lib/ascii or components/asciicn.
 ---
 
 # asciicn
@@ -36,6 +36,7 @@ Done when `lib/ascii/index.ts`, `lib/ascii/grid.tsx` and `lib/ascii/shader.tsx` 
 
 | The user wants                                                                              | Use                                                                   | Read                                                  |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- |
+| A background or hero that is a picture: a landscape, a city, a place at a time of day       | `AsciiShader`, `field` + `colorField`, `dots`, `square`, `truecolor`  | [scenes.md](references/scenes.md)                     |
 | A surface whose tone varies per cell or moves: gradients, noise, fog, water, nebulae, glows | `AsciiShader` with a GLSL `field`                                     | [fields.md](references/fields.md)                     |
 | Many hues at once: a rainbow, a sunset, a hue per shape                                     | `AsciiShader` with a `field` and a `colorField`, `truecolor` mode     | [fields.md](references/fields.md#colour)              |
 | Something you compute in JavaScript: a 3D mesh, particles, a simulation, a game of life     | `AsciiGrid` + `createToneField` + `mapTones`                          | [engine-api.md](references/engine-api.md#asciigrid)   |
@@ -45,7 +46,7 @@ Done when `lib/ascii/index.ts`, `lib/ascii/grid.tsx` and `lib/ascii/shader.tsx` 
 | Static ASCII art that must render on the server or in an email                              | `AsciiPre` (a `<pre>` of a frame), or plain text in a `<pre>`         | [engine-api.md](references/engine-api.md#static-art)  |
 | A file: `.txt`, `.ans`, `.svg`, `.png`, `.webm`                                             | `ascii-export`                                                        | [export.md](references/export.md)                     |
 
-Then choose a charset and a colour mode for the picture with [charsets.md](references/charsets.md). The charset is the biggest single decision: Braille for fine lines and wireframes, blocks or quadrants for solid shapes, `standard` or `dense` for photos, katakana for signage, `edge` for outlines.
+Then choose a charset and a colour mode for the picture with [charsets.md](references/charsets.md). The charset is the biggest single decision: Braille for fine lines and wireframes, blocks or quadrants for solid shapes, `standard` or `dense` for photos, katakana for signage, `edge` for outlines, `dots` for halftone pictures. `dots` has five dot sizes (` ·∙•⦁●`); the two smallest are specks, so dark areas can stay quiet. Pair it with the `square` look prop: cells as wide as tall, so the dots lie on an even lattice instead of rows. Braille and quadrants stretch on square cells, so keep `square` for round-glyph ramps.
 
 The examples in [examples.md](references/examples.md) (written when the skill is installed; if it's missing, read {{SITE_URL}}/.well-known/agent-skills/asciicn/references/examples.md) are references. If the user asked for exactly one of them, install it. If not, write your own: read the closest example's source for its field or draw function, then build what the user described. Never swap the request for an example that is merely nearby, and never guess at an example's props; read its docs page or source.
 
@@ -53,7 +54,7 @@ Done when every visual in the request has a renderer, a charset and a colour mod
 
 ## 3. Build it
 
-If the effect is for a landing page, or a section of one, read [landing-pages.md](references/landing-pages.md) before anything else. A good effect on a generic page still looks generated: the page has to be about the product, and the effect has to come from it.
+If the effect is for a landing page, or a section of one, read [landing-pages.md](references/landing-pages.md) before anything else. If it is a background scene (a place, a landscape, a city), follow [scenes.md](references/scenes.md) step by step and start from its starter scene; it covers framing for phones, the calm centre behind a headline and how to check the result. A good effect on a generic page still looks generated: the page has to be about the product, and the effect has to come from it.
 
 1. Read the reference for your technique, and [recipes.md](references/recipes.md) for complete components to adapt.
 2. Write the component in its own file with `"use client"` (both renderers are client components; `AsciiPre` renders on the server).
@@ -65,7 +66,7 @@ Done when the component renders the requested look with no `[ascii-shader]` or W
 
 ## 4. Check it in a browser
 
-Open the page and look at it. Screenshot it at desktop and phone widths, in light and dark mode, and once with reduced motion (`prefers-reduced-motion: reduce`). Zoom into a screenshot: you must see individual glyphs. Hold it to [quality.md](references/quality.md).
+Open the page and look at it. Screenshot it at desktop and phone widths (1440x900 and 390x844; a background scene also behind a sample headline and buttons), in light and dark mode, and once with reduced motion (`prefers-reduced-motion: reduce`). Zoom into a screenshot: you must see individual glyphs. Hold it to [quality.md](references/quality.md).
 
 Done when every check in quality.md passes. A screenshot of a flat block, an empty box or blurry glyphs means the field returns the wrong range, the parent has no size, or the cell isn't snapped: fix it and look again.
 

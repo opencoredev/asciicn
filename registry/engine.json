@@ -61,6 +61,11 @@
         "target": ".agents/skills/asciicn/references/recipes.md"
       },
       {
+        "path": ".generated/skills/asciicn/references/scenes.md",
+        "type": "registry:file",
+        "target": ".agents/skills/asciicn/references/scenes.md"
+      },
+      {
         "path": ".generated/skills/asciicn/references/theme.md",
         "type": "registry:file",
         "target": ".agents/skills/asciicn/references/theme.md"
@@ -114,6 +119,11 @@
         "path": ".generated/skills/asciicn/references/recipes.md",
         "type": "registry:file",
         "target": ".claude/skills/asciicn/references/recipes.md"
+      },
+      {
+        "path": ".generated/skills/asciicn/references/scenes.md",
+        "type": "registry:file",
+        "target": ".claude/skills/asciicn/references/scenes.md"
       },
       {
         "path": ".generated/skills/asciicn/references/theme.md",

@@ -1,0 +1,100 @@
+---
+title: "Painted scenes"
+description: "Build a full-bleed background that reads as a picture: a place, a time of day and one light, painted in halftone dots."
+---
+
+import EnginePaintedScene from "@/examples/engine-painted-scene";
+
+A painted scene is a background that reads as a picture. It paints every cell in colour, including the darkest sky, and the size of each dot follows the colour's value. The landscape and city [backgrounds](/backgrounds) are built this way. The scene below is a complete starter: a moonlit lake between snowy peaks, about 170 lines of GLSL.
+
+<ComponentPreview
+  src="examples/engine-painted-scene.tsx"
+  size="full"
+  align="stretch"
+>
+  <EnginePaintedScene />
+</ComponentPreview>
+
+## The look
+
+| Prop        | Value                   | Why                                                                          |
+| ----------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `charset`   | `"dots"`                | Five dot sizes. The two smallest are specks, for quiet sky and shadow        |
+| `square`    | `true`                  | Square cells lay the dots on an even lattice instead of rows                 |
+| `cell`      | `7`                     | About 200 columns across 1440px: big shapes, no aliasing                     |
+| `colorMode` | `"truecolor"`           | Each dot takes its colour from the `colorField`                              |
+| `dither`    | `"bayer4"`              | Tones between two dot sizes mix them, so gradients don't band                |
+| `paper`     | the scene's darkest sky | The scene paints its own ground, so it looks the same in light and dark mode |
+
+## Building one
+
+1. **Write the brief in one sentence.** The place, the time of day, one light, and what sits where. Pick a short palette for it and write the colours as constants.
+2. **Set up coordinates for every screen.** Squeeze x on narrow boxes so a phone still sees the scene, place features at a share of the half width, and use a `portrait` factor to reframe for phones. Measure round things (a sun, a moon, a halo) with the squeeze undone, or they turn oval on a phone.
+3. **Paint far to near.** Sky, far range, middle layer, near layer, water, foreground, mist. Each nearer layer paints over the last.
+4. **Keep a value ladder.** The light is brightest. The subject carries the next brightest values: lit snow, lit facades, lit ice. A scene of dark silhouettes against the sky draws only specks. Far layers are lighter, cooler and closer to the sky colour; near layers are darker. Most of the frame should sit between 0.2 and 0.6 in value, and the sky needs mid-tones even at night, because the water repeats it. Render once with `colorMode="mono"` to see the values alone.
+5. **Shape forms with light.** Silhouettes come from noise at two scales, never straight lines. Shade each face by its normal against the light, so it has a lit side and a shadow side, and break the faces with ribs, ledges or a snow line. Size shapes in cells: at `cell` 7 one row is about 0.008 of the height of a 900px box, and a shape needs 8 or more cells across to read.
+6. **Add light and air.** A disc, a tight halo and a wide glow for the light. Lamps and windows also light the surfaces near them. Water mirrors the scene about the horizon with ripples that grow toward the viewer, plus a path of glints under the light. A thin band of mist along the horizon.
+7. **Turn colour into dots.** See below.
+8. **Wrap it in a component** with an `intensity` prop, the look props passed through with the defaults above, its own `paper`, a gradient `fallback` and a `stillTime`.
+
+## Colour into dots
+
+`field` and `colorField` compile into one shader and run one after the other for each sample. Paint the scene once in a shared function, cache the result, and return the tone from `field` and the colour from `colorField`:
+
+```glsl
+vec4 lakeScene(vec2 uv, vec2 res, float t) {
+  if (uv == lakeCacheUv && t == lakeCacheT) {
+    return lakeCacheValue;
+  }
+  vec3 col = clamp(lakeColor(uv, res, t), 0.0, 1.0);
+  float peak = max(col.r, max(col.g, col.b));
+  float value = max(dot(col, vec3(0.3, 0.55, 0.15)), 0.7 * peak);
+  float tone = 0.1 + 0.9 * pow(value, 1.2);
+  tone = max(tone, smoothstep(0.82, 0.92, value));
+  vec3 ink = col / max(peak, 1e-3) * pow(peak, 0.6);
+  float quiet = 1.0 - smoothstep(0.08, 0.28, value);
+  ink = mix(ink, vec3(0.11, 0.12, 0.2), quiet * 0.55);
+  tone *= 1.0 - 0.35 * quiet;
+  // ...intensity and the calm middle, then store the cache
+}
+```
+
+- The tone comes from the colour's value, so dot size and colour agree.
+- Dark areas are quiet: their colour moves toward a shade just above the paper and their dots shrink to specks.
+- Dark ink colours are lifted, because small dots read darker than the colour they carry.
+- The focal light is pinned to the largest dot, so it doesn't dither between the two largest.
+
+On a light paper, take the tone from the colour's distance to the paper instead, so the sky near the paper colour is the faintest dots. The balloon valley background works this way.
+
+## Behind a headline
+
+A hero puts a headline in the middle of the scene and two buttons below it. Keep the focal light and bright edges out of the middle half of the width. An `intensity` below 1 dims the scene and quiets an ellipse in the middle most:
+
+```tsx
+<section className="relative isolate flex min-h-svh flex-col items-center justify-center gap-4 text-center text-white">
+  <MoonLake intensity={0.75} className="absolute inset-0 -z-10" />
+  <h1>Your headline</h1>
+</section>
+```
+
+On a 390x844 phone the headline and buttons cover the middle of the screen. Reframe for portrait: move the horizon and the subject below the buttons, or the light into the empty sky above the headline.
+
+## Motion
+
+Slow and sparse: drifting cloud and mist, ripples and glints on water, a slow star twinkle, a soft glow pulse. No rain, beams, lightning or pointer response. Never hash anything with raw time in it, or dots flicker. Pick `stillTime` so the frame shown under reduced motion looks finished.
+
+## Checking a scene
+
+- Screenshot at 1440x900 and 390x844, bare and behind a headline with two buttons. You should be able to name the place in a second and find one clear light.
+- Zoom into a crop: round dots in several sizes on an even lattice, not stripes or blur.
+- On the phone, the subject sits beside the text and nothing bright is behind the buttons.
+- With reduced motion, the renderer reports `data-state="static"` and the still frame looks finished.
+- The scene looks the same in light and dark mode, and the console shows no shader errors.
+
+If a scene looks weak, it is usually too dark (the subject has no bright values), half empty (a black sky over black water), too small (features under 8 cells), too busy (dark areas show visible dots), flat (no lit and shadow faces, no haze with distance) or diagrammatic (straight edges, even repeats).
+
+## Going further
+
+The shipped backgrounds paint 2D layers. For a scene that needs real depth, raymarch it in the same `field`: model terrain and buildings as height fields and signed distance functions, cast rays from a camera, light faces from their normals, reflect water by tracing the mirrored ray, and add fog that thickens with distance. Keep it to 64 to 128 steps. The dots, the tone mapping and the checks stay the same.
+
+Coding agents get this guide as the `scenes.md` reference of the asciicn skill.
