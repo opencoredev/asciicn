@@ -18,6 +18,8 @@ import {
   resolveCharset,
   sampleRamp,
   useAsciiColors,
+  useDocumentVisible,
+  useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type {
@@ -994,9 +996,13 @@ export const AsciiCountdown = ({
   const target = toTime(to);
   const reducedMotion = usePrefersReducedMotion();
   const motion = animate && !reducedMotion;
+  const inView = useInView(rootRef);
+  const visible = useDocumentVisible();
   // Held still, the grid only repaints when React renders, so tick every
-  // second; while it animates, the minute is enough for the hidden text.
-  const now = useNow(target, motion ? 60_000 : 1000);
+  // second while it can be seen. While it animates, or offscreen or in a
+  // hidden tab, the minute is enough for the hidden text; minutes land in
+  // step with the target, so completion stays exact and a resume repaints.
+  const now = useNow(target, motion || !(inView && visible) ? 60_000 : 1000);
   const box = useBox(rootRef);
   const colors = useAsciiColors(rootRef, ["--ascii-ink", accent]);
   const sampling = samplingFor(charset, chars);

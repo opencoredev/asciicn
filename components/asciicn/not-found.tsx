@@ -14,6 +14,8 @@ import {
   readFont,
   resolveCharset,
   useAsciiColors,
+  useDocumentVisible,
+  useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type {
@@ -584,6 +586,9 @@ const useTyped = (text: string | null, motion: boolean) => {
 
 const Cursor = ({ blink, color }: { blink: boolean; color: string }) => {
   const ref = useRef<HTMLSpanElement>(null);
+  const animationRef = useRef<Animation | null>(null);
+  const inView = useInView(ref);
+  const visible = useDocumentVisible();
   useEffect(() => {
     const el = ref.current;
     if (!(el && blink)) {
@@ -597,8 +602,24 @@ const Cursor = ({ blink, color }: { blink: boolean; color: string }) => {
       ],
       { duration: BLINK_MS, iterations: Number.POSITIVE_INFINITY }
     );
-    return () => animation.cancel();
+    animationRef.current = animation;
+    return () => {
+      animation.cancel();
+      animationRef.current = null;
+    };
   }, [blink]);
+  // Like the renderers, the blink rests offscreen and in hidden tabs.
+  useEffect(() => {
+    const animation = animationRef.current;
+    if (!animation) {
+      return;
+    }
+    if (inView && visible) {
+      animation.play();
+    } else {
+      animation.pause();
+    }
+  }, [blink, inView, visible]);
   return (
     <span
       ref={ref}
