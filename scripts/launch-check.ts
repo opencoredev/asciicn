@@ -224,51 +224,121 @@ const BROWSER_PAGES = [
   "/docs/installation",
 ] as const;
 
-const checkConsole = (where: string) => {
+interface BrowserReply<T> {
+  success?: boolean;
+  data?: T | null;
+  error?: string;
+}
+
+/**
+ * Runs an agent-browser command with `--json`. A command that fails, or
+ * answers without data, counts as an issue and returns null, so a broken
+ * audit can never pass as a clean page.
+ */
+const browserJson = <T>(where: string, ...args: string[]): T | null => {
+  const command = args[0] ?? "";
   try {
-    const log = JSON.parse(browser("console", "--json")) as {
-      data?: { messages?: ConsoleMessage[] };
-    };
-    for (const message of log.data?.messages ?? []) {
-      const text = message.text ?? "";
-      if (
-        message.type === "error" &&
-        !IGNORED_CONSOLE.some((pattern) => pattern.test(text))
-      ) {
-        issue("console-error", where, text.slice(0, 160).replaceAll("\n", " "));
-      }
+    const reply = JSON.parse(browser(...args, "--json")) as BrowserReply<T>;
+    if (reply.success === true && reply.data) {
+      return reply.data;
     }
+    issue("browser-failed", where, `${command}: ${reply.error ?? "no data"}`);
   } catch {
-    issue("console-unreadable", where);
+    issue("browser-failed", where, `${command}: unreadable reply`);
+  }
+  return null;
+};
+
+const errorText = (error: unknown) => {
+  if (typeof error === "string") {
+    return error;
+  }
+  const { message, text } = (error ?? {}) as {
+    message?: string;
+    text?: string;
+  };
+  return message ?? text ?? JSON.stringify(error);
+};
+
+const checkConsole = (where: string) => {
+  const log = browserJson<{ messages?: ConsoleMessage[] }>(where, "console");
+  if (!log) {
+    return;
+  }
+  if (!Array.isArray(log.messages)) {
+    issue("browser-failed", where, "console: no messages list");
+    return;
+  }
+  for (const message of log.messages) {
+    const text = message.text ?? "";
+    if (
+      message.type === "error" &&
+      !IGNORED_CONSOLE.some((pattern) => pattern.test(text))
+    ) {
+      issue("console-error", where, text.slice(0, 160).replaceAll("\n", " "));
+    }
+  }
+};
+
+const checkPageErrors = (where: string) => {
+  const reply = browserJson<{ errors?: unknown[] }>(where, "errors");
+  if (!reply) {
+    return;
+  }
+  if (!Array.isArray(reply.errors)) {
+    issue("browser-failed", where, "errors: no errors list");
+    return;
+  }
+  for (const error of reply.errors) {
+    issue("page-error", where, errorText(error).slice(0, 160));
+  }
+};
+
+const checkOverflow = (where: string) => {
+  const reply = browserJson<{ result?: unknown }>(
+    where,
+    "eval",
+    "document.documentElement.scrollWidth - window.innerWidth"
+  );
+  if (!reply) {
+    return;
+  }
+  if (typeof reply.result !== "number") {
+    issue("browser-failed", where, "eval: no overflow number");
+  } else if (reply.result > 1) {
+    issue("overflow", where, `${reply.result}px`);
   }
 };
 
 const checkA11y = (where: string) => {
-  try {
-    const audit = JSON.parse(browser("a11y", "--json")) as {
-      data?: { violations?: AxeViolation[] };
-    };
-    for (const violation of audit.data?.violations ?? []) {
-      if (violation.impact === "serious" || violation.impact === "critical") {
-        issue(
-          "a11y",
-          where,
-          `${violation.id} x${violation.nodeCount ?? 1} (${violation.impact})`,
-          violation.nodeCount ?? 1
-        );
-      }
+  const audit = browserJson<{ violations?: AxeViolation[] }>(where, "a11y");
+  if (!audit) {
+    return;
+  }
+  if (!Array.isArray(audit.violations)) {
+    issue("browser-failed", where, "a11y: no violations list");
+    return;
+  }
+  for (const violation of audit.violations) {
+    if (violation.impact === "serious" || violation.impact === "critical") {
+      issue(
+        "a11y",
+        where,
+        `${violation.id} x${violation.nodeCount ?? 1} (${violation.impact})`,
+        violation.nodeCount ?? 1
+      );
     }
-  } catch {
-    issue("a11y-unreadable", where);
   }
 };
 
 const checkInBrowser = (path: string, width: number, height: number) => {
   const where = `${path}@${width}`;
-  browser("set", "viewport", String(width), String(height));
-  browser("console", "--clear");
-  browser("errors", "--clear");
-  browser("open", `${BASE}${path}`);
+  browserJson(where, "set", "viewport", String(width), String(height));
+  browserJson(where, "console", "--clear");
+  browserJson(where, "errors", "--clear");
+  if (!browserJson(where, "open", `${BASE}${path}`)) {
+    return;
+  }
   browser("wait", "2500");
   // Walk the page so lazy sections mount, then come back to the top.
   browser(
@@ -277,22 +347,9 @@ const checkInBrowser = (path: string, width: number, height: number) => {
   );
   browser("wait", "1500");
 
-  const overflow = browser(
-    "eval",
-    "document.documentElement.scrollWidth - window.innerWidth"
-  ).trim();
-  if (Number.parseFloat(overflow) > 1) {
-    issue("overflow", where, `${overflow}px`);
-  }
-
+  checkOverflow(where);
   checkConsole(where);
-
-  const errors = browser("errors").trim();
-  if (errors && !/no (page )?errors/i.test(errors)) {
-    for (const line of errors.split("\n").filter(Boolean)) {
-      issue("page-error", where, line.slice(0, 160));
-    }
-  }
+  checkPageErrors(where);
 
   // Accessibility once per page, at desktop width.
   if (width >= 1000) {
