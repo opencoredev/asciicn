@@ -35,7 +35,7 @@ export const LANDSCAPES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "A desert canyon at dusk from a high rim: terraced walls step back to glowing mesas in violet haze while a river winds below, mirroring the sunset.",
+      "A desert canyon in late golden hour from a high rim: sunlit terracotta walls with blue shadows step back to glowing buttes while a river winds below, mirroring the blue sky.",
     id: "canyon-river",
     load: async () => {
       const { CanyonRiver } = await import("@/components/asciicn/canyon-river");
