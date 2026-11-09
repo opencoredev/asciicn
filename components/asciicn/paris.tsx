@@ -266,7 +266,13 @@ vec4 parisSky(vec2 s, vec2 p) {
   // Dot size follows the light: middle rose dots low down, the smallest
   // dots in a blue close to the paper high up, so the deep sky reads as
   // quiet air and the big dots stay with the tower.
-  float tone = 0.15 + 0.5 * exp(-max(hc - 0.17, 0.0) * 4.0) + 0.1 * glow * exp(-h * 4.0);
+  // A narrow, full band right over the roofs silhouettes them; above it
+  // the dots thin out quickly into the quiet dark.
+  float tone = 0.1 + 0.48 * exp(-max(hc - 0.2, 0.0) * 6.0) + 0.1 * glow * exp(-h * 5.0);
+  // High up, most cells drop to nothing, so the dark sky is sparse air.
+  if (parisHash(s + 71.0) < 0.55 * smoothstep(0.35, 0.7, h)) {
+    tone = 0.0;
+  }
   // Long thin clouds drifting slowly to the right, brightest near the horizon.
   vec2 cp = vec2(p.x * 1.3 - parisT * 0.004, p.y * 7.0);
   float c = fbm(cp + vec2(3.1, 1.7));
@@ -274,7 +280,7 @@ vec4 parisSky(vec2 s, vec2 p) {
   float cloud = smoothstep(0.5, 0.72, c) * band;
   vec3 cloudCol = mix(vec3(1.0, 0.66, 0.6), vec3(0.58, 0.5, 0.8), smoothstep(0.1, 0.42, h));
   col = mix(col, cloudCol, cloud * 0.75);
-  tone += cloud * 0.12;
+  tone += cloud * 0.08;
   // Stars only where the sky is dark, and only a few.
   float star = parisHash(s + 17.0);
   float density = 0.0035 * smoothstep(0.42, 0.75, h);
@@ -305,7 +311,12 @@ vec4 parisFar(vec2 s, vec2 p, out float cover) {
   float glow = parisAfter(p);
   vec3 haze = mix(vec3(0.46, 0.4, 0.66), vec3(0.78, 0.52, 0.62), glow * 0.6);
   vec3 col = mix(haze * 0.82, haze, smoothstep(0.0, hgt, y));
-  float tone = 0.36 + 0.06 * smoothstep(0.0, hgt, y);
+  // Haze: a shade below the sky behind it, closest to it at the roofline,
+  // so the far city is only a soft step in the afterglow, not a band.
+  vec4 sky = parisSky(s, p);
+  float edge = smoothstep(hgt * 0.4, hgt, y);
+  col = mix(mix(col, sky.rgb, 0.55), sky.rgb, edge * 0.5);
+  float tone = sky.a * mix(0.72, 0.9, edge);
   if (parisHash(s + 51.0) > 0.975 && y < hgt - 0.006) {
     col = vec3(0.95, 0.7, 0.5);
     tone = 0.7;
@@ -458,10 +469,12 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
     zinc = mix(zinc, vec3(0.7, 0.52, 0.66), 0.25 * glow);
     // The ridge catches the sky; the cornice under it is pale stone.
     if (sy > b.y - parisSh * 1.5) {
-      return vec4(mix(vec3(0.56, 0.58, 0.84), vec3(0.95, 0.7, 0.66), 0.4 * glow), 0.6);
+      // Broken along its length, so it never reads as a ruled line.
+      float catchLight = 0.3 + 0.18 * parisHash(vec2(s.x, id) + 23.0);
+      return vec4(mix(vec3(0.5, 0.52, 0.78), vec3(0.95, 0.7, 0.66), 0.4 * glow), catchLight);
     }
     if (sy < parisSh) {
-      return vec4(0.46, 0.46, 0.7, 0.5);
+      return vec4(0.36, 0.36, 0.6, 0.3);
     }
     // Dormers in one row halfway up, every third column.
     float dr = floor((b.x + b.y * 0.4) / parisSh);
@@ -469,25 +482,36 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
       float on = parisLit(vec2(s.x, id + 101.0), 0.32);
       return vec4(mix(vec3(0.1, 0.12, 0.3), lamp, on), mix(0.16, 0.85, on));
     }
-    return vec4(zinc, 0.4);
+    return vec4(zinc * 0.8, 0.26);
   }
   cover = 1.0;
   float fr = s.y - parisGroundRow;
   float nrows = floor(b.x / parisSh);
-  // The facade: lit a touch by the sky from above, darker at street level.
-  vec3 wall = mix(vec3(0.16, 0.19, 0.42), vec3(0.25, 0.28, 0.54), smoothstep(0.0, b.x, y));
-  wall = mix(wall, vec3(0.4, 0.3, 0.46), 0.25 * glow);
+  // The facade in shadow: each block a slightly different stone, the side
+  // facing the afterglow a touch lighter, the street level darkest, and a
+  // slow mottle so no two stretches of wall read the same.
+  float facing = clamp(0.5 + 0.5 * sign(parisSunX - p.x) * (u / bw - 0.5) * -2.0, 0.0, 1.0);
+  float mottle = fbm(vec2(p.x * 18.0, y * 40.0) + id * 3.1);
+  vec3 wall = mix(vec3(0.1, 0.12, 0.3), vec3(0.22, 0.24, 0.48), smoothstep(0.0, b.x, y));
+  wall *= 0.85 + 0.3 * parisHash(vec2(id, 6.6)) + 0.25 * facing;
+  wall = mix(wall, vec3(0.42, 0.3, 0.46), 0.25 * glow);
+  float wallTone = 0.14 + 0.16 * smoothstep(0.35, 0.7, mottle) + 0.06 * facing;
   if (fr > nrows - 1.5) {
-    // The cornice.
-    return vec4(0.4, 0.4, 0.64, 0.5);
+    // The cornice, catching a little sky.
+    return vec4(0.34, 0.34, 0.56, 0.2 + 0.1 * parisHash(vec2(s.x, id) + 31.0));
   }
+  // Windows lit in uneven clusters: some floors of a block are lived in,
+  // others dark, and a few lone windows burn on their own.
   bool bay = cx > 1.5 && cx < ncols - 2.5 && mod(cx, 2.0) > 0.5;
   if (bay && mod(fr, 2.0) > 0.5) {
+    float cluster = smoothstep(0.45, 0.65, fbm(vec2(s.x * 0.09, fr * 0.35) + id * 7.7));
+    float chance = mix(0.06, 0.65, cluster) * (fr < 1.5 ? 1.2 : 1.0);
     vec3 tint = parisHash(vec2(s.x, fr) + 41.0) > 0.86 ? vec3(0.78, 0.84, 1.0) : lamp;
-    float on = parisLit(vec2(s.x, fr + id * 13.0), fr < 1.5 ? 0.55 : 0.3);
-    return vec4(mix(vec3(0.08, 0.1, 0.26), tint, on), mix(0.14, 0.9, on));
+    float on = parisLit(vec2(s.x, fr + id * 13.0), chance);
+    float bright = 0.55 + 0.25 * parisHash(vec2(s.x, fr) + 9.0);
+    return vec4(mix(wall * 0.7, tint, on), mix(wallTone * 0.7, bright, on));
   }
-  return vec4(wall, 0.36);
+  return vec4(wall, wallTone);
 }
 
 // Plane trees on the Champ de Mars either side of the tower's feet, dark
