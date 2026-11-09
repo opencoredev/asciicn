@@ -1,12 +1,12 @@
 ---
 title: "London"
-description: "Westminster at night across the Thames: the Elizabeth Tower with its lit clock, the Palace of Westminster, Tower Bridge and the Shard, with amber lamps on the embankment."
+description: "Westminster at dusk in dots: the Elizabeth Tower's clock face glowing warm, the palace roofline lit gold, Westminster Bridge and its lamps, and the Thames holding long broken reflections under a misty gold to slate sky."
 ---
 
 import LondonDemo from "@/examples/london-demo";
 import { controls as demoControls } from "@/examples/london-controls";
-import LondonHeadline from "@/examples/london-headline";
-import LondonDuotone from "@/examples/london-duotone";
+import LondonHero from "@/examples/london-hero";
+import LondonMist from "@/examples/london-mist";
 
 <ComponentPreview
   src="examples/london-demo.tsx"
@@ -29,35 +29,43 @@ import { London } from "@/components/asciicn/london";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <London intensity={0.7} className="absolute inset-0 -z-10" />
+      <London intensity={0.85} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The view looks across the Thames from the South Bank. The Elizabeth Tower stands right of centre: a floodlit Gothic shaft, the clock stage with its glowing dial and hands, the gilded belfry and a slate spire with gold edges. The Palace of Westminster runs to its left, a long front of lit windows in bays with a pinnacle over every buttress, the Central Tower's lantern and spire, and the square Victoria Tower at the far end. Further down the river, Tower Bridge shows its two towers, the blue walkways between them and the chains sweeping down to each bank, with the Shard behind it.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: small, dim dots in the slate blue at the top of the sky, and larger ones in the pale gold low along the roofline, where the sun has just gone down behind the palace.
 
-The buildings never move. A few windows switch on or off at a time, the clock hands keep real time from ten past ten, car lights cross Tower Bridge slowly, the red light on the Shard pulses about once every two seconds and a river boat passes in about two minutes. The embankment lamps drop amber streaks into the water, and the reflections break and shift a sample at a time. A faint haze lies on the water and the bank. It never moves and never crosses a building. Nothing follows the pointer.
+The view looks across the Thames at Westminster. The Elizabeth Tower stands to the right: a floodlit shaft, the clock stage with its glowing dial and two hands, the open belfry lit from inside, and a slate spire banded in gold. The dial is the brightest thing in the picture and warms the air around it. The Palace of Westminster runs left from the tower's foot, a long gold front of buttresses and lit windows under a dark roof with gold cresting and pinnacles, with the Central Tower's lantern and the Victoria Tower further off in the haze. Westminster Bridge runs from the tower's foot towards you on green arches, its lamps glowing on their standards.
 
-It draws in `quadrants` at a 9px cell by default, so every edge and window lands on a 2x2 sub-cell. `blocks` and `dense` give solid shapes, `standard` a classic ASCII look and `braille` fine outlines. In `truecolor`, the default, floodlit gold stone and blue steel sit on a night blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+The Thames mirrors all of it, darker and cooler, broken into long dashes that widen towards you. A gold streak lies under the tower and a thin one under each bridge lamp.
+
+Motion is slow: the reflections shimmer, mist drifts along the horizon and over the water, the lamps and the dial breathe softly, a few windows turn on or off every few minutes, the clock hands keep slow time and one river cruiser takes about three minutes to cross a wide box. The pointer does nothing.
+
+The tower stands right of the middle in every box, so a centred headline sits over the calm sky and the palace, with the tower beside it. On a phone the palace fills the left and the tower the right.
+
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide; `braille` and `quadrants` use text cells unless you ask for square ones. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. In `truecolor`, the default, the scene paints its own dusk paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+`intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`intensity={0.6}` dims the city so white text over the river reads first.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The tower stays right of the text.
 
-<ComponentPreview src="examples/london-headline.tsx" size="lg" align="stretch">
-  <LondonHeadline />
+<ComponentPreview src="examples/london-hero.tsx" size="lg" align="stretch">
+  <LondonHero />
 </ComponentPreview>
 
-### Sodium duotone
+### Thick mist
 
-`colorMode="duotone"` with `ramp="sodium"` runs every tone through one amber ramp, from shadow to lamp flame. `braille` glyphs draw fine outlines, `grade={{ gamma: 1.7 }}` lifts the stone out of the dark end of the ramp, and `fog={1}` with no boat keeps it quiet.
+`fog={1}` thickens the mist along the horizon and over the water, and `cell={6}` packs finer dots into a small card. `boat={false}` leaves the river empty.
 
-<ComponentPreview src="examples/london-duotone.tsx">
-  <LondonDuotone />
+<ComponentPreview src="examples/london-mist.tsx">
+  <LondonMist />
 </ComponentPreview>
 
 ## Props
@@ -76,21 +84,21 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
       type: "number",
       default: "0.5",
       description:
-        "How much still haze lies on the water and the bank, from 0 (none) to 1. It only fills empty space and never moves.",
+        "How much mist drifts along the horizon and over the water, from 0 (none) to 1.",
     },
     {
       name: "boat",
       type: "boolean",
       default: "true",
       description:
-        "The river boat heading upstream, once every two minutes or so.",
+        "The river cruiser heading downstream, about three minutes to cross a wide box.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a dusk blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -101,7 +109,7 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -129,7 +137,8 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
       name: "ramp",
       type: "RampName | string[]",
       default: "–",
-      description: "In duotone mode, the colour ramp from dark to light.",
+      description:
+        'In duotone mode, the colour ramp from dark to light. Default "sodium".',
     },
     {
       name: "ansi",
@@ -186,8 +195,15 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "–",
+      description:
+        "Cells as wide as they are tall, so the dots lie in an even lattice. On by default for one-glyph charsets such as dots, off for braille and quadrants.",
     },
     {
       name: "speed",
@@ -234,7 +250,7 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- The buildings never move and nothing reacts to the pointer. Only lights, stars, the clock hands, the reflections and the boat change.
+- It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime`, with the boat on the river, and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
-- The whole city is one shader pass on the GPU. The river reflection reads the skyline a second time, and in `quadrants` and `braille` an empty sample also reads its neighbours so cell colours stay true at edges. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dusk gradient.
+- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the river costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

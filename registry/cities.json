@@ -71,7 +71,7 @@
     "name": "london",
     "type": "registry:component",
     "title": "London",
-    "description": "Westminster at night across the Thames: the Elizabeth Tower with its lit clock, the Palace of Westminster, Tower Bridge and the Shard, with amber lamps on the embankment.",
+    "description": "Westminster at dusk in dots: the Elizabeth Tower's clock face glowing warm, the palace roofline lit gold, Westminster Bridge and its lamps, and the Thames holding long broken reflections under a misty gold to slate sky.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
