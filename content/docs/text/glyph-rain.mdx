@@ -1,6 +1,6 @@
 ---
 title: "Glyph rain"
-description: "Columns of glyphs falling at different speeds with amber heads and fading trails, which can leave a message behind in block letters that holds, wears away and forms again."
+description: "Falling glyphs gather into a message, then fade and form again."
 ---
 
 import GlyphRainDemo from "@/examples/glyph-rain-demo";
@@ -183,6 +183,7 @@ No `message`, a lower `density` and `speed`, and `charset="braille"`, so each tr
 
 ## Notes
 
+- Each column falls at its own speed, with an amber head and a trail that fades through the charset. A column that crosses a cell of the message leaves that cell lit, so the words assemble out of the rain, hold, wear away and form again.
 - The canvas is decorative and hidden from assistive technology. Put the message in a real heading too, visible or `sr-only`.
 - The first frame already shows the message part written, so it never opens on a blank box.
 - Under reduced motion it draws one still frame: the finished message with rain around it. It pauses offscreen and in hidden tabs.

@@ -1,6 +1,6 @@
 ---
 title: "ASCII countdown"
-description: "A launch countdown in big glyph digits that scramble for a beat when they change, with softly blinking colons, labels under each group and a done state at zero."
+description: "A launch countdown in big glyph digits that scramble as they change."
 ---
 
 import AsciiCountdownDemo from "@/examples/ascii-countdown-demo";
@@ -207,6 +207,7 @@ Other props pass through to the root `div`.
 
 ## Notes
 
+- Changed digits scramble for a beat and settle, the colons blink softly, each group has a label under it, and at zero it shows `doneText` and calls `onComplete`.
 - The digits are drawn on a canvas that is `aria-hidden`. A visually hidden `role="timer"` element gives the time left to the minute and the target date, so a screen reader is not told every second.
 - Nothing that depends on the clock renders on the server. The first client render matches the server, then the countdown starts, so there is no hydration mismatch.
 - With reduced motion, or `animate={false}`, digits change without scrambling and the colons hold steady. The time still updates every second.

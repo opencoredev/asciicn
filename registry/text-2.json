@@ -45,7 +45,7 @@
     "name": "glyph-rain",
     "type": "registry:component",
     "title": "Glyph rain",
-    "description": "Columns of glyphs falling at different speeds with amber heads and fading trails, which can leave a message behind in block letters that holds, wears away and forms again.",
+    "description": "Falling glyphs gather into a message, then fade and form again.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {

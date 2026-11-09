@@ -166,7 +166,7 @@ const sceneLook = (
       0.5;
   return {
     ink,
-    lumaLimit: lightPaper ? 0.32 : 1,
+    lumaLimit: lightPaper ? 0.26 : 1,
     options,
     paper: transparent ? ("transparent" as const) : paper,
   };

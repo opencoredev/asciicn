@@ -31,7 +31,7 @@
     "name": "ascii-countdown",
     "type": "registry:component",
     "title": "ASCII countdown",
-    "description": "A launch countdown in big glyph digits that scramble for a beat when they change, with softly blinking colons, labels under each group and a done state at zero.",
+    "description": "A launch countdown in big glyph digits that scramble as they change.",
     "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
     "files": [
       {
