@@ -1,0 +1,195 @@
+---
+title: "Black hole"
+description: "A black hole seen close to edge-on: a thin disk lensed over and under a black shadow, a sharp photon ring and slow streaks flowing round."
+---
+
+import BlackHoleDemo from "@/examples/black-hole-demo";
+import BlackHoleHero from "@/examples/black-hole-hero";
+import BlackHoleBraille from "@/examples/black-hole-braille";
+import BlackHoleTilts from "@/examples/black-hole-tilts";
+import { controls as blackHoleControls } from "@/examples/black-hole-controls";
+
+<ComponentPreview
+  src="examples/black-hole-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={blackHoleControls}
+>
+  <BlackHoleDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="black-hole" />
+
+## Usage
+
+```tsx
+import { BlackHole } from "@/components/asciicn/black-hole";
+
+export function Hero() {
+  return (
+    <section className="relative isolate h-[560px]">
+      <BlackHole className="absolute inset-0 -z-10" />
+    </section>
+  );
+}
+```
+
+The scene runs on the GPU as one field. Each sample sends a ray from a distant camera and bends it through the curved space around the hole. Where the ray crosses the plane of the disk, it picks up light. Rays that pass close to the hole and fall in leave the shadow empty.
+
+The arcs over and under the shadow are the far side of the disk. Light from behind the hole bends round it and reaches you from above and below, so the disk seems to wrap the shadow. A thin photon ring sits on the shadow's edge, one or two samples wide in any charset.
+
+The disk orbits anticlockwise seen from above, so its left side comes toward you. That side is brighter and hotter, which is called Doppler beaming. Each radius turns at its own rate, so the streaks shear slowly as they flow. Stars behind the hole stay single glyphs far out and stretch into short arcs near the edge.
+
+The hole stays round at any aspect ratio. In a wide box the disk fits across. In a tall or narrow box the disk runs off both sides and the shadow keeps a fair share of the width.
+
+## Examples
+
+### Behind a heading
+
+`scale` shrinks the hole so the heading sits on clear ground below it. The heading is real text on top; the scene sits behind it at `-z-10`.
+
+<ComponentPreview src="examples/black-hole-hero.tsx" size="lg">
+  <BlackHoleHero />
+</ComponentPreview>
+
+### Braille, warm tint
+
+Braille packs eight dots into each glyph, so the photon ring and the streaks get much finer. `tint="warm"` swaps the theme colours for a fixed palette from deep red to white-hot.
+
+<ComponentPreview src="examples/black-hole-braille.tsx" size="lg">
+  <BlackHoleBraille />
+</ComponentPreview>
+
+### Tilt
+
+`tilt` is the angle above the disk plane. At 0 the near disk is a straight line across the shadow. Higher values open the disk into an ellipse and push the lensed arc up.
+
+<ComponentPreview src="examples/black-hole-tilts.tsx" size="lg">
+  <BlackHoleTilts />
+</ComponentPreview>
+
+## Props
+
+Every [ASCII image](/docs/images/ascii-image#props) look prop also applies, with `charset` defaulting to `"standard"`, plus `fx` for a CRT finish. `dither` defaults to `"bayer4"` for Braille and quadrants, so the faint outer disk keeps a dot gradient.
+
+<PropsTable
+  rows={[
+    {
+      name: "tilt",
+      type: "number",
+      default: "8",
+      description:
+        "How far above the disk plane you look from, in degrees. 0 is edge-on.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the disk turns. 0 holds it still.",
+    },
+    {
+      name: "diskSize",
+      type: "number",
+      default: "1",
+      description: "Outer radius of the disk, from 0.5 to 2 times the default.",
+    },
+    {
+      name: "scale",
+      type: "number",
+      default: "1",
+      description: "How much the hole fills the box, from 0.5 to 1.5.",
+    },
+    {
+      name: "beaming",
+      type: "number",
+      default: "1",
+      description:
+        "How much brighter the side turning toward you is, from 0 (even) to 2.",
+    },
+    {
+      name: "tint",
+      type: '"theme" | "warm"',
+      default: '"theme"',
+      description:
+        '"theme" draws ink with an amber-hot inner disk. "warm" uses a fixed palette from deep red to white-hot.',
+    },
+    {
+      name: "stars",
+      type: "boolean",
+      default: "true",
+      description: "Stars behind the hole, bent and stretched near its edge.",
+    },
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description:
+        "The cool outer disk and the stars in the theme tint. Also the glyph colour in mono.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "The hot inner disk and the photon ring in the theme tint.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        'How glyphs are coloured. "mono" when a phosphor is set and no mode is.',
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs, or the phosphor's glass.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "6",
+      description: "The moment drawn under reduced motion, in seconds.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a ring and a disk",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is decorative and hidden from assistive technology. Put your real heading and copy beside or on top of it.
+- Under reduced motion it draws one still frame at `stillTime`. It pauses offscreen and in hidden tabs.
+- It ignores the pointer, so moving the mouse over it changes nothing.
+- Every sample traces its own ray, up to 128 steps. A full-screen Braille canvas is the heaviest case; a ramp charset or a larger `cell` costs much less.
+- In light mode the shadow is the paper, so it reads as a white hole in dark glyphs. The warm tint deepens its colours on light paper so amber stays visible.
+- Without WebGL2 it shows `fallback`: by default an amber ring and a band in the theme's colours.
