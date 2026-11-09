@@ -12,6 +12,7 @@ import images from "@/registry/images.json";
 import interface1 from "@/registry/interface-1.json";
 import interface2 from "@/registry/interface-2.json";
 import interface3 from "@/registry/interface-3.json";
+import landscapes from "@/registry/landscapes.json";
 import scenesA from "@/registry/scenes-a.json";
 import scenesB from "@/registry/scenes-b.json";
 import scenesC from "@/registry/scenes-c.json";
@@ -42,6 +43,7 @@ const named = (items: readonly { name: string }[], category: Category) =>
 const CATEGORY_BY_ITEM = new Map<string, Category>([
   ...named(fields, "backgrounds"),
   ...named(cities, "backgrounds"),
+  ...named(landscapes, "backgrounds"),
   ...named([...scenes, ...scenesA, ...scenesB, ...scenesC], "scenes"),
   ...named([...interface1, ...interface2, ...interface3], "ui"),
   ...named([...text, ...text2], "text"),

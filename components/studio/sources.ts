@@ -17,7 +17,7 @@ import type { LookOverrides } from "@/components/studio/state";
 import type { AudioBands } from "@/lib/ascii/audio";
 import type { AsciiLook, Interaction } from "@/lib/ascii/look";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { CITIES } from "@/lib/cities";
+import { BACKGROUNDS } from "@/lib/backgrounds";
 
 /**
  * Props the Studio hands every component source: the look plus motion and
@@ -68,7 +68,7 @@ export type FieldSource = SourceBase & {
 export type SceneSource = SourceBase & {
   readonly kind: "scene";
   readonly id: SceneSourceId;
-  readonly group: "cities";
+  readonly group: "cities" | "landscapes";
   readonly load: () => Promise<StudioComponent>;
 };
 
@@ -84,6 +84,7 @@ export const SOURCE_GROUPS = [
   { id: "backgrounds", label: "Fields" },
   { id: "objects", label: "3D objects" },
   { id: "cities", label: "Cities" },
+  { id: "landscapes", label: "Landscapes" },
   { id: "media", label: "Media" },
 ] as const;
 
@@ -209,41 +210,36 @@ const pascal = (id: string) =>
     .join("");
 
 const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
+  "balloon-valley": "Balloon valley",
+  "canyon-river": "Canyon river",
   dubai: "Dubai",
+  "glacier-lagoon": "Glacier lagoon",
   "hong-kong": "Hong Kong",
+  lighthouse: "Lighthouse",
   london: "London",
   miami: "Miami",
   "new-york": "New York",
   paris: "Paris",
+  "redwood-light": "Redwood light",
   rio: "Rio de Janeiro",
   "san-francisco": "San Francisco",
   sydney: "Sydney",
   tokyo: "Tokyo",
 };
 
-/** Each city's own charset, so the snippet and the stage agree. */
-const SCENE_DEFAULTS: Readonly<Record<SceneSourceId, LookOverrides>> = {
-  dubai: { charset: "quadrants", colorMode: "truecolor" },
-  "hong-kong": { charset: "quadrants", colorMode: "truecolor" },
-  london: { charset: "quadrants", colorMode: "truecolor" },
-  miami: { charset: "quadrants", colorMode: "truecolor" },
-  "new-york": { charset: "quadrants", colorMode: "truecolor" },
-  paris: { charset: "quadrants", colorMode: "truecolor" },
-  rio: { charset: "quadrants", colorMode: "truecolor" },
-  "san-francisco": { charset: "quadrants", colorMode: "truecolor" },
-  sydney: { charset: "quadrants", colorMode: "truecolor" },
-  tokyo: { charset: "quadrants", colorMode: "truecolor" },
-};
-
 const isSceneId = (id: string): id is SceneSourceId =>
   Object.hasOwn(SCENE_TITLES, id);
 
-const SCENE_SOURCES: readonly SceneSource[] = CITIES.flatMap((scene) =>
+// Each background starts on its own charset, so the snippet and the stage agree.
+const SCENE_SOURCES: readonly SceneSource[] = BACKGROUNDS.flatMap((scene) =>
   isSceneId(scene.id)
     ? [
         {
-          defaults: SCENE_DEFAULTS[scene.id],
-          group: "cities",
+          defaults: {
+            charset: scene.charset,
+            colorMode: "truecolor",
+          } satisfies LookOverrides,
+          group: scene.group,
           hint: scene.title,
           id: scene.id,
           importName: pascal(scene.id),

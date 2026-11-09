@@ -2,12 +2,13 @@ import type { ComponentType } from "react";
 
 import type { CharsetName } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { CITIES, cityDocsUrl } from "@/lib/cities";
+import { BACKGROUNDS } from "@/lib/backgrounds";
+import type { BackgroundGroup } from "@/lib/backgrounds";
 import type { CityRenderer } from "@/lib/cities";
 
 /**
- * What /backgrounds can put on a stage: the city backgrounds, plus a few
- * seeded fields from the catalogue. Site-only.
+ * What /backgrounds can put on a stage: the city and landscape
+ * backgrounds, plus a few seeded fields from the catalogue. Site-only.
  */
 
 /** `gpu` sources draw through WebGL2 and count against the context budget. */
@@ -17,6 +18,8 @@ export interface StageSource {
   /** Registry name, docs slug and `?source=` value. */
   readonly id: string;
   readonly kind: "city" | "shader";
+  /** For backgrounds: cities or landscapes. */
+  readonly group?: BackgroundGroup;
   readonly title: string;
   readonly description: string;
   readonly renderer: Renderer;
@@ -35,17 +38,21 @@ const pascal = (id: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-export const CITY_SOURCES: readonly StageSource[] = CITIES.map((city) => ({
-  charset: city.charset,
-  description: city.description,
-  exportName: pascal(city.id),
-  href: cityDocsUrl(city.id),
-  id: city.id,
-  kind: "city",
-  load: city.load,
-  renderer: city.renderer,
-  title: city.title,
-}));
+/** Every background, cities and landscapes, in gallery order. */
+export const CITY_SOURCES: readonly StageSource[] = BACKGROUNDS.map(
+  (entry) => ({
+    charset: entry.charset,
+    description: entry.description,
+    exportName: pascal(entry.id),
+    group: entry.group,
+    href: entry.href,
+    id: entry.id,
+    kind: "city",
+    load: entry.load,
+    renderer: entry.renderer,
+    title: entry.title,
+  })
+);
 
 // The background components take the shader's props. Spreading the city
 // props through keeps the look switches working as the shader learns them.

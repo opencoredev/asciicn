@@ -15,7 +15,7 @@ export const FIELD_SOURCE_IDS = [
   "globe-3d",
 ] as const;
 
-/** The city backgrounds, matching `lib/cities.ts`. */
+/** The city and landscape backgrounds, matching `lib/cities.ts` and `lib/landscapes.ts`. */
 export const SCENE_SOURCE_IDS = [
   "miami",
   "tokyo",
@@ -27,6 +27,11 @@ export const SCENE_SOURCE_IDS = [
   "hong-kong",
   "rio",
   "sydney",
+  "balloon-valley",
+  "glacier-lagoon",
+  "canyon-river",
+  "lighthouse",
+  "redwood-light",
 ] as const;
 
 /** Sources sampled on the CPU from pixels. */

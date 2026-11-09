@@ -78,6 +78,7 @@ For grids you compute in JavaScript (3D meshes, simulations, terminal panes), dr
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Engine            | `ascii-core` (CPU engine), `ascii-shader` (WebGL2 renderer), `ascii-export`, `ascii-tokens`, `asciicn-skill`                                                                          |
 | City skylines     | miami, tokyo, new-york, paris, london, dubai, san-francisco, hong-kong, rio, sydney                                                                                                   |
+| Landscapes        | balloon-valley, glacier-lagoon, canyon-river, lighthouse, redwood-light                                                                                                               |
 | 3D & scenes       | torus-knot, ascii-globe, ascii-donut, dna-helix, cyber-skull, synthwave-sun, retro-computer, server-rack, mountain-dusk, ocean-waves, black-hole                                      |
 | Shaders & fields  | nebula, prism, ionize, squall, satin, ember                                                                                                                                           |
 | Media & filters   | ascii-image, ascii-portrait, ascii-video, ascii-logo, ascii-canvas, avatar, ascii-reveal                                                                                              |

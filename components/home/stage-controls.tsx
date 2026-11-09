@@ -64,7 +64,10 @@ export const SourceSelect = ({
   className?: string;
 }) => {
   const id = useId();
-  const cities = sources.filter((source) => source.kind === "city");
+  const cities = sources.filter(
+    (source) => source.kind === "city" && source.group !== "landscapes"
+  );
+  const landscapes = sources.filter((source) => source.group === "landscapes");
   const shaders = sources.filter((source) => source.kind === "shader");
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>
@@ -85,6 +88,15 @@ export const SourceSelect = ({
               </option>
             ))}
           </optgroup>
+          {landscapes.length > 0 ? (
+            <optgroup label="Landscapes">
+              {landscapes.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.id}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
           {shaders.length > 0 ? (
             <optgroup label="Shaders">
               {shaders.map((source) => (

@@ -9,14 +9,15 @@ import {
   usePrefersReducedMotion,
 } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { CITIES } from "@/lib/cities";
-import type { CityEntry } from "@/lib/cities";
+import { HERO_BACKGROUNDS } from "@/lib/backgrounds";
+import type { BackgroundEntry } from "@/lib/backgrounds";
 import { cn } from "@/lib/utils";
 
 /**
- * Site illustration, not a registry piece: the city backgrounds behind the
- * landing hero. It opens on San Francisco, whose orange bridge sits with
- * the amber accent, then the next city fades in over it every HOLD_MS. Rotation pauses offscreen and in hidden tabs,
+ * Site illustration, not a registry piece: the backgrounds behind the
+ * landing hero, cities and landscapes. It opens on San Francisco, whose
+ * orange bridge sits with the amber accent, then the next scene fades in
+ * over it every HOLD_MS. Rotation pauses offscreen and in hidden tabs,
  * and never runs under reduced motion, where the city holds a still frame.
  *
  * Cities load one at a time, so the page only pays for the one on screen.
@@ -32,25 +33,24 @@ const SCRIM =
   "radial-gradient(ellipse var(--scrim-width) 40% at 50% 52%, color-mix(in oklab, var(--background) 92%, transparent) 0%, color-mix(in oklab, var(--background) 84%, transparent) 55%, transparent 100%)";
 
 interface Layer {
-  readonly city: CityEntry;
+  readonly city: BackgroundEntry;
   /** Grows with every switch, so a city that comes round again remounts. */
   readonly key: number;
 }
 
-const FIRST_CITY = "san-francisco";
+const firstCity = (): BackgroundEntry | undefined => HERO_BACKGROUNDS[0];
 
-const firstCity = (): CityEntry | undefined =>
-  CITIES.find((city) => city.id === FIRST_CITY) ?? CITIES[0];
-
-const nextCity = (city: CityEntry): CityEntry | undefined =>
-  CITIES[(CITIES.indexOf(city) + 1) % CITIES.length];
+const nextCity = (city: BackgroundEntry): BackgroundEntry | undefined =>
+  HERO_BACKGROUNDS[
+    (HERO_BACKGROUNDS.indexOf(city) + 1) % HERO_BACKGROUNDS.length
+  ];
 
 /** One city, invisible until its chunk loads, then faded in. */
 const CityLayer = ({
   city,
   onShown,
 }: {
-  city: CityEntry;
+  city: BackgroundEntry;
   /** Called once the city is fully faded in. */
   onShown?: () => void;
 }) => {
@@ -115,7 +115,11 @@ export const AsciiHero = ({ className }: { className?: string }) => {
   const current = layers.at(-1);
 
   const rotating =
-    settled && !reducedMotion && inView && visible && CITIES.length > 1;
+    settled &&
+    !reducedMotion &&
+    inView &&
+    visible &&
+    HERO_BACKGROUNDS.length > 1;
 
   useEffect(() => {
     if (!rotating || !current) {

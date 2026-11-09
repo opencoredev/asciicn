@@ -7,6 +7,7 @@ import {
   trustPageMarkdown,
 } from "@/lib/trust-pages";
 import cities from "@/registry/cities.json";
+import landscapes from "@/registry/landscapes.json";
 
 /**
  * The app pages outside /docs that answer `Accept: text/markdown` (and
@@ -40,6 +41,9 @@ const isCityItem = (value: unknown): value is CityItem =>
 const CITIES: readonly CityItem[] = (cities as readonly unknown[]).filter(
   isCityItem
 );
+const LANDSCAPES: readonly CityItem[] = (
+  landscapes as readonly unknown[]
+).filter(isCityItem);
 
 const studioMarkdown = (base: string) => `# ASCII Studio
 
@@ -52,7 +56,7 @@ The Studio is an interactive editor for the asciicn engine. Every control in it 
 ## Sources
 
 - **GPU fields:** \`nebula\`, \`prism\`, \`ionize\`, \`squall\` and \`satin\`, plus a 3D torus and a 3D globe.
-- **The ${CITIES.length} city backgrounds** from the [backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md).
+- **The ${CITIES.length + LANDSCAPES.length} backgrounds** (cities and landscapes) from the [backgrounds gallery](${base}${ROUTES.BACKGROUNDS}.md).
 - **Media:** a sample image, a video URL, your webcam, or text you type, sampled on the CPU into glyphs. Files and camera frames stay in the browser and never enter the URL.
 
 ## What you can change
@@ -83,15 +87,19 @@ npx shadcn@latest add ${SITE.REGISTRY}/asciicn-skill.json
 That installs the engine and the agent skill. Then follow the skill at ${base}${ROUTES.AGENT_SKILL}, or start with [Write your own](${base}${ROUTES.DOCS_WRITE_YOUR_OWN}.md).
 `;
 
-const cityLine = (base: string, city: CityItem) => {
+const cityLine = (
+  base: string,
+  city: CityItem,
+  folder: string = ROUTES.DOCS_BACKGROUNDS
+) => {
   const title = city.title ?? city.name;
   const summary = city.description ? `: ${city.description}` : "";
-  return `- **${title}** (\`${city.name}\`)${summary} Docs: ${base}${ROUTES.DOCS_BACKGROUNDS}/${city.name}.md. Install: \`npx shadcn@latest add ${SITE.REGISTRY}/${city.name}.json\``;
+  return `- **${title}** (\`${city.name}\`)${summary} Docs: ${base}${folder}/${city.name}.md. Install: \`npx shadcn@latest add ${SITE.REGISTRY}/${city.name}.json\``;
 };
 
 const backgroundsMarkdown = (base: string) => `# ASCII backgrounds
 
-> ${CITIES.length} animated city backgrounds drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}${ROUTES.BACKGROUNDS}.
+> ${CITIES.length + LANDSCAPES.length} animated backgrounds, cities and painted landscapes, drawn with real glyphs by the asciicn engine. Each one is a single React component you install with the shadcn CLI. Gallery: ${base}${ROUTES.BACKGROUNDS}.
 
 ${AGENT_DOCS_DIRECTIVE_MARKDOWN}
 
@@ -100,6 +108,10 @@ Every background follows the \`--ascii-*\` theme tokens, holds one still frame u
 ## Cities
 
 ${CITIES.map((city) => cityLine(base, city)).join("\n")}
+
+## Landscapes
+
+${LANDSCAPES.map((item) => cityLine(base, item, "/docs/landscapes")).join("\n")}
 
 ## Use one
 

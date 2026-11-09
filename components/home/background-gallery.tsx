@@ -32,8 +32,8 @@ import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 
 /**
- * /backgrounds: the selected city on a big stage with every switch
- * (charset, colour, cell, CRT effects), then all cities as cards. `?city=<id>`
+ * /backgrounds: the selected background on a big stage with every switch
+ * (charset, colour, cell, CRT effects), then all backgrounds as cards. `?city=<id>`
  * selects one and stays in the address bar as you switch, so a link
  * reopens the same city. `[` and `]` step through them.
  */
@@ -199,7 +199,7 @@ export const BackgroundGallery = () => {
           <p className="text-muted-foreground hidden items-center gap-1.5 font-mono text-[11px] lg:flex">
             <Kbd>[</Kbd>
             <Kbd>]</Kbd>
-            step through cities
+            step through backgrounds
           </p>
         </div>
       </div>
