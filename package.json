@@ -12,6 +12,7 @@
     "registry:build": "jiti scripts/build-registry.ts && shadcn build registry.json --output ./public/r",
     "postinstall": "fumadocs-mdx",
     "catalog:capture": "jiti scripts/capture-catalog.ts",
+    "launch:check": "jiti scripts/launch-check.ts",
     "check": "ultracite check",
     "fix": "ultracite fix",
     "prepare": "node scripts/prepare.mjs"
