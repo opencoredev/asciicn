@@ -57,7 +57,7 @@ vec3 rtSkyRamp(float y) {
 float rtHalo(vec2 p) {
   vec2 d = (p - vec2(rtSunX, RT_SUN_Y)) * vec2(0.7, 1.0);
   float r = length(d);
-  return 0.5 * exp(-r / 0.2) + 0.75 * exp(-r / 0.045);
+  return 0.5 * exp(-r / 0.2) + 0.9 * exp(-r / 0.06);
 }
 
 vec4 rtSky(vec2 s, vec2 p) {
@@ -109,10 +109,11 @@ float rtSunward(vec2 p, float width) {
 // Valley mist: drifting banks, densest in a band across the valley floor.
 float rtMist(vec2 p, float lo, float hi) {
   float x = rtX(p.x);
-  float n = fbm(vec2(x * 1.4 - rtT * 0.01, p.y * 6.0 + rtT * 0.002));
+  // Long banks stretched along the valley, torn into wisps at their edges.
+  float n = fbm(vec2(x * 1.8 - rtT * 0.01, p.y * 13.0 + rtT * 0.002));
   float mid = (lo + hi) * 0.5;
   float profile = 1.0 - smoothstep(0.0, (hi - lo) * 0.5, abs(p.y - mid));
-  return clamp(profile * (0.45 + 1.0 * n), 0.0, 1.0);
+  return clamp(profile * smoothstep(0.25, 0.7, n) * 1.3, 0.0, 1.0);
 }
 
 // Mist colour: pale rose, warming to gold under the sun.
@@ -129,15 +130,22 @@ vec4 rtPool(vec2 p, float k, float f, float bandY, float haze) {
   vec3 c = rtSkyRamp(ry);
   float pick = rtHash(vec2(k, 3.1));
   c *= 0.9 + 0.14 * pick;
-  // The far edge of each pool catches a little more light.
-  c = mix(c, RT_GOLD, 0.22 * smoothstep(0.5, 1.0, f));
+  // The far edge of each pool mirrors the dark wall standing above it.
+  float wall = smoothstep(0.6, 0.95, f);
+  c = mix(c, vec3(0.2, 0.15, 0.26), wall * 0.65);
   float shimmer = fbm(vec2(p.x * 9.0 / max(rtAspect, 0.9) + rtT * 0.03, k * 3.7 + f * 1.5 - rtT * 0.02));
-  float glint = rtSunward(p, mix(0.08, 0.2, 1.0 - bandY / 0.62)) * smoothstep(0.45, 0.7, shimmer);
-  c = mix(c, RT_SUN, clamp(glint * 0.9, 0.0, 1.0));
+  // The glitter path narrows with the box, so a phone keeps its pools.
+  float path = mix(0.06, 0.16, 1.0 - bandY / 0.62) * clamp(rtAspect / 1.6, 0.45, 1.0);
+  float glint = rtSunward(p, path) * smoothstep(0.5, 0.75, shimmer);
+  c = mix(c, mix(RT_GOLD, RT_SUN, glint), clamp(glint, 0.0, 1.0));
   float lum = dot(c, vec3(0.3, 0.55, 0.15));
-  float tone = 0.74 + 0.35 * lum + 0.3 * glint;
+  // The nearest pools sit in the hill's own shadow, so the light gathers
+  // towards the far terraces and the sun.
+  float shade = 1.0 - smoothstep(0.0, 0.3, bandY);
+  c *= 1.0 - 0.3 * shade;
+  float tone = 0.66 + 0.35 * lum + 0.3 * glint - 0.22 * shade - 0.3 * wall;
   // A faint slow ripple runs along every pool.
-  tone += 0.06 * sin(p.x * 70.0 / max(rtAspect, 0.9) + rtT * 0.5 + k * 1.7);
+  tone += 0.03 * sin(p.x * 70.0 / max(rtAspect, 0.9) + rtT * 0.5 + k * 1.7);
   // Far hills sit back: hazier colour and smaller dots.
   c = mix(c, mix(rtMistColor(p), vec3(0.5, 0.46, 0.7), step(0.32, haze) * 0.6), haze);
   return vec4(c, mix(tone, 0.48, smoothstep(0.25, 0.4, haze)));
@@ -261,7 +269,7 @@ vec4 rtScene(vec2 uv, vec2 res, float t) {
   if (p.y < nearTrees && p.y > nearCrest - 0.018) {
     hit = rtTreeColor(p, nearTrees, nearTall, 0.0);
   } else if (p.y < nearCrest) {
-    hit = rtTerraces(s, p, vec4(0.075, -0.32, 0.24, 0.028), 0.7, 11.0, 0.0, 0.55);
+    hit = rtTerraces(s, p, vec4(0.075, -0.32, 0.24, 0.028), 0.7, 14.0, 0.0, 0.3);
     // Wisps of mist curl over the upper terraces.
     float m = rtMist(p, nearCrest - 0.1, nearCrest + 0.04) * 0.35;
     hit.rgb = mix(hit.rgb, rtMistColor(p), m);
@@ -282,7 +290,7 @@ vec4 rtScene(vec2 uv, vec2 res, float t) {
       float lit = 1.0 - smoothstep(0.0, 1.5 * rtSh, r1 - p.y);
       float foot = smoothstep(0.02, 0.12, r1 - p.y);
       vec3 c = mix(vec3(0.2, 0.2, 0.42), rtMistColor(p), 0.55 * foot);
-      hit = vec4(mix(c, RT_PEACH, lit * (0.35 + 0.65 * glow)), 0.42 + 0.5 * lit + 0.3 * foot);
+      hit = vec4(mix(c, RT_PEACH, lit * glow * 0.8), 0.42 + 0.2 * lit * glow + 0.3 * foot);
     } else if (p.y < r2) {
       float lit = 1.0 - smoothstep(0.0, 1.5 * rtSh, r2 - p.y);
       float foot = smoothstep(0.02, 0.1, r2 - p.y);
@@ -312,7 +320,7 @@ vec4 rtScene(vec2 uv, vec2 res, float t) {
   vec2 calm = (uv - 0.5) / vec2(0.34, 0.24);
   float quiet = (1.0 - rtIntensity) * exp(-dot(calm, calm));
   float dim = mix(0.25, 1.0, rtIntensity) * (1.0 - 0.6 * quiet);
-  tone *= mix(0.75, 1.0, rtIntensity) * (1.0 - 0.6 * quiet);
+  tone *= mix(0.9, 1.0, rtIntensity) * (1.0 - 0.5 * quiet);
   rtCacheUv = uv;
   rtCacheT = t;
   rtCacheValue = vec4(hit.rgb * dim, tone);
@@ -362,6 +370,8 @@ export interface RiceTerracesProps extends Omit<
   intensity?: number;
   /** The one bird gliding far off across the sky. Default `true`. */
   bird?: boolean;
+  /** Square cells, so the dots lie on an even halftone lattice. `false` uses the font's tall cells. Default `true`. */
+  square?: boolean;
   /**
    * Paper behind the glyphs. Default: the scene's night blue in `truecolor`,
    * `ansi16` and `duotone`; the theme's paper, or the phosphor's, otherwise.
@@ -389,7 +399,8 @@ export const RiceTerraces = ({
   phosphor,
   paper,
   ramp,
-  cell = 8,
+  cell = 7,
+  square = true,
   stillTime = 0,
   intensity = 1,
   bird = true,
@@ -417,6 +428,7 @@ export const RiceTerraces = ({
       ramp={ramp ?? (mode === "duotone" ? "outrun" : undefined)}
       paper={paper ?? (DAWN_MODES.has(mode) ? DAWN_PAPER : undefined)}
       cell={cell}
+      square={square}
       stillTime={stillTime}
       fallback={fallback}
       {...props}

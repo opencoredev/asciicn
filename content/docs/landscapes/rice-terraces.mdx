@@ -40,7 +40,7 @@ A terraced hillside fills the foreground. Its crest is high on the left and fall
 
 Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot, warming to gold under the sun. Three ridges step back into lavender haze, each lighter than the one in front. The sun stands just above them in a soft glow.
 
-Every cell carries a dot. The `dots` charset draws `·`, `•` and `●`, so the dot's size carries its tone: walls and the night sky overhead are fine points, the ridges are mid dots, and the water, mist and sun are full dots. In `truecolor`, the default, each dot takes its own colour.
+Every cell carries a dot. The `dots` charset draws `·`, `•` and `●`, so the dot's size carries its tone: walls and the night sky overhead are fine points, the ridges are mid dots, and the water, mist and sun are full dots. In `truecolor`, the default, each dot takes its own colour. Cells are square by default, 7px each way, so the dots lie on an even lattice like a halftone screen. `square={false}` uses the font's tall cells instead.
 
 The motion is slow. Mist drifts through the valley, the pools shimmer, the sun glitters on the water below it, a few last stars twinkle, and one pale egret glides across the sky every few minutes.
 
@@ -66,7 +66,7 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
 
 ### Banner
 
-`cell={6}` draws finer dots, so the terraces keep their steps in a wide strip only 224px tall. `bird={false}` leaves only the mist and the water moving.
+`cell={6}` draws finer dots, about 6px apart, so the terraces keep their steps in a wide strip only 224px tall. `bird={false}` leaves only the mist and the water moving.
 
 <ComponentPreview src="examples/rice-terraces-banner.tsx">
   <RiceTerracesBanner />
@@ -88,6 +88,13 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
       type: "boolean",
       default: "true",
       description: "The one bird gliding slowly across the sky.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Square cells, so the dots lie on an even halftone lattice. false uses the font's taller cells.",
     },
     {
       name: "paper",
@@ -191,7 +198,7 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
     {
       name: "cell",
       type: "number",
-      default: "10",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {

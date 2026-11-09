@@ -11,6 +11,7 @@ export default function RiceTerracesDemo() {
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
       bird={usePreviewValue(knobs.bird)}
+      square={usePreviewValue(knobs.square)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

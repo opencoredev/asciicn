@@ -32,8 +32,14 @@ export const bird = toggle({
   label: "Bird",
 });
 
+export const square = toggle({
+  default: true,
+  id: "square",
+  label: "Square cells",
+});
+
 export const cell = slider({
-  default: 8,
+  default: 7,
   id: "cell",
   label: "Cell",
   max: 16,
@@ -49,4 +55,12 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [charset, colorMode, intensity, bird, cell, animate];
+export const controls = [
+  charset,
+  colorMode,
+  intensity,
+  bird,
+  square,
+  cell,
+  animate,
+];
