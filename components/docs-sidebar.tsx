@@ -115,14 +115,31 @@ export const DocsSidebar = ({
 
   // Bring the current page into the clear middle of the list, out from
   // under the fades at the top and bottom. Its group opens with a short
-  // animation first, so measure once that has settled.
+  // animation first, so measure once that has settled. If the reader
+  // scrolls or reaches for the sidebar before then, leave it where they put it.
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const content = contentRef.current;
-      const active = content?.querySelector<HTMLElement>(
-        '[data-active="true"]'
-      );
-      if (!(content && active)) {
+    const content = contentRef.current;
+    if (!content) {
+      return;
+    }
+    const events = [
+      "scroll",
+      "wheel",
+      "touchstart",
+      "pointerdown",
+      "keydown",
+    ] as const;
+    let timer = 0;
+    const cancel = () => {
+      window.clearTimeout(timer);
+      for (const event of events) {
+        content.removeEventListener(event, cancel);
+      }
+    };
+    timer = window.setTimeout(() => {
+      cancel();
+      const active = content.querySelector<HTMLElement>('[data-active="true"]');
+      if (!active) {
         return;
       }
       const box = content.getBoundingClientRect();
@@ -133,7 +150,10 @@ export const DocsSidebar = ({
         content.scrollTop += row.top - box.top - content.clientHeight / 2;
       }
     }, 260);
-    return () => window.clearTimeout(timer);
+    for (const event of events) {
+      content.addEventListener(event, cancel, { passive: true });
+    }
+    return cancel;
   }, [pathname]);
 
   return (
