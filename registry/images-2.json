@@ -29,5 +29,22 @@
         "target": "components/asciicn/ascii-canvas.tsx"
       }
     ]
+  },
+  {
+    "name": "ascii-reveal",
+    "type": "registry:component",
+    "title": "ASCII reveal",
+    "description": "An image that resolves out of glyphs: cells lock in and hand over to the real photo along a sweep, on view, on hover or on cue.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-image.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ascii-reveal.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ascii-reveal.tsx"
+      }
+    ]
   }
 ]

@@ -1,0 +1,241 @@
+---
+title: "ASCII reveal"
+description: "An image that resolves out of glyphs: cells lock in and hand over to the real photo along a sweep, on view, on hover or on cue."
+---
+
+import AsciiRevealDemo from "@/examples/ascii-reveal-demo";
+import AsciiRevealCards from "@/examples/ascii-reveal-cards";
+import AsciiRevealRadial from "@/examples/ascii-reveal-radial";
+import { controls as asciiRevealControls } from "@/examples/ascii-reveal-controls";
+
+<ComponentPreview
+  src="examples/ascii-reveal-demo.tsx"
+  size="lg"
+  controls={asciiRevealControls}
+>
+  <AsciiRevealDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-reveal" />
+
+## Usage
+
+```tsx
+import { AsciiReveal } from "@/components/asciicn/ascii-reveal";
+
+export function Hero() {
+  return (
+    <AsciiReveal
+      src="/photos/launch.jpg"
+      alt="The rocket on the pad at dawn"
+      direction="down"
+      className="w-full max-w-xl"
+    />
+  );
+}
+```
+
+`AsciiReveal` starts as the picture drawn in glyphs. It samples the photo with the same area-averaging sampler as `AsciiImage`, so every glyph is the average of the pixels under its cell.
+
+When the reveal runs, an edge sweeps across the picture. Cells at the edge flicker through glyphs in the `accent` colour, then lock in as the photo. Behind the edge the real photo shows. Ahead of it the glyphs hold. The edge bends a little and has some grain, so cells hand over one by one instead of in straight lines.
+
+`trigger` sets what starts it:
+
+- `view` reveals once, when the image scrolls into view.
+- `hover` reveals on hover or keyboard focus, and goes back to glyphs on leave. On a touch screen a tap toggles it.
+- `manual` follows the `revealed` prop, so you can tie it to your own state.
+
+The box keeps the image's aspect ratio. Pass `ratio` to reserve the space before the image loads, or set your own `aspect-*` class.
+
+## Examples
+
+### Hover cards
+
+Each card reveals on hover or focus and sweeps back on leave. A short `duration` keeps them quick under the pointer.
+
+<ComponentPreview src="examples/ascii-reveal-cards.tsx" size="lg">
+  <AsciiRevealCards />
+</ComponentPreview>
+
+### Full-width radial reveal
+
+`direction="radial"` opens the photo from the centre out. This one is Braille in `truecolor` and reveals once, when it scrolls into view. Press Replay to see it again.
+
+<ComponentPreview src="examples/ascii-reveal-radial.tsx" size="lg">
+  <AsciiRevealRadial />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "src",
+      type: "string",
+      description:
+        "Image URL. Files on another origin need CORS headers, or the canvas can't read their pixels.",
+    },
+    {
+      name: "alt",
+      type: "string",
+      description:
+        'What the image shows, passed to the <img>. Pass "" for a decorative image.',
+    },
+    {
+      name: "trigger",
+      type: '"view" | "hover" | "manual"',
+      default: '"view"',
+      description:
+        "view reveals once on scroll into view. hover reveals on hover or focus. manual follows revealed.",
+    },
+    {
+      name: "revealed",
+      type: "boolean",
+      default: "false",
+      description: "With manual: true shows the photo, false the glyphs.",
+    },
+    {
+      name: "direction",
+      type: '"down" | "up" | "left" | "right" | "radial" | "random"',
+      default: '"down"',
+      description:
+        "Which way the edge travels. radial opens from the centre. random dissolves in patches.",
+    },
+    {
+      name: "duration",
+      type: "number",
+      default: "2400",
+      description:
+        "Length of one full sweep in milliseconds. A reveal that turns back halfway takes half as long.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description:
+        "Colour of the glyphs at the edge. A palette name, a CSS variable or any CSS colour.",
+    },
+    {
+      name: "ratio",
+      type: "number",
+      default: "the image's own, 4/3 before it loads",
+      description: "Width over height of the box.",
+    },
+    {
+      name: "charset",
+      type: '"standard" | "dense" | "blocks" | "quadrants" | "braille" | "cp437" | "petscii" | "katakana" | "dots" | "edge"',
+      default: '"standard"',
+      description: "Which glyphs draw the picture.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"mono"',
+      description:
+        "mono draws in one ink. truecolor takes each cell's colour from the photo. duotone reads tones through ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      description: "With mono: a CRT ink and its dark glass.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"mainframe"',
+      description:
+        "With duotone: a named ramp or your own stops, dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "With ansi16: which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "{ brightness?, contrast?, gamma?, saturation? }",
+      description: "Tone and colour grading before glyphs are chosen.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "follows the theme",
+      description:
+        "true: dark pixels draw dense glyphs. false: bright pixels do. Unset, it follows the page.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "With the edge charset: how strong a contour must be to draw a stroke.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"blue-noise" for Braille and quadrants, else "none"',
+      description: "Ordered dithering between glyph levels and dots.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description: "transparent draws glyphs only, over whatever is behind.",
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      description: "CRT effects over the glyphs: scanlines, bloom, vignette.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "9",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false swaps between glyphs and photo without a sweep, as reduced motion does.",
+    },
+    {
+      name: "crossOrigin",
+      type: '"anonymous" | "use-credentials"',
+      default: '"anonymous"',
+      description: "Passed to the image requests.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the glyph layer as text, ANSI, SVG or PNG.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The real `<img>` is always in the page and carries `alt`, so screen readers read the image in either state. The glyph layers are `aria-hidden`.
+- The image loads lazily. The glyphs sample it once the box comes within about 300 px of the viewport, and the `<img>` uses `loading="lazy"`.
+- With reduced motion, or `animate={false}`, there is no sweep. A `view` reveal shows the photo straight away. A `hover` reveal shows the glyphs until you hover or focus it, then swaps to the photo. A `manual` reveal shows whatever `revealed` says.
+- The sweep is the only motion. Before it starts and after it ends the component draws nothing new until a prop or the box size changes. Offscreen and in a hidden tab the sweep pauses where it is.
+- During the sweep the photo is drawn through a mask of one pixel per cell, so the handover lines up with the glyph grid. At rest the `<img>` itself shows.
+- With `trigger="hover"` the box is focusable. If it sits inside a link or a button, use `trigger="manual"` and drive `revealed` from that element's hover and focus instead.
+- The sample photos are public domain, from NASA, the Hubble Heritage Team and Ansel Adams for the US National Park Service, all from Wikimedia Commons.
