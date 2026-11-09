@@ -36,13 +36,15 @@ export function Hero() {
 }
 ```
 
-The view is from the forest floor, looking up. Three giant trunks stand in front, two on the left and one on the right, dark red-brown and furrowed, with a warm rim of light on the side that faces the sun. Behind them two rows of thinner trunks recede into blue-green haze, each row paler and cooler than the one in front. Every trunk leans towards one point high above the middle of the box, so the forest reads as seen from below.
+The view is from the forest floor, looking up. Two huge trunks frame the view, dark red-brown and furrowed, with a warm rim of light on the side that faces the sun. Three medium trunks stand a little behind them, then three rows of thinner trunks recede into the haze, each row paler and cooler than the one in front: a few broad trunks and many thin ones. Every trunk leans towards one point high above the middle of the box, and each also leans a little its own way, so the forest reads as seen from below and never as a row of strips.
 
-The sun shines through an opening in the canopy, upper right, as a small soft halo. Four soft-edged shafts of golden light fall from it, nearly straight down, and thin out into the haze as they reach the fern floor. Fern clumps get smaller and hazier towards the far edge of the floor, and a row of fronds crosses the bottom of the box.
+Three layers of canopy overlap overhead, far to near: clumped masses with ragged, leafy edges, the nearest hanging low in sprays at the sides.
+
+The sun shines through the canopy, upper right, as a small soft halo, and the leaves around it glow gold where it backlights them. Four soft-edged shafts of light fall from it, nearly straight down, broken into dapples by the leaves in their way, and the air around them is a soft green-gold. Fern clumps get smaller and hazier towards the far edge of the floor, and a row of fronds crosses the bottom of the box.
 
 The motion is slow. Dust and pollen drift through the shafts and catch the light, each mote fading in and out. The shafts brighten and dim a little, and a thin mist drifts between the far trunks. Nothing reacts to the pointer.
 
-The middle of the box is calm, dark green air between the trunks. The light stays upper right and the shafts fade where they near the middle, so a centred headline sits on quiet ground. On tall boxes the giants narrow, the halo shrinks and the shafts dim, so a phone shows the light above the headline and the trunks beside it.
+The middle of the box is calm green air between the trunks. The light stays upper right and the shafts fade where they near the middle, so a centred headline sits on quiet ground. On tall boxes the giants narrow, the halo shrinks and the shafts dim, so a phone shows the light above the headline and the trunks beside it.
 
 It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots sit on an even lattice like a halftone screen. `square={false}` goes back to the font's narrower cells. Dot size carries the light and `truecolor` gives every dot its own colour, while the shade falls to the smallest dots, close to the paper, or to none. `braille` and `quadrants` draw the same forest in finer dots. In `truecolor`, `ansi16` and `duotone` it paints on its own dark green shade, so it looks the same on the light and dark site themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the scene by tone alone.
 
