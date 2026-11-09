@@ -1,6 +1,6 @@
 ---
 title: "Tokyo"
-description: "Tokyo at night in coloured dots: Tokyo Tower glowing orange and white with both decks lit, a deep city in faint cyan haze and a moonlit, snow-capped Mount Fuji under a teal sky."
+description: "Tokyo at night in coloured dots, built in 3D: the Tokyo Skytree in pale blue light over a dense city that runs to the horizon, with neon on the near streets, Tokyo Tower small in the distance and a moonlit Mount Fuji under a teal sky."
 ---
 
 import TokyoDemo from "@/examples/tokyo-demo";
@@ -37,21 +37,23 @@ export function Hero() {
 }
 ```
 
-The view looks west across Minato on a clear, cool night. Tokyo Tower stands at the right, drawn to the real tower's proportions: legs that flare out over an arch, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna with a red light. It is painted in orange and white bands, both decks are lit, and it is the one warm light in the frame. Mount Fuji stands far off at the left, a moonlit cone in cool grey-blue with a snow cap that is brightest on the side facing the moon. Between them, three layers of towers recede into haze: the nearest are darkest and carry the clearest windows, the farthest sit close to the sky in value, their lights barely there.
+The view looks west from a rooftop in the east of the city, 64 m up. The scene is built in 3D and raymarched from that camera: the city is a grid of lots, each with its own block, walked front to back so every wall, roof and street is a real surface at a real distance. The grid runs at an angle to the view, so blocks show two faces and the avenues run off toward the horizon as lines of light. Past a few kilometres the city carries on in long steps until it melts into the haze.
 
-The sky runs from a pale cyan-grey glow low over the city through teal and blue-grey to near black overhead, with a small moon above Fuji and a few stars. Most of it is drawn in small, dim dots, so it reads as quiet air. Windows are a soft field of muted white and cyan lights with a few pale warm rooms, lit floor by floor, set in a faint cyan haze of city glow; only about one in six burns bright.
+The Tokyo Skytree stands at the right, about 1.7 km away, drawn to its real proportions: a tripod base that narrows into a round lattice shaft, the three-tier Tembo Deck at 350 m, the Tembo Galleria ring at 450 m and the antenna mast to 634 m. It is lit in pale blue round a white core, its decks bright and rimmed in violet, with red lights on the mast. Tokyo Tower stands far off at the left, small and orange. Mount Fuji rises a few degrees above the horizon, 90 km away, its snow cap bright on the side facing the low moon.
 
-Motion is slow and sparse: a few windows switch on or off over tens of seconds, the tower's glow breathes, haze drifts along the foot of the middle towers, stars twinkle, and a train glides along the elevated line about every 40 seconds. Nothing responds to the pointer.
+Light comes from the moon in the west, the glow of the sky, warm street light caught in the low haze, and the city's own lights: office floors in white and cyan, homes in warm light, vertical neon signs on the near streets and red aircraft lights on the tall roofs. Haze thickens with distance, so each layer of blocks is a little lighter than the one in front of it.
 
-It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots lay an even halftone lattice and dot size carries tone: small, dim dots in the night sky, the distance and the shadows, and large bright ones kept for the tower, its glow, the moon and the lit snow on Fuji. Dots, `braille` and `quadrants` use `blue-noise` dithering, which blends neighbouring sizes without stripes. In `truecolor`, the default, every dot takes the scene's own colour on a night paper, so it looks the same on light and dark pages. Fuji and the tower stay at about a fifth and four fifths of the width in any box, so a centred headline covers neither, and a phone crop keeps both.
+Motion is slow and sparse: a few windows switch on or off over tens of seconds, aircraft lights pulse out of step, traffic creeps along the avenues, the neon breathes, haze drifts and stars twinkle. Nothing responds to the pointer.
 
-The central band, the middle half of the width from 30% to 65% of the height, holds only sky and haze. `intensity` dims the colours and shrinks the dots, most of all in that band. Lower it to keep text on top easy to read.
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen. Every colour is snapped to a palette of 46 chosen for the scene, and dot size follows brightness through `bayer4` ordered dithering, so it reads like a print. In `truecolor`, the default, it paints its own night on a night paper, so it looks the same on light and dark pages. The Skytree stays right of centre on a wide screen; in a tall box the view narrows and gains height, so the tower fills a phone.
+
+The central band, the middle half of the width from 30% to 65% of the height, holds sky and the far horizon. `intensity` dims the colours and shrinks the dots, most of all in that band. Lower it to keep text on top easy to read.
 
 ## Examples
 
 ### Behind a headline
 
-Full-bleed behind a centred headline and two buttons. `intensity={0.6}` quiets the middle band so the text reads first, while the tower and Fuji still frame it.
+Full-bleed behind a centred headline and two buttons. `intensity={0.6}` quiets the middle band so the text reads first, while the Skytree and the city still frame it.
 
 <ComponentPreview src="examples/tokyo-hero.tsx" size="lg" align="stretch">
   <TokyoHero />
@@ -59,7 +61,7 @@ Full-bleed behind a centred headline and two buttons. `intensity={0.6}` quiets t
 
 ### In a tall card
 
-In a 9:19 box Fuji and the tower keep their places at the edges of the frame, and both stay in view.
+In a 9:19 box the view narrows and gains height, so the Skytree fills the frame above the city.
 
 <ComponentPreview src="examples/tokyo-tall.tsx">
   <TokyoTall />
@@ -67,7 +69,7 @@ In a 9:19 box Fuji and the tower keep their places at the edges of the frame, an
 
 ### In sodium duotone
 
-`colorMode="duotone"` with `ramp="sodium"` runs every dot's tone through one amber ramp, so dot size alone draws the tower, Fuji and the glow.
+`colorMode="duotone"` with `ramp="sodium"` runs every dot's tone through one amber ramp, so dot size alone draws the Skytree, the city and Fuji.
 
 <ComponentPreview src="examples/tokyo-duotone.tsx">
   <TokyoDuotone />
@@ -88,14 +90,14 @@ In a 9:19 box Fuji and the tower keep their places at the edges of the frame, an
       name: "fuji",
       type: "boolean",
       default: "true",
-      description: "Draws Mount Fuji on the far horizon, left of the tower.",
+      description: "Draws Mount Fuji, small and moonlit on the far horizon.",
     },
     {
-      name: "train",
+      name: "tokyoTower",
       type: "boolean",
       default: "true",
       description:
-        "Draws the train that glides along the elevated line about every 40 seconds.",
+        "Draws Tokyo Tower, small and orange in the distance at the left.",
     },
     {
       name: "charset",
@@ -165,9 +167,9 @@ In a 9:19 box Fuji and the tower keep their places at the edges of the frame, an
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"blue-noise" in dots, braille and quadrants, "none" otherwise',
+      default: '"bayer4"',
       description:
-        "Dithering between neighbouring glyph levels. Blue noise blends dot sizes across the sky's gradient without stripes.",
+        "Ordered dithering between neighbouring dot sizes, which turns five dots into smooth tone like a print.",
     },
     {
       name: "background",
@@ -226,9 +228,9 @@ In a 9:19 box Fuji and the tower keep their places at the edges of the frame, an
     {
       name: "stillTime",
       type: "number",
-      default: "3",
+      default: "4",
       description:
-        "The moment drawn when motion is off or reduced, in seconds. The default shows the train mid-crossing.",
+        "The moment drawn when motion is off or reduced, in seconds.",
     },
     {
       name: "handle",
@@ -266,4 +268,4 @@ In a 9:19 box Fuji and the tower keep their places at the edges of the frame, an
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a night gradient.
 - Nothing responds to the pointer, and there is no `interaction` prop.
-- The whole scene is one GPU pass, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- The whole scene is one GPU pass that raymarches the city for every sample, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
