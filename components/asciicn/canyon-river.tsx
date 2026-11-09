@@ -6,23 +6,25 @@ import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { resolveCharset } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// The canyon is painted near to far from four silhouettes: the near walls,
-// a middle shelf, a few far buttes and the flat plateau on the horizon.
-// The near and middle walls are terraced V shapes whose gaps follow the
-// river, so the one winding band of water shows through each gap in turn
-// and reads as a river running from the sunset towards you. Heights are in
-// box heights and widths in the same units, so shapes keep their proportions;
-// positions across are fractions of the half width, so tall boxes keep the
-// whole composition, a little narrower. Only light moves: the glow on the
-// far rims, the shimmer on the water, the stars and the clouds.
+// The canyon is painted near to far: eroded near walls, a middle wall, two
+// rows of buttes at the sides and a hazy plateau on the horizon. The near
+// and middle walls open around the river, so the one winding band of water
+// shows through each gap in turn and runs from the sunset towards you.
+// Terrain is laid out in its own height, ty, with the horizon at 0.5; on
+// tall boxes the real horizon rises and the ground below it is squeezed to
+// fit, so the sunset sits above a centred headline. Rock is shaded from a
+// relief of buttresses and gullies: faces turned to the sun are warm, the
+// rest cool and dark, and only the sunlit rims draw the largest dots.
+// Only light moves: the glow on the rims, the shimmer on the water, the
+// stars and the clouds.
 const SCENE = `
-const float CANYON_HZ = 0.5;
 const float CANYON_FLOOR_M = 0.27;
-const float CANYON_FLOOR_F = 0.43;
+const float CANYON_FLOOR_F = 0.44;
 
 // Set once per sample by canyonScene and read by every layer.
 float canyonT;
 float canyonW;
+float canyonHz;
 float canyonSun;
 float canyonRow;
 float canyonGapN;
@@ -40,186 +42,176 @@ float canyonHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Benches and risers: flat ledges joined by steep cliffs.
-float canyonTerrace(float v, float n) {
+// Soft benches: mostly slope, with a short ledge at each step.
+float canyonBench(float v, float n) {
   float q = clamp(v, 0.0, 1.0) * n;
-  return (floor(q) + smoothstep(0.52, 0.94, fract(q))) / n;
+  return (floor(q) + smoothstep(0.22, 0.96, fract(q))) / n;
 }
 
-// The river's centre at screen height y: it leaves the sunset, swings right,
-// then crosses back to the left as it comes near. Perspective narrows the
-// swing towards the horizon.
-float canyonRiverX(float y) {
-  float u = clamp((CANYON_HZ - y) / CANYON_HZ, 0.0, 1.3);
-  return mix(canyonSun, -0.05 * canyonW, u) + canyonW * 0.26 * pow(u, 0.8) * sin(u * 5.2 + 0.3);
+// The river's centre at terrain height ty: it leaves the sunset, swings
+// right, then crosses back to the left as it comes near. Perspective
+// narrows the swing towards the horizon.
+float canyonRiverX(float ty) {
+  float u = clamp((0.5 - ty) / 0.5, 0.0, 1.3);
+  return mix(canyonSun, -0.08 * canyonW, u) + canyonW * 0.26 * pow(u, 0.8) * sin(u * 5.2 + 0.3);
 }
 
-float canyonRiverHalf(float y) {
-  return 0.003 + 0.14 * pow(max(CANYON_HZ - y, 0.0), 1.25);
+float canyonRiverHalf(float ty) {
+  return 0.003 + 0.13 * pow(max(0.5 - ty, 0.0), 1.25);
 }
 
-// The near walls, rising in four terraces from the river to the rim at the
-// edges of the box. The left rim stands a little higher.
+// A canyon wall opening around gap: an eroded slope with two soft benches,
+// buttresses and notches along the rim, and fine breaks near the top.
+float canyonWall(float x, float gap, float halfGap, float span, float floorY, float rim, float rough) {
+  float d = abs(x - gap) - halfGap;
+  float v = d / max(span, 0.05) + 0.16 * (fbm(vec2(x * 3.2, rim * 40.0)) - 0.5);
+  float s = clamp(v, 0.0, 1.0);
+  float prof = mix(pow(s, 0.75), canyonBench(s, 2.0), 0.4);
+  float top = mix(floorY, rim, prof);
+  return top + rough * (0.7 * snoise(vec2(x * 16.0, rim * 9.0)) + 0.3 * snoise(vec2(x * 47.0, rim * 3.0)));
+}
+
 float canyonNearTop(float x) {
   float left = step(x, canyonGapN);
-  float d = abs(x - canyonGapN) - canyonHalfN;
-  float span = mix(canyonW - canyonGapN, canyonW + canyonGapN, left) - canyonHalfN;
-  float v = d / max(span * 0.62, 0.05) + 0.05 * snoise(vec2(x * 3.1, 4.7));
-  canyonRimN = mix(0.36, 0.41, left) + 0.012 * snoise(vec2(x * 1.7, 9.2));
-  return mix(-0.08, canyonRimN, canyonTerrace(v, 4.0));
+  float span = (mix(canyonW - canyonGapN, canyonW + canyonGapN, left) - canyonHalfN) * 0.7;
+  canyonRimN = mix(0.31, 0.37, left) + 0.09 * (fbm(vec2(x * 2.2, 9.2)) - 0.5);
+  return canyonWall(x, canyonGapN, canyonHalfN, span, -0.08, canyonRimN, 0.008);
 }
 
-// The middle shelf, three terraces up from its own gap, with a few clefts
-// that split it into separate mesas further out.
 float canyonMidTop(float x) {
-  float d = abs(x - canyonGapM) - canyonHalfM;
-  float v = d / (0.42 * canyonW + 0.05) + 0.06 * snoise(vec2(x * 2.6, 1.9));
-  canyonRimM = 0.462 + 0.01 * snoise(vec2(x * 1.3, 6.1));
-  float cleft = smoothstep(0.5, 0.7, snoise(vec2(x * 2.4, 3.3)));
-  return mix(CANYON_FLOOR_M, canyonRimM, canyonTerrace(v, 3.0) * (1.0 - 0.4 * cleft));
+  canyonRimM = 0.42 + 0.07 * (fbm(vec2(x * 2.6, 6.1)) - 0.5);
+  return canyonWall(x, canyonGapM, canyonHalfM, 0.38 * canyonW + 0.05, CANYON_FLOOR_M, canyonRimM, 0.008);
 }
 
-// One butte: a flat cap rock with sheer sides, on a talus skirt that
-// spreads towards its foot. Keeps whichever is taller, it or best, with the
-// side of it that faces the sun.
-vec2 canyonButte(vec2 best, float x, float cx, float hw, float top, float cap) {
-  float d = abs(x - cx);
-  float h = d < hw ? top : top - cap - (d - hw) * 1.4;
-  if (h > best.x) {
-    float side = (x - cx) * sign(canyonSun - cx);
-    best = vec2(h, 0.5 + 0.5 * smoothstep(-0.5 * hw, 0.7 * hw, side));
+// One butte: a rough cap rock with sheer, jagged sides over a talus skirt.
+// Returns which side of it the point is on, from -1 (away from the sun) to
+// 1 (towards it), or -9 outside it. top is set to its rim above x.
+float canyonButte(float x, float ty, float cx, float hw, float topY, float cap, float rough, out float top) {
+  top = topY + rough * (0.7 * snoise(vec2(x * 20.0, cx * 7.0)) + 0.5 * snoise(vec2(x * 61.0, cx * 3.0)));
+  if (ty > top || ty < CANYON_FLOOR_F) {
+    return -9.0;
   }
-  return best;
+  float base = topY - cap;
+  float w = hw + max(base - ty, 0.0) * 1.3;
+  w += rough * (1.6 * snoise(vec2(ty * 52.0, cx * 13.0)) + 2.2 * snoise(vec2(ty * 12.0, cx * 5.0)));
+  float d = x - cx;
+  if (abs(d) > w) {
+    return -9.0;
+  }
+  return clamp(d / max(w, 1e-3), -1.0, 1.0) * sign(canyonSun - cx);
 }
 
-// The far buttes, placed by hand so they frame the sunset: a broad mesa
-// with a lower step on the left, a slender spire, a small butte near the
-// middle and a wide mesa on the right. None stands in front of the sun or
-// where the river leaves it. Returns the top and how much it faces the sun.
-vec2 canyonFar(float x) {
-  vec2 best = vec2(CANYON_FLOOR_F, 0.5);
-  best = canyonButte(best, x, -0.62 * canyonW, 0.12, 0.63, 0.06);
-  best = canyonButte(best, x, -0.62 * canyonW + 0.19, 0.045, 0.572, 0.035);
-  best = canyonButte(best, x, -0.17 * canyonW, 0.016, 0.585, 0.075);
-  best = canyonButte(best, x, 0.1 * canyonW, 0.03, 0.548, 0.03);
-  best = canyonButte(best, x, 0.8 * canyonW, 0.11, 0.6, 0.05);
-  float open = smoothstep(canyonHalfF, canyonHalfF + 0.05, abs(x - canyonGapF));
-  open *= smoothstep(0.06, 0.13, abs(x - canyonSun));
-  best.x = CANYON_FLOOR_F + max(best.x - CANYON_FLOOR_F, 0.0) * open;
-  return best;
+// The light of the setting sun sliding slowly along the rims, like the
+// shadow of a cloud passing over them. Strongest on the sun's side.
+float canyonLight(float x) {
+  float n = snoise(vec2(x * 1.5 - canyonT * 0.014, 2.0));
+  return (0.5 + 0.5 * smoothstep(-0.35, 0.55, n)) * (0.6 + 0.4 * exp(-abs(x - canyonSun) * 1.2));
 }
 
-// The plateau on the horizon, notched where the river comes out of it.
-float canyonHorizonTop(float x) {
-  float n = smoothstep(-0.3, 0.5, snoise(vec2(x * 1.1, 12.0)));
-  float top = CANYON_HZ + 0.008 + 0.012 * canyonTerrace(n * 0.999, 2.0);
-  return mix(CANYON_HZ - 0.006, top, smoothstep(0.012, 0.05, abs(x - canyonSun)));
+// Rock shaded from a relief of buttresses and gullies (noise stretched
+// upright): faces turned to the sun take the warm colour, the rest the cool
+// one. side adds the face of the whole wall or butte. Irregular strata,
+// a darker foot, a broken sunlit rim and haze by distance finish it.
+vec3 canyonStone(
+  float x, float ty, float side, float top, float base, float freq,
+  vec3 lit, vec3 shade, vec3 rim, vec3 haze, float hazeAmt, float light
+) {
+  // Long upright buttresses that lean a little and vary in width.
+  vec2 q = vec2(x * freq + ty * freq * 0.25, ty * freq * 0.1 + freq);
+  float e = 0.22;
+  float r0 = fbm(q - vec2(e, 0.0));
+  float r1 = fbm(q + vec2(e, 0.0));
+  float relief = clamp((r0 - r1) * 5.0 * sign(canyonSun - x), -1.0, 1.0);
+  // Buttresses show on the sunward faces; shadow stays quiet.
+  float face = clamp(0.5 + 0.4 * side + 0.4 * relief * (0.3 + 0.7 * max(side, 0.0)), 0.0, 1.0);
+  float sunny = smoothstep(0.25, 0.92, face);
+  float h = clamp((ty - base) / max(top - base, 1e-3), 0.0, 1.0);
+  float band = fbm(vec2(x * 1.3 + 4.0, ty * 24.0));
+  vec3 col = mix(shade, lit, sunny * (0.75 + 0.25 * light));
+  col *= (0.72 + 0.28 * h) * (0.8 + 0.4 * band);
+  float rows = (top - ty) / canyonRow;
+  float edge = rows < 1.2 ? 1.0 : 0.45 * exp(-(rows - 1.2) * 0.6);
+  col = mix(col, rim, edge * light * smoothstep(0.45, 0.8, face));
+  // Rims turned away from the sun catch the cool sky instead.
+  col = mix(col, vec3(0.42, 0.36, 0.62), edge * 0.55 * (1.0 - sunny));
+  return mix(col, haze, hazeAmt * (0.75 + 0.25 * (1.0 - h)));
 }
 
 // The sky from the gold at the horizon to indigo overhead, warmest under
-// the sun and coolest away from it.
+// the sun and coolest away from it. y is the real height.
 vec3 canyonSkyColor(float x, float y) {
-  float e = clamp((y - CANYON_HZ) / (1.0 - CANYON_HZ), 0.0, 1.0);
-  float near = exp(-abs(x - canyonSun) * 2.2);
-  vec3 col = vec3(0.08, 0.1, 0.27);
-  col = mix(vec3(0.18, 0.15, 0.4), col, smoothstep(0.42, 0.95, e));
-  col = mix(vec3(0.38, 0.2, 0.44), col, smoothstep(0.2, 0.6, e));
-  col = mix(mix(vec3(0.6, 0.3, 0.46), vec3(0.88, 0.44, 0.36), near), col, smoothstep(0.06, 0.32, e));
-  col = mix(mix(vec3(0.78, 0.42, 0.42), vec3(1.0, 0.72, 0.4), near), col, smoothstep(0.0, 0.12, e));
+  float e = clamp((y - canyonHz) / (1.0 - canyonHz), 0.0, 1.0);
+  float near = exp(-abs(x - canyonSun) * 2.0);
+  vec3 col = vec3(0.075, 0.075, 0.2);
+  col = mix(vec3(0.15, 0.12, 0.33), col, smoothstep(0.38, 0.9, e));
+  col = mix(vec3(0.32, 0.17, 0.38), col, smoothstep(0.16, 0.55, e));
+  col = mix(mix(vec3(0.5, 0.26, 0.4), vec3(0.86, 0.44, 0.34), near), col, smoothstep(0.04, 0.3, e));
+  col = mix(mix(vec3(0.64, 0.36, 0.4), vec3(1.0, 0.72, 0.42), near), col, smoothstep(0.0, 0.1, e));
   return col;
 }
 
 // The glow of the sun just under the horizon, wide and flattened, with a
 // slow breath.
 float canyonGlow(float x, float y) {
-  vec2 d = vec2((x - canyonSun) * 0.45, max(y - CANYON_HZ, 0.0) * 1.2);
+  vec2 d = vec2((x - canyonSun) * 0.5, max(y - canyonHz, 0.0) * 1.2);
   float r = length(d);
-  return (0.9 + 0.08 * sin(canyonT * 0.25)) * (exp(-r * 16.0) + 0.45 * exp(-r * 5.0));
+  return (0.9 + 0.08 * sin(canyonT * 0.25)) * (exp(-r * 18.0) + 0.4 * exp(-r * 6.0));
 }
 
 vec3 canyonSky(vec2 cell, float x, float y) {
   vec3 col = canyonSkyColor(x, y);
-  float e = (y - CANYON_HZ) / (1.0 - CANYON_HZ);
-  float glow = canyonGlow(x, y);
-  col = mix(col, vec3(1.0, 0.84, 0.56), clamp(glow, 0.0, 1.0));
+  float e = (y - canyonHz) / (1.0 - canyonHz);
+  col = mix(col, vec3(1.0, 0.84, 0.56), clamp(canyonGlow(x, y), 0.0, 1.0));
   // The sun itself, half set behind the plateau.
-  float disc = length(vec2(x - canyonSun, y - CANYON_HZ - 0.006));
-  col = mix(col, vec3(1.0, 0.96, 0.84), 1.0 - smoothstep(0.036, 0.044, disc));
+  float disc = length(vec2(x - canyonSun, y - canyonHz - 0.006));
+  col = mix(col, vec3(1.0, 0.96, 0.84), 1.0 - smoothstep(0.034, 0.042, disc));
   // Soft bands of cloud, lit rose and gold from below, drifting slowly.
-  float band = smoothstep(0.12, 0.24, e) * (1.0 - smoothstep(0.46, 0.6, e));
+  float band = smoothstep(0.1, 0.22, e) * (1.0 - smoothstep(0.42, 0.56, e));
   float wisp = fbm(vec2(x * 1.4 + canyonT * 0.006, y * 9.0 - 3.0));
-  float cloud = band * smoothstep(0.56, 0.7, wisp);
-  vec3 lit = mix(vec3(0.66, 0.34, 0.5), vec3(1.0, 0.64, 0.44), exp(-abs(x - canyonSun) * 1.4));
-  col = mix(col, lit, cloud * 0.42);
+  float cloud = band * smoothstep(0.56, 0.72, wisp);
+  vec3 lit = mix(vec3(0.5, 0.28, 0.44), vec3(1.0, 0.62, 0.42), exp(-abs(x - canyonSun) * 1.6));
+  col = mix(col, lit, cloud * 0.4);
   // The first stars, more of them higher up, each twinkling on its own beat.
   if (canyonStarsOn > 0.5) {
     float h = canyonHash(cell + 17.0);
-    float density = 0.022 * smoothstep(0.4, 0.95, e);
+    float density = 0.02 * smoothstep(0.4, 0.95, e);
     if (h < density && cloud < 0.1) {
       float k = canyonHash(cell + 3.0);
       float twinkle = 0.55 + 0.45 * sin(canyonT * (0.5 + 0.9 * k) + k * 40.0);
-      float bright = k > 0.8 ? 1.0 : 0.62;
+      float bright = k > 0.8 ? 1.0 : 0.55;
       col = mix(col, vec3(0.94, 0.92, 1.0), bright * twinkle * smoothstep(0.4, 0.62, e));
     }
   }
   return col;
 }
 
-// The last light, sliding slowly along the rims like the shadow of a cloud
-// passing over them. Strongest on the sun's side.
-float canyonLight(float x) {
-  float n = snoise(vec2(x * 1.5 - canyonT * 0.014, 2.0));
-  return (0.5 + 0.5 * smoothstep(-0.35, 0.55, n)) * (0.7 + 0.3 * exp(-abs(x - canyonSun) * 1.2));
-}
-
-// One wall of rock: faces turned to the sun lit, a bright ledge at the rim
-// and along every bench below it (one every ledge, counted up from base),
-// banded strata, and haze settling towards its foot.
-vec3 canyonRock(
-  float x, float y, float top, float base, float facing, float ledge,
-  vec3 lit, vec3 shade, vec3 rim, vec3 haze, float hazeAmt, float light
-) {
-  float h = clamp((y - base) / max(top - base, 1e-3), 0.0, 1.0);
-  float rows = (top - y) / canyonRow;
-  float strata = 0.5 + 0.5 * sin(y * 95.0 + 1.6 * snoise(vec2(x * 2.4, y * 14.0)));
-  float grain = snoise(vec2(x * 38.0, y * 5.0));
-  vec3 col = mix(shade, lit, facing);
-  col *= 0.72 + 0.36 * h;
-  col *= 0.9 + 0.14 * strata + 0.03 * grain;
-  col = mix(col, rim, light * (rows < 1.0 ? 0.9 : 0.4 * exp(-rows * 0.5)));
-  if (ledge > 0.0 && (1.0 - fract((y - base) / ledge)) * ledge < canyonRow) {
-    col = mix(col, rim, 0.6 * light * (0.4 + 0.6 * facing));
-  }
-  return mix(col, haze, hazeAmt * (0.55 + 0.45 * (1.0 - h)));
-}
-
 // The water mirrors the sky above it: gold far off under the sun, rose and
 // violet close by. Streaks of shimmer slide slowly across it.
-vec3 canyonWater(float x, float y) {
-  float depth = CANYON_HZ - y;
-  vec3 col = canyonSkyColor(x, CANYON_HZ + depth * 0.32) + vec3(0.05, 0.04, 0.08);
+vec3 canyonWater(float x, float ty) {
+  float depth = 0.5 - ty;
+  vec3 col = canyonSkyColor(x, canyonHz + depth * 0.22) * 1.1 + vec3(0.04, 0.03, 0.08);
   float sun = exp(-abs(x - canyonSun) * 5.0) * exp(-depth * 3.5);
   col = mix(col, vec3(1.0, 0.82, 0.52), clamp(sun * 1.4, 0.0, 1.0));
-  float streak = snoise(vec2(x * 7.0 + canyonT * 0.05, y * 85.0 - canyonT * 0.22));
-  col *= 0.82 + 0.32 * smoothstep(-0.1, 0.8, streak);
-  float glint = smoothstep(0.86, 0.95, snoise(vec2(x * 22.0 - canyonT * 0.03, y * 140.0 + canyonT * 0.12)));
-  return mix(col, vec3(1.0, 0.9, 0.7), glint * (0.35 + 0.65 * sun));
+  float streak = snoise(vec2(x * 7.0 + canyonT * 0.05, ty * 85.0 - canyonT * 0.22));
+  col *= 0.8 + 0.3 * smoothstep(-0.1, 0.8, streak);
+  float glint = smoothstep(0.86, 0.95, snoise(vec2(x * 22.0 - canyonT * 0.03, ty * 140.0 + canyonT * 0.12)));
+  return mix(col, vec3(1.0, 0.9, 0.7), glint * (0.3 + 0.7 * sun));
 }
 
-// The canyon floor where no wall covers it: sand banks along the water,
-// dusk shadow further out, hazier with distance.
-vec3 canyonFloor(float x, float y) {
-  float d = abs(x - canyonRiverX(y));
-  float hw = canyonRiverHalf(y);
-  float far = smoothstep(0.1, CANYON_HZ, y);
+// The canyon floor where no wall covers it: dark scrub and sand along the
+// water, hazier with distance.
+vec3 canyonFloor(float x, float ty) {
+  float d = abs(x - canyonRiverX(ty));
+  float hw = canyonRiverHalf(ty);
   canyonWet = 1.0 - step(hw, d);
   if (d < hw) {
-    return canyonWater(x, y);
+    return canyonWater(x, ty);
   }
-  vec3 ground = mix(vec3(0.24, 0.14, 0.24), vec3(0.46, 0.3, 0.44), far);
-  float bank = 1.0 - smoothstep(hw, hw + 0.012 + hw * 0.6, d);
-  ground = mix(ground, mix(vec3(0.44, 0.26, 0.2), vec3(0.7, 0.48, 0.46), far), bank * 0.85);
-  return ground * (0.96 + 0.05 * snoise(vec2(x * 12.0, y * 30.0)));
+  float far = smoothstep(0.15, 0.5, ty);
+  vec3 ground = mix(vec3(0.11, 0.08, 0.14), vec3(0.3, 0.2, 0.32), far);
+  float bank = 1.0 - smoothstep(hw, hw + 0.01 + hw * 0.5, d);
+  ground = mix(ground, mix(vec3(0.3, 0.18, 0.16), vec3(0.5, 0.34, 0.38), far), bank * 0.7);
+  return ground * (0.85 + 0.3 * fbm(vec2(x * 9.0, ty * 30.0)));
 }
 
 vec2 canyonCacheUv = vec2(-1.0);
@@ -232,88 +224,107 @@ vec4 canyonScene(vec2 uv, vec2 res, float t) {
   }
   float aspect = res.x / res.y;
   // Tall boxes narrow the view less than they crop it, so the river, both
-  // walls and the sunset all stay in frame on a phone.
+  // walls and the sunset stay in frame on a phone.
   float zoom = clamp(aspect / 1.5, 0.55, 1.0);
   float x = (uv.x - 0.5) * aspect / zoom;
   float y = uv.y;
+  // On tall boxes the horizon rises above the middle, where a headline sits.
+  canyonHz = mix(0.66, 0.5, smoothstep(0.75, 1.3, aspect));
+  float ty = y < canyonHz ? y * 0.5 / canyonHz : 0.5 + (y - canyonHz);
   // One star per dot, so a star never splits across two glyph columns.
   vec2 cell = floor(uv * ascii_samples / vec2(canyonPitch, 1.0));
   canyonT = t;
-  canyonRow = 1.0 / res.y;
+  canyonRow = 0.5 / canyonHz / res.y;
   canyonW = 0.5 * aspect / zoom;
-  canyonSun = canyonW * mix(0.3, 0.42, smoothstep(0.7, 1.6, aspect));
+  // Right of the middle on wide boxes, clear of a centred headline.
+  canyonSun = canyonW * mix(0.5, 0.62, smoothstep(0.7, 1.6, aspect));
   canyonGapN = canyonRiverX(0.06);
   canyonGapM = canyonRiverX(0.33);
-  canyonGapF = canyonRiverX(0.455);
-  canyonHalfN = canyonRiverHalf(0.06) + 0.025;
-  canyonHalfM = canyonRiverHalf(0.33) + 0.025;
-  canyonHalfF = canyonRiverHalf(0.455) + 0.01;
+  canyonGapF = canyonRiverX(0.46);
+  canyonHalfN = canyonRiverHalf(0.06) + 0.03;
+  canyonHalfM = canyonRiverHalf(0.33) + 0.02;
+  canyonHalfF = canyonRiverHalf(0.46) + 0.01;
 
   vec3 col;
-  // Ground draws larger dots than sky of the same brightness, so the walls
-  // read as solid rock and the sky stays light and fine. solid shifts one
-  // layer against the others.
+  // Ground draws on a steeper tone curve than sky, so lit rock reaches the
+  // middle dot while shadow stays on the smallest. solid shifts a layer.
   float ground = 1.0;
   float solid = 0.0;
-  // How much brighter a layer's dots are than the value that sized them, so
-  // a silhouette drawn in small dots still shows its colour.
-  float ink = 1.0;
   float topN = canyonNearTop(x);
   float topM = canyonMidTop(x);
-  vec2 far = canyonFar(x);
-  float topH = canyonHorizonTop(x);
-  if (y < topN) {
-    float facing = 1.0 - smoothstep(-0.15, 0.15, x - canyonGapN);
-    ink = 1.1;
-    col = canyonRock(
-      x, y, topN, -0.08, facing, (canyonRimN + 0.08) * 0.25,
-      vec3(0.46, 0.15, 0.11), vec3(0.28, 0.13, 0.27), vec3(1.0, 0.52, 0.26),
-      vec3(0.2, 0.1, 0.18), 0.1, canyonLight(x)
+  // Buttes beside the sunset, never in the middle: a nearer row in front
+  // of a hazier one, overlapping, on both sides.
+  float clear = smoothstep(0.06, 0.13, abs(x - canyonSun)) * smoothstep(canyonHalfF, canyonHalfF + 0.05, abs(x - canyonGapF));
+  float top1 = 0.0;
+  float side1 = -9.0;
+  float tb;
+  float s = canyonButte(x, ty, -0.66 * canyonW, 0.045, 0.565, 0.035, 0.005, tb);
+  if (s > -2.0) { side1 = s; top1 = tb; }
+  s = canyonButte(x, ty, -0.9 * canyonW, 0.1, 0.61, 0.05, 0.006, tb);
+  if (side1 < -2.0 && s > -2.0) { side1 = s; top1 = tb; }
+  s = canyonButte(x, ty, 0.93 * canyonW, 0.09, 0.59, 0.045, 0.006, tb);
+  if (side1 < -2.0 && s > -2.0) { side1 = s; top1 = tb; }
+  float top2 = 0.0;
+  float side2 = -9.0;
+  s = canyonButte(x, ty, -0.76 * canyonW, 0.05, 0.585, 0.06, 0.003, tb);
+  if (s > -2.0) { side2 = s; top2 = tb; }
+  s = canyonButte(x, ty, -0.52 * canyonW, 0.025, 0.535, 0.02, 0.003, tb);
+  if (side2 < -2.0 && s > -2.0) { side2 = s; top2 = tb; }
+  s = canyonButte(x, ty, 0.8 * canyonW, 0.035, 0.56, 0.04, 0.003, tb);
+  if (side2 < -2.0 && s > -2.0) { side2 = s; top2 = tb; }
+  float topH = 0.5 + 0.005 + 0.012 * fbm(vec2(x * 2.2, 12.0));
+  topH = mix(0.494, topH, smoothstep(0.012, 0.05, abs(x - canyonSun)));
+
+  if (ty < topN) {
+    float side = clamp((canyonGapN - x) / 0.12, -1.0, 1.0) * sign(canyonSun - canyonGapN);
+    col = canyonStone(
+      x, ty, side, topN, -0.08, 6.0,
+      vec3(0.66, 0.28, 0.14), vec3(0.12, 0.08, 0.18), vec3(1.0, 0.56, 0.28),
+      vec3(0.1, 0.07, 0.14), 0.06, canyonLight(x)
     );
-    solid = 0.12;
-  } else if (y < topM && y > CANYON_FLOOR_M) {
-    float facing = 1.0 - smoothstep(-0.1, 0.1, x - canyonGapM);
-    col = canyonRock(
-      x, y, topM, CANYON_FLOOR_M, facing, (canyonRimM - CANYON_FLOOR_M) / 3.0,
-      vec3(0.96, 0.5, 0.27), vec3(0.5, 0.27, 0.44), vec3(1.0, 0.72, 0.42),
-      vec3(0.46, 0.26, 0.42), 0.28, 0.9 * canyonLight(x)
+    solid = 0.02;
+  } else if (ty < topM && ty > CANYON_FLOOR_M) {
+    float side = clamp((canyonGapM - x) / 0.08, -1.0, 1.0) * sign(canyonSun - canyonGapM);
+    col = canyonStone(
+      x, ty, side, topM, CANYON_FLOOR_M, 4.5,
+      vec3(0.76, 0.4, 0.25), vec3(0.19, 0.13, 0.26), vec3(1.0, 0.66, 0.38),
+      vec3(0.22, 0.15, 0.27), 0.25, canyonLight(x)
     );
-    solid = 0.06;
-  } else if (y < far.x && y > CANYON_FLOOR_F) {
-    col = canyonRock(
-      x, y, far.x, CANYON_FLOOR_F, far.y, 0.0,
-      vec3(0.74, 0.36, 0.3), vec3(0.34, 0.19, 0.36), vec3(1.0, 0.74, 0.44),
-      vec3(0.48, 0.3, 0.5), 0.35, canyonLight(x)
+  } else if (side1 > -2.0 && clear > 0.5) {
+    col = canyonStone(
+      x, ty, side1, top1, CANYON_FLOOR_F, 3.5,
+      vec3(0.94, 0.54, 0.38), vec3(0.2, 0.14, 0.27), vec3(1.0, 0.76, 0.48),
+      vec3(0.3, 0.2, 0.34), 0.16, canyonLight(x)
     );
-    solid = 0.14;
-    ink = 1.2;
-  } else if (y < topH && y > CANYON_HZ - 0.03) {
-    col = canyonRock(
-      x, y, topH, CANYON_HZ - 0.03, 0.5, 0.0,
-      vec3(0.8, 0.5, 0.5), vec3(0.55, 0.36, 0.52), vec3(1.0, 0.72, 0.5),
-      vec3(0.68, 0.46, 0.6), 0.5, canyonLight(x)
+  } else if (side2 > -2.0 && clear > 0.5) {
+    col = canyonStone(
+      x, ty, side2, top2, CANYON_FLOOR_F, 2.5,
+      vec3(0.6, 0.38, 0.42), vec3(0.3, 0.2, 0.35), vec3(0.96, 0.7, 0.5),
+      vec3(0.36, 0.24, 0.4), 0.45, canyonLight(x)
     );
-    solid = -0.05;
-  } else if (y < CANYON_HZ) {
-    col = canyonFloor(x, y);
-    solid = mix(0.04, 0.12, canyonWet);
+  } else if (ty < topH && ty > 0.47) {
+    col = canyonStone(
+      x, ty, 0.0, topH, 0.47, 3.0,
+      vec3(0.7, 0.46, 0.46), vec3(0.46, 0.32, 0.46), vec3(0.95, 0.7, 0.52),
+      vec3(0.56, 0.38, 0.52), 0.75, canyonLight(x)
+    );
+  } else if (ty < 0.5) {
+    col = canyonFloor(x, ty);
+    solid = 0.14 * canyonWet;
   } else {
     col = canyonSky(cell, x, y);
     ground = 0.0;
     // A fixed jitter per dot mixes neighbouring dot sizes where the sky
     // crosses from one to the next, instead of a hard stepped contour.
-    solid = 0.22 * (canyonHash(cell + 41.0) - 0.5);
+    solid = 0.2 * (canyonHash(cell + 41.0) - 0.5);
   }
 
   // Dot size follows brightness. The dots ramp switches at about 0.1, 0.35
-  // and 0.75: deep shadow and the high sky stay on the smallest dot, lit
-  // rock takes the middle one and light the largest.
+  // and 0.75: shadow and the high sky stay on the smallest dot, lit rock
+  // takes the middle one, and only light and sunlit rims the largest.
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  float tone = mix(1.25 * lum - 0.02, 0.04 + 1.8 * lum, ground) + solid;
+  float tone = mix(1.25 * lum - 0.02, 0.06 + 1.45 * lum, ground) + solid;
   tone = clamp(tone, 0.0, 1.0);
-  // Like ink in a halftone, a dot keeps a clear colour and its size carries
-  // the value; very dark colours on small dots would vanish into the paper.
-  col = min(col * ink * clamp(pow(0.16 / max(lum, 0.01), 0.5), 1.0, 1.8), vec3(1.0));
   // Without square cells a dot glyph's cell is half as wide as it is tall,
   // so dots light every other column to keep the grid of dots square.
   if (canyonPitch > 1.5 && mod(floor(uv.x * ascii_samples.x), 2.0) > 0.5) {
