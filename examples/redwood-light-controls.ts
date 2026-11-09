@@ -38,8 +38,14 @@ export const mist = toggle({
   label: "Mist",
 });
 
+export const square = toggle({
+  default: true,
+  id: "square",
+  label: "Square cells",
+});
+
 export const cell = slider({
-  default: 9,
+  default: 7,
   id: "cell",
   label: "Cell",
   max: 16,
@@ -61,6 +67,7 @@ export const controls = [
   intensity,
   motes,
   mist,
+  square,
   cell,
   animate,
 ];

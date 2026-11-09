@@ -12,6 +12,7 @@ export default function RedwoodLightDemo() {
       intensity={usePreviewValue(knobs.intensity)}
       motes={usePreviewValue(knobs.motes)}
       mist={usePreviewValue(knobs.mist)}
+      square={usePreviewValue(knobs.square)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

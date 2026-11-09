@@ -51,14 +51,14 @@ vec3 rwHaze(vec2 p) {
   vec3 col = mix(vec3(0.31, 0.45, 0.45), vec3(0.11, 0.21, 0.22), h);
   col *= 0.85 + 0.3 * fbm(vec2(p.x * 2.2, p.y * 1.4) + 21.0);
   vec2 d = (p - rwSun) * vec2(0.7, 1.0);
-  float warm = exp(-length(d) * 3.6);
-  return mix(col, vec3(0.92, 0.8, 0.52), warm * 0.75);
+  float warm = exp(-length(d) * 5.0);
+  return mix(col, vec3(0.92, 0.8, 0.52), warm * 0.7);
 }
 
 // The sun's halo: a hot core and a wide soft bloom.
 float rwGlow(vec2 p) {
   float d = length((p - rwSun) * vec2(0.8, 1.0));
-  return 1.2 * exp(-d / 0.04) + 0.4 * exp(-d / 0.15);
+  return 1.1 * exp(-d / 0.028) + 0.28 * exp(-d / 0.1);
 }
 
 // One shaft: a band across the light, soft at its edges.
@@ -82,15 +82,15 @@ float rwShaft(vec2 p) {
   float span = clamp(rwCx, 0.3, 0.95);
   // Narrower boxes get narrower shafts, so they stay apart.
   float thin = mix(0.55, 1.0, wide);
-  float b = rwBeam(q, -0.6 * span, 0.045 * thin) * (0.62 + 0.18 * sin(rwT * 0.19 + 1.0));
-  b += rwBeam(q, -0.34 * span, 0.028 * thin) * (0.75 + 0.2 * sin(rwT * 0.23 + 2.0));
-  b += rwBeam(q, -0.1 * span, 0.055 * thin) * (0.9 + 0.1 * sin(rwT * 0.16 + 4.0));
-  b += rwBeam(q, 0.1 * span, 0.025 * thin) * (0.8 + 0.2 * sin(rwT * 0.21 + 5.0));
-  b += rwBeam(q, 0.26 * span, 0.035 * thin) * (0.68 + 0.2 * sin(rwT * 0.27 + 3.0));
+  float b = rwBeam(q, -0.6 * span, 0.03 * thin) * (0.62 + 0.18 * sin(rwT * 0.19 + 1.0));
+  b += rwBeam(q, -0.34 * span, 0.02 * thin) * (0.75 + 0.2 * sin(rwT * 0.23 + 2.0));
+  b += rwBeam(q, -0.1 * span, 0.04 * thin) * (0.9 + 0.1 * sin(rwT * 0.16 + 4.0));
+  b += rwBeam(q, 0.1 * span, 0.017 * thin) * (0.8 + 0.2 * sin(rwT * 0.21 + 5.0));
+  b += rwBeam(q, 0.26 * span, 0.026 * thin) * (0.68 + 0.2 * sin(rwT * 0.27 + 3.0));
   // Dust thickens and thins along each shaft, so none is a flat bar.
-  b *= 0.8 + 0.2 * snoise(vec2(q * 30.0, drop * 2.5 - rwT * 0.02));
+  b *= 0.85 + 0.15 * snoise(vec2(q * 12.0, drop * 1.1 - rwT * 0.015));
   // A broad warm wash under the sun ties the shafts together.
-  b += 0.07 * exp(-abs(q + 0.05 * span) * 4.0);
+  b += 0.05 * exp(-abs(q + 0.05 * span) * 5.0);
   return b * smoothstep(0.0, 0.16, drop) * mix(1.0, 0.7, smoothstep(0.3, 0.9, drop));
 }
 
@@ -130,7 +130,8 @@ vec4 rwTrunks(vec2 p, float spacing, float wMin, float wMax, float base, float s
   float lit = smoothstep(-0.4, 1.0, x * side);
   float furrow = snoise(vec2(x * 2.6 + id * 7.3, p.y * 3.0 / (hw * 30.0)));
   vec3 col = bark * mix(0.5, 1.5, lit) * (0.9 + 0.15 * furrow);
-  col = mix(col, vec3(0.95, 0.66, 0.36), smoothstep(0.7, 0.98, x * side) * 0.5);
+  // A faint warm edge only: strong rims belong to the giants in front.
+  col = mix(col, vec3(0.7, 0.5, 0.32), smoothstep(0.75, 0.98, x * side) * 0.22);
   return vec4(col, cover);
 }
 
@@ -288,12 +289,12 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
   }
 
   // Far trunks, nearly lost in the haze, then mist, then the middle row.
-  vec4 far = rwTrunks(p, 0.075, 0.006, 0.012, 0.3, 17.0, 0.85, vec3(0.2, 0.26, 0.28));
-  col = mix(col, mix(far.rgb, rwHaze(p), 0.38), far.a);
+  vec4 far = rwTrunks(p, 0.1, 0.01, 0.018, 0.3, 17.0, 0.8, vec3(0.16, 0.22, 0.24));
+  col = mix(col, mix(far.rgb, rwHaze(p), 0.3), far.a);
   float mist = rwMist(p);
   col = mix(col, rwHaze(p) * 1.15 + vec3(0.1, 0.08, 0.03) * shaft, mist * 0.6);
-  vec4 mid = rwTrunks(p, 0.24, 0.02, 0.032, 0.235, 29.0, 0.58, vec3(0.24, 0.13, 0.09));
-  col = mix(col, mix(mid.rgb, rwHaze(p), 0.2), mid.a);
+  vec4 mid = rwTrunks(p, 0.26, 0.03, 0.046, 0.235, 29.0, 0.8, vec3(0.22, 0.12, 0.08));
+  col = mix(col, mix(mid.rgb, rwHaze(p), 0.16), mid.a);
   col = mix(col, rwHaze(p) * 1.1, mist * 0.18 * (1.0 - mid.a * 0.5));
 
   float canopy = rwCanopy(p);
@@ -303,7 +304,10 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
 
   // Shafts scatter warm light into the air under the canopy.
   float air = shaft * (1.0 - 0.8 * canopy) * smoothstep(RW_HORIZON - 0.1, RW_HORIZON + 0.08, p.y);
-  col += vec3(0.95, 0.72, 0.32) * air;
+  // Shafts ease off around the middle, where a headline usually sits.
+  vec2 mid0 = (p - vec2(rwCx, 0.5)) / vec2(max(rwCx, 0.3) * 0.75, 0.2);
+  air *= 1.0 - 0.3 * exp(-dot(mid0, mid0) * 0.6);
+  col += vec3(0.85, 0.64, 0.28) * air * 0.62;
   float mote = rwMotes(p) * (0.4 + shaft * 1.2) * (1.0 - canopy) * step(RW_HORIZON, p.y);
   col = mix(col, vec3(1.0, 0.95, 0.78), clamp(mote, 0.0, 1.0));
 
@@ -312,10 +316,10 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
   col *= mix(1.0, 0.5, smoothstep(0.35, 1.15, length(v)));
 
   // The giants in front, rim lit on the sun's side.
-  float squeeze = mix(0.6, 1.0, smoothstep(0.5, 1.4, rwAspect));
-  vec4 g = rwGiant(p, -0.8, 0.085 * squeeze, -0.02, 1.0);
-  vec4 g2 = rwGiant(p, -0.47, 0.045 * squeeze, 0.08, 2.0);
-  vec4 g3 = rwGiant(p, 0.78, 0.1 * squeeze, -0.04, 3.0);
+  float squeeze = mix(0.4, 1.0, smoothstep(0.5, 1.4, rwAspect));
+  vec4 g = rwGiant(p, -0.84, 0.14 * squeeze, -0.02, 1.0);
+  vec4 g2 = rwGiant(p, -0.47, 0.065 * squeeze, 0.08, 2.0);
+  vec4 g3 = rwGiant(p, 0.82, 0.16 * squeeze, -0.04, 3.0);
   g2.rgb = mix(g2.rgb, rwHaze(p), 0.18);
   // On narrow boxes the second giant would merge into the first.
   g2.a *= smoothstep(0.75, 1.05, rwAspect);
@@ -415,7 +419,8 @@ export const RedwoodLight = ({
   phosphor,
   paper,
   ramp,
-  cell = 9,
+  cell = 7,
+  square = true,
   stillTime = 12,
   intensity = 1,
   motes = true,
@@ -442,6 +447,7 @@ export const RedwoodLight = ({
       ramp={ramp ?? (mode === "duotone" ? "sodium" : undefined)}
       paper={paper ?? (SHADE_MODES.has(mode) ? SHADE : undefined)}
       cell={cell}
+      square={square}
       stillTime={stillTime}
       fallback={fallback}
       {...props}
