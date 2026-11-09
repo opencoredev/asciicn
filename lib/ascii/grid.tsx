@@ -54,6 +54,8 @@ export interface AsciiGridProps extends Omit<
   draw: (context: AsciiGridDrawContext) => void;
   /** Cell height in CSS pixels. Default `--ascii-cell`, or 12. */
   cell?: number;
+  /** Cells as wide as they are tall, for an even lattice of dots. Default `false`. */
+  square?: boolean;
   /** Glyph colour where a cell has none of its own. Default `--ascii-ink`. */
   ink?: AsciiColor;
   /** Background behind the glyphs. Default `"transparent"`. */
@@ -94,6 +96,7 @@ const toCss = ([r, g, b, a]: Rgba) =>
 export const AsciiGrid = ({
   draw,
   cell,
+  square = false,
   ink = "--ascii-ink",
   paper = "transparent",
   colored = false,
@@ -205,6 +208,7 @@ export const AsciiGrid = ({
       const metrics = measureCell({
         cell: cell ?? readCell(root),
         font: readFont(root),
+        square,
       });
       metricsRef.current = metrics;
       const computed = getComputedStyle(root);
@@ -257,7 +261,7 @@ export const AsciiGrid = ({
       canvasRef.current = null;
       setHasFrame(false);
     };
-  }, [cell, ink, paper]);
+  }, [cell, square, ink, paper]);
 
   // Pointer, in cell units.
   useEffect(() => {
