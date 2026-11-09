@@ -29,7 +29,7 @@ import { BalloonValley } from "@/components/asciicn/balloon-valley";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <BalloonValley intensity={0.85} className="absolute inset-0 -z-10" />
+      <BalloonValley className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
@@ -40,17 +40,17 @@ The sun is coming up behind the farthest ridge, its disc half over the line, wit
 
 Five hot-air balloons hang in the sky at different depths. The nearest is large and striped red and gold, lit from the sun's side and glowing through its shaded side. The far ones are smaller and fade into the haze. Two of them rise and sink over a few minutes, and the low one drops behind the ridges and comes back up.
 
-Every cell is a dot. The dot grows with the brightness of its colour, so the dark foreground is a field of small dim dots and the sun is drawn in large bright ones. `bayer4` dithering, the default, mixes neighbouring dot sizes so gradients stay smooth. `square` cells, on by default, lay the dots on an even lattice like a halftone screen, about 200 columns across a 1440px screen at the default 7px cell. In `truecolor`, the default, the scene paints its own sky on a deep indigo paper, so it looks the same in light and dark themes. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
+Every cell is a dot, and the dot grows steeply with the brightness of its colour. The night sky and the shadowed hills are the smallest dots in colours just above the paper, some cells empty, so they read as quiet dark air. Far ridges sink into the colour of the sky behind them. Only the sun, the river's glints and the lit balloons get large bright dots. `bayer4` dithering, the default, mixes neighbouring dot sizes so gradients stay smooth. `square` cells, on by default, lay the dots on an even lattice like a halftone screen, about 200 columns across a 1440px screen at the default 7px cell. In `truecolor`, the default, the scene paints its own sky on a deep indigo paper, so it looks the same in light and dark themes. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
 
 The motion is slow: mist drifts along the valley, the last stars twinkle, the river shimmers and its glow breathes, and the balloons bob. Nothing reacts to the pointer.
 
-On wide boxes the sun sits a little right of centre and the balloons keep to the sides and the top, leaving the middle clear for a headline. On tall boxes the ridges close in round the sun and the balloons gather in the upper sky.
+The land sits in the lower third, so a centred headline lands on quiet sky with the sun just below it. On wide boxes the sun sits a little right of centre and the balloons keep to the sides and the top. On tall boxes the balloons gather above the headline and the sun and the river sit below it.
 
 ## Examples
 
 ### Hero
 
-A centred headline and two buttons over the full scene. `intensity={0.85}`, a soft radial shade and a text shadow keep the type readable over the glow.
+A centred headline and two buttons over the full scene at full intensity. The headline lands on quiet sky; a soft radial shade and a text shadow keep it readable.
 
 <ComponentPreview
   src="examples/balloon-valley-hero.tsx"

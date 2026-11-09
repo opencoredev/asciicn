@@ -15,6 +15,11 @@ import { AsciiShader } from "@/lib/ascii/shader";
 // the hills are small dim dots and the sun is large bright ones, as in a
 // halftone print.
 const SCENE = `
+// The land is laid out in its own units and squashed by BV_LAND into the
+// lower part of the box, so the sun, its glow and the river sit below a
+// headline in the middle and the sky above stays quiet.
+const float BV_LAND = 0.68;
+// The horizon in land units.
 const float BV_HORIZON = 0.43;
 
 // Set once per sample by bvScene and read by every layer.
@@ -23,25 +28,27 @@ float bvWide;
 float bvStretch;
 float bvHalf;
 float bvSunOffset;
+// The sun in box units, and in land units.
 vec2 bvSun;
+vec2 bvSunQ;
 
 // A stable random value; hash21 repeats every 50 samples on integers.
 float bvHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// The sky: deep indigo overhead easing through violet and rose to peach at
-// the horizon, warmed by a wide glow round the sun and a tighter halo.
+// The sky, in box units: near-black indigo overhead, so the top of the box
+// is quiet dark air, easing through dusky violet and rose to peach at the
+// horizon, warmed by a glow round the sun and a tighter halo.
 vec3 bvSky(vec2 p) {
   float y = p.y;
-  vec3 c = mix(vec3(0.94, 0.6, 0.58), vec3(0.8, 0.5, 0.62), smoothstep(0.44, 0.6, y));
-  c = mix(c, vec3(0.5, 0.34, 0.6), smoothstep(0.55, 0.72, y));
-  c = mix(c, vec3(0.25, 0.21, 0.48), smoothstep(0.66, 0.86, y));
-  c = mix(c, vec3(0.11, 0.12, 0.32), smoothstep(0.84, 1.04, y));
-  vec2 d = (p - bvSun) * vec2(0.5, 1.0);
-  float r = length(d);
-  c = mix(c, vec3(1.0, 0.7, 0.46), clamp(exp(-r / 0.2) * 0.95, 0.0, 1.0));
-  c = mix(c, vec3(1.0, 0.86, 0.62), clamp(exp(-length(p - bvSun) / 0.06), 0.0, 1.0));
+  vec3 c = mix(vec3(0.96, 0.62, 0.52), vec3(0.66, 0.42, 0.55), smoothstep(0.29, 0.42, y));
+  c = mix(c, vec3(0.36, 0.26, 0.5), smoothstep(0.38, 0.56, y));
+  c = mix(c, vec3(0.17, 0.15, 0.36), smoothstep(0.52, 0.74, y));
+  c = mix(c, vec3(0.09, 0.09, 0.22), smoothstep(0.72, 1.0, y));
+  float r = length((p - bvSun) * vec2(0.45, 1.4));
+  c = mix(c, vec3(1.0, 0.7, 0.46), clamp(exp(-r / 0.17) * 0.9, 0.0, 1.0));
+  c = mix(c, vec3(1.0, 0.86, 0.62), clamp(exp(-length(p - bvSun) / 0.05), 0.0, 1.0));
   return c;
 }
 
@@ -55,11 +62,12 @@ vec3 bvStars(vec2 p, vec2 res, vec3 sky) {
     return sky;
   }
   float twinkle = 0.75 + 0.25 * sin(bvT * (0.4 + bvHash(cellId + 3.0) * 0.6) + h * 50.0);
-  return mix(sky, vec3(0.86, 0.86, 1.0), 0.6 * twinkle);
+  return mix(sky, vec3(0.86, 0.86, 1.0), 0.5 * twinkle);
 }
 
-// The valley floor: a flat strip in front of the ridges, seen in
-// perspective from its far edge at BV_FLOOR down to the bottom of the box.
+// Everything below is in land units. The valley floor is a flat strip in
+// front of the ridges, seen in perspective from its far edge at BV_FLOOR
+// down to the bottom of the box.
 const float BV_FLOOR = 0.25;
 
 // Nearness on the floor: 0 at its far edge, 1 at the bottom of the box.
@@ -88,63 +96,122 @@ float bvRidge(float x, float gx, float base, float sl, float sr, float cap, floa
   return base + v + rough * n * smoothstep(0.0, 0.04, v);
 }
 
+// Ridge i, near to far: gap offset from the sun, base, left and right
+// slopes, cap, seed and roughness. The nearest hills carry a ragged line
+// of trees; the far ones stay smooth.
+float bvRidgeTop(int i, float x) {
+  if (i == 0) {
+    return bvRidge(x, 0.03, -0.06, 0.95, 0.85, 0.38, 1.3, 0.05) + 0.012 * snoise(vec2(x * 38.0, 2.0));
+  }
+  if (i == 1) {
+    return bvRidge(x, -0.24, 0.24, 0.42, 0.7, 0.28, 4.7, 0.045) + 0.005 * snoise(vec2(x * 30.0, 5.0));
+  }
+  if (i == 2) {
+    return bvRidge(x, 0.16, 0.33, 0.6, 0.35, 0.24, 9.1, 0.04);
+  }
+  if (i == 3) {
+    return bvRidge(x, -0.02, 0.4, 0.5, 0.5, 0.21, 2.9, 0.035);
+  }
+  return bvRidge(x, 0.0, 0.445, 0.4, 0.4, 0.22, 7.7, 0.035);
+}
+
+// Ridge i's crest colour and how far it is lost in the haze, 0 to 1.
+vec4 bvRidgeLook(int i) {
+  if (i == 0) {
+    return vec4(0.06, 0.06, 0.13, 0.0);
+  }
+  if (i == 1) {
+    return vec4(0.15, 0.13, 0.3, 0.18);
+  }
+  if (i == 2) {
+    return vec4(0.24, 0.16, 0.33, 0.4);
+  }
+  if (i == 3) {
+    return vec4(0.34, 0.22, 0.4, 0.58);
+  }
+  return vec4(0.45, 0.3, 0.42, 0.74);
+}
+
+// Ridge i's base, how high mist pools above it, rim strength and depth.
+vec4 bvRidgeShape(int i) {
+  if (i == 0) {
+    return vec4(-0.06, 0.0, 0.35, 1.2);
+  }
+  if (i == 1) {
+    return vec4(0.24, 0.035, 0.5, 4.5);
+  }
+  if (i == 2) {
+    return vec4(0.33, 0.04, 0.6, 7.0);
+  }
+  if (i == 3) {
+    return vec4(0.4, 0.035, 0.7, 11.0);
+  }
+  return vec4(0.445, 0.03, 0.8, 30.0);
+}
+
 // Mist drifting along the valley, as a 0 to 1 density.
 float bvMist(vec2 p, float scale) {
   vec2 q = vec2(p.x * 2.6 * scale - bvT * 0.012, p.y * 14.0 * scale + bvT * 0.004);
   return fbm(q + vec2(fbm(q * 0.7 + bvT * 0.006) * 0.8, 0.0));
 }
 
-float bvSunward(vec2 p) {
-  return exp(-length((p - bvSun) * vec2(1.0, 2.0)) / 0.4);
+float bvSunward(vec2 q) {
+  return exp(-length((q - bvSunQ) * vec2(1.0, 2.0)) / 0.4);
 }
 
-// The colour of a ridge: an even tone that pales a little with depth
-// below the crest, a warm rim where the crest faces the sun, a faint
-// texture of woods, and mist pooled in the low ground near its V, so the
-// valley fills with haze while the high shoulders stay clear and dark.
-vec3 bvRidgeColor(vec2 p, float top, float base, vec3 crest, float pool, float rim) {
-  float sunward = bvSunward(p);
-  vec3 mistCol = mix(vec3(0.74, 0.55, 0.68), vec3(1.0, 0.76, 0.6), sunward);
-  // Backlit: the body only takes a warm tint near the sun, never its light.
-  vec3 c = crest + vec3(0.06, 0.02, -0.02) * sunward;
-  float tex = fbm(p * vec2(18.0, 30.0) + crest.r * 40.0);
-  c *= 0.9 + 0.18 * tex;
-  // Haze thickens down the face, so the next crest in front stands out.
-  c = mix(c, mistCol, smoothstep(0.015, 0.15, top - p.y) * 0.66);
-  // A lit crest about a row deep: warm towards the sun, rose elsewhere.
-  float edge = 1.0 - smoothstep(0.008, 0.016, top - p.y);
-  vec3 rimCol = mix(vec3(0.95, 0.62, 0.68), vec3(1.0, 0.8, 0.52), sunward);
-  c = mix(c, rimCol, clamp(edge * rim * (0.7 + 0.3 * sunward), 0.0, 1.0));
-  float low = 1.0 - smoothstep(base, base + pool, p.y);
-  float mist = low * (0.55 + 0.45 * smoothstep(0.3, 0.72, bvMist(p, 1.0)));
-  return mix(c, mistCol, clamp(mist * 0.7, 0.0, 1.0));
+// The colour of a ridge. Far ridges sink into the colour of the sky behind
+// them, so distance is quiet and low in contrast. Faces turned towards the
+// sun catch a little light and the others fall into shade. Haze thickens
+// down each face, so the next crest in front stands out, and mist pools
+// in the low ground of the V. Only the rim near the sun is bright.
+vec3 bvRidgeColor(vec2 q, float top, int i, float lit) {
+  vec4 look = bvRidgeLook(i);
+  vec4 shape = bvRidgeShape(i);
+  float haze = look.a;
+  float sunward = bvSunward(q);
+  vec3 skyBehind = bvSky(vec2(q.x, (BV_HORIZON + 0.06) * BV_LAND)) * 0.88;
+  vec3 c = mix(look.rgb, skyBehind, haze);
+  c *= 1.0 + 0.35 * lit * (1.0 - haze);
+  float tex = fbm(q * vec2(18.0, 30.0) + float(i) * 7.0);
+  c *= 1.0 + (0.14 * tex - 0.07) * (1.0 - haze);
+  vec3 mistCol = mix(vec3(0.56, 0.42, 0.58), vec3(0.95, 0.72, 0.58), sunward);
+  c = mix(c, mix(mistCol, skyBehind, 0.5), smoothstep(0.015, 0.15, top - q.y) * 0.55);
+  float edge = 1.0 - smoothstep(0.01, 0.02, top - q.y);
+  vec3 rimCol = mix(vec3(0.52, 0.36, 0.48), vec3(1.0, 0.84, 0.58), sunward);
+  c = mix(c, rimCol, clamp(edge * shape.z * (0.25 + 0.75 * sunward), 0.0, 1.0));
+  float low = 1.0 - smoothstep(shape.x, shape.x + shape.y, q.y);
+  float mist = low * (0.55 + 0.45 * smoothstep(0.3, 0.72, bvMist(q, 1.0)));
+  return mix(c, mistCol, clamp(mist * 0.6, 0.0, 1.0));
 }
 
-// The valley floor: dark meadow under pooled mist that thickens with
-// distance, and the river reflecting the dawn with the sun's glitter on it.
-vec3 bvFloor(vec2 p) {
-  float k = bvNear(p.y);
-  float sunward = exp(-abs(p.x - bvSun.x) / 0.4);
-  vec3 meadow = mix(vec3(0.36, 0.34, 0.5), vec3(0.1, 0.16, 0.24), pow(k, 0.6));
-  meadow *= 0.85 + 0.3 * fbm(p * vec2(16.0, 30.0) + 5.0);
-  float mist = smoothstep(0.32, 0.72, bvMist(vec2(p.x, p.y * 0.7), 1.2)) * (1.0 - 0.75 * k);
-  mist = max(mist, 1.0 - smoothstep(0.0, 0.05, BV_FLOOR - p.y));
-  vec3 mistCol = mix(vec3(0.62, 0.48, 0.66), vec3(1.0, 0.76, 0.6), sunward);
-  float off = abs(p.x - bvRiverX(p.y));
-  float halfWidth = bvRiverHalf(p.y);
+// The valley floor: meadow in near-black shadow close by, sinking into
+// mist with distance, and the river reflecting the dawn with the sun's
+// glitter on it, the brightest dots below the horizon.
+vec3 bvFloor(vec2 q) {
+  float k = bvNear(q.y);
+  float sunward = exp(-abs(q.x - bvSun.x) / 0.4);
+  vec3 meadow = mix(vec3(0.3, 0.25, 0.4), vec3(0.06, 0.07, 0.14), pow(k, 0.5));
+  meadow *= 0.9 + 0.2 * fbm(q * vec2(16.0, 30.0) + 5.0);
+  float mist = smoothstep(0.32, 0.72, bvMist(vec2(q.x, q.y * 0.7), 1.2)) * (1.0 - 0.8 * k);
+  mist = max(mist, 1.0 - smoothstep(0.0, 0.05, BV_FLOOR - q.y));
+  vec3 mistCol = mix(vec3(0.5, 0.4, 0.56), vec3(0.95, 0.72, 0.58), sunward);
+  float off = abs(q.x - bvRiverX(q.y));
+  float halfWidth = bvRiverHalf(q.y);
   vec3 c = meadow;
   if (off < halfWidth) {
-    vec3 sky = bvSky(vec2(bvSun.x + (p.x - bvSun.x) * 0.5, BV_HORIZON + 0.02 + k * 0.3));
-    c = sky * 0.92;
-    float spread = 0.015 + 0.06 * k;
-    float glint = exp(-pow((p.x - bvSun.x) / spread, 2.0));
-    float ripple = 0.5 + 0.5 * snoise(vec2(p.x * 36.0, p.y * 90.0 - bvT * 0.3));
-    c = mix(c, vec3(1.0, 0.88, 0.64), clamp(glint * (0.4 + 0.6 * ripple), 0.0, 1.0));
+    vec3 sky = bvSky(vec2(bvSun.x + (q.x - bvSun.x) * 0.5, (BV_HORIZON + 0.02 + k * 0.3) * BV_LAND));
+    c = sky * 0.78;
+    float spread = 0.03 + 0.08 * k;
+    float column = exp(-pow((q.x - bvSun.x) / spread, 2.0));
+    float ripple = 0.5 + 0.5 * snoise(vec2(q.x * 36.0, q.y * 90.0 - bvT * 0.3));
+    // The sun's column of glitter, and sparse glints all along the water.
+    float glint = column * (0.4 + 0.6 * ripple) + smoothstep(0.82, 0.95, ripple) * (0.5 + 0.5 * sunward);
+    c = mix(c, vec3(1.0, 0.9, 0.68), clamp(glint, 0.0, 1.0));
     c *= 0.9 + 0.1 * sin(bvT * 0.5);
     // Darker banks at the edges.
-    c = mix(c, meadow, smoothstep(0.7, 1.0, off / halfWidth) * 0.55);
+    c = mix(c, meadow, smoothstep(0.7, 1.0, off / halfWidth) * 0.6);
   }
-  return mix(c, mistCol, clamp(mist * 0.75, 0.0, 0.85));
+  return mix(c, mistCol, clamp(mist * 0.6, 0.0, 0.7));
 }
 
 // One balloon: a round crown tapering to the mouth, gores in two colours
@@ -212,64 +279,48 @@ vec4 bvScene(vec2 uv, vec2 res, float t) {
   bvStretch = clamp(aspect / 1.78, 0.5, 1.2);
   bvHalf = min(aspect * 0.5, 1.0);
   vec2 p = vec2((uv.x - 0.5) * aspect, uv.y);
-  // The sun sits a little right of centre on wide boxes, central on tall ones.
+  // The sun sits a little right of centre on wide boxes, central on tall
+  // ones, low enough that its disc stays under a centred headline.
   bvSunOffset = 0.14 * bvWide;
-  bvSun = vec2(bvSunOffset * bvStretch, BV_HORIZON + 0.028);
+  bvSunQ = vec2(bvSunOffset * bvStretch, BV_HORIZON + 0.028);
+  bvSun = vec2(bvSunQ.x, bvSunQ.y * BV_LAND);
+  vec2 q = vec2(p.x, p.y / BV_LAND);
 
   // Depth of whatever is nearest at this sample, and its colour.
   float depth = 1e4;
   vec3 col = vec3(0.0);
   bool found = false;
 
-  // Near to far. Each ridge: gap offset from the sun, base, left and right
-  // slopes, cap, noise seed and roughness; then its crest colour, how high
-  // mist pools above its base, and rim strength.
-  float top = bvRidge(p.x, 0.03, -0.06, 0.95, 0.85, 0.34, 1.3, 0.05);
-  if (p.y < top) {
-    col = bvRidgeColor(p, top, -0.04, vec3(0.07, 0.07, 0.15), 0.0, 0.5);
-    depth = 1.2;
-    found = true;
-  }
-  if (!found && p.y < BV_FLOOR) {
-    col = bvFloor(p);
-    depth = 2.0 + 3.0 * (1.0 - bvNear(p.y));
-    found = true;
-  }
-  top = bvRidge(p.x, -0.24, 0.24, 0.3, 0.62, 0.19, 4.7, 0.04);
-  if (!found && p.y < top) {
-    col = bvRidgeColor(p, top, 0.24, vec3(0.12, 0.11, 0.27), 0.035, 0.75);
-    depth = 4.5;
-    found = true;
-  }
-  top = bvRidge(p.x, 0.16, 0.33, 0.55, 0.2, 0.12, 9.1, 0.035);
-  if (!found && p.y < top) {
-    col = bvRidgeColor(p, top, 0.33, vec3(0.23, 0.13, 0.31), 0.04, 0.85);
-    depth = 7.0;
-    found = true;
-  }
-  top = bvRidge(p.x, -0.02, 0.4, 0.5, 0.42, 0.1, 2.9, 0.03);
-  if (!found && p.y < top) {
-    col = bvRidgeColor(p, top, 0.4, vec3(0.36, 0.21, 0.38), 0.035, 0.95);
-    depth = 11.0;
-    found = true;
-  }
-  top = bvRidge(p.x, 0.0, 0.445, 0.36, 0.34, 0.12, 7.7, 0.03);
-  if (!found && p.y < top) {
-    col = bvRidgeColor(p, top, 0.445, vec3(0.5, 0.31, 0.44), 0.03, 1.0);
-    depth = 30.0;
-    found = true;
+  // Near to far: the foreground hills, the valley floor, then the ridges.
+  for (int i = 0; i < 5; i++) {
+    if (i == 1 && q.y < BV_FLOOR) {
+      col = bvFloor(q);
+      depth = 2.0 + 3.0 * (1.0 - bvNear(q.y));
+      found = true;
+      break;
+    }
+    float top = bvRidgeTop(i, q.x);
+    if (q.y < top) {
+      // Positive where the face turns towards the sun.
+      float slope = (bvRidgeTop(i, q.x + 0.01) - top) / 0.01;
+      float lit = clamp(-slope * sign(bvSun.x - q.x) * 1.5, -1.0, 1.0);
+      col = bvRidgeColor(q, top, i, lit);
+      depth = bvRidgeShape(i).w;
+      found = true;
+      break;
+    }
   }
   if (!found) {
     col = bvStars(p, res, bvSky(p));
     // The sun's disc, a little flattened by the haze.
     float r = length((p - bvSun) * vec2(1.0, 1.08));
-    col = mix(col, vec3(1.0, 0.98, 0.9), 1.0 - smoothstep(0.036, 0.042, r));
+    col = mix(col, vec3(1.0, 0.98, 0.9), 1.0 - smoothstep(0.034, 0.04, r));
   }
 
   // Balloons, each drawn only where nothing nearer covers it.
   vec4 hit;
   vec3 b;
-  b = bvPlace(vec4(0.88, 0.42, 0.021, 0.0), vec4(0.62, 0.4, 0.017, 0.0), 0.13, 260.0, 0.32);
+  b = bvPlace(vec4(0.88, 0.27, 0.021, 0.0), vec4(0.62, 0.25, 0.017, 0.0), 0.12, 260.0, 0.32);
   hit = bvBalloon(p, b, vec3(0.42, 0.62, 0.95), vec3(0.95, 0.92, 0.88), 10.0);
   if (hit.a > 0.5 && depth > 10.0) {
     col = hit.rgb;
@@ -301,13 +352,11 @@ vec4 bvScene(vec2 uv, vec2 res, float t) {
   }
 
   col = clamp(col, 0.0, 1.0);
-  // Dot size follows brightness, with a floor so every cell keeps at least
-  // a faint dot.
+  // Dot size follows brightness on a steep curve: shadow and dark air get
+  // the smallest dots, some cells none, and only the sun, the river's
+  // glints and the lit balloons reach the large ones.
   float luma = dot(col, vec3(0.3, 0.55, 0.15));
-  float tone = clamp(0.1 + 0.95 * pow(luma, 0.85), 0.0, 1.0);
-  // The dot size already carries the value, so dark colours are lifted:
-  // a small dot in a clear hue reads, a small dot in near-black does not.
-  col = clamp(col / (0.35 + 0.65 * sqrt(max(luma, 0.001))), 0.0, 1.0);
+  float tone = clamp(1.12 * pow(luma, 1.15) + 0.03, 0.0, 1.0);
   tone *= sqrt(bvIntensity);
   bvCacheUv = uv;
   bvCacheT = t;
