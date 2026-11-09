@@ -18,7 +18,7 @@ if (POSTHOG_ENABLED) {
     // The first load and every App Router navigation (history change).
     capture_pageview: "history_change",
     capture_performance: { web_vitals: true },
-    // The privacy page promises no session recording.
+    // Capless records sessions; one recorder is enough.
     disable_session_recording: true,
     person_profiles: "always",
     ui_host: POSTHOG_UI_HOST,

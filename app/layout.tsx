@@ -5,6 +5,7 @@ import { Analytics } from "@/components/analytics";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { META_THEME_COLORS } from "@/constants/site";
+import { CAPLESS_KEY, CAPLESS_SCRIPT } from "@/lib/analytics/config";
 import { fontVariables } from "@/lib/fonts";
 import { JsonLdScripts } from "@/seo/json-ld";
 
@@ -36,6 +37,9 @@ const RootLayout = ({
             `,
         }}
       />
+      {CAPLESS_KEY ? (
+        <script async src={CAPLESS_SCRIPT} data-key={CAPLESS_KEY} />
+      ) : null}
     </head>
     <body className="text-foreground group/body overscroll-none font-sans antialiased [font-feature-settings:'ss01','cv11'] [--footer-height:--spacing(14)] [--header-height:--spacing(18)] xl:[--footer-height:--spacing(24)]">
       <ThemeProvider>

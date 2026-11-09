@@ -2,6 +2,8 @@ import { track } from "@vercel/analytics";
 import { posthog } from "posthog-js";
 import { z } from "zod";
 
+import { CAPLESS_KEY } from "@/lib/analytics/config";
+
 const eventSchema = z.object({
   name: z.enum([
     // Product events the PostHog dashboard reads.
@@ -57,6 +59,29 @@ const forVercel = (properties: EventProperties) =>
     ])
   );
 
+type Capless = (
+  command: "track",
+  name: string,
+  properties: EventProperties
+) => void;
+
+// The Capless tag defines window.capless once it loads; until then this stub
+// queues calls the way its docs describe, so early events aren't lost.
+const capless: Capless = (...args) => {
+  const target = window as Window & {
+    capless?: Capless & { q?: unknown[][] };
+  };
+  if (!target.capless) {
+    const queue: unknown[][] = [];
+    const stub: Capless & { q?: unknown[][] } = (...queued) => {
+      queue.push(queued);
+    };
+    stub.q = queue;
+    target.capless = stub;
+  }
+  target.capless(...args);
+};
+
 export const trackEvent = (input: Event): void => {
   const parsed = eventSchema.safeParse(input);
   if (!parsed.success) {
@@ -65,4 +90,7 @@ export const trackEvent = (input: Event): void => {
   const { name, properties = {} } = parsed.data;
   posthog.capture(name, properties);
   track(name, forVercel(properties));
+  if (CAPLESS_KEY && typeof window !== "undefined") {
+    capless("track", name, properties);
+  }
 };

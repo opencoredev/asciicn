@@ -14,3 +14,10 @@ export const POSTHOG_HOST =
 export const POSTHOG_PROXY_PATH = "/ingest";
 
 export const POSTHOG_UI_HOST = "https://us.posthog.com";
+
+// Capless (web analytics and session replay) also comes from the environment
+// only, so a fork or a local run sends nothing. The key is public and can
+// only write events.
+export const CAPLESS_KEY = process.env.NEXT_PUBLIC_CAPLESS_KEY ?? "";
+
+export const CAPLESS_SCRIPT = "https://c.capless.sh/c.js";

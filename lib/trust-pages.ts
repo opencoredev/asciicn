@@ -95,14 +95,14 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
   },
   privacy: {
     description:
-      "What asciicn.dev collects, what it stores in your browser, and who hosts it. No accounts, no ads, no session recording.",
+      "What asciicn.dev collects, what it stores in your browser, and who hosts it. No accounts and no ads.",
     lead: "asciicn.dev is a documentation site. It has no accounts, no ads and no newsletter. It measures how the docs are used so we can tell which pages and components help, and nothing it collects is sold or used for advertising.",
     sections: [
       {
         heading: "Analytics",
         paragraphs: [
-          "The site uses [PostHog](https://posthog.com/privacy) and Vercel Web Analytics. PostHog records page views, time on page, clicks, page-load performance and a few named actions, such as copying an install command or the agent prompt, searching the docs, changing a preview's controls or switching the theme. PostHog runs only when the deployment is configured with a PostHog project. It stores a random ID in a cookie and local storage so repeat visits count as one visitor, and it receives your IP address with each event, which it uses to estimate your country and city. Vercel Web Analytics counts page views without cookies.",
-          "Events go through asciicn.dev itself on their way to PostHog's US servers. The site doesn't record your screen or keystrokes, doesn't sell or share this data, and doesn't use it for advertising. Blocking cookies or analytics scripts in your browser stops all of it, and the docs work the same.",
+          "The site uses [Capless](https://analytics.capless.sh/docs/security), [PostHog](https://posthog.com/privacy) and Vercel Web Analytics. They record page views, clicks, page-load performance and a few named actions, such as copying an install command or the agent prompt, searching the docs, changing a preview's controls or switching the theme. Each runs only when the deployment is configured with a project for it. Capless keeps a random ID in local storage and PostHog keeps one in a cookie and local storage, so repeat visits count as one visitor. Both estimate your country and city from your IP address; Capless stores only a keyed hash of it. Vercel Web Analytics counts page views without cookies.",
+          "Capless also records sessions: how the page changed and where you scrolled and clicked, so we can see where the docs or the Studio confuse people. Anything you type into a field is masked before it leaves your browser, and password fields are never recorded. PostHog events go through asciicn.dev itself on their way to PostHog's US servers. We don't sell or share this data or use it for advertising. Blocking analytics scripts in your browser stops all of it, and the site works the same.",
         ],
       },
       {
@@ -133,7 +133,7 @@ export const TRUST_PAGES: Record<TrustPageSlug, TrustPage> = {
     ],
     slug: "privacy",
     title: "Privacy",
-    updated: "2026-10-27",
+    updated: "2026-11-09",
   },
 };
 
