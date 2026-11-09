@@ -2,7 +2,7 @@
 
 import { CopyButton } from "@/components/copy-button";
 import { getIconForPackageManager } from "@/components/icons";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   isPackageManager,
   PACKAGE_MANAGERS,
@@ -73,22 +73,28 @@ export const CommandBox = ({
             ))}
           </TabsList>
         </div>
+        {/* One panel for the active manager, so each tab controls a real panel. */}
+        <TabsContent
+          value={packageManager}
+          className="focus-visible:outline-ring focus-visible:outline-2 focus-visible:-outline-offset-2"
+        >
+          {/* The URL wraps instead of scrolling, so the whole command is always
+            readable. On phones it takes its own line. */}
+          <pre className="px-4 py-3.5 pr-12 whitespace-normal">
+            <code className="font-mono text-[0.8rem] leading-relaxed sm:text-sm">
+              <span className="text-muted-foreground whitespace-nowrap select-none">
+                ${" "}
+              </span>
+              <span className="text-muted-foreground whitespace-nowrap">
+                {RUNNERS[packageManager]} {TOOLS[tool]}
+              </span>{" "}
+              <span className="text-foreground block [overflow-wrap:anywhere] sm:inline">
+                {url}
+              </span>
+            </code>
+          </pre>
+        </TabsContent>
       </Tabs>
-      {/* The URL wraps instead of scrolling, so the whole command is always
-          readable. On phones it takes its own line. */}
-      <pre className="px-4 py-3.5 pr-12 whitespace-normal">
-        <code className="font-mono text-[0.8rem] leading-relaxed sm:text-sm">
-          <span className="text-muted-foreground whitespace-nowrap select-none">
-            ${" "}
-          </span>
-          <span className="text-muted-foreground whitespace-nowrap">
-            {RUNNERS[packageManager]} {TOOLS[tool]}
-          </span>{" "}
-          <span className="text-foreground block [overflow-wrap:anywhere] sm:inline">
-            {url}
-          </span>
-        </code>
-      </pre>
       <CopyButton
         className="absolute top-1.5 right-1.5 z-10 size-7"
         value={command}
