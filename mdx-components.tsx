@@ -351,7 +351,12 @@ export const mdxComponents = {
     <strong className={cn("font-medium", className)} {...props} />
   ),
   table: ({ className, ...props }: React.ComponentProps<"table">) => (
-    <div className="my-6 no-scrollbar w-full overflow-y-auto rounded-xl border">
+    <div
+      // A wide table scrolls sideways, so keyboard users need to reach it.
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling region needs a tab stop to scroll by keyboard
+      tabIndex={0}
+      className="no-scrollbar focus-visible:outline-ring my-6 w-full overflow-y-auto rounded-xl border focus-visible:outline-2 focus-visible:outline-offset-2"
+    >
       <table
         className={cn(
           "relative w-full overflow-hidden border-none text-sm [&_tbody_tr:last-child]:border-b-0",

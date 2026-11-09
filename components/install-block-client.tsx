@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   isPackageManager,
   PACKAGE_MANAGERS,
@@ -64,12 +64,16 @@ export const InstallCommand = ({
             </TabsTrigger>
           ))}
         </TabsList>
+        {/* One panel for the active manager, so each tab controls a real panel. */}
+        <TabsContent
+          value={packageManager}
+          className="no-scrollbar focus-visible:outline-ring overflow-x-auto px-4 pt-2.5 pb-3.5 pr-12 focus-visible:outline-2 focus-visible:-outline-offset-2"
+        >
+          <code className="font-mono text-[0.8rem] whitespace-nowrap">
+            {command}
+          </code>
+        </TabsContent>
       </Tabs>
-      <div className="no-scrollbar overflow-x-auto px-4 pt-2.5 pb-3.5 pr-12">
-        <code className="font-mono text-[0.8rem] whitespace-nowrap">
-          {command}
-        </code>
-      </div>
       <CopyButton
         value={command}
         event="install_command_copied"
