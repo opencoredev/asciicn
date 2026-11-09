@@ -1,17 +1,32 @@
 import { Miami } from "@/components/asciicn/miami";
 
-// The scene behind a headline, dimmed so the text on top stays readable.
+// Full-bleed behind a centred headline. At 0.6 intensity the middle band, where the text sits, drops back most; the hotels, palms
+// and towers at the edges still read.
 export default function MiamiHero() {
   return (
-    <section className="relative isolate flex size-full flex-col items-center justify-start gap-3 px-6 pt-14 text-center">
-      <Miami intensity={0.55} className="absolute inset-0 -z-10" />
-      <h3 className="max-w-md text-3xl font-medium tracking-[-0.03em] text-balance sm:text-4xl">
-        Night on Ocean Drive
+    <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-5 overflow-hidden bg-[#0b0719] px-6 py-16 text-center text-white">
+      <Miami intensity={0.6} className="absolute inset-0 -z-10" />
+      <h3 className="[text-shadow:0_1px_12px_rgb(11_7_25)] max-w-xl text-4xl font-medium tracking-[-0.03em] text-balance sm:text-5xl">
+        Ship it before the neon comes on
       </h3>
-      <p className="text-muted-foreground max-w-sm text-sm text-pretty">
-        Lower the intensity and the hotels, palms and towers fall back behind
-        your copy.
+      <p className="[text-shadow:0_1px_12px_rgb(11_7_25)] max-w-md text-sm text-pretty text-white/90 sm:text-base">
+        Ocean Drive at nightfall in coloured dots, calm enough to sit behind
+        your headline.
       </p>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <a
+          href="#get-started"
+          className="rounded-full bg-[#fcb442] px-5 py-2.5 text-sm font-medium text-[#1a1203] transition-colors hover:bg-[#ffc560]"
+        >
+          Get started
+        </a>
+        <a
+          href="#docs"
+          className="rounded-full border border-white/25 bg-black/30 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/45"
+        >
+          Read the docs
+        </a>
+      </div>
     </section>
   );
 }

@@ -1,12 +1,13 @@
 ---
 title: "Miami"
-description: "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay."
+description: "Ocean Drive at nightfall in dots: art deco hotels with soft neon on their stepped parapets, palms in silhouette, the glass towers of Brickell in blue haze and a bay holding the neon in broken reflections."
 ---
 
 import MiamiDemo from "@/examples/miami-demo";
 import { controls as demoControls } from "@/examples/miami-controls";
+import MiamiFine from "@/examples/miami-fine";
 import MiamiHero from "@/examples/miami-hero";
-import MiamiVapor from "@/examples/miami-vapor";
+import MiamiLowNeon from "@/examples/miami-low-neon";
 
 <ComponentPreview
   src="examples/miami-demo.tsx"
@@ -36,32 +37,46 @@ export function Hero() {
 }
 ```
 
-The view is from the water, looking across the bay at Ocean Drive after sunset. A row of art deco hotels stands along the promenade: pastel facades, stepped parapets, eyebrow ledges over the windows, portholes and blade signs, with neon in magenta, cyan and gold along every roofline. Behind them rise the glass towers of Brickell, a few with lit crowns. Two or three palms stand in front as dark silhouettes, and a crescent moon hangs over the skyline.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the smallest dots in the deep violet at the top of the sky, middle dots through the magenta and the hot coral along the horizon, and the biggest dots kept for the moon, the neon and lit windows.
 
-Nothing built moves, and the pointer has no effect. What changes is slow: windows switch on and off a few at a time, each fading over a couple of seconds and holding its state for a minute or so. The red beacons on the tallest towers pulse once every 1.8 seconds, the stars brighten and dim, the reflections in the bay break and rejoin, and one small boat crosses the water every two to three minutes.
+The view is from the bay, looking across the beach at Ocean Drive after sunset. A row of art deco hotels stands along the sand, their pastel walls washed with light from the street: a cafe arcade at the bottom, eyebrow ledges over each row of windows, a glass-block pylon up the middle, and a stepped parapet on top. Neon in pink, teal or amber traces the top of each parapet, with a spire, a name sign or a vertical blade sign on some of them. Palms stand in silhouette between the hotels.
 
-The hotels keep their size when the box changes shape, so a narrow phone screen shows fewer of them rather than squashed ones. Edges and window grids are snapped to the sample grid, so they come out as clean rows and columns of glyphs.
+Behind them the glass towers of Brickell rise in blue haze, the far ones paler, a few with lit crowns and the tallest with a red beacon. A young crescent moon hangs low in the afterglow above them.
 
-It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, and `standard` and `dense` draw the same scene in letters and symbols. In `truecolor` mode, also the default, every part keeps its own colour; on a light paper the colours are deepened so they still read. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `outrun` or `vapor`.
+The bay mirrors the street, darker and quieter, so only the lights come through, broken into dashes by the ripples. Each hotel's neon runs down the water in a soft streak, and the moon lays a pale glitter path.
 
-`intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
+Motion is slow: the neon breathes, the water shimmers, a few windows turn on or off every couple of minutes, the palms barely sway, thin clouds drift, and stars twinkle faintly. The pointer does nothing.
+
+The hotels keep their size when the box changes shape, so a phone shows two or three of them instead of squashed ones. On wide boxes a palm stands in the middle and the hotels and towers there stay lower, so the band behind a headline is mostly sky; Brickell and the moon sit to the left. On tall boxes a hotel stands in the middle, below where a headline would sit.
+
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide, and is the default for `braille` and `quadrants`, which would stretch. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. In `truecolor`, the default, the scene paints its own violet night paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+`intensity` quiets the middle band, where a headline sits, more than the edges. It dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text. `neon` turns the neon and the lit tower crowns down without touching the rest.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`intensity={0.55}` keeps the scene recognisable but quiet, so the headline at the top reads first.
+`intensity={0.6}` drops the middle of the scene back behind a centred headline and two buttons, while the hotels, palms and towers at the edges still read.
 
 <ComponentPreview src="examples/miami-hero.tsx" size="lg" align="stretch">
   <MiamiHero />
 </ComponentPreview>
 
-### Vapor duotone
+### Finer dots
 
-`colorMode="duotone"` with `ramp="vapor"` paints the scene in one ramp from violet to cyan, over a dark violet `paper` with a CRT finish from `fx`.
+`cell={5}` packs more dots into a small card, so the parapets, palms and windows keep their detail.
 
-<ComponentPreview src="examples/miami-vapor.tsx" size="lg" align="stretch">
-  <MiamiVapor />
+<ComponentPreview src="examples/miami-fine.tsx">
+  <MiamiFine />
+</ComponentPreview>
+
+### Neon turned down
+
+`neon={0.25}` leaves the pastel walls and lit windows and dims the neon on the parapets, the tower crowns and their streaks in the bay.
+
+<ComponentPreview src="examples/miami-low-neon.tsx">
+  <MiamiLowNeon />
 </ComponentPreview>
 
 ## Props
@@ -73,7 +88,7 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, a
       type: "number",
       default: "1",
       description:
-        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
+        "How strongly it draws, from 0 (faint) to 1. Lower values quiet the middle band, where a headline sits, most.",
     },
     {
       name: "neon",
@@ -85,14 +100,14 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, a
     {
       name: "paper",
       type: "AsciiColor",
-      default: '"--ascii-paper"',
+      default: "a violet night in truecolor, ansi16 and duotone",
       description:
-        "The surface behind the glyphs. Ignored when a phosphor brings its own glass.",
+        "The surface behind the glyphs. Otherwise the theme's paper, or the phosphor's glass.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -176,8 +191,15 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, a
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true for one-glyph charsets, false for braille and quadrants",
+      description:
+        "Cells as wide as they are tall, so the dots lie in an even lattice. false uses text cells, twice as tall as wide.",
     },
     {
       name: "speed",
@@ -208,7 +230,7 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, a
     {
       name: "fallback",
       type: "ReactNode",
-      default: "a night gradient",
+      default: "the dusk as a flat gradient",
       description: "Shown without WebGL and until the first frame.",
     },
     {
@@ -230,6 +252,7 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer dots, a
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
-- It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows a CSS gradient in the scene's colours.
-- The whole scene is drawn on the GPU in one pass. In `braille` and `quadrants` each cell takes the colour of its brightest dot, so a neon line one dot thick keeps its colour. The colour pass reads every dot of the cell to do that, so these two charsets cost more per frame than the others. See [Performance](/docs/engine/performance).
+- It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows the dusk as a flat gradient.
+- The whole scene is one shader pass on the GPU. Water samples also draw the mirrored street, so the bay costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

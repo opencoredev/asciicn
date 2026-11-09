@@ -21,9 +21,9 @@ export interface CityEntry {
 
 export const CITIES: readonly CityEntry[] = [
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay.",
+      "Ocean Drive at nightfall in dots: art deco hotels with soft neon on their stepped parapets, palms in silhouette, the glass towers of Brickell in blue haze and a bay holding the neon in broken reflections.",
     id: "miami",
     load: async () => {
       const { Miami } = await import("@/components/asciicn/miami");
