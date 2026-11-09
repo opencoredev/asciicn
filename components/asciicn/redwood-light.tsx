@@ -44,15 +44,17 @@ float rwU(vec2 p) {
   return rwCx + (p.x - rwCx) / rwScale(p.y);
 }
 
-// The air: blue-green haze, paler low down in the distance, deeper higher
-// up, warm around the sun, and broken by the soft shapes of far foliage.
+// The air: blue-green haze, paler low down in the distance and deeper
+// higher up. Sunlight scattered through the leaves lifts it to a soft
+// green-gold towards the sun, so the forest is lit, not murky.
 vec3 rwHaze(vec2 p) {
   float h = clamp((p.y - RW_HORIZON) / 0.62, 0.0, 1.0);
-  vec3 col = mix(vec3(0.3, 0.44, 0.42), vec3(0.11, 0.21, 0.21), h);
-  col *= 0.92 + 0.16 * fbm(vec2(p.x * 2.2, p.y * 1.4) + 21.0);
-  vec2 d = (p - rwSun) * vec2(0.7, 1.0);
-  float warm = exp(-length(d) * 5.0);
-  return mix(col, vec3(0.92, 0.8, 0.52), warm * 0.7);
+  vec3 col = mix(vec3(0.3, 0.44, 0.4), vec3(0.12, 0.22, 0.2), h);
+  col *= 0.94 + 0.12 * fbm(vec2(p.x * 2.2, p.y * 1.4) + 21.0);
+  vec2 g = (p - rwSun) * vec2(0.6, 0.85);
+  col = mix(col, vec3(0.6, 0.66, 0.38), exp(-dot(g, g) * 4.0) * 0.6);
+  float warm = exp(-length((p - rwSun) * vec2(0.7, 1.0)) * 5.0);
+  return mix(col, vec3(0.92, 0.82, 0.52), warm * 0.6);
 }
 
 // The sun's halo: a hot core and a wide soft bloom.
@@ -86,55 +88,79 @@ float rwShaft(vec2 p) {
   b += rwBeam(q, -0.07 * unit, 0.03 * unit) * (0.8 + 0.2 * sin(rwT * 0.23 + 2.0));
   b += rwBeam(q, 0.03 * unit, 0.05 * unit) * (0.9 + 0.1 * sin(rwT * 0.16 + 4.0));
   b += rwBeam(q, 0.13 * unit, 0.03 * unit) * (0.65 + 0.2 * sin(rwT * 0.27 + 3.0));
-  // Dust thickens and thins along each shaft, so none is a flat bar.
-  b *= 0.8 + 0.2 * snoise(vec2(q * 10.0, drop * 1.2 - rwT * 0.015));
+  // Leaves between the sun and the air break each shaft into pieces, so
+  // the light falls dappled, never as a clean bar.
+  float dapple = fbm(vec2(q * 38.0, drop * 7.0) + vec2(3.0, -rwT * 0.008));
+  b *= smoothstep(0.36, 0.6, dapple);
   // Brightest just under the canopy, thinning into the haze as they fall.
   // Even along their length, so no shaft reads as a bright bar that stops.
-  return b * smoothstep(0.0, 0.35, drop) * mix(0.8, 0.5, smoothstep(0.2, 0.9, drop)) * mix(0.4, 1.0, wide);
+  // On narrow boxes they fall shorter, so they end above the headline.
+  float reach = mix(0.4, 0.9, wide);
+  return b * smoothstep(0.0, 0.35, drop) * mix(0.8, 0.5, smoothstep(0.2, 0.9, drop)) * (1.0 - smoothstep(reach * 0.6, reach, drop)) * mix(0.5, 1.0, wide);
 }
 
-// The canopy: a dark ceiling of foliage, thinning to gaps near the sun.
-float rwCanopy(vec2 p) {
-  // Hanging sprays of foliage, so the canopy never ends on a level line.
-  float edge = 0.7 + 0.26 * (fbm(vec2(p.x * 3.4 + 3.0, 2.0)) - 0.5) + 0.06 * snoise(vec2(p.x * 9.0, 4.0));
-  float c = smoothstep(edge - 0.06, edge + 0.12, p.y + 0.16 * (fbm(p * vec2(4.0, 4.0) + 11.0) - 0.5));
-  float gaps = fbm(p * vec2(7.0, 9.0) + 7.0);
-  float open = smoothstep(0.52, 0.66, gaps) * 0.7;
-  float clearing = exp(-pow(length((p - rwSun) * vec2(0.8, 1.1)) / 0.2, 2.0));
-  return c * (1.0 - open) * (1.0 - clearing);
+// One layer of foliage: clumped masses above "bottom" that hang lower in
+// places, with ragged leafy edges. Returns how much of the point is leaf,
+// and how deep inside its mass it lies (0 at the fringe, 1 in the heart).
+vec2 rwLeaves(vec2 p, float bottom, float scale, float seed) {
+  float mass = fbm(p * scale + seed) + (p.y - bottom) * 2.4;
+  mass += 0.08 * snoise(p * scale * 8.0 + seed) + 0.05 * snoise(p * scale * 17.0 - seed);
+  return vec2(smoothstep(0.5, 0.52, mass), smoothstep(0.52, 0.74, mass));
 }
 
-// One row of trunks: trunk space is cut into slots, each holding at most
-// one trunk, kept inside its slot so no slot needs its neighbours.
-// Returns the colour and coverage of the trunk at p, or zero coverage.
-vec4 rwTrunks(vec2 p, float spacing, float wMin, float wMax, float base, float seed, float chance, vec3 bark) {
+// A foliage layer's colour: dark at the heart of each mass, its fringe
+// lifted towards the haze, and gold where the sun backlights it.
+vec3 rwLeafColor(vec2 p, vec2 leaf, vec3 heart, float sunD) {
+  vec3 fringe = mix(heart, rwHaze(p), 0.45);
+  vec3 col = mix(fringe, heart, leaf.y);
+  // Sprays of leaves inside each mass catch more or less light.
+  float spray = fbm(p * vec2(11.0, 14.0) + heart.g * 40.0);
+  col *= mix(0.65, 1.55, smoothstep(0.3, 0.75, spray));
+  float back = (1.0 - leaf.y) * exp(-sunD / 0.16);
+  return mix(col, vec3(0.86, 0.78, 0.42), back * 0.75);
+}
+
+// One row of trunks. Trunk space is cut into slots, each holding at most
+// one trunk; a trunk leans a little, so its neighbours' slots are checked
+// too. Widths are skewed: many thin trunks and a few broad ones. Slots
+// within "clear" of the middle stay empty, for the headline.
+vec4 rwTrunks(vec2 p, float spacing, float wMin, float wMax, float base, float seed, float chance, vec3 bark, float clear) {
   float u = rwU(p);
-  float id = floor(u / spacing);
-  if (rwHash(vec2(id, seed)) > chance) {
-    return vec4(0.0);
+  float id0 = floor(u / spacing);
+  vec4 best = vec4(0.0);
+  for (int i = -1; i <= 1; i++) {
+    float id = id0 + float(i);
+    if (rwHash(vec2(id, seed)) > chance) {
+      continue;
+    }
+    float uc = (id + 0.2 + 0.6 * rwHash(vec2(id, seed + 1.0))) * spacing;
+    if (abs(uc - rwCx) < clear) {
+      continue;
+    }
+    float hw = mix(wMin, wMax, pow(rwHash(vec2(id, seed + 2.0)), 2.2));
+    float b = base + 0.025 * (rwHash(vec2(id, seed + 3.0)) - 0.5) + 0.012 * snoise(vec2(p.x * 40.0, seed));
+    if (p.y < b) {
+      continue;
+    }
+    float lean = (rwHash(vec2(id, seed + 4.0)) - 0.5) * 0.09;
+    float w = hw * (1.0 + 0.4 * exp(-(p.y - b) / 0.04)) * mix(1.0, 0.78, smoothstep(b, 1.0, p.y));
+    float x = (u - uc - lean * (p.y - b)) / w;
+    // Bark edges are never ruled lines.
+    x += 0.12 * snoise(vec2(p.y * 7.0, id * 3.1 + seed));
+    float soft = rwCol / (w * rwScale(p.y));
+    float cover = 1.0 - smoothstep(1.0 - soft, 1.0 + soft * 0.5, abs(x));
+    if (cover <= best.a) {
+      continue;
+    }
+    float side = sign(rwSun.x - p.x);
+    float lit = smoothstep(-0.5, 1.0, x * side);
+    float furrow = snoise(vec2(x * 3.0 + id * 7.3, p.y * 2.0 + id));
+    vec3 col = bark * mix(0.4, 1.5, lit) * (0.78 + 0.3 * furrow);
+    // A faint warm edge only: strong rims belong to the giants in front.
+    col = mix(col, vec3(0.7, 0.52, 0.32), smoothstep(0.75, 0.98, x * side) * 0.22);
+    best = vec4(col, cover);
   }
-  float uc = (id + 0.27 + 0.46 * rwHash(vec2(id, seed + 1.0))) * spacing;
-  float hw = mix(wMin, wMax, rwHash(vec2(id, seed + 2.0)));
-  float b = base + 0.025 * (rwHash(vec2(id, seed + 3.0)) - 0.5) + 0.012 * snoise(vec2(p.x * 40.0, seed));
-  if (p.y < b) {
-    return vec4(0.0);
-  }
-  hw *= 1.0 + 0.4 * exp(-(p.y - b) / 0.04);
-  float x = (u - uc) / hw;
-  // Bark edges are never ruled lines.
-  x += 0.12 * snoise(vec2(p.y * 7.0, id * 3.1 + seed));
-  float soft = rwCol / (hw * rwScale(p.y));
-  float cover = 1.0 - smoothstep(1.0 - soft, 1.0 + soft * 0.5, abs(x));
-  if (cover <= 0.0) {
-    return vec4(0.0);
-  }
-  float side = sign(rwSun.x - p.x);
-  float lit = smoothstep(-0.4, 1.0, x * side);
-  float furrow = snoise(vec2(x * 2.6 + id * 7.3, p.y * 3.0 / (hw * 30.0)));
-  vec3 col = bark * mix(0.5, 1.5, lit) * (0.9 + 0.15 * furrow);
-  // A faint warm edge only: strong rims belong to the giants in front.
-  col = mix(col, vec3(0.7, 0.5, 0.32), smoothstep(0.75, 0.98, x * side) * 0.22);
-  return vec4(col, cover);
+  return best;
 }
 
 // Ground mist drifting slowly between the far trunks.
@@ -164,8 +190,8 @@ vec3 rwFloor(vec2 p, float shaft) {
 
 // The giants in front: hand placed so the middle stays open for a
 // headline, and narrowed on tall boxes so they never fill a phone.
-vec4 rwGiant(vec2 p, float at, float hw, float base, float seed) {
-  float u = rwU(p);
+vec4 rwGiant(vec2 p, float at, float hw, float base, float seed, float lean) {
+  float u = rwU(p) - lean * (p.y - base);
   float uc = rwCx + at * rwHalf;
   if (p.y < base) {
     return vec4(0.0);
@@ -228,8 +254,8 @@ vec4 rwFronds(vec2 p, float shaft) {
       float bend = a >= 0.0 ? 1.0 : -1.0;
       float off = (d.x * ca - d.y * sa) - bend * 0.5 * l * t * t;
       float w = l * 0.17 * sin(3.1416 * pow(t, 0.7));
-      float saw = fract(t * l / 0.032 + rwHash(vec2(id, float(j))));
-      if (abs(off) > w * (0.45 + 0.55 * (1.0 - saw))) {
+      float saw = fract(t * l / 0.022 + rwHash(vec2(id, float(j))));
+      if (abs(off) > w * (0.62 + 0.38 * (1.0 - saw))) {
         continue;
       }
       // The front frond of the clump wins, so overlapping ones stay clear.
@@ -300,45 +326,78 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
     col = rwFloor(p, shaft);
   }
 
-  // Far trunks, nearly lost in the haze, then mist, then the middle row.
-  vec4 far = rwTrunks(p, 0.1, 0.01, 0.018, 0.3, 17.0, 0.8, vec3(0.16, 0.22, 0.24));
-  col = mix(col, mix(far.rgb, rwHaze(p), 0.3), far.a);
+  float calm = rwCalm(uv);
+  float sunD = length((p - rwSun) * vec2(0.85, 1.0));
+  // 0 in the middle of the box, 1 at its sides, where foliage hangs lower.
+  float sides = smoothstep(0.18, 0.5, abs(uv.x - 0.5));
+
+  // Many thin far trunks, nearly lost in the haze, then a sparser row.
+  vec4 t1 = rwTrunks(p, 0.05, 0.004, 0.012, 0.31, 17.0, 0.75, vec3(0.15, 0.21, 0.21), 0.0);
+  col = mix(col, mix(t1.rgb, rwHaze(p), 0.4 + 0.3 * calm), t1.a);
+  vec4 t2 = rwTrunks(p, 0.1, 0.006, 0.02, 0.29, 23.0, 0.7, vec3(0.22, 0.22, 0.21), 0.0);
+  col = mix(col, mix(t2.rgb, rwHaze(p), 0.36 + 0.3 * calm), t2.a);
+
+  // The far canopy, pale with haze, open only right around the sun.
+  vec2 lf = rwLeaves(p, 0.8, 3.2, 3.0);
+  lf.x *= 1.0 - 0.9 * exp(-pow(sunD / 0.08, 2.0));
+  col = mix(col, rwLeafColor(p, lf, mix(vec3(0.1, 0.18, 0.15), rwHaze(p), 0.45), sunD), lf.x);
+
   float mist = rwMist(p);
   col = mix(col, rwHaze(p) * 1.15 + vec3(0.1, 0.08, 0.03) * shaft, mist * 0.6);
-  vec4 mid = rwTrunks(p, 0.26, 0.03, 0.046, 0.235, 29.0, 0.8, vec3(0.22, 0.12, 0.08));
-  col = mix(col, mix(mid.rgb, rwHaze(p), 0.3), mid.a);
-  col = mix(col, rwHaze(p) * 1.1, mist * 0.18 * (1.0 - mid.a * 0.5));
+  // The middle row: trunks of every width from thin to broad.
+  vec4 t3 = rwTrunks(p, 0.2, 0.014, 0.045, 0.25, 29.0, 0.75, vec3(0.32, 0.16, 0.1), 0.16 * rwAspect);
+  col = mix(col, mix(t3.rgb, rwHaze(p), 0.14), t3.a);
+  col = mix(col, rwHaze(p) * 1.1, mist * 0.18 * (1.0 - t3.a * 0.5));
+  // The sun shines past the trunks and behind the canopy, so the leaves
+  // in front break it up.
+  col += vec3(1.0, 0.84, 0.55) * rwGlow(p);
 
-  float canopy = rwCanopy(p);
-  float leaves = fbm(p * 9.0 + 31.0);
-  col = mix(col, vec3(0.05, 0.11, 0.08) + rwHaze(p) * mix(0.08, 0.3, leaves), canopy);
-  // The sun burns through the canopy as the one bright light.
-  col += vec3(1.0, 0.84, 0.55) * rwGlow(p) * (1.0 - 0.5 * canopy);
+  // The middle canopy, overlapping the far one, with a wider opening.
+  vec2 lm = rwLeaves(p, 0.9 - 0.12 * sides, 2.3, 9.0);
+  lm.x *= 1.0 - exp(-pow(sunD / 0.14, 2.0));
+  col = mix(col, rwLeafColor(p, lm, vec3(0.08, 0.16, 0.1), sunD), lm.x);
+  float canopy = max(lf.x * 0.6, lm.x);
 
   // Shafts scatter warm light into the air under the canopy.
   float air = shaft * (1.0 - 0.8 * canopy) * smoothstep(RW_HORIZON - 0.1, RW_HORIZON + 0.08, p.y);
   // The middle of the box, where a headline sits, stays calm air.
-  float calm = rwCalm(uv);
-  air *= 1.0 - 0.65 * calm;
-  col += vec3(0.82, 0.62, 0.28) * air * 0.85;
+  air *= 1.0 - 0.8 * calm;
+  col += vec3(0.82, 0.62, 0.28) * air * 1.1;
   float mote = rwMotes(p) * (0.15 + shaft * 1.2) * (1.0 - canopy) * (1.0 - 0.7 * calm) * step(RW_HORIZON, p.y);
   col = mix(col, vec3(1.0, 0.95, 0.78), clamp(mote, 0.0, 1.0));
 
   // A soft vignette: the light lives in the middle and the sun's side.
   vec2 v = (p - vec2(mix(rwCx, rwSun.x, 0.4), 0.55)) / vec2(max(rwCx, 0.4) * 1.25, 0.8);
-  col *= mix(1.0, 0.68, smoothstep(0.35, 1.15, length(v)));
+  col *= mix(1.0, 0.8, smoothstep(0.35, 1.15, length(v)));
 
   // The giants in front, rim lit on the sun's side.
   float squeeze = mix(0.4, 1.0, smoothstep(0.5, 1.4, rwAspect));
-  vec4 g = rwGiant(p, -0.84, 0.14 * squeeze, -0.02, 1.0);
-  vec4 g2 = rwGiant(p, -0.47, 0.065 * squeeze, 0.08, 2.0);
-  vec4 g3 = rwGiant(p, 0.82, 0.16 * squeeze, -0.04, 3.0);
+  // Two huge trunks frame the view; medium ones stand a little behind,
+  // each at its own lean, the farther ones softened by the haze.
+  vec4 g = rwGiant(p, -0.84, 0.14 * squeeze, -0.02, 1.0, 0.03);
+  vec4 g2 = rwGiant(p, -0.47, 0.065 * squeeze, 0.08, 2.0, -0.025);
+  vec4 g3 = rwGiant(p, 0.82, 0.16 * squeeze, -0.04, 3.0, -0.02);
+  vec4 g4 = rwGiant(p, 0.6, 0.045 * squeeze, 0.12, 4.0, 0.035);
+  vec4 g5 = rwGiant(p, -0.64, 0.032 * squeeze, 0.14, 5.0, -0.04);
   g2.rgb = mix(g2.rgb, rwHaze(p), 0.18);
-  // On narrow boxes the second giant would merge into the first.
-  g2.a *= smoothstep(0.75, 1.05, rwAspect);
+  g4.rgb = mix(g4.rgb, rwHaze(p), 0.3);
+  g5.rgb = mix(g5.rgb, rwHaze(p), 0.34);
+  // On narrow boxes the medium trunks would merge into the giants.
+  float roomy = smoothstep(0.75, 1.05, rwAspect);
+  g2.a *= roomy;
+  g4.a *= roomy;
+  g5.a *= roomy;
+  col = mix(col, g5.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g5.a);
+  col = mix(col, g4.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g4.a);
   col = mix(col, g2.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g2.a);
   col = mix(col, g.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.35, g.a);
   col = mix(col, g3.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.35, g3.a);
+
+  // The near canopy, darkest, hanging low in sprays at the sides so it
+  // overlaps the giants and frames the light.
+  vec2 ln = rwLeaves(p, 0.98 - 0.32 * sides, 1.6, 17.0);
+  ln.x *= 1.0 - exp(-pow(sunD / 0.24, 2.0));
+  col = mix(col, rwLeafColor(p, ln, vec3(0.06, 0.13, 0.08), sunD), ln.x);
 
   vec4 fronds = rwFronds(p, shaft);
   col = mix(col, fronds.rgb, fronds.a);
