@@ -89,7 +89,7 @@ const CategoryGroup = ({
               className="text-muted-foreground size-3.5 shrink-0 transition-transform duration-150 ease-out group-data-[state=open]/category:rotate-90 motion-reduce:transition-none"
             />
             <span className="truncate">{category.name}</span>
-            <span className="text-muted-foreground/70 ml-auto text-xs font-normal tabular-nums">
+            <span className="text-muted-foreground/85 ml-auto text-xs font-normal tabular-nums">
               {category.pages.length}
             </span>
           </SidebarMenuButton>

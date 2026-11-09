@@ -118,7 +118,7 @@ export const GlyphSlider = ({
         compact
           ? "grid grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-2"
           : "grid gap-1",
-        disabled && "opacity-45"
+        disabled && "opacity-60"
       )}
     >
       <div
