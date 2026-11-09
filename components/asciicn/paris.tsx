@@ -248,11 +248,11 @@ float parisAfter(vec2 p) {
 
 // The sky from the horizon up: rose gold, mauve, violet, then deep blue.
 vec3 parisSkyRamp(float h) {
-  vec3 c = mix(vec3(1.0, 0.76, 0.52), vec3(0.98, 0.6, 0.52), smoothstep(0.04, 0.16, h));
-  c = mix(c, vec3(0.78, 0.5, 0.64), smoothstep(0.12, 0.3, h));
-  c = mix(c, vec3(0.46, 0.4, 0.72), smoothstep(0.26, 0.48, h));
-  c = mix(c, vec3(0.2, 0.25, 0.58), smoothstep(0.42, 0.72, h));
-  return mix(c, vec3(0.1, 0.14, 0.4), smoothstep(0.68, 1.0, h));
+  vec3 c = mix(vec3(1.0, 0.76, 0.52), vec3(0.98, 0.6, 0.52), smoothstep(0.06, 0.2, h));
+  c = mix(c, vec3(0.78, 0.5, 0.64), smoothstep(0.18, 0.34, h));
+  c = mix(c, vec3(0.4, 0.36, 0.62), smoothstep(0.3, 0.5, h));
+  c = mix(c, vec3(0.16, 0.19, 0.4), smoothstep(0.42, 0.72, h));
+  return mix(c, vec3(0.09, 0.11, 0.25), smoothstep(0.68, 1.0, h));
 }
 
 // The sky, with thin clouds lit pink from below and a few faint stars high up.
@@ -263,8 +263,10 @@ vec4 parisSky(vec2 s, vec2 p) {
   float hc = h + 0.1 * (1.0 - glow);
   vec3 col = parisSkyRamp(hc);
   col = mix(col, vec3(1.0, 0.8, 0.55), 0.4 * glow * exp(-h * 10.0));
-  // Dot size follows the light: big rose dots low down, small blue ones high up.
-  float tone = 0.16 + 0.6 * exp(-max(hc - 0.1, 0.0) * 3.0) + 0.12 * glow * exp(-h * 4.0);
+  // Dot size follows the light: middle rose dots low down, the smallest
+  // dots in a blue close to the paper high up, so the deep sky reads as
+  // quiet air and the big dots stay with the tower.
+  float tone = 0.15 + 0.5 * exp(-max(hc - 0.17, 0.0) * 4.0) + 0.1 * glow * exp(-h * 4.0);
   // Long thin clouds drifting slowly to the right, brightest near the horizon.
   vec2 cp = vec2(p.x * 1.3 - parisT * 0.004, p.y * 7.0);
   float c = fbm(cp + vec2(3.1, 1.7));
@@ -272,7 +274,7 @@ vec4 parisSky(vec2 s, vec2 p) {
   float cloud = smoothstep(0.5, 0.72, c) * band;
   vec3 cloudCol = mix(vec3(1.0, 0.66, 0.6), vec3(0.58, 0.5, 0.8), smoothstep(0.1, 0.42, h));
   col = mix(col, cloudCol, cloud * 0.75);
-  tone += cloud * 0.18;
+  tone += cloud * 0.12;
   // Stars only where the sky is dark, and only a few.
   float star = parisHash(s + 17.0);
   float density = 0.0035 * smoothstep(0.42, 0.75, h);
@@ -303,7 +305,7 @@ vec4 parisFar(vec2 s, vec2 p, out float cover) {
   float glow = parisAfter(p);
   vec3 haze = mix(vec3(0.46, 0.4, 0.66), vec3(0.78, 0.52, 0.62), glow * 0.6);
   vec3 col = mix(haze * 0.82, haze, smoothstep(0.0, hgt, y));
-  float tone = 0.46 + 0.08 * smoothstep(0.0, hgt, y);
+  float tone = 0.36 + 0.06 * smoothstep(0.0, hgt, y);
   if (parisHash(s + 51.0) > 0.975 && y < hgt - 0.006) {
     col = vec3(0.95, 0.7, 0.5);
     tone = 0.7;
@@ -473,7 +475,7 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
   float fr = s.y - parisGroundRow;
   float nrows = floor(b.x / parisSh);
   // The facade: lit a touch by the sky from above, darker at street level.
-  vec3 wall = mix(vec3(0.1, 0.13, 0.32), vec3(0.2, 0.23, 0.46), smoothstep(0.0, b.x, y));
+  vec3 wall = mix(vec3(0.16, 0.19, 0.42), vec3(0.25, 0.28, 0.54), smoothstep(0.0, b.x, y));
   wall = mix(wall, vec3(0.4, 0.3, 0.46), 0.25 * glow);
   if (fr > nrows - 1.5) {
     // The cornice.
@@ -485,7 +487,7 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
     float on = parisLit(vec2(s.x, fr + id * 13.0), fr < 1.5 ? 0.55 : 0.3);
     return vec4(mix(vec3(0.08, 0.1, 0.26), tint, on), mix(0.14, 0.9, on));
   }
-  return vec4(wall, 0.24);
+  return vec4(wall, 0.36);
 }
 
 // Plane trees on the Champ de Mars either side of the tower's feet, dark
@@ -535,10 +537,11 @@ vec4 parisQuay(vec2 s, vec2 p, out float cover) {
   }
   cover = 1.0;
   if (s.y > parisGroundRow - 1.5) {
-    return vec4(0.5, 0.48, 0.7, 0.42);
+    return vec4(0.34, 0.34, 0.54, 0.34);
   }
   float course = mod(s.y - parisWaterRow, 2.0) < 0.5 ? 0.85 : 1.0;
-  return vec4(vec3(0.17, 0.19, 0.38) * course, 0.24);
+  // Darker than the facades above, so the roofs stand clear of the wall.
+  return vec4(vec3(0.08, 0.09, 0.2) * course, 0.18);
 }
 
 // The warm pools of light around the quay lamps.
@@ -563,7 +566,7 @@ float parisHalo(vec2 p) {
   // near the feet, where the afterglow is already bright.
   float dx = max(abs(p.x - parisAxisX) - reach, 0.0) / min(0.105, parisAspect * 0.11);
   float dy = (v - 0.5) / 0.62;
-  return 0.6 * exp(-dx * dx - dy * dy * 1.4) * smoothstep(0.08, 0.35, v);
+  return 0.6 * exp(-dx * dx - dy * dy * 1.4) * smoothstep(0.08, 0.35, v) * (1.0 - smoothstep(0.85, 1.05, v));
 }
 
 float parisBeacon(vec2 p) {
@@ -616,7 +619,8 @@ vec4 parisAbove(vec2 s) {
   // The sky and the haze are dithered per sample, so their gradients blend
   // between dot sizes instead of stepping in bands; the tower stays crisp.
   if (depth > 1.5) {
-    hit.a += (parisHash(s + 0.37) - 0.5) * 0.26;
+    float high = smoothstep(0.45, 0.75, y / (1.0 - parisGroundY));
+    hit.a += (parisHash(s + 0.37) - 0.5) * mix(0.26, 0.06, high);
   }
   // Mist lying low over the far bank, drifting slowly.
   if (depth > 0.5) {
@@ -692,13 +696,17 @@ vec4 parisWater(vec2 s) {
   float off = floor(sway / parisSw + 0.5);
   vec2 m = vec2(s.x + off, 2.0 * parisWaterRow - 1.0 - s.y);
   vec4 hit = parisBoat(m, cover);
+  float focus = cover;
   if (cover < 0.5) {
     hit = parisAbove(m);
+    // The tower's own reflection keeps its strength; the rest of the
+    // mirrored city sinks towards the paper.
+    parisTower(m, focus);
   }
-  float keep = mix(0.9, 0.6, dn);
-  vec3 col = hit.rgb * keep + vec3(0.02, 0.03, 0.09);
+  float keep = mix(mix(0.7, 0.38, dn), 0.95, focus);
+  vec3 col = hit.rgb * keep + vec3(0.02, 0.03, 0.08);
   col = mix(col, col * vec3(0.78, 0.86, 1.15), 0.45);
-  float tone = hit.a * mix(1.0, 0.8, dn) * (0.85 + 0.3 * rip);
+  float tone = hit.a * mix(mix(0.85, 0.55, dn), 1.0, focus) * (0.85 + 0.3 * rip);
   // The golden streak, broken into dashes that drift down the river.
   float dx = abs(p.x - parisAxisX);
   float sw = parisOuter(0.0) * PARIS_HEIGHT * mix(0.45, 0.85, dn);
@@ -708,8 +716,8 @@ vec4 parisWater(vec2 s) {
   col = mix(col, vec3(1.0, 0.68, 0.32) * mix(1.0, 0.8, dn), clamp(gold * 1.1, 0.0, 1.0));
   tone = max(tone, gold * 0.92);
   // The water is never empty: a faint ripple texture all over.
-  tone = max(tone, 0.26 + 0.1 * rip);
-  tone += (parisHash(s + 0.53) - 0.5) * 0.2 * (1.0 - gold);
+  tone = max(tone, 0.17 + 0.05 * rip);
+  tone += (parisHash(s + 0.53) - 0.5) * 0.12 * (1.0 - gold);
   return vec4(col, tone);
 }
 
