@@ -15,7 +15,7 @@ export default function CanyonRiverPhosphor() {
       />
       <div className="flex items-center justify-between border-b border-[#3a2a0a] bg-[#0a0700]/80 px-3 py-1.5 text-[11px] text-[#ffb000]/70">
         <span>rim.cam</span>
-        <span>19:42 · dusk</span>
+        <span>18:51 · golden hour</span>
       </div>
     </div>
   );

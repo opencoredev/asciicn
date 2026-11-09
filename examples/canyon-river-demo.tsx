@@ -10,7 +10,7 @@ export default function CanyonRiverDemo() {
       charset={usePreviewValue(knobs.charset)}
       colorMode={usePreviewValue(knobs.colorMode)}
       intensity={usePreviewValue(knobs.intensity)}
-      stars={usePreviewValue(knobs.stars)}
+      clouds={usePreviewValue(knobs.clouds)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
