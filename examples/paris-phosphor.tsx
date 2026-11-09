@@ -1,6 +1,7 @@
 import { Paris } from "@/components/asciicn/paris";
 
-// One amber phosphor, a CRT finish and classic glyphs: Paris on an old monitor.
+// One amber phosphor, a CRT finish and classic glyphs in text cells: Paris on
+// an old monitor.
 export default function ParisPhosphor() {
   return (
     <div className="relative isolate flex h-80 w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[#3a2a0a] bg-[#0a0700] font-mono">
@@ -9,6 +10,7 @@ export default function ParisPhosphor() {
         colorMode="mono"
         phosphor="p3"
         cell={10}
+        square={false}
         fx={{ bloom: 0.5, scanlines: 0.4, vignette: 0.45 }}
         className="absolute inset-0 -z-10"
       />

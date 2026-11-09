@@ -54,7 +54,7 @@
     "name": "paris",
     "type": "registry:component",
     "title": "Paris",
-    "description": "The Eiffel Tower lit gold at blue hour over the Seine, between Haussmann rooftops and the dome of Les Invalides, with one slow bateau-mouche.",
+    "description": "Paris at blue hour in dots: the Eiffel Tower lit gold in a soft halo, Haussmann rooftops in blue shadow, the dome of Les Invalides in the last light, and the Seine holding the tower's long golden reflection.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

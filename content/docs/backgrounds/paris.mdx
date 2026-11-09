@@ -1,12 +1,12 @@
 ---
 title: "Paris"
-description: "The Eiffel Tower lit gold at blue hour over the Seine, between Haussmann rooftops and the dome of Les Invalides, with one slow bateau-mouche."
+description: "Paris at blue hour in dots: the Eiffel Tower lit gold in a soft halo, Haussmann rooftops in blue shadow, the dome of Les Invalides in the last light, and the Seine holding the tower's long golden reflection."
 ---
 
 import ParisDemo from "@/examples/paris-demo";
 import { controls as demoControls } from "@/examples/paris-controls";
-import ParisBraille from "@/examples/paris-braille";
-import ParisHeadline from "@/examples/paris-headline";
+import ParisFine from "@/examples/paris-fine";
+import ParisHero from "@/examples/paris-hero";
 import ParisPhosphor from "@/examples/paris-phosphor";
 
 <ComponentPreview
@@ -30,46 +30,50 @@ import { Paris } from "@/components/asciicn/paris";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <Paris intensity={0.6} className="absolute inset-0 -z-10" />
+      <Paris intensity={0.85} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The Eiffel Tower is drawn to its real proportions: four splayed legs with the great arch between them, the first floor, the curved taper to the second floor, the long third stage to the top floor, and the antenna. Its iron lattice is a cross-hatch of bright bars, lit warm gold. At the tip the beacon turns slowly and shows as a soft glow that swells about every eleven seconds.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: small dots in the deep blue at the top of the sky, middle dots through the violet and mauve, and the biggest dots in the rose-gold afterglow along the rooftops.
 
-On the far bank, Haussmann blocks line up either side of the open Champ de Mars. Each has floors of tall windows, a stone cornice, a zinc mansard with dormers, and chimney stacks on the party walls. The gilded dome of Les Invalides rises behind them. Below the quay the Seine mirrors the tower in gold streaks, and one bateau-mouche with a lit glass cabin takes about two minutes to cross a wide box.
+The Eiffel Tower is drawn to its real proportions: four splayed legs with the great arch between them, the first floor, the curved taper to the second floor, the long third stage to the top floor, and the antenna. Its lattice is lit gold, warmer at the feet and paler near the top, inside a soft amber halo. At the tip the beacon turns slowly and swells about every eleven seconds.
 
-The architecture never moves, and the pointer does nothing. What changes is slow: a few windows turn on or off every few minutes, fading over three seconds, the stars twinkle faintly, the reflection shifts a column at a time, and the boat glides past.
+On the far bank, Haussmann blocks stand in blue shadow either side of the Champ de Mars, with lit windows, zinc mansards whose ridges catch the sky, dormers and chimney stacks. Plane trees flank the tower's feet. Behind the roofs, the gilded dome of Les Invalides catches the last light on the side facing the afterglow, and a hazy far skyline fades into low mist.
 
-On wide boxes the tower sits right of centre, so a headline fits on the left. On tall boxes it stands in the middle.
+The Seine mirrors all of it, darker and cooler, broken into ripples that widen towards you. Under the tower runs a long golden reflection that shimmers as the ripples drift. Lamps stand along the quay.
 
-It draws in `quadrants` by default, which keeps the silhouette sharp and solid down to a small catalog tile. `braille` traces the finest lattice, `standard` and `dense` give a typed look, and `blocks` fills shapes in solid shades. Every part is laid out on the engine's sample grid, so edges and window rows land on whole samples in any charset. In `truecolor`, the default, glyphs take the scene's own colours on a deep blue. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+Motion is slow: the reflection shimmers, the beacon glows, a few windows turn on or off every few minutes, thin clouds drift, stars twinkle faintly, and one bateau-mouche takes about three minutes to cross a wide box. The pointer does nothing.
 
-`intensity` dims the scene: colours fade in step with it. In ramp charsets the glyphs also thin out, more slowly. In `quadrants` and `braille` every dot stays, so the tower and the roofs keep their shape.
+On wide boxes the tower sits right of centre, so the middle stays calm for a headline. On tall boxes it stands in the middle, with the dome at the left edge.
+
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the lit parts (the tower, the afterglow, windows and the reflection) and leave the dark sky empty. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+`intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`intensity={0.6}` dims the glyphs so white text on the left reads first.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The tower stays right of the text on wide screens.
 
-<ComponentPreview src="examples/paris-headline.tsx" size="lg" align="stretch">
-  <ParisHeadline />
+<ComponentPreview src="examples/paris-hero.tsx" size="lg" align="stretch">
+  <ParisHero />
 </ComponentPreview>
 
-### Fine Braille lattice
+### Finer dots
 
-`charset="braille"` at `cell={7}` draws eight dots per glyph, enough to trace each bar of the lattice. `boat={false}` leaves the river still.
+`cell={5}` packs more dots into a small card, so the lattice of the tower holds its detail. `boat={false}` leaves the river still.
 
-<ComponentPreview src="examples/paris-braille.tsx">
-  <ParisBraille />
+<ComponentPreview src="examples/paris-fine.tsx">
+  <ParisFine />
 </ComponentPreview>
 
 ### On an amber monitor
 
-`colorMode="mono"` with `phosphor="p3"` draws every glyph in one amber. The `standard` charset, a 10px cell and `fx` scanlines, bloom and vignette finish the look.
+`colorMode="mono"` with `phosphor="p3"` draws every glyph in one amber. The `standard` charset in text cells (`square={false}`), a 10px cell and `fx` scanlines, bloom and vignette finish the look.
 
 <ComponentPreview src="examples/paris-phosphor.tsx">
   <ParisPhosphor />
@@ -103,7 +107,7 @@ It draws in `quadrants` by default, which keeps the silhouette sharp and solid d
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep night blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -114,7 +118,7 @@ It draws in `quadrants` by default, which keeps the silhouette sharp and solid d
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -200,14 +204,22 @@ It draws in `quadrants` by default, which keeps the silhouette sharp and solid d
     {
       name: "cell",
       type: "number",
-      default: "8",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Cells as wide as they are tall, so the dots lie in an even lattice. false uses text cells, twice as tall as wide.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast the lights, the water and the boat move.",
+      description:
+        "How fast the lights, the clouds, the water and the boat move.",
     },
     {
       name: "animate",
@@ -250,5 +262,5 @@ It draws in `quadrants` by default, which keeps the silhouette sharp and solid d
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat blue gradient.
-- The whole city is one shader pass on the GPU. Water samples also draw the mirrored tower and boat, so the river costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat blue-hour gradient.
+- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the river costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
