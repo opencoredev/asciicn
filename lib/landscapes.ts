@@ -9,7 +9,7 @@ export const LANDSCAPES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "Sunrise over a river valley: layered hills fading into haze, mist on the valley floor, a river catching the low sun and hot-air balloons hanging at different depths.",
+      "Early morning over a river valley in halftone dots on cream: cool blue hills fading into haze, pale gold mist, a river catching the low sun and hot-air balloons at different depths.",
     id: "balloon-valley",
     load: async () => {
       const { BalloonValley } =

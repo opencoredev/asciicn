@@ -56,9 +56,10 @@ export const BACKGROUNDS: readonly BackgroundEntry[] = tagged.toSorted(
  * What the landing hero rotates through, in order. It opens on San
  * Francisco, whose orange bridge sits with the amber accent.
  */
+// Night and golden-hour scenes only: the hero sets white type on a dark
+// scrim, so balloon valley's cream morning paper stays out of it.
 const HERO_IDS = [
   "san-francisco",
-  "balloon-valley",
   "canyon-river",
   "tokyo",
   "lighthouse",
