@@ -1,0 +1,245 @@
+---
+title: "Glacier lagoon"
+description: "Icebergs glowing blue-white on a glassy lagoon below a glacier and dark peaks, under a midnight sun sitting gold and rose on the horizon."
+---
+
+import GlacierLagoonDemo from "@/examples/glacier-lagoon-demo";
+import { controls as demoControls } from "@/examples/glacier-lagoon-controls";
+import GlacierLagoonHero from "@/examples/glacier-lagoon-hero";
+import GlacierLagoonDuotone from "@/examples/glacier-lagoon-duotone";
+
+<ComponentPreview
+  src="examples/glacier-lagoon-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <GlacierLagoonDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="glacier-lagoon" />
+
+## Usage
+
+```tsx
+import { GlacierLagoon } from "@/components/asciicn/glacier-lagoon";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <GlacierLagoon intensity={0.7} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The view looks across a glacier lagoon near midnight in high summer. The sun sits on the horizon right of centre, a white-gold disc inside a gold and rose glow that fades to night blue overhead. Dark peaks stand against the glow with alpenglow on their sunward crests, and the peaks right of centre sit farther back in haze. On the left a broad tongue of pale ice comes down between two peaks and ends in a deep blue calving face at the water, crossed by arcing bands and one dark stripe of moraine.
+
+Six icebergs float on the lagoon, from a small block at the glacier's foot to a tall pinnacle on the right. Each is pale blue-white where the sun catches it and deep blue in shadow, with an aquamarine band at the waterline. The water is glassy. It mirrors the sky, the peaks and the glacier about the horizon and each berg about its own waterline, and small chips of brash ice are scattered across it.
+
+Nothing moves fast, and the pointer does nothing. The bergs drift a few cells over several minutes, a band of low mist slides along the horizon, the clouds creep sideways, gold glints shimmer on the sun's path across the water, and the glow around the sun swells faintly.
+
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots lay an even halftone lattice. Dot size carries brightness and, in `truecolor`, every dot takes its own colour. Even the darkest water and rock keep a faint dot, so every cell is painted. Set `square={false}` for charsets that need tall cells: `quadrants` gives a solid, saturated picture, `braille` a fine one, and `standard` a typed look. In `truecolor` it paints its own night sky, so it looks the same on light and dark pages. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by brightness alone.
+
+On wide boxes the glacier sits left and the sun right, with open sky and water between them for a headline. On tall boxes the layout narrows toward the centre, so the glacier, the sun and the nearest bergs stay in frame.
+
+`intensity` dims the dots and their colours. Below 1 it also quiets an oval in the middle of the box, where a headline and buttons usually sit.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.7}` dims the dots and quiets the middle of the box, so a centred headline and two buttons read first.
+
+<ComponentPreview
+  src="examples/glacier-lagoon-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <GlacierLagoonHero />
+</ComponentPreview>
+
+### In one ramp
+
+`colorMode="duotone"` with `ramp="glacier"` reads the scene by brightness alone, from teal shadow to white ice. `mist={false}` keeps the horizon clear.
+
+<ComponentPreview src="examples/glacier-lagoon-duotone.tsx">
+  <GlacierLagoonDuotone />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the scene draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "mist",
+      type: "boolean",
+      default: "true",
+      description: "The band of low mist sliding across the water.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even lattice. Turn it off for Braille, quadrants or text charsets.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep night blue; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"glacier"',
+      description:
+        "In duotone mode, the colour ramp from dark to light. The default runs from teal shadow to white ice.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between neighbouring glyph levels. The default mixes dot sizes so the sky's gradients stay smooth.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels. With square cells it is also the width.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the mist, the clouds and the water move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds. Every moment shows the full scene.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat gradient of the sky and the lagoon.
+- The whole scene is one shader pass on the GPU. Water samples also draw the mirrored sky, peaks and glacier, so the lagoon costs about twice as much as the sky. See [Performance](/docs/engine/performance).

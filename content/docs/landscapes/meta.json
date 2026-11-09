@@ -1,5 +1,11 @@
 {
   "title": "Landscapes",
   "description": "Painted halftone landscapes in glyph dots, each one component you put behind a hero.",
-  "pages": ["redwood-light", "balloon-valley", "canyon-river", "lighthouse"]
+  "pages": [
+    "redwood-light",
+    "balloon-valley",
+    "canyon-river",
+    "lighthouse",
+    "glacier-lagoon"
+  ]
 }
