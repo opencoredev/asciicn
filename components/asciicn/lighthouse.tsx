@@ -17,6 +17,8 @@ const float LH_HORIZON = 0.42;
 const float LH_SHORE = 0.28;
 const float LH_TOP = 0.5;
 const float LH_TOWER = 0.25;
+// The scene's own paper, #05070f, that the quietest dots sit just above.
+const vec3 LH_PAPER = vec3(0.02, 0.027, 0.06);
 
 // Set once per sample by lhScene and read by every layer.
 float lhAspect;
@@ -46,8 +48,8 @@ float lhGlowAt(float x) {
 // then blue deepening overhead.
 vec3 lhSkyColor(float x, float e) {
   float g = lhGlowAt(x);
-  vec3 low = mix(vec3(0.66, 0.54, 0.66), vec3(1.0, 0.72, 0.48), g);
-  vec3 rose = mix(vec3(0.42, 0.36, 0.6), vec3(0.86, 0.48, 0.54), g);
+  vec3 low = mix(vec3(0.58, 0.48, 0.6), vec3(0.94, 0.66, 0.44), g);
+  vec3 rose = mix(vec3(0.36, 0.31, 0.54), vec3(0.74, 0.42, 0.48), g);
   vec3 violet = vec3(0.32, 0.32, 0.66);
   vec3 blue = vec3(0.11, 0.18, 0.5);
   vec3 night = vec3(0.065, 0.09, 0.25);
@@ -265,12 +267,19 @@ vec4 lhRock(vec2 p, float top, out float cover) {
   float relief = clamp(0.5 + 0.22 * dot(grad, vec2(-0.6, 0.8)), 0.0, 1.0);
   float strata = fbm(vec2(p.x * 9.0, p.y * 30.0));
   float crack = smoothstep(0.62, 0.7, fbm(vec2(p.x * 26.0 + 3.0, p.y * 7.0)));
-  vec3 rock = mix(vec3(0.045, 0.045, 0.1), vec3(0.4, 0.36, 0.52), smoothstep(0.4, 0.78, relief) * mix(0.7, 1.0, strata));
+  // Broad light from the sky over the sea: the seaward slopes and the top
+  // are lit, the rock falls into shadow inland and towards the water, and
+  // the relief breaks it into lit and shaded facets.
+  float seaward = 1.0 - smoothstep(-0.12, 0.38, p.x - lhAxis);
+  float high = 1.0 - smoothstep(0.0, 0.16, depth);
+  float lightAmt = clamp((0.25 + 0.75 * seaward) * mix(0.45, 1.0, high), 0.0, 1.0);
+  float facet = smoothstep(0.35, 0.8, relief) * mix(0.75, 1.0, strata);
+  vec3 rock = mix(vec3(0.03, 0.03, 0.065), vec3(0.6, 0.53, 0.68), smoothstep(0.15, 1.0, lightAmt) * mix(0.4, 1.0, facet));
   // Faces turned to the left catch the afterglow along the cliff.
   float slope = lhLand(p.x + 0.015) - lhLand(p.x - 0.015);
   float face = smoothstep(0.004, 0.03, slope) * (1.0 - smoothstep(0.04, 0.2, depth));
   rock = mix(rock, vec3(0.95, 0.6, 0.55) * mix(0.55, 1.15, relief), face * 0.85);
-  rock *= 1.0 - 0.6 * crack;
+  rock *= 1.0 - 0.45 * crack;
   // Turf on the plateau, catching the blue sky.
   if (depth < 0.016 && top > LH_TOP - 0.08) {
     rock = mix(vec3(0.1, 0.17, 0.22), vec3(0.3, 0.42, 0.44), relief);
@@ -311,8 +320,11 @@ vec3 lhSea(vec2 p) {
   c = mix(c, vec3(0.07, 0.1, 0.26), smoothstep(0.12, 0.42, d) * 0.5);
   // Swell crests catch the pale horizon; troughs fall into shadow.
   float near = smoothstep(0.02, 0.12, d);
-  c = mix(c, lhSkyColor(p.x, 0.03 + 0.25 * d) * 1.1, 0.75 * smoothstep(0.35, 0.9, swell) * near);
-  c *= 1.0 - 0.35 * smoothstep(-0.1, -0.8, swell) * near;
+  // Crests come and go along their length, so they read as swells
+  // rather than evenly spaced stripes.
+  float broken = smoothstep(-0.2, 0.5, snoise(vec2(p.x * 5.0 + lhT * 0.02, p.y * 14.0)));
+  c = mix(c, lhSkyColor(p.x, 0.03 + 0.25 * d), 0.55 * smoothstep(0.45, 0.95, swell) * near * broken);
+  c *= 1.0 - 0.3 * smoothstep(-0.1, -0.8, swell) * near;
   // The headland's dark reflection below its foot.
   float below = LH_SHORE - p.y;
   if (below > 0.0) {
@@ -324,11 +336,13 @@ vec3 lhSea(vec2 p) {
   }
   // The lamp's path on the water: a warm column breaking into dashes.
   if (below > -0.01) {
-    float spread = 0.022 + 0.14 * max(below, 0.0);
+    float spread = 0.026 + 0.16 * max(below, 0.0);
     float lane = exp(-pow((p.x - lhAxis) / spread, 2.0));
-    float glint = smoothstep(-0.5, 0.4, snoise(vec2(p.x * 18.0, p.y * 90.0 - lhT * 0.3)) + 0.6 * swell);
-    float path = lane * glint * (1.0 - 0.45 * smoothstep(0.0, 0.3, below)) * lhPulse;
-    c = mix(c, vec3(1.0, 0.76, 0.42), clamp(path, 0.0, 1.0) * 0.95);
+    float glint = smoothstep(-0.6, 0.3, snoise(vec2(p.x * 18.0, p.y * 90.0 - lhT * 0.3)) + 0.6 * swell);
+    float path = lane * glint * (1.0 - 0.35 * smoothstep(0.0, 0.3, below)) * lhPulse;
+    // A soft warm wash under the dashes, so the column reads as one light.
+    c += vec3(0.22, 0.12, 0.03) * lane * (1.0 - smoothstep(0.0, 0.35, below)) * lhPulse;
+    c = mix(c, vec3(1.0, 0.78, 0.44), clamp(path * 1.15, 0.0, 1.0));
   }
   return mix(c, vec3(0.82, 0.88, 0.98), lhFoam(p) * 0.65);
 }
@@ -413,8 +427,8 @@ vec4 lhScene(vec2 uv, vec2 res, float t) {
   }
   // The lamp's halo: a tight warm core, a soft bloom and a wide warm wash.
   float r = length((p - lhLamp) * vec2(1.0, 1.15));
-  float core = exp(-r / 0.028) * lhPulse;
-  float bloom = exp(-r / 0.1) * lhPulse;
+  float core = exp(-r / 0.03) * lhPulse;
+  float bloom = exp(-r / 0.11) * lhPulse;
   col = mix(col, vec3(1.0, 0.86, 0.58), clamp(core * 1.3, 0.0, 1.0));
   col = mix(col, col * vec3(0.7, 0.6, 0.45), bloom);
   col += vec3(0.75, 0.42, 0.1) * bloom * 0.8 + vec3(0.2, 0.1, 0.02) * exp(-r / 0.22) * lhPulse;
@@ -423,14 +437,19 @@ vec4 lhScene(vec2 uv, vec2 res, float t) {
   col += vec3(0.4, 0.24, 0.08) * exp(-length(dw) / 0.014);
 
   col = clamp(col, 0.0, 1.0);
-  // Dot size follows brightness: a faint dot in the night and the deep
-  // water, full dots in the lamp, the tower and the afterglow. A little
-  // fixed jitter per cell breaks gradients into mixed dots instead of hard
-  // steps, and the ink is lifted a touch because a dot covers only part of
-  // its cell.
-  float jitter = (lhHash(s + 31.0) - 0.5) * 0.1;
-  float tone = 0.1 + pow(lhLuma(col), 0.65) + jitter;
+  // Dot size follows brightness, and only the lamp, the tower, the foam
+  // and the line of the afterglow reach full dots. Dark air, rock and deep
+  // water draw small dots in a muted ink barely above the paper, so they
+  // read as quiet dark rather than a field of dots, and the lamp carries
+  // the frame. A little fixed jitter per cell breaks gradients into mixed
+  // dots instead of hard steps.
+  float lum = lhLuma(col);
+  float quiet = 1.0 - smoothstep(0.06, 0.34, lum);
+  float jitter = (lhHash(s + 31.0) - 0.5) * 0.1 * (1.0 - 0.5 * quiet);
+  float tone = 0.04 + 1.05 * pow(lum, 0.8) + jitter;
   vec3 ink = pow(col, vec3(0.75));
+  vec3 muted = mix(LH_PAPER, mix(vec3(lhLuma(ink)), ink, 0.5), 0.6);
+  ink = mix(ink, muted, quiet);
   lhCacheUv = uv;
   lhCacheT = t;
   lhCacheValue = vec4(ink * mix(0.3, 1.0, lhIntensity), clamp(tone, 0.0, 1.0) * mix(0.6, 1.0, lhIntensity));
