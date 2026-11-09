@@ -3,7 +3,7 @@
     "name": "miami",
     "type": "registry:component",
     "title": "Miami",
-    "description": "Ocean Drive at nightfall: art deco hotels with stepped parapets and neon trim, the glass towers of Brickell behind, still palms and neon reflections in the bay.",
+    "description": "Ocean Drive at nightfall in dots: art deco hotels with soft neon on their stepped parapets, palms in silhouette, the glass towers of Brickell in blue haze and a bay holding the neon in broken reflections.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
