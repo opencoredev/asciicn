@@ -40,5 +40,22 @@
         "target": "components/asciicn/ocean-waves.tsx"
       }
     ]
+  },
+  {
+    "name": "black-hole",
+    "type": "registry:component",
+    "title": "Black hole",
+    "description": "A black hole seen close to edge-on: a thin disk lensed over and under a black shadow, a sharp photon ring and slow streaks flowing round.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/black-hole.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/black-hole.tsx"
+      }
+    ]
   }
 ]
