@@ -6,7 +6,7 @@ export default function BalloonValleyDuotone() {
     <div className="relative isolate h-80 w-full max-w-2xl overflow-hidden rounded-xl">
       <BalloonValley
         colorMode="duotone"
-        ramp={["#120b2a", "#5b2a6e", "#e0785a", "#ffe2b0"]}
+        ramp={["#ebdfcf", "#d9a273", "#8a6a8f", "#33406b"]}
         cell={6}
         className="absolute inset-0"
       />
