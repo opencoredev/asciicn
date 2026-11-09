@@ -1,11 +1,11 @@
 import { RiceTerraces } from "@/components/asciicn/rice-terraces";
 
-// Full-bleed behind a centred headline: at 0.6 intensity the valley's mist
-// and the far ridges sit back, and the text and buttons read first.
+// Full-bleed behind a centred headline: at 0.8 intensity the middle of the
+// frame quiets further, and the text and buttons read first.
 export default function RiceTerracesHero() {
   return (
     <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-5 px-6 text-center text-white">
-      <RiceTerraces intensity={0.6} className="absolute inset-0 -z-10" />
+      <RiceTerraces intensity={0.8} className="absolute inset-0 -z-10" />
       <h3 className="max-w-xl text-4xl font-medium tracking-[-0.03em] text-balance sm:text-5xl">
         Grow it one terrace at a time
       </h3>

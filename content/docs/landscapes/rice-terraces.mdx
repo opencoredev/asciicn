@@ -29,22 +29,22 @@ import { RiceTerraces } from "@/components/asciicn/rice-terraces";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <RiceTerraces intensity={0.6} className="absolute inset-0 -z-10" />
+      <RiceTerraces intensity={0.8} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-A terraced hillside fills the foreground. Its crest is high on the left and falls away to the right, with a line of trees along the top. The terraces run almost level, bow down over a spur and thin out as they climb, so the near ones are wide and the far ones narrow. Each is a dark earthen wall with a flooded pool behind it. The pools mirror the sky at the angle they see it: the near ones the rose overhead, the far ones the gold at the horizon. So the hill reads as stacked ribbons of light.
+A terraced hillside fills the foreground. Its crest is high on the left and falls away to the right, with a line of trees along the top. The terraces wrap the hill: they climb with the crest, bow toward you over each spur and tuck back into each gully, and no two are the same width. Each basin is a dark earthen wall, a narrow lip of water that catches the light where it meets the wall, and a darker pool behind that deepens toward the wall above. The lips mirror the sky at the angle they see it, rose near you and gold farther up, and burn brightest in the sun's glitter path.
 
-Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot, warming to gold under the sun. Three ridges step back into lavender haze, each lighter than the one in front. The sun stands just above them in a soft glow.
+Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot. Three ridges step back with ragged crests. Faces turned to the sun take its rose light, faces turned away keep the shadow, and each layer is paler and finer than the one in front. The sun stands high on the right in a soft glow.
 
-Every cell carries a dot. The `dots` charset draws `·`, `•` and `●`, so the dot's size carries its tone: walls and the night sky overhead are fine points, the ridges are mid dots, and the water, mist and sun are full dots. In `truecolor`, the default, each dot takes its own colour. Cells are square by default, 7px each way, so the dots lie on an even lattice like a halftone screen. `square={false}` uses the font's tall cells instead.
+Most of the frame is quiet. The sky overhead, the walls and the shadowed faces are fine points only a little lighter than the paper. Large bright dots are kept for the sun, its glitter and the lips of the pools. The `dots` charset draws `·`, `•` and `●`, so a dot's size carries its tone, and in `truecolor`, the default, each dot takes its own colour. Cells are square by default, 7px each way, so the dots lie on an even lattice like a halftone screen. `square={false}` uses the font's tall cells instead.
 
 The motion is slow. Mist drifts through the valley, the pools shimmer, the sun glitters on the water below it, a few last stars twinkle, and one pale egret glides across the sky every few minutes.
 
-On wide boxes the sun sits right of centre, so the middle stays calm for a headline. On tall boxes it stands in the middle, with the hill on the left and the terraces across the bottom.
+The middle of the frame is mist and far ridges in low contrast, so a centred headline sits on calm ground. On wide boxes the sun stands in the upper right; on tall boxes it rises above the headline, with the terraces below it.
 
 The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`, so it looks the same on light and dark pages. `mono` with a `phosphor` reads it by tone alone.
 
@@ -54,7 +54,7 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
 
 ### Hero
 
-`intensity={0.6}` sets the hillside back so a centred headline and two buttons read first.
+`intensity={0.8}` dims the scene a little and quiets the middle further, so a centred headline and two buttons read first.
 
 <ComponentPreview
   src="examples/rice-terraces-hero.tsx"
