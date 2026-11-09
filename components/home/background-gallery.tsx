@@ -43,6 +43,20 @@ const GROUP_LABEL = {
 const PREVIOUS_KEYS = new Set(["[", "ArrowLeft"]);
 const NEXT_KEYS = new Set(["]", "ArrowRight"]);
 
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
+
+// Arrow keys switch backgrounds only when nothing else has focus or focus is
+// inside the viewer, so they never hijack the nav, search or a text field.
+const ownsKeys = (target: EventTarget | null, viewer: HTMLElement | null) =>
+  target === document.body ||
+  (target instanceof Node &&
+    viewer !== null &&
+    viewer.contains(target) &&
+    !isTyping(target));
+
 const keyStep = (key: string) => {
   if (PREVIOUS_KEYS.has(key)) {
     return -1;
@@ -72,11 +86,6 @@ const writeCity = (id: string) => {
 
 const installCommand = (origin: string, id: string) =>
   `npx shadcn@latest add ${origin}/r/${id}.json`;
-
-const isTyping = (target: EventTarget | null) =>
-  target instanceof HTMLElement &&
-  (target.isContentEditable ||
-    ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
 
 const CopyInstall = ({ source }: { source: StageSource }) => {
   const origin = useSiteOrigin();
@@ -118,6 +127,7 @@ export const BackgroundGallery = () => {
   };
   const source = findSource(selectedId) ?? CITY_SOURCES[0];
   const stripRef = useRef<HTMLUListElement>(null);
+  const viewerRef = useRef<HTMLElement>(null);
   const index = source ? CITY_SOURCES.indexOf(source) : 0;
   const count = CITY_SOURCES.length;
 
@@ -136,17 +146,30 @@ export const BackgroundGallery = () => {
     }
   }, []);
 
-  // Keep the selected thumbnail in view inside the strip. Scrolling the
-  // strip itself, not scrollIntoView, so the page never jumps.
+  // Keep the selected thumbnail in view inside the strip, on a switch and
+  // when the strip resizes. Scrolling the strip itself, not scrollIntoView,
+  // so the page never jumps.
   useEffect(() => {
     const strip = stripRef.current;
-    const item = strip?.children[index];
-    if (!(strip && item instanceof HTMLElement)) {
+    if (!strip) {
       return;
     }
-    const left = item.offsetLeft - (strip.clientWidth - item.clientWidth) / 2;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    strip.scrollTo({ behavior: reduce.matches ? "auto" : "smooth", left });
+    const center = (smooth: boolean) => {
+      const item = strip.children[index];
+      if (!(item instanceof HTMLElement)) {
+        return;
+      }
+      const left = item.offsetLeft - (strip.clientWidth - item.clientWidth) / 2;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+      strip.scrollTo({
+        behavior: smooth && !reduce.matches ? "smooth" : "auto",
+        left,
+      });
+    };
+    center(true);
+    const observer = new ResizeObserver(() => center(false));
+    observer.observe(strip);
+    return () => observer.disconnect();
   }, [index]);
 
   useEffect(() => {
@@ -155,7 +178,8 @@ export const BackgroundGallery = () => {
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
-        isTyping(event.target)
+        event.defaultPrevented ||
+        !ownsKeys(event.target, viewerRef.current)
       ) {
         return;
       }
@@ -180,6 +204,7 @@ export const BackgroundGallery = () => {
 
   return (
     <section
+      ref={viewerRef}
       aria-label={`${source.title}, background ${index + 1} of ${count}`}
       className="relative"
     >
