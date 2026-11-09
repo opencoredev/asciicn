@@ -39,6 +39,7 @@ export const getPageMarkdownUrl = (page: InferPageType<typeof source>) => {
 /** Docs sections that hold example components rather than guides. */
 const EXAMPLE_SECTIONS: ReadonlySet<string> = new Set([
   "backgrounds",
+  "landscapes",
   "scenes",
   "fields",
   "interface",

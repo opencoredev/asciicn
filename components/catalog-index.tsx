@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
  */
 
 /** Groups whose demos move on their own, so their tiles play live. */
-const LIVE_GROUPS: ReadonlySet<string> = new Set(["backgrounds"]);
+const LIVE_GROUPS: ReadonlySet<string> = new Set(["backgrounds", "landscapes"]);
 
 const liveDemo = async (piece: CatalogPiece) => {
   const [group, slug] = piece.url.replace(/^\/docs\//u, "").split("/");
