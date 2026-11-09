@@ -139,7 +139,7 @@
     "name": "rio",
     "type": "registry:component",
     "title": "Rio de Janeiro",
-    "description": "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay.",
+    "description": "Rio de Janeiro at dusk from the water in dots: Sugarloaf beside Morro da Urca with one cable car crossing, Christ the Redeemer pale on Corcovado, and the lamps of Copacabana curving along the shore under a gold to violet sky.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

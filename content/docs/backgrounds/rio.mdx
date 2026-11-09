@@ -1,12 +1,12 @@
 ---
 title: "Rio de Janeiro"
-description: "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay."
+description: "Rio de Janeiro at dusk from the water in dots: Sugarloaf beside Morro da Urca with one cable car crossing, Christ the Redeemer pale on Corcovado, and the lamps of Copacabana curving along the shore under a gold to violet sky."
 ---
 
 import RioDemo from "@/examples/rio-demo";
 import { controls as demoControls } from "@/examples/rio-controls";
-import RioHeadline from "@/examples/rio-headline";
-import RioPhosphor from "@/examples/rio-phosphor";
+import RioDuotone from "@/examples/rio-duotone";
+import RioHero from "@/examples/rio-hero";
 
 <ComponentPreview
   src="examples/rio-demo.tsx"
@@ -29,35 +29,43 @@ import { Rio } from "@/components/asciicn/rio";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <Rio intensity={0.7} className="absolute inset-0 -z-10" />
+      <Rio intensity={0.85} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-On the right, Sugarloaf rises straight out of the bay as a granite dome, lit on the side that faces the moon, with the lower, forested Morro da Urca in front of it. A cable runs from the top of Urca to the top of Sugarloaf, and one cable car crosses it: it waits about 12 seconds at each station, then takes about half a minute to cross. On the left, Corcovado climbs out of the forested range to a sharp granite peak, with Christ the Redeemer on the summit in white, arms straight out. Below them, Copacabana curves away along the shore: a string of lamps on the promenade, a wall of apartment blocks with lit windows, and homes on the lower slopes.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the biggest dots gather in the gold afterglow on the horizon and its reflection, middle dots run through the rose and violet sky, and the deep sky and the shadowed mountains fall to the smallest dots, close to the paper.
 
-Only a few things move. A handful of windows switch on or off, each fading over a couple of seconds and changing only every minute or more. Stars glint faintly. The lamps, Sugarloaf and the moon lay broken reflections on the water, which shift sideways a little as the bay moves. The mountains, the statue and the buildings stay still, and nothing reacts to the pointer.
+The sun has just set between the mountains. Sugarloaf rises out of the bay on the right as a great dark dome that leans towards the lower, forested Morro da Urca beside it. Its flank towards the afterglow catches a rose light and a lit rim, while the face towards you stays in shadow. A cable runs from the top of Urca to the top of Sugarloaf, a fine dark line against the glow, and one cable car's light crosses it: it waits about 12 seconds at each station, then takes about half a minute to cross. On the left, Corcovado climbs out of the Tijuca range, hazier and paler because it stands farther off, to a granite needle with Christ the Redeemer on the summit, small and lit pale by floodlights. Below it, the lamps of Copacabana curve along the shore in a crescent in front of a low wall of apartment blocks, and homes are lit on the lower slopes.
 
-It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2 grid of samples, so outlines, the statue and window grids land on whole samples and stay sharp. `braille` gives finer, thinner dots, and `blocks`, `standard` and `dense` also work. In `truecolor`, the default, it paints its own colours on a night blue. In `mono`, `duotone` and `palette`, where colour no longer carries brightness, the hills and Sugarloaf fill with ordered dot patterns of different densities so they stay apart.
+The bay mirrors all of it, darker and cooler, broken into ripples that widen towards you. Under the afterglow runs a long gold reflection, and the beach lamps draw short warm lines down into the water.
+
+Motion is slow: the cable car crosses, the reflections shimmer as the ripples drift, the lamps along the beach twinkle gently, a few windows turn on or off every couple of minutes, thin clouds drift and stars twinkle faintly. The pointer does nothing.
+
+On wide boxes Corcovado and Sugarloaf frame the middle, so the sky over the afterglow stays calm for a headline. On tall boxes the scene is drawn smaller and lower, so both peaks stay in view beneath the headline.
+
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the lit parts (the afterglow, the lights and the reflection) and leave the dark sky and mountains empty. In `truecolor`, the default, the scene paints its own dusk paper in both themes. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
+
+`intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`colorMode="duotone"` with the `sodium` ramp turns the scene gold on its night blue, and `intensity={0.6}` dims the colours and thins the fills. The headline sits low, over the open water, so it reads first.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. Corcovado and Sugarloaf stand either side of the text on wide screens and below it on phones.
 
-<ComponentPreview src="examples/rio-headline.tsx" size="lg" align="stretch">
-  <RioHeadline />
+<ComponentPreview src="examples/rio-hero.tsx" size="lg" align="stretch">
+  <RioHero />
 </ComponentPreview>
 
-### On a green monitor
+### Gold print
 
-`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset and `fx` scanlines, bloom and vignette finish the look.
+`colorMode="duotone"` runs the tones through the `sodium` ramp, gold on night blue, and `cell={5}` packs finer dots into a small card.
 
-<ComponentPreview src="examples/rio-phosphor.tsx">
-  <RioPhosphor />
+<ComponentPreview src="examples/rio-duotone.tsx">
+  <RioDuotone />
 </ComponentPreview>
 
 ## Props
@@ -83,18 +91,26 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a dusk indigo; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true for dots",
+      description:
+        "Cells as wide as they are tall, so the dots lie in an even lattice. Off by default for braille and quadrants, which would stretch.",
     },
     {
       name: "fallback",
       type: "ReactNode",
       default: "a gradient",
-      description: "Shown without WebGL and until the first frame.",
+      description:
+        "Shown without WebGL and until the first frame: the dusk as a flat gradient.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -121,7 +137,7 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: "–",
+      default: '"sodium"',
       description: "In duotone mode, the colour ramp from dark to light.",
     },
     {
@@ -148,7 +164,7 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
       type: "number",
       default: "0.5",
       description:
-        "Braille and quadrants: the tone that lights a dot. The scene lights its dots at a tone of 0.6 or more, so only values above that thin it out.",
+        "Braille and quadrants: the tone that lights a dot. Lower it to bring the dusk sky and the mountains back.",
     },
     {
       name: "edgeThreshold",
@@ -160,9 +176,9 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
+      default: '"blue-noise" for dots',
       description:
-        "Ordered dithering between neighbouring glyph levels. In braille and quadrants the scene already fills with its own ordered patterns where colour cannot carry brightness.",
+        "Blends neighbouring dot sizes so the sky's gradient reads smooth. Blue noise for dots, braille and quadrants; none for other charsets and custom chars.",
     },
     {
       name: "background",
@@ -181,7 +197,7 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -206,7 +222,7 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "stillTime",
       type: "number",
-      default: "28",
+      default: "12",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -230,7 +246,6 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - It ignores the pointer: no parallax and no hover effect.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 28 seconds, catches the cable car halfway up.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat night-blue gradient.
-- On wide boxes the whole bay fits. On narrow ones the view closes in on the stretch from Corcovado to the moon and draws it smaller, so both peaks stay in view.
-- The whole city is one shader pass on the GPU. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 12 seconds, catches the cable car halfway across.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows the dusk as a flat gradient.
+- The whole city is one shader pass on the GPU, one sample per dot. See [Performance](/docs/engine/performance).

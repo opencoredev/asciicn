@@ -2,608 +2,463 @@
 
 import type { ReactNode } from "react";
 
+import type {
+  AsciiColor,
+  AsciiSceneProps,
+  CharsetName,
+  ColorMode,
+} from "@/lib/ascii";
 import { resolveCharset } from "@/lib/ascii";
-import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// Rio at night, seen from the sea. The scene lives in a frame measured in
-// box heights (x centred, y up) with the bay's far shore at RIO_SEA; on
-// narrow boxes the frame shrinks about that line so both peaks stay in
-// view. Everything solid is decided per sample against exact outlines, and
-// the small things (the statue, the cable car, windows, lamps, stars) are
-// placed on whole samples, so edges stay crisp at every density and
-// nothing between them blurs. Nothing that is built moves: only window
-// lights, star glints, the water and the one cable car change over time.
-// Tone carries density: in Braille and quadrants a fill becomes an ordered
-// dot pattern of that density, and outlines and lights light every dot.
+// Rio at dusk from the water, painted in dots: every sample works out a
+// colour, and the dot size follows its brightness, as in a halftone print.
+// The scene is laid out in scene units (x across from the middle, y up from
+// the bottom, both in box heights) and shrinks about the waterline on tall
+// boxes, so both peaks stay in view on a phone. Layers are tested near to
+// far: Sugarloaf, the cable and its car, Morro da Urca, Copacabana along
+// the shore, the Corcovado range with the statue, a far hazy range, then
+// the sky. Rows below the waterline are the bay, which reads the same
+// layers mirrored. Small lit things (the statue, the car, lamps, windows)
+// are placed on whole samples, so they stay crisp dots at any size.
 const SCENE = `
-const float RIO_SEA = 0.3;
-const float RIO_COR_X = -0.26;
-const float RIO_COR_TOP = 0.7;
-const float RIO_STATUE_H = 0.1;
-const float RIO_LOAF_X = 0.52;
-const float RIO_LOAF_H = 0.3;
-const float RIO_URCA_X = 0.3;
-const float RIO_LAMP = 0.03;
-const float RIO_BLOCK = 0.05;
+// Set once per sample by rioScene and read by every layer.
+float rioT;
+float rioAspect;
+float rioSw;
+float rioSh;
+float rioK;
+float rioW;
+float rioWaterRow;
+float rioHalf;
+float rioCorX;
+float rioUrcaX;
+float rioUrcaR;
+float rioLoafX;
+float rioSunX;
+float rioBeach0;
+float rioBeach1;
+float rioSkyScale;
 
-float rioAspect = 1.0;
-float rioK = 1.0;
-float rioOff = 0.0;
-vec2 rioSamples = vec2(1.0);
-float rioPx = 0.01;
-float rioPw = 0.01;
-vec2 rioMoonAt = vec2(0.73, 0.87);
+const float RIO_COR_H = 0.4;
+const float RIO_URCA_H = 0.13;
+const float RIO_LOAF_H = 0.37;
+const float RIO_LOAF_R = 0.115;
+const float RIO_LEAN = 0.045;
 
-void rioLayout(vec2 res) {
-  rioAspect = res.x / res.y;
-  rioSamples = max(ascii_samples, vec2(1.0));
-  // Show at least the stretch from Corcovado to the moon, and centre on it
-  // when the box is too narrow for the whole bay.
-  float span = max(rioAspect, 1.15);
-  rioK = rioAspect / span;
-  rioOff = 0.2 * clamp((1.6 - span) / 0.45, 0.0, 1.0);
-  // The moon stays clear of the right edge.
-  rioMoonAt = vec2(min(0.73, rioOff + 0.5 * span - 0.08), 0.87);
-  rioPx = 1.0 / (rioSamples.y * rioK);
-  rioPw = rioAspect / (rioSamples.x * rioK);
-}
-
-vec2 rioFrame(vec2 uv) {
-  return vec2((uv.x - 0.5) * rioAspect / rioK + rioOff, RIO_SEA + (uv.y - RIO_SEA) / rioK);
-}
-
-// The sample (column, row) that holds a frame point.
-vec2 rioCellOf(vec2 f) {
-  vec2 uv = vec2((f.x - rioOff) * rioK / rioAspect + 0.5, RIO_SEA + (f.y - RIO_SEA) * rioK);
-  return floor(uv * rioSamples);
-}
-
-// A frame x as a continuous column: column c spans c to c + 1.
-float rioColumn(float x) {
-  return ((x - rioOff) * rioK / rioAspect + 0.5) * rioSamples.x;
-}
-
-vec2 rioCentre(vec2 cell) {
-  return rioFrame((cell + 0.5) / rioSamples);
-}
-
-// Copacabana recedes to the right: depth runs 0 at the near end to 1 where
-// the beach meets the bay below Urca, and things shrink with it.
-float rioDepth(float x) {
-  return clamp((x + 0.9) / 1.05, 0.0, 1.0);
-}
-
-float rioScale(float x) {
-  return 1.0 - 0.7 * rioDepth(x);
-}
-
-float rioShore(float x) {
-  float d = 1.0 - rioDepth(x);
-  return RIO_SEA - 0.2 * d * d;
-}
-
-// The promenade, where the sand ends and the lamps stand.
-float rioWalk(float x) {
-  return rioShore(x) + 0.004 + 0.018 * rioScale(x);
-}
-
-// Distance along the beach in near-end units, so lamps and blocks set out
-// at equal steps here shrink into the distance.
-float rioAlong(float x) {
-  return x < -0.9 ? x + 0.9 : -1.5 * log(rioScale(x));
-}
-
-float rioFromAlong(float u) {
-  return u < 0.0 ? u - 0.9 : -0.9 + 1.5 * (1.0 - exp(-u / 1.5));
-}
-
-// The shared hash repeats every 50 steps on whole numbers, and lights,
-// stars and windows here are keyed on whole sample and slot indices.
+// A stable random value for whole-sample inputs; hash21 repeats every 50
+// samples on integers, which shows as tiled stars.
 float rioHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-float rioBayerPair(vec2 a) {
-  return mod(2.0 * a.x + 3.0 * a.y, 4.0);
+// Box point (x from the middle, y from the bottom) of a whole sample.
+vec2 rioBox(vec2 s) {
+  return vec2((s.x + 0.5) * rioSw - rioAspect * 0.5, (s.y + 0.5) * rioSh);
 }
 
-// A 4x4 ordered threshold, so fills in dot charsets are even patterns.
-float rioBayer(vec2 cell) {
-  vec2 a = mod(cell, 2.0);
-  vec2 b = mod(floor(cell / 2.0), 2.0);
-  return (4.0 * rioBayerPair(a) + rioBayerPair(b) + 0.5) / 16.0;
+vec2 rioSampleOf(vec2 p) {
+  return floor(vec2((p.x + rioAspect * 0.5) / rioSw, p.y / rioSh));
 }
 
-// ---- Mountains -------------------------------------------------------
+vec2 rioToScene(vec2 p) {
+  return vec2(p.x / rioK, rioW + (p.y - rioW) / rioK);
+}
 
+vec2 rioToBox(vec2 q) {
+  return vec2(q.x * rioK, rioW + (q.y - rioW) * rioK);
+}
+
+// How close to the set sun, 1 under it and falling off to either side.
+float rioSunward(float x) {
+  return exp(-abs(x - rioSunX) / 0.45);
+}
+
+// The dusk sky: warm gold on the horizon through orange and rose to violet
+// and a deep indigo overhead, with a wide glow where the sun went down.
+vec3 rioSky(vec2 q) {
+  // On tall boxes the scene is drawn smaller, so the gradient is spread
+  // back out to fill the sky above it.
+  float h = (q.y - rioW) * rioSkyScale;
+  vec3 c = vec3(0.8, 0.46, 0.36);
+  c = mix(c, vec3(0.7, 0.36, 0.4), smoothstep(0.02, 0.14, h));
+  c = mix(c, vec3(0.46, 0.25, 0.44), smoothstep(0.1, 0.3, h));
+  c = mix(c, vec3(0.24, 0.15, 0.38), smoothstep(0.24, 0.46, h));
+  c = mix(c, vec3(0.1, 0.08, 0.24), smoothstep(0.4, 0.7, h));
+  c = mix(c, vec3(0.06, 0.055, 0.16), smoothstep(0.66, 0.95, h));
+  // The afterglow: wide and low, gold at its heart, so the brightest dots
+  // gather on the horizon and the air above the headline stays soft.
+  vec2 d = (q - vec2(rioSunX, rioW)) * vec2(0.36, 1.0);
+  float glow = exp(-length(d) / 0.11);
+  c = mix(c, vec3(1.0, 0.68, 0.4), clamp(glow, 0.0, 1.0));
+  vec2 e = (q - vec2(rioSunX, rioW)) * vec2(0.45, 1.0);
+  c = mix(c, vec3(1.0, 0.92, 0.7), clamp(1.2 * exp(-length(e) / 0.04), 0.0, 1.0));
+  return c;
+}
+
+// Thin streaks of cloud low in the sky, lit gold and rose from below,
+// drifting very slowly.
+vec3 rioClouds(vec2 q, vec3 sky) {
+  float h = (q.y - rioW) * rioSkyScale;
+  float band = smoothstep(0.07, 0.15, h) * (1.0 - smoothstep(0.28, 0.44, h));
+  if (band <= 0.0) {
+    return sky;
+  }
+  vec2 c = vec2(q.x * 1.4 - rioT * 0.005, h * 15.0);
+  float n = fbm(c + vec2(1.2 * fbm(c * 0.6 + 3.0), 0.0));
+  float a = smoothstep(0.55, 0.8, n) * band * (1.0 - 0.6 * exp(-q.x * q.x / 0.12));
+  vec3 lit = mix(vec3(1.0, 0.66, 0.46), vec3(0.74, 0.42, 0.6), smoothstep(0.1, 0.34, h));
+  lit = mix(lit, vec3(1.0, 0.84, 0.58), rioSunward(q.x) * 0.45);
+  return mix(sky, lit, a * 0.6);
+}
+
+// The first stars, only where the sky has darkened, each on its own slow
+// twinkle.
+vec3 rioStars(vec2 s, vec2 q, vec3 sky) {
+  float h = rioHash(s + 17.0);
+  float density = 0.012 * smoothstep(0.42, 0.7, (q.y - rioW) * rioSkyScale);
+  if (h < 1.0 - density) {
+    return sky;
+  }
+  float twinkle = 0.7 + 0.3 * sin(rioT * (0.3 + rioHash(s + 3.0) * 0.5) + h * 50.0);
+  return mix(sky, vec3(0.88, 0.88, 1.0), 0.55 * twinkle);
+}
+
+// A ridge falling away from a peak: steep near it, easing off to a cap.
+float rioFall(float d, float slope, float cap) {
+  float v = slope * (sqrt(d * d + 0.0004) - 0.02);
+  return cap * (1.0 - exp(-max(v, 0.0) / cap));
+}
+
+// The far hazy range across the whole bay, dipping where the sun set.
+float rioFarTop(float x) {
+  float n = 0.5 + 0.5 * snoise(vec2(x * 2.1, 3.1));
+  float n2 = snoise(vec2(x * 6.3, 7.3));
+  float dip = 0.035 * exp(-pow((x - rioSunX) / 0.2, 2.0));
+  return rioW + 0.045 + 0.05 * n + 0.01 * n2 - dip;
+}
+
+// The Corcovado range: a sharp peak with a cliff on the sunward side, and
+// the Tijuca range carrying on to the left with a second shoulder.
+float rioCorTop(float x) {
+  float d = x - rioCorX;
+  // The granite needle at the top, over a broader forested mass.
+  // Flat across one sample, so the summit column always reaches the peak
+  // and the statue stands on rock.
+  float needle = rioW + RIO_COR_H - (d < 0.0 ? 2.2 : 2.9) * max(abs(d) - rioSw / rioK, 0.0);
+  float body = rioW + RIO_COR_H - 0.06 - (d < 0.0 ? rioFall(d, 1.2, 0.24) : rioFall(d, 1.9, 0.3));
+  float top = max(needle, body);
+  float d2 = x - (rioCorX - 0.42);
+  top = max(top, rioW + 0.23 - rioFall(d2, 0.9, 0.16));
+  float rough = 0.012 * snoise(vec2(x * 7.0, 1.7)) + 0.006 * snoise(vec2(x * 19.0, 4.2)) + 0.003 * snoise(vec2(x * 47.0, 6.1));
+  return top + rough * smoothstep(0.008, 0.05, abs(d));
+}
+
+// The nearer foothills under Corcovado, darker and rounder, running down
+// to the shore behind the city.
+float rioHillTop(float x) {
+  float n = 0.5 + 0.5 * snoise(vec2(x * 3.4, 12.0));
+  float n2 = snoise(vec2(x * 11.0, 5.0));
+  float fade = 1.0 - smoothstep(rioUrcaX - rioUrcaR * 1.6, rioUrcaX - rioUrcaR * 0.6, x);
+  return rioW + (0.035 + 0.05 * n + 0.008 * n2) * fade;
+}
+
+// Slope of a ridge line at x, for shading its faces from the side.
+float rioSlope(float top0, float top1, float e) {
+  return (top1 - top0) / e;
+}
+
+// A mountain face: dark where it faces you, warmer and lighter where it
+// turns towards the sun, with gullies running down it, and paling into
+// haze towards its foot.
+vec3 rioFace(vec2 q, float top, float slope, vec3 dark, vec3 lit, float hazeAmt, float seed) {
+  float side = sign(rioSunX - q.x);
+  float turn = smoothstep(0.0, 0.8, -side * slope);
+  float gully = fbm(vec2(q.x * 34.0 + seed, (top - q.y) * 9.0 + q.x * 6.0));
+  float light = turn * (0.55 + 0.6 * gully) * (1.0 - smoothstep(0.0, 0.2, top - q.y) * 0.5);
+  vec3 c = mix(dark, lit, clamp(light, 0.0, 1.0));
+  c *= 0.85 + 0.25 * fbm(q * vec2(40.0, 55.0) + seed);
+  vec3 haze = rioSky(vec2(q.x, rioW + 0.06));
+  return mix(c, mix(haze, dark, 0.45), smoothstep(0.03, 0.28, top - q.y) * hazeAmt);
+}
+
+// Morro da Urca: a long slope down to the shore on the left, steeper where
+// it meets Sugarloaf, with a lesser knoll on its shoulder.
 float rioUrcaTop(float x) {
-  float d = (x - RIO_URCA_X) / 0.16;
+  float d = (x - rioUrcaX) / (rioUrcaR * (x < rioUrcaX ? 1.25 : 0.75));
   if (abs(d) >= 1.0) {
     return -1.0;
   }
-  return RIO_SEA + 0.15 * pow(1.0 - d * d, 0.55) * (1.0 + 0.08 * d);
+  float body = 1.0 - d * d;
+  float lump = 0.012 * snoise(vec2(x * 9.0, 2.0)) + 0.005 * snoise(vec2(x * 31.0, 8.0));
+  float knoll = 0.022 * exp(-pow((d + 0.55) / 0.2, 2.0));
+  return rioW + RIO_URCA_H * pow(body, 0.8) + knoll + lump * body;
 }
 
-// Sugarloaf: a granite dome with near-vertical sides, a rounded crown and
-// a forested skirt, leaning a little toward the open sea. v is 0 at the
-// water and 1 at the top.
-float rioLoafHalf(float v) {
-  return 0.085 * sqrt(max(1.0 - v * v * v, 0.0)) + 0.055 * pow(1.0 - v, 3.0);
+// Sugarloaf as a leaning dome: near-vertical sides that flare at the water
+// and round over at the top. Returns -2 outside, else the position across
+// the dome from -1 (sunward side) to 1.
+float rioLoaf(vec2 q) {
+  float t = (q.y - rioW) / RIO_LOAF_H;
+  if (t < 0.0 || t > 1.0) {
+    return -2.0;
+  }
+  float c = rioLoafX - RIO_LEAN * t;
+  float hw = RIO_LOAF_R * sqrt(max(0.0, 1.0 - pow(t, 2.6))) * (1.0 + 0.55 * pow(1.0 - t, 4.0));
+  hw *= 1.0 + 0.035 * snoise(vec2(q.y * 26.0, q.x > c ? 3.0 : 9.0)) + 0.015 * snoise(vec2(q.y * 70.0, 5.0));
+  float u = (q.x - c) / max(hw, 1e-4);
+  return abs(u) < 1.0 ? u : -2.0;
 }
 
-float rioLoafAxis(float v) {
-  return RIO_LOAF_X + 0.02 * v;
+vec2 rioLoafTop() {
+  return vec2(rioLoafX - RIO_LEAN, rioW + RIO_LOAF_H);
 }
 
-// -1 to 1 across the dome at p, or a value outside that range off it.
-float rioLoafAcross(vec2 p) {
-  float v = (p.y - RIO_SEA) / RIO_LOAF_H;
-  if (v < 0.0 || v > 1.0) {
-    return 9.0;
-  }
-  float sx = p.x - rioLoafAxis(v);
-  float hw = rioLoafHalf(v) * (sx < 0.0 ? 1.1 : 0.9);
-  return sx / max(hw, 1e-4);
+// The beach's lamp line as a height above the waterline: a crescent whose
+// middle lies farther off, and so higher, than its ends.
+float rioBeachY(float x) {
+  float u = clamp((x - rioBeach0) / (rioBeach1 - rioBeach0), 0.0, 1.0);
+  return rioW + 0.006 + 0.034 * pow(sin(3.14159 * u), 0.8);
 }
 
-// Corcovado: a sharp granite peak with a long shoulder to the west and a
-// near-sheer face to the east, rising from the forested Tijuca range.
-float rioCorcovado(float x) {
-  float dx = x - RIO_COR_X;
-  float a = sqrt(dx * dx + 1e-4) - 0.01;
-  // Steep near the summit and flaring lower down, the east face steeper.
-  return RIO_COR_TOP - (dx < 0.0 ? 0.65 * pow(a, 0.61) : 1.0 * pow(a, 0.61));
+bool rioOnBeach(float x) {
+  return x > rioBeach0 && x < rioBeach1;
 }
 
-// The forested range without the peak.
-float rioRange(float x) {
-  float r = 0.43 + 0.03 * sin(x * 5.3 + 0.4) + 0.015 * sin(x * 13.0 + 2.1);
-  return mix(RIO_SEA - 0.02, r, smoothstep(0.2, -0.05, x));
-}
-
-float rioRidge(float x) {
-  return max(rioRange(x), rioCorcovado(x));
-}
-
-// The higher range far behind, paler with distance.
-float rioFar(float x) {
-  float r = 0.47 + 0.025 * sin(x * 3.7 + 1.0) + 0.07 * exp(-(x + 0.6) * (x + 0.6) / 0.012);
-  return mix(RIO_SEA, r, smoothstep(0.15, -0.15, x));
-}
-
-// Which landform covers p: 0 sky or water, 1 the far range, 2 the near
-// range with Corcovado, 3 Sugarloaf, 4 Morro da Urca. Higher is nearer.
-float rioLandAt(vec2 p) {
-  if (p.y < rioShore(p.x)) {
-    return 0.0;
-  }
-  if (p.y >= RIO_SEA && p.y < rioUrcaTop(p.x)) {
-    return 4.0;
-  }
-  if (abs(rioLoafAcross(p)) <= 1.0) {
-    return 3.0;
-  }
-  if (p.y < rioRidge(p.x)) {
-    return 2.0;
-  }
-  if (p.y < rioFar(p.x)) {
-    return 1.0;
-  }
-  return 0.0;
-}
-
-// Colour and tone of a landform at p. Moonlight comes from the right, so
-// Sugarloaf is shaded across its dome. An outline sample is one whose
-// neighbour above or beside it belongs to something further back.
-vec4 rioLand(vec2 p, float id) {
-  float up = rioLandAt(p + vec2(0.0, rioPx));
-  float left = rioLandAt(p - vec2(rioPw, 0.0));
-  float right = rioLandAt(p + vec2(rioPw, 0.0));
-  bool rim = up < id || left < id || right < id;
-  if (id > 3.5) {
-    return rim ? vec4(0.45, 0.62, 0.56, 0.9) : vec4(0.14, 0.32, 0.27, 0.42);
-  }
-  if (id > 2.5) {
-    float v = (p.y - RIO_SEA) / RIO_LOAF_H;
-    float lit = clamp(0.5 + 0.6 * rioLoafAcross(p), 0.0, 1.0);
-    if (rim) {
-      return vec4(mix(vec3(0.5, 0.56, 0.7), vec3(0.95, 0.97, 1.0), lit), 0.95);
-    }
-    if (v < 0.13 + 0.02 * sin(p.x * 90.0)) {
-      return vec4(0.14, 0.3, 0.25, 0.42);
-    }
-    return vec4(mix(vec3(0.3, 0.36, 0.5), vec3(0.72, 0.78, 0.9), lit), 0.4 + 0.35 * lit);
-  }
-  if (id > 1.5) {
-    if (rim) {
-      return vec4(0.45, 0.56, 0.68, 0.9);
-    }
-    // Bare granite where the peak stands clear of the forested range.
-    if (p.y > rioRange(p.x) + 0.05 + 0.01 * sin(p.x * 70.0)) {
-      return vec4(0.38, 0.42, 0.52, 0.5);
-    }
-    return vec4(0.14, 0.3, 0.32, 0.42);
-  }
-  return rim ? vec4(0.26, 0.34, 0.52, 0.85) : vec4(0.16, 0.22, 0.38, 0.3);
-}
-
-// Homes along the foot of the hills: fixed warm points, densest low down.
-// Each light owns its whole glyph: one lit sample, the rest dark in its
-// colour, so the point stays bright where a glyph averages its samples.
-vec4 rioHillLights(vec2 cell, vec2 p, float id, out float cover) {
-  cover = 0.0;
-  if (id < 1.5 || p.x > 0.33 || id > 2.5 && id < 3.5) {
-    return vec4(0.0);
-  }
-  float rise = (p.y - max(rioWalk(p.x), RIO_SEA)) / 0.09;
-  if (rise < 0.0 || rise > 1.0) {
-    return vec4(0.0);
-  }
-  vec2 glyph = floor(cell / rioGrid);
-  if (rioHash(glyph + 31.7) > 0.12 * (1.0 - rise)) {
-    return vec4(0.0);
-  }
-  vec2 spot = glyph * rioGrid + floor(vec2(rioHash(glyph + 2.3), rioHash(glyph + 6.1)) * rioGrid);
-  vec3 col = rioHash(glyph + 4.1) < 0.7 ? vec3(1.0, 0.76, 0.44) : vec3(0.82, 0.88, 1.0);
-  cover = 1.0;
-  return vec4(col * (0.7 + 0.3 * rioHash(glyph + 8.9)), spot == cell ? 0.9 : 0.0);
-}
-
-// ---- Christ the Redeemer, the cable car ------------------------------
-
-// The statue on Corcovado's summit, in statue units: u across, v up from
-// the foot of the pedestal. Every part is at least one sample. Its axis
-// sits on a glyph boundary in dot charsets (two samples per glyph) and on
-// a glyph centre otherwise, so both halves light the same dots.
-vec4 rioStatue(vec2 cell, vec2 p, out float cover) {
-  cover = 0.0;
-  float axis = rioGrid.x > 1.5 ? 2.0 * floor(rioColumn(RIO_COR_X) / 2.0 + 0.5) : floor(rioColumn(RIO_COR_X)) + 0.5;
-  float foot = rioGrid.y * floor(rioCellOf(vec2(RIO_COR_X, RIO_COR_TOP)).y / rioGrid.y);
-  float u = (cell.x + 0.5 - axis) * rioPw / RIO_STATUE_H;
-  float v = (cell.y - foot + 0.5) * rioPx / RIO_STATUE_H;
-  if (v < 0.0 || v > 1.0 || abs(u) > 0.45) {
-    return vec4(0.0);
-  }
-  float hu = 0.505 * rioPw / RIO_STATUE_H;
-  float hv = 0.5 * rioPx / RIO_STATUE_H;
-  bool body = false;
-  bool plinth = false;
-  if (v < 0.12) {
-    plinth = abs(u) <= max(0.1, hu);
-  } else if (v < 0.82) {
-    // The robe: flared at the hem, slimmer at the waist.
-    float robe = mix(0.12, 0.075, smoothstep(0.12, 0.5, v)) + 0.012 * smoothstep(0.6, 0.82, v);
-    body = abs(u) <= max(robe, hu);
-  }
-  // Arms straight out at the shoulders, the span over four fifths of the
-  // whole height: two rows of dots, or one row of glyphs.
-  if (v <= 0.82 && v >= 0.82 - max(0.07, (rioGrid.y > 1.5 ? 3.98 : 1.98) * hv) && abs(u) <= 0.42) {
-    body = true;
-  }
-  // The small head, sitting right on the shoulders.
-  if (v > 0.82 && v <= 0.82 + max(0.1, 2.0 * hv) && abs(u) <= max(0.04, hu)) {
-    body = true;
-  }
-  if (plinth) {
-    cover = 1.0;
-    return vec4(0.72, 0.75, 0.82, 0.88);
-  }
-  if (body) {
-    cover = 1.0;
-    return vec4(0.98, 0.98, 1.0, 1.0);
-  }
-  // Empty sky around the figure takes its white at zero tone, so glyphs
-  // that average their samples keep the arms bright.
-  if (abs(u) < 0.5 && v < 1.05 && rioLandAt(p) < 0.5) {
-    cover = 1.0;
-    return vec4(0.98, 0.98, 1.0, 0.0);
-  }
-  return vec4(0.0);
-}
-
+// Cable from the top of Urca to the top of Sugarloaf, in box units.
 vec2 rioCableA() {
-  return vec2(0.37, rioUrcaTop(0.37) + 0.008);
+  return rioToBox(vec2(rioUrcaX + 0.01, rioW + RIO_URCA_H + 0.006));
 }
 
 vec2 rioCableB() {
-  return vec2(0.508, RIO_SEA + RIO_LOAF_H * 0.955);
+  return rioToBox(rioLoafTop() + vec2(-0.004, -0.004));
 }
 
-float rioCableY(float x) {
+vec2 rioCableAt(float u) {
   vec2 a = rioCableA();
   vec2 b = rioCableB();
-  float s = clamp((x - a.x) / (b.x - a.x), 0.0, 1.0);
-  return mix(a.y, b.y, s) - 0.014 * s * (1.0 - s);
+  vec2 p = mix(a, b, u);
+  p.y -= 0.018 * rioK * sin(3.14159 * u);
+  return p;
 }
 
-// Where the car is along the cable, 0 at Urca and 1 at the top: it waits
-// at each station, then takes about half a minute to cross.
-float rioCarAt(float t) {
-  float c = mod(t, 90.0);
-  float s = c < 12.0 ? 0.0 : c < 45.0 ? smoothstep(0.0, 1.0, (c - 12.0) / 33.0) : c < 57.0 ? 1.0 : 1.0 - smoothstep(0.0, 1.0, (c - 57.0) / 33.0);
-  return mix(0.1, 0.9, s);
-}
-
-vec4 rioCable(vec2 cell, vec2 p, float t, out float cover) {
-  cover = 0.0;
-  if (rioCableOn < 0.5) {
-    return vec4(0.0);
+// The one car: waits 12 seconds at each station and takes 30 to cross.
+float rioCarU() {
+  float c = mod(rioT + 15.0, 84.0);
+  if (c < 12.0) {
+    return 0.0;
   }
-  vec2 a = rioCableA();
-  vec2 b = rioCableB();
-  // The car hangs one glyph below the cable: a full glyph in dot charsets
-  // (its top row left dark), three glyphs on a one-glyph hanger otherwise.
-  float x = mix(a.x, b.x, rioCarAt(t));
-  vec2 car = rioCellOf(vec2(x, rioCableY(x)));
-  vec2 g = rioGrid;
-  if (g.x > 1.5) {
-    vec2 box = g * (floor(car / g) - vec2(0.0, 1.0));
-    vec2 dc = cell - box;
-    if (dc.x >= 0.0 && dc.x < g.x && dc.y >= 0.0 && dc.y < g.y) {
-      cover = 1.0;
-      float top = g.y - 1.0;
-      return vec4(1.0, 0.8, 0.5, dc.y < top || g.y < 1.5 ? 0.95 : 0.0);
+  if (c < 42.0) {
+    return smoothstep(0.0, 1.0, (c - 12.0) / 30.0);
+  }
+  if (c < 54.0) {
+    return 1.0;
+  }
+  return 1.0 - smoothstep(0.0, 1.0, (c - 54.0) / 30.0);
+}
+
+// A lamp's light, twinkling gently and each on its own beat.
+float rioTwinkle(vec2 id) {
+  float h = rioHash(id + 5.0);
+  return 0.8 + 0.2 * sin(rioT * (0.4 + h * 0.8) + h * 40.0);
+}
+
+// Everything above the water at sample s, as a colour.
+vec3 rioAbove(vec2 s) {
+  vec2 p = rioBox(s);
+  vec2 q = rioToScene(p);
+  float h = q.y - rioW;
+  float sunward = rioSunward(q.x);
+  vec3 haze = rioSky(vec2(q.x, rioW + 0.03));
+  float e = 0.004;
+
+  // Christ the Redeemer, pale on the summit of Corcovado: a column with
+  // arms straight out, a few samples tall whatever the box size.
+  vec2 peak = rioSampleOf(rioToBox(vec2(rioCorX, rioW + RIO_COR_H)));
+  float rise = max(4.0, floor(0.026 / rioSh + 0.5));
+  float arm = max(1.0, floor(0.009 / rioSw + 0.5));
+  vec2 st = s - peak;
+  if ((st.x == 0.0 && st.y >= 0.0 && st.y <= rise) || (st.y == rise - 1.0 && abs(st.x) <= arm)) {
+    return st.y < 0.5 ? vec3(0.62, 0.64, 0.8) : vec3(0.92, 0.95, 1.0);
+  }
+
+  // Sugarloaf, darkest and nearest: granite in shadow facing you, its
+  // sunward flank and crown turned to the afterglow, streaked by the
+  // weather down its walls.
+  float u = rioLoaf(q);
+  if (u > -1.5) {
+    float t = h / RIO_LOAF_H;
+    float streak = fbm(vec2(q.x * 70.0, q.y * 4.0));
+    // The flank towards the sun takes the light; the face fades to shadow.
+    float turn = (1.0 - smoothstep(-0.95, 0.5, u)) * (0.45 + 0.55 * t);
+    float crown = smoothstep(0.7, 1.0, t) * (1.0 - abs(u)) * 0.45;
+    vec3 c = mix(vec3(0.07, 0.065, 0.15), vec3(0.62, 0.34, 0.4), clamp((turn + crown) * (0.45 + 0.75 * streak), 0.0, 1.0));
+    c *= 0.88 + 0.22 * fbm(q * vec2(50.0, 30.0) + 4.0);
+    // A lit rim on the sunward edge.
+    c = mix(c, vec3(1.0, 0.64, 0.5), (1.0 - smoothstep(-0.97, -0.82, u)) * (0.5 + 0.4 * t));
+    // Forest at its foot.
+    c = mix(c, vec3(0.05, 0.08, 0.11), (1.0 - smoothstep(0.03, 0.14, t)) * 0.7);
+    // The upper station's light.
+    vec2 top = rioSampleOf(rioCableB());
+    if (s == top || s == top - vec2(0.0, 1.0)) {
+      c = vec3(1.0, 0.84, 0.56);
     }
-  } else {
-    vec2 dc = cell - car;
-    if (abs(dc.x) <= 1.0 && dc.y <= -2.0 && dc.y >= -3.0) {
-      cover = 1.0;
-      return dc.y > -2.5 ? vec4(1.0, 0.82, 0.52, 0.95) : vec4(0.86, 0.5, 0.34, 0.9);
+    return c;
+  }
+
+  // The cable car and its cable, across the sky between the two peaks.
+  if (rioCableOn > 0.5) {
+    vec2 car = rioSampleOf(rioCableAt(rioCarU()));
+    if (s == car - vec2(0.0, 1.0)) {
+      return vec3(1.0, 0.92, 0.7);
     }
-    if (dc.x == 0.0 && dc.y == -1.0) {
-      cover = 1.0;
-      return vec4(0.6, 0.62, 0.7, 0.7);
+    if (s == car) {
+      return vec3(0.7, 0.62, 0.66);
     }
-  }
-  // The stations: a lit sample at each end.
-  vec2 sa = rioCellOf(a);
-  vec2 sb = rioCellOf(b);
-  if (abs(cell.y - sa.y) < 0.5 && abs(cell.x - sa.x) <= 1.0 || abs(cell.y - sb.y) < 0.5 && abs(cell.x - sb.x) <= 1.0) {
-    cover = 1.0;
-    return vec4(1.0, 0.8, 0.5, 0.9);
-  }
-  if (p.x < a.x || p.x > b.x) {
-    return vec4(0.0);
-  }
-  // Thick enough on the steep run that no column drops the line.
-  float slope = (b.y - a.y) / (b.x - a.x);
-  if (abs(p.y - rioCableY(p.x)) <= 0.5 * rioPx + 0.5 * rioPw * slope) {
-    cover = 1.0;
-    return vec4(0.56, 0.6, 0.7, 0.6);
-  }
-  return vec4(0.0);
-}
-
-// ---- Copacabana -------------------------------------------------------
-
-// The lamp cell of lamp n along the promenade.
-vec2 rioLampCell(float n) {
-  float x = rioFromAlong((n + 0.5) * RIO_LAMP);
-  return rioDepth(x) > 0.95 ? vec2(-9.0) : rioCellOf(vec2(x, rioWalk(x)));
-}
-
-// The lamp standing in column c, if any; x is a frame x in that column.
-vec2 rioLampIn(float c, float x) {
-  float n = floor(rioAlong(x) / RIO_LAMP);
-  for (int i = -1; i <= 1; i++) {
-    vec2 lamp = rioLampCell(n + float(i));
-    if (lamp.x == c) {
-      return lamp;
-    }
-  }
-  return vec2(-9.0);
-}
-
-// Whether window id is lit. Most windows keep their state; a few switch,
-// each on its own slow clock, and fade over a couple of seconds.
-float rioWindowLit(vec3 id, float rate, float t) {
-  float h = rioHash(id.yz + id.x * 7.13);
-  if (rioHash(id.zy + id.x * 3.31 + 1.7) > 0.25) {
-    return step(h, rate);
-  }
-  float period = 70.0 + 110.0 * rioHash(id.yz * 1.37 + id.x);
-  float phase = t / period + h * 13.0;
-  float k = floor(phase);
-  float now = step(rioHash(vec2(k, h * 91.0)), rate);
-  float next = step(rioHash(vec2(k + 1.0, h * 91.0)), rate);
-  return mix(now, next, smoothstep(0.0, 2.5 / period, fract(phase) - (1.0 - 2.5 / period)));
-}
-
-// The wall of apartment blocks behind the promenade, each block on whole
-// samples with its windows on a two-sample grid.
-vec4 rioBlocks(vec2 cell, vec2 p, float t, out float cover) {
-  cover = 0.0;
-  if (rioDepth(p.x) > 0.93 || p.y < rioWalk(p.x)) {
-    return vec4(0.0);
-  }
-  // Blocks own whole glyphs: columns go in groups of the glyph's sample
-  // width and rows in groups of its height, so no glyph straddles a
-  // block's edge and window grids land the same way in every glyph.
-  vec2 g = rioGrid;
-  float group = floor(cell.x / g.x);
-  float xg = rioCentre(vec2(group * g.x + 0.5 * (g.x - 1.0), cell.y)).x;
-  float n = floor(rioAlong(xg) / RIO_BLOCK);
-  float xa = rioFromAlong(n * RIO_BLOCK);
-  float xb = rioFromAlong((n + 1.0) * RIO_BLOCK);
-  float ca = min(g.x * ceil((rioColumn(xa) - 0.5 * g.x) / g.x), group * g.x);
-  float cb = max(g.x * ceil((rioColumn(xb) - 0.5 * g.x) / g.x), (group + 1.0) * g.x);
-  float w = cb - ca;
-  float h1 = rioHash(vec2(n, 3.1));
-  float f = rioScale(0.5 * (xa + xb));
-  float baseRow = g.y * ceil((rioCellOf(vec2(xb, rioWalk(xb))).y + 2.0) / g.y);
-  float rows = g.y * max(1.0, floor((0.045 + 0.07 * h1) * f / (rioPx * g.y)));
-  float r = cell.y - baseRow;
-  if (r >= rows) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  if (r < 0.0) {
-    // The dark avenue between the lamps and the blocks.
-    return vec4(0.0);
-  }
-  float cc = cell.x - ca;
-  float alley = rioHash(vec2(n, 5.7)) < 0.45 ? g.x : 0.0;
-  vec3 tint = rioHash(vec2(n, 8.3)) < 0.7 ? vec3(1.0, 0.78, 0.46) : vec3(0.8, 0.87, 1.0);
-  // In dot charsets a cell takes the average colour of its samples, so
-  // dark samples carry the window tint at zero tone to keep lit dots bright.
-  vec3 wall = rioDots > 0.5 ? tint : vec3(0.16, 0.17, 0.22);
-  if (cc >= w - alley) {
-    return vec4(wall, 0.0);
-  }
-  float wc = floor(cc / g.x);
-  bool pane = mod(wc, 2.0) > 0.5 && cc < w - alley - g.x && mod(r, 2.0) > 0.5 && r < rows - 1.0;
-  if (!pane) {
-    return vec4(wall, 0.12);
-  }
-  float rate = 0.4 + 0.35 * rioHash(vec2(n, 1.9));
-  float lit = rioWindowLit(vec3(n, wc, r), rate, t);
-  vec3 col = rioHash(vec2(wc, r) + n * 1.31) < 0.8 ? tint : vec3(1.0, 0.62, 0.32);
-  return vec4(mix(wall, col * (0.75 + 0.25 * rioHash(vec2(r, wc) + n)), lit), 0.12 + 0.78 * lit);
-}
-
-vec4 rioBeach(vec2 cell, vec2 p) {
-  // The thin line where the bay laps the sand.
-  if (rioCellOf(vec2(p.x, rioShore(p.x))).y == cell.y) {
-    return vec4(0.46, 0.54, 0.64, 0.42);
-  }
-  return vec4(0.3, 0.24, 0.17, 0.2);
-}
-
-// ---- Sky and water ------------------------------------------------------
-
-vec4 rioMoon(vec2 p, out float cover) {
-  cover = 0.0;
-  // Never under seven rows across, so the crescent keeps its shape.
-  float r = max(0.036, 3.5 * rioPx);
-  float d = length(p - rioMoonAt);
-  if (d > r * 1.3) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  // The dark side and a rim around the moon keep its colour at zero tone.
-  bool dark = d > r || length(p - rioMoonAt - vec2(-0.55, 0.28) * r) < r * 0.9;
-  return vec4(1.0, 0.93, 0.76, dark ? 0.0 : 1.0);
-}
-
-// One star at most per square of the box, each a single sample, glinting
-// slowly in colour while its glyph stays put.
-vec4 rioStar(vec2 uv, vec2 cell, float t) {
-  vec2 s = vec2(uv.x * rioAspect, uv.y);
-  float g = 0.032;
-  vec2 id = floor(s / g);
-  float h = rioHash(id + 17.0);
-  if (h > 0.18 * smoothstep(0.35, 0.9, uv.y)) {
-    return vec4(0.0);
-  }
-  vec2 at = (id + 0.15 + 0.7 * vec2(rioHash(id + 3.1), rioHash(id + 8.7))) * g;
-  vec2 starCell = floor(vec2(at.x / rioAspect, at.y) * rioSamples);
-  if (floor(starCell / rioGrid) != floor(cell / rioGrid)) {
-    return vec4(0.0);
-  }
-  float b = 0.35 + 0.55 * rioHash(id + 9.2);
-  float glint = 0.8 + 0.2 * sin(t * (0.3 + 0.6 * rioHash(id + 5.0)) + h * 40.0);
-  // A full dot, or the lightest glyphs of a ramp, never a heavy one.
-  float tone = rioDots > 0.5 ? 0.9 : 0.12 + 0.14 * b;
-  return vec4(vec3(0.76, 0.82, 1.0) * b * glint, starCell == cell ? tone : 0.0);
-}
-
-// The bay: dark water carrying broken copies of what stands on it. Each
-// row of samples shifts sideways by whole samples on a slow sway, and a
-// slowly drifting dash pattern breaks it up, so reflections shimmer
-// without sliding.
-vec4 rioWater(vec2 cell, vec2 p, float t) {
-  vec2 g = rioGrid;
-  float shift = g.x * floor(1.4 * sin(cell.y * 0.83 + t * 0.4) + 0.5);
-  float c0 = g.x * floor((cell.x + shift) / g.x);
-  float c = c0 + 0.5 * (g.x - 1.0);
-  vec2 q = rioCentre(vec2(c, cell.y));
-  float on = step(-0.1, snoise(vec2(c * 0.13 + t * 0.05, cell.y * 0.9)));
-  vec4 hit = vec4(0.0);
-  vec2 lamp = vec2(-9.0);
-  for (int i = 0; i < 2; i++) {
-    float lc = c0 + float(i);
-    if (float(i) < g.x && lamp.x < -1.0) {
-      lamp = rioLampIn(lc, rioCentre(vec2(lc, cell.y)).x);
-    }
-  }
-  if (lamp.x > -1.0) {
-    float below = (rioWalk(q.x) - p.y) / (0.07 * rioScale(q.x));
-    float fade = 1.0 - smoothstep(0.2, 1.0, below);
-    hit = vec4(vec3(1.0, 0.74, 0.42) * (0.45 + 0.55 * fade), 0.9 * fade * on);
-  }
-  // Sugarloaf and Urca mirrored in the open bay.
-  vec2 m = vec2(q.x, 2.0 * RIO_SEA - p.y);
-  if (p.y < RIO_SEA && q.x > 0.1) {
-    float id = rioLandAt(m);
-    vec4 land = id > 2.5 ? rioLand(m, id) : vec4(0.0);
-    // Only the lit granite and the outlines show in the water.
-    if (land.a > 0.5) {
-      float fade = on * step(0.1, snoise(vec2(c * 0.04 - t * 0.03, cell.y * 0.45 + 4.0))) * (1.0 - smoothstep(0.03, 0.14, RIO_SEA - p.y));
-      vec4 refl = vec4(land.rgb * 0.5, land.a * 0.7 * fade);
-      if (hit.a == 0.0 && hit.r == 0.0 || refl.a > hit.a) {
-        hit = refl;
+    vec2 a = rioCableA();
+    vec2 b = rioCableB();
+    if (p.x > a.x && p.x < b.x) {
+      float cu = (p.x - a.x) / (b.x - a.x);
+      float cy = rioCableAt(cu).y;
+      float slope = (b.y - a.y) / (b.x - a.x);
+      if (abs(p.y - cy) < 0.5 * rioSh * sqrt(1.0 + slope * slope)) {
+        // Backlit by the glow: a fine dark line through the dots.
+        return mix(rioSky(q), vec3(0.1, 0.07, 0.16), 0.85);
       }
     }
   }
-  // The moon's path: short dashes centred under it on every fourth row,
-  // their lengths changing slowly. The rows between keep its colour.
-  if (p.y < RIO_SEA && p.y > RIO_SEA - 0.24 && hit.a < 0.5) {
-    float band = floor(cell.y / 4.0);
-    float reach = (0.01 + 0.07 * (RIO_SEA - p.y)) * (0.25 + 0.75 * (0.5 + 0.5 * snoise(vec2(band * 1.1, t * 0.08))));
-    if (abs(q.x - rioMoonAt.x) < reach) {
-      hit = vec4(0.9, 0.9, 0.84, mod(cell.y, 4.0) < 0.5 ? 0.9 : 0.0);
+
+  // Morro da Urca, low and forested, in front of the shore.
+  float urca = rioUrcaTop(q.x);
+  if (q.y < urca) {
+    float slope = rioSlope(rioUrcaTop(q.x - e), rioUrcaTop(q.x + e), 2.0 * e);
+    vec3 c = rioFace(q, urca, slope, vec3(0.06, 0.075, 0.13), vec3(0.26, 0.2, 0.3), 0.15, 3.0);
+    // Treetops: the nearest hill carries the finest texture.
+    c *= 0.65 + 0.7 * fbm(q * vec2(110.0, 140.0) + 21.0);
+    float edge = 1.0 - smoothstep(0.003, 0.01, urca - q.y);
+    c = mix(c, vec3(0.8, 0.46, 0.5), edge * 0.45 * sunward);
+    // The houses of Urca along the water at its foot.
+    if (h < 0.018 && rioHash(s + 53.0) < 0.16) {
+      c = vec3(1.0, 0.74, 0.44) * (0.55 + 0.35 * rioHash(s + 54.0));
+    }
+    vec2 base = rioSampleOf(rioCableA());
+    if (s == base || s == base - vec2(0.0, 1.0)) {
+      c = vec3(1.0, 0.84, 0.56);
+    }
+    return c;
+  }
+
+  // Copacabana: the lamps along the promenade in a crescent, the sand below
+  // them and a low wall of apartment blocks with lit windows behind.
+  if (rioOnBeach(q.x) && h < 0.08) {
+    float lampRow = rioSampleOf(rioToBox(vec2(q.x, rioBeachY(q.x)))).y;
+    float across = clamp((q.x - rioBeach0) / (rioBeach1 - rioBeach0), 0.0, 1.0);
+    if (s.y == lampRow) {
+      if (mod(s.x, 4.0) < 0.5) {
+        return vec3(1.0, 0.78, 0.44) * rioTwinkle(s);
+      }
+      return vec3(0.34, 0.24, 0.28);
+    }
+    if (s.y < lampRow) {
+      // Sand, warmed by the lamps just above it.
+      return s.y + 1.0 == lampRow ? vec3(0.42, 0.3, 0.3) : vec3(0.2, 0.15, 0.22);
+    }
+    float bw = 0.02 + 0.012 * rioHash(vec2(floor(q.x / 0.03), 1.0));
+    float id = floor(q.x / bw);
+    float tall = (0.012 + 0.03 * rioHash(vec2(id, 3.0))) * (0.45 + 0.55 * sin(3.14159 * across));
+    float rowsUp = s.y - lampRow;
+    if (rowsUp <= max(1.0, floor(tall * rioK / rioSh + 0.5))) {
+      vec3 c = mix(vec3(0.09, 0.08, 0.17), haze * 0.3, 0.3);
+      // Windows: most stay as they are; a few change every couple of minutes.
+      float epoch = floor((rioT + rioHash(s + 2.0) * 120.0) / 120.0);
+      float lit = rioHash(s + 11.0) < 0.2 ? 1.0 : 0.0;
+      if (rioHash(s + 29.0) < 0.06) {
+        lit = rioHash(s + epoch * 7.0) < 0.5 ? 1.0 : 0.0;
+      }
+      if (lit > 0.5) {
+        c = mix(vec3(0.9, 0.64, 0.4), vec3(0.62, 0.68, 0.86), step(0.8, rioHash(s + 4.0))) * (0.5 + 0.25 * rioHash(s + 6.0));
+      }
+      return c;
     }
   }
-  // In a ramp, glints take the light strokes rather than the dense glyphs.
-  if (rioDots < 0.5) {
-    hit.a *= 0.45;
+
+  // The foothills behind the city, with homes lit on their slopes.
+  float hill = rioHillTop(q.x);
+  if (q.y < hill) {
+    float slope = rioSlope(rioHillTop(q.x - e), rioHillTop(q.x + e), 2.0 * e);
+    vec3 c = rioFace(q, hill, slope, vec3(0.08, 0.075, 0.16), vec3(0.2, 0.14, 0.24), 0.2, 7.0);
+    if (rioHash(s + 41.0) < 0.07 * (1.0 - smoothstep(0.0, 0.08, h))) {
+      c = vec3(0.9, 0.62, 0.38) * (0.45 + 0.3 * rioHash(s + 9.0));
+    }
+    return c;
   }
-  return hit;
+
+  // The Corcovado range: backlit and paling into haze down its faces, the
+  // flanks that turn towards the sun warmer, and a pale glow from the
+  // floodlights round the statue.
+  float cor = rioCorTop(q.x);
+  vec2 lamp = rioToBox(vec2(rioCorX, rioW + RIO_COR_H + 0.015));
+  float flood = exp(-length((p - lamp) * vec2(1.0, 0.7)) / (0.02 * max(rioK, 0.7)));
+  if (q.y < cor) {
+    float slope = rioSlope(rioCorTop(q.x - e), rioCorTop(q.x + e), 2.0 * e);
+    vec3 c = rioFace(q, cor, slope, vec3(0.13, 0.1, 0.23), vec3(0.3, 0.18, 0.32), 0.45, 1.0);
+    float edge = 1.0 - smoothstep(0.003, 0.01, cor - q.y);
+    c = mix(c, vec3(0.95, 0.6, 0.54), edge * (0.15 + 0.45 * sunward));
+    // The floodlights catch the rock just under the statue.
+    c = mix(c, vec3(0.6, 0.6, 0.8), clamp(flood * 1.1, 0.0, 0.6));
+    return c;
+  }
+
+  // The far range, low in contrast and close to the sky's colour, warmed
+  // where the sun went down.
+  float far = rioFarTop(q.x);
+  if (q.y < far) {
+    vec3 sky = rioSky(vec2(q.x, rioW + 0.05));
+    vec3 c = mix(vec3(0.34, 0.2, 0.36), sky, 0.45);
+    c *= 0.94 + 0.1 * fbm(q * vec2(20.0, 30.0) + 2.0);
+    float edge = 1.0 - smoothstep(0.003, 0.01, far - q.y);
+    c = mix(c, vec3(1.0, 0.74, 0.52), edge * 0.5 * exp(-abs(q.x - rioSunX) / 0.2));
+    // Mist on the water at its foot.
+    c = mix(c, haze, (1.0 - smoothstep(0.0, 0.025, h)) * 0.45);
+    return c;
+  }
+
+  vec3 sky = rioStars(s, q, rioClouds(q, rioSky(q)));
+  return mix(sky, vec3(0.7, 0.72, 0.95), clamp(flood * 0.25, 0.0, 0.25));
 }
 
-// ---- Composition ------------------------------------------------------
-
-vec4 rioCompose(vec2 uv, vec2 cell, vec2 p, float t) {
-  float cover = 0.0;
-  vec2 glyph = floor(cell / rioGrid);
-  for (int i = 0; i < 2; i++) {
-    float c = glyph.x * rioGrid.x + float(i);
-    if (float(i) < rioGrid.x) {
-      vec2 lamp = rioLampIn(c, rioCentre(vec2(c, cell.y)).x);
-      if (lamp.x > -1.0 && floor(lamp / rioGrid) == glyph) {
-        return vec4(1.0, 0.86, 0.58, lamp == cell ? (rioDots > 0.5 ? 1.0 : 0.7) : 0.0);
-      }
-    }
+// The bay: everything above mirrored, darker and cooler, broken by ripples
+// that widen towards you, with the afterglow laid on it as a long
+// shimmering streak and the beach lamps drawn down into the water.
+vec3 rioWater(vec2 s) {
+  vec2 p = rioBox(s);
+  float k = rioW - p.y;
+  float dn = clamp(k / rioW, 0.0, 1.0);
+  float rip = snoise(vec2(p.x * mix(8.0, 2.8, dn) + rioT * 0.015, k * mix(120.0, 34.0, dn) - rioT * 0.4));
+  float rip2 = snoise(vec2(p.x * 3.0 - rioT * 0.01, k * mix(60.0, 20.0, dn) + rioT * 0.28 + 7.0));
+  float off = floor(rip2 * (0.002 + 0.012 * dn) / rioSw + 0.5);
+  vec2 m = vec2(s.x + off, 2.0 * rioWaterRow - 1.0 - s.y);
+  vec3 col = rioAbove(m) * mix(0.78, 0.45, dn);
+  col = mix(col, col * vec3(0.76, 0.86, 1.18), 0.45) + vec3(0.015, 0.018, 0.05);
+  col *= 0.88 + 0.24 * (0.5 + 0.5 * rip);
+  // The bay's own colour: the sky above, dimmed, which lifts the mirrored
+  // hills out of black the nearer the water comes.
+  vec3 bay = rioSky(vec2(p.x / rioK, rioW + 0.2)) * 0.3;
+  col = mix(col, max(col, bay), 0.35 + 0.4 * dn);
+  // The afterglow's streak, broken into dashes that drift towards you.
+  float sunX = rioSunX * rioK;
+  float dx = p.x - sunX;
+  float w = mix(0.05, 0.16, dn) * max(rioK, 0.6);
+  float streak = exp(-dx * dx / (w * w)) * mix(1.0, 0.45, dn);
+  float dash = smoothstep(-0.25, 0.6, rip);
+  col = mix(col, vec3(1.0, 0.74, 0.42), clamp(streak * dash * 0.85, 0.0, 1.0));
+  // The beach lamps run down into the water as broken warm lines.
+  vec2 q = rioToScene(p);
+  if (rioOnBeach(q.x) && mod(s.x + off, 4.0) < 0.5) {
+    float run = exp(-k / (0.05 * rioK)) * smoothstep(-0.2, 0.5, rip2);
+    col = mix(col, vec3(1.0, 0.72, 0.4), clamp(run * 0.5, 0.0, 0.5));
   }
-  if (p.y < rioShore(p.x)) {
-    return rioWater(cell, p, t);
-  }
-  if (rioDepth(p.x) < 0.95 && p.y < rioWalk(p.x)) {
-    return rioBeach(cell, p);
-  }
-  vec4 hit = rioBlocks(cell, p, t, cover);
-  if (cover > 0.5) {
-    return hit;
-  }
-  hit = rioStatue(cell, p, cover);
-  if (cover > 0.5) {
-    return hit;
-  }
-  hit = rioCable(cell, p, t, cover);
-  if (cover > 0.5) {
-    return hit;
-  }
-  float id = rioLandAt(p);
-  if (id > 0.5) {
-    hit = rioHillLights(cell, p, id, cover);
-    return cover > 0.5 ? hit : rioLand(p, id);
-  }
-  hit = rioMoon(p, cover);
-  if (cover > 0.5) {
-    return hit;
-  }
-  return rioStar(uv, cell, t);
+  return col;
 }
 
 vec2 rioCacheUv = vec2(-1.0);
@@ -614,22 +469,45 @@ vec4 rioScene(vec2 uv, vec2 res, float t) {
   if (uv == rioCacheUv && t == rioCacheT) {
     return rioCacheValue;
   }
-  rioLayout(res);
-  vec2 cell = floor(uv * rioSamples);
-  vec4 hit = rioCompose(uv, cell, rioFrame(uv), t);
-  float tone = hit.a;
-  if (rioDots > 0.5) {
-    // Lights and outlines light every dot. Fills light every dot too when
-    // the glyph colour carries brightness; otherwise an even share of them,
-    // so the layers still part by density.
-    bool lit = tone >= 0.85 || tone >= 0.15 && (rioSolid > 0.5 || tone * rioIntensity > rioBayer(cell));
-    tone = lit ? max(tone, 0.6) : 0.0;
-  } else {
-    tone *= sqrt(rioIntensity);
-  }
+  rioT = t;
+  rioAspect = res.x / res.y;
+  rioSh = 1.0 / res.y;
+  rioSw = rioAspect / max(ascii_samples.x, 1.0);
+  vec2 s = floor(vec2(uv.x * ascii_samples.x, uv.y * res.y));
+  float wide = smoothstep(0.8, 1.5, rioAspect);
+  // On tall boxes the scene shrinks about the waterline and closes up, so
+  // Corcovado and Sugarloaf both stay in view.
+  rioK = clamp(rioAspect / 1.45, 0.56, 1.0);
+  float rows = rioSh * rioGrid.y;
+  // Low on phones, so the peaks rise beside the headline, not behind it.
+  rioW = floor(mix(0.16, 0.3, wide) / rows + 0.5) * rows;
+  rioSkyScale = mix(0.6, 1.0, wide);
+  rioWaterRow = floor(rioW / rioSh + 0.5);
+  rioHalf = rioAspect * 0.5 / rioK;
+  rioCorX = mix(-0.27, -0.56, wide);
+  rioUrcaX = mix(0.08, 0.3, wide);
+  rioUrcaR = mix(0.14, 0.2, wide);
+  rioLoafX = mix(0.27, 0.6, wide);
+  rioSunX = mix(-0.06, -0.12, wide);
+  rioBeach0 = -rioHalf - 0.05;
+  rioBeach1 = rioUrcaX - rioUrcaR * 0.55;
+
+  vec3 col = s.y < rioWaterRow ? rioWater(s) : rioAbove(s);
+  col = clamp(col, 0.0, 1.0);
+  // Dot size follows brightness, with a floor so every cell keeps at least
+  // a faint dot.
+  float luma = dot(col, vec3(0.3, 0.55, 0.15));
+  float tone = clamp(0.03 + pow(luma, 0.8), 0.0, 1.0);
+  // The dot size already carries the value, so mid-tones are lifted to a
+  // clear hue; the darkest stay close to the paper, as quiet dark air.
+  float lift = 1.0 / (0.35 + 0.65 * sqrt(max(luma, 0.001)));
+  col = clamp(col * mix(1.0, lift, smoothstep(0.06, 0.26, luma)), 0.0, 1.0);
+  // Intensity dims colour in step and shrinks the dots more gently, so the
+  // shapes keep their place behind text.
+  tone *= sqrt(rioIntensity);
   rioCacheUv = uv;
   rioCacheT = t;
-  rioCacheValue = vec4(hit.rgb * rioIntensity, tone);
+  rioCacheValue = vec4(col * rioIntensity, tone);
   return rioCacheValue;
 }
 `;
@@ -646,20 +524,21 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 }
 `;
 
-// Modes that paint the scene's own colours need its night blue behind
-// them in both themes; mono and palette keep the theme's paper, or the
-// phosphor's.
-const NIGHT = "#050a17";
+// Modes that paint the scene's own colours need its dusk paper behind them
+// in both themes; mono and palette keep the theme's paper, or the phosphor's.
+const NIGHT = "#0b0a20";
 const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
   "duotone",
 ]);
 
-// Modes where the glyph colour carries the scene's brightness.
-const SOLID_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
-  "truecolor",
-  "ansi16",
+// Dots, Braille and quadrants blend neighbouring sizes with ordered
+// dithering, so the sky's gradient reads as a smooth halftone.
+const DITHER_CHARSETS: ReadonlySet<CharsetName> = new Set<CharsetName>([
+  "braille",
+  "dots",
+  "quadrants",
 ]);
 
 const FALLBACK = (
@@ -667,7 +546,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #050a17 0%, #050a17 55%, #0b1424 70%, #050a17 100%)",
+        "linear-gradient(to bottom, #15133a 0%, #3c2a5e 30%, #b0587a 52%, #f4a058 66%, #2a2246 70%, #0b0a20 100%)",
     }}
   />
 );
@@ -681,36 +560,48 @@ export interface RioProps extends Omit<AsciiSceneProps, "interactive"> {
   /** The Sugarloaf cable car and its cable. Default `true`. */
   cableCar?: boolean;
   /**
-   * Paper behind the glyphs. Default: the scene's night blue in
+   * Cells as wide as they are tall, so the dots lie in an even lattice.
+   * Default `true` for one-glyph charsets such as `dots`; `false` for
+   * Braille and quadrants, which would stretch.
+   */
+  square?: boolean;
+  /**
+   * Paper behind the glyphs. Default: the scene's dusk indigo in
    * `truecolor`, `ansi16` and `duotone`; the theme's paper, or the
    * phosphor's, otherwise.
    */
   paper?: AsciiColor;
-  /** Shown without WebGL and until the first frame. Default: a gradient in the scene's colours. */
+  /** In `duotone`, the colour ramp from dark to light. Default `"sodium"`, gold on the night blue. */
+  ramp?: AsciiSceneProps["ramp"];
+  /** Shown without WebGL and until the first frame. Default: the dusk as a flat gradient. */
   fallback?: ReactNode;
   /** Ignored: the city never reacts to the pointer. Accepted so galleries can pass it to every scene. */
   interactive?: boolean;
 }
 
 /**
- * Rio de Janeiro at night, seen from the sea. Sugarloaf rises out of the
- * bay beside Morro da Urca with one cable car crossing between them,
- * Christ the Redeemer stands lit white on Corcovado, and the lamps of
- * Copacabana curve along the beach and shimmer in the water.
- * Decorative and full-bleed: size it with `className`, usually
- * `absolute inset-0`.
+ * Rio de Janeiro at dusk from the water, painted in dots. Sugarloaf rises
+ * as a great dark dome beside Morro da Urca with one cable car crossing
+ * between them, Christ the Redeemer stands small and pale on Corcovado,
+ * and the lamps of Copacabana curve along the shore under a sky running
+ * from gold to violet, all mirrored in the bay. Decorative and full-bleed:
+ * size it with `className`, usually `absolute inset-0`.
  */
 export const Rio = ({
-  charset = "quadrants",
+  charset = "dots",
   chars,
   colorMode,
   phosphor,
   paper,
-  cell = 9,
-  stillTime = 28,
+  ramp,
+  dither,
+  square,
+  cell = 7,
+  stillTime = 12,
   intensity = 1,
   cableCar = true,
   fallback = FALLBACK,
+  // The city has no pointer response; keep the flag off the DOM.
   interactive: _interactive,
   ...props
 }: RioProps) => {
@@ -722,18 +613,21 @@ export const Rio = ({
       colorField={COLOR_FIELD}
       uniforms={{
         rioCableOn: cableCar ? 1 : 0,
-        // Braille and quadrants light a dot only above half tone, so fills
-        // are drawn there as ordered dot patterns instead.
-        rioDots: gx * gy > 1 ? 1 : 0,
+        // Samples per glyph, so the waterline lands on whole cells.
         rioGrid: [gx, gy],
         rioIntensity: clamp(intensity, 0, 1),
-        rioSolid: SOLID_MODES.has(mode) ? 1 : 0,
       }}
       charset={charset}
       chars={chars}
       colorMode={mode}
       phosphor={phosphor}
+      ramp={ramp ?? (mode === "duotone" ? "sodium" : undefined)}
+      dither={
+        dither ??
+        (DITHER_CHARSETS.has(charset) && !chars ? "blue-noise" : "none")
+      }
       paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
+      square={square ?? gx * gy === 1}
       cell={cell}
       stillTime={stillTime}
       fallback={fallback}
