@@ -40,5 +40,19 @@
         "target": "components/asciicn/ascii-marquee.tsx"
       }
     ]
+  },
+  {
+    "name": "glyph-rain",
+    "type": "registry:component",
+    "title": "Glyph rain",
+    "description": "Columns of glyphs falling at different speeds with amber heads and fading trails, which can leave a message behind in block letters that holds, wears away and forms again.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/glyph-rain.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/glyph-rain.tsx"
+      }
+    ]
   }
 ]

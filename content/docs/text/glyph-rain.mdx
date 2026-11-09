@@ -1,0 +1,190 @@
+---
+title: "Glyph rain"
+description: "Columns of glyphs falling at different speeds with amber heads and fading trails, which can leave a message behind in block letters that holds, wears away and forms again."
+---
+
+import GlyphRainDemo from "@/examples/glyph-rain-demo";
+import GlyphRainAmbient from "@/examples/glyph-rain-ambient";
+import GlyphRainHero from "@/examples/glyph-rain-hero";
+import { controls as glyphRainControls } from "@/examples/glyph-rain-controls";
+
+<ComponentPreview
+  src="examples/glyph-rain-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={glyphRainControls}
+>
+  <GlyphRainDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="glyph-rain" />
+
+## Usage
+
+```tsx
+import { GlyphRain } from "@/components/asciicn/glyph-rain";
+
+export function Hero() {
+  return (
+    <section className="relative h-[480px]">
+      <GlyphRain message="asciicn" className="absolute inset-0" />
+      <h1 className="sr-only">asciicn</h1>
+    </section>
+  );
+}
+```
+
+Each stream is one column of glyphs with a head and a trail. The head is drawn in `accent`, the cell or two behind it shade from the accent into `color`, and the rest of the trail fades out. Glyphs come from the charset in order of ink: dense ones near the head, faint ones at the tail. Every cell keeps its own glyph, and now and then one changes, so a trail flickers a little as it passes.
+
+Without `message` the rain is ambient: streams start at random columns, fall at different speeds and start again at the top.
+
+With `message`, the text is set in a built-in pixel font and scaled to fill most of the box. Each font pixel covers a whole number of quadrants, so every edge lands on a cell boundary and the letters stay crisp. When a stream's head crosses a cell of the message, that cell fills in behind it: first a dense glyph in the accent, then `░ ▒ ▓`, then a solid block. While the message forms, most new streams fall through its columns, so you watch the letters being written. Cells no stream reaches fill in on their own after a few seconds.
+
+The message holds for `hold` seconds, then wears away cell by cell, faster where a stream passes, and forms again after a short rest. With `loop={false}` it forms once and stays. Trails behind the message are dimmed so the letters read.
+
+The font covers A to Z in both cases, the digits and `! " # & ' ( ) * + , - . / : < = > ? @ [ ] _ |`. Other characters draw as `?`.
+
+## Examples
+
+### Headline over a hero
+
+The message is the headline. Keep it short: four to eight characters fill a hero at any width. Put the same words in a real heading for screen readers.
+
+<ComponentPreview src="examples/glyph-rain-hero.tsx" size="lg">
+  <GlyphRainHero />
+</ComponentPreview>
+
+### Ambient background
+
+No `message`, a lower `density` and `speed`, and `charset="braille"`, so each trail thins from full cells to single dots. The content sits on its own panel above the rain.
+
+<ComponentPreview src="examples/glyph-rain-ambient.tsx" size="lg">
+  <GlyphRainAmbient />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "message",
+      type: "string",
+      description:
+        "Text the rain settles into, in block letters. Line breaks start new lines. Without it the rain is ambient.",
+    },
+    {
+      name: "density",
+      type: "number",
+      default: "0.5",
+      description:
+        "Share of columns with a stream falling at once, from 0 to 1.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Fall speed multiplier.",
+    },
+    {
+      name: "hold",
+      type: "number",
+      default: "5",
+      description: "Seconds the finished message holds before it wears away.",
+    },
+    {
+      name: "loop",
+      type: "boolean",
+      default: "true",
+      description:
+        "Wear the message away and form it again, forever. false forms it once and keeps it.",
+    },
+    {
+      name: "charset",
+      type: '"latin" | CharsetName',
+      default: '"latin"',
+      description:
+        "Glyphs the rain falls in. latin is digits, letters and a few symbols. Any engine charset works, such as katakana or braille.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        'Your own glyphs, faint to dense, such as ".:+*#". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "mono" | "duotone"',
+      default: '"truecolor"',
+      description:
+        "truecolor: trails in color, heads and message in accent. mono: everything in color or the phosphor. duotone: by brightness along ramp.",
+    },
+    {
+      name: "color",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description: "Trail colour, and every glyph in mono.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "Heads and the message in truecolor. The palette's amber.",
+    },
+    {
+      name: "phosphor",
+      type: "PhosphorName",
+      description: "mono: a CRT phosphor for the ink and the glass behind it.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"sodium"',
+      description: "duotone: a ramp name or stops as #rrggbb.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"transparent"',
+      description:
+        "transparent shows the page between glyphs. A phosphor or duotone paints its own glass unless this is transparent.",
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      description: "CRT effects, drawn as a CSS overlay.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description: "false holds one still frame with the message complete.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is decorative and hidden from assistive technology. Put the message in a real heading too, visible or `sr-only`.
+- The first frame already shows the message part written, so it never opens on a blank box.
+- Under reduced motion it draws one still frame: the finished message with rain around it. It pauses offscreen and in hidden tabs.
+- After a resize the message comes back whole at its new size.
+- A message too wide for the box at the smallest size runs off both sides. Use shorter words or a line break on narrow screens.
