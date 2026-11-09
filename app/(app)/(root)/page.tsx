@@ -7,12 +7,14 @@ import { CommandBox } from "@/components/command-box";
 import { ExampleGallery } from "@/components/example-gallery";
 import { HeroActions } from "@/components/hero-actions";
 import { HomeOverview } from "@/components/home-overview";
+import { BackgroundShowcase } from "@/components/home/background-showcase";
 import { Icon } from "@/components/icon";
 import { PageTransition } from "@/components/page-transition";
 import { SiteFooter } from "@/components/site-footer";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { ROUTES } from "@/constants/routes";
 import { SITE } from "@/constants/site";
+import { BACKGROUNDS } from "@/lib/backgrounds";
 import { countPieces, getCatalog } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import { BreadcrumbJsonLd } from "@/seo/json-ld";
@@ -126,6 +128,35 @@ export default function IndexPage() {
               See all {pieceCount} components
               <LinkArrow />
             </Link>
+          </div>
+        </section>
+
+        <section
+          className="container-wrapper"
+          aria-labelledby="backgrounds-heading"
+        >
+          <div className="container flex flex-col gap-10 pb-20 md:pb-28">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-12">
+              <h2 id="backgrounds-heading" className={H2_CLS}>
+                Painted backgrounds.
+              </h2>
+              <div className="flex flex-col gap-4">
+                <p className={LEAD_CLS}>
+                  {BACKGROUNDS.length} cities and landscapes drawn in halftone
+                  glyph dots. Each one is a component you put behind a hero.
+                  Point at one to play it.
+                </p>
+                <Link
+                  href={ROUTES.BACKGROUNDS}
+                  transitionTypes={["nav-forward"]}
+                  className={LINK_CLS}
+                >
+                  See all {BACKGROUNDS.length} backgrounds
+                  <LinkArrow />
+                </Link>
+              </div>
+            </div>
+            <BackgroundShowcase />
           </div>
         </section>
 

@@ -10,7 +10,6 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 import { CityStill } from "@/components/home/city-still";
-import { StillBaker } from "@/components/home/city-stills";
 import { TEXT_LINK } from "@/components/home/cta";
 import { ExportStrip, installCommand } from "@/components/home/export-strip";
 import { CHARSET_SIGNS, lookProps } from "@/components/home/looks";
@@ -270,7 +269,6 @@ export const BackgroundGallery = () => {
           );
         })}
       </ul>
-      <StillBaker sources={CITY_SOURCES} active />
     </div>
   );
 };

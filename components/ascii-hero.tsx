@@ -25,6 +25,22 @@ import { cn } from "@/lib/utils";
  */
 
 const HOLD_MS = 20_000;
+
+/**
+ * Stills of the opening scene, shown the moment the page paints and faded
+ * out once the live scene has faded in over them, so the hero never opens
+ * on an empty plate while the scene's code loads. Made with the hero's own
+ * scene at 1440x900 and 390x844; the tall one matches its portrait framing.
+ */
+const POSTERS: Readonly<Record<string, { wide: string; tall: string }>> = {
+  "san-francisco": {
+    tall: "/hero/san-francisco-tall.webp",
+    wide: "/hero/san-francisco-wide.webp",
+  },
+};
+
+// The scene switches to its portrait framing below this width-to-height ratio.
+const PORTRAIT_QUERY = "(max-aspect-ratio: 85/100)";
 const FADE_MS = 1600;
 
 // Darkens the middle of the plate, from the headline down to the buttons,
@@ -112,7 +128,9 @@ export const AsciiHero = ({ className }: { className?: string }) => {
     return city ? [{ city, key: 0 }] : [];
   });
   const [settled, setSettled] = useState(false);
+  const [posterGone, setPosterGone] = useState(false);
   const current = layers.at(-1);
+  const poster = layers[0] ? POSTERS[layers[0].city.id] : undefined;
 
   const rotating =
     settled &&
@@ -139,6 +157,7 @@ export const AsciiHero = ({ className }: { className?: string }) => {
   const settle = () => {
     setLayers((previous) => previous.slice(-1));
     setSettled(true);
+    setPosterGone(true);
   };
 
   return (
@@ -147,6 +166,19 @@ export const AsciiHero = ({ className }: { className?: string }) => {
       aria-hidden="true"
       className={cn("ascii-hero absolute inset-0", className)}
     >
+      {poster && !posterGone ? (
+        <picture>
+          <source media={PORTRAIT_QUERY} srcSet={poster.tall} />
+          {/* oxlint-disable-next-line nextjs/no-img-element -- a fixed-size still under the live scene, needed before hydration */}
+          <img
+            src={poster.wide}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover"
+          />
+        </picture>
+      ) : null}
       {layers.map((layer) => (
         <CityLayer
           key={layer.key}
