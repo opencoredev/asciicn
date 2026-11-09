@@ -31,6 +31,7 @@ export const SCENE_SOURCE_IDS = [
   "glacier-lagoon",
   "canyon-river",
   "lighthouse",
+  "rice-terraces",
   "redwood-light",
 ] as const;
 

@@ -221,6 +221,7 @@ const SCENE_TITLES: Readonly<Record<SceneSourceId, string>> = {
   "new-york": "New York",
   paris: "Paris",
   "redwood-light": "Redwood light",
+  "rice-terraces": "Rice terraces",
   rio: "Rio de Janeiro",
   "san-francisco": "San Francisco",
   sydney: "Sydney",

@@ -59,6 +59,19 @@ export const LANDSCAPES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
+      "Flooded rice terraces at dawn: each curved pool mirrors the pink and gold sky, mist fills the valley below and distant ridges fade into blue haze.",
+    id: "rice-terraces",
+    load: async () => {
+      const { RiceTerraces } =
+        await import("@/components/asciicn/rice-terraces");
+      return RiceTerraces;
+    },
+    renderer: "gpu",
+    title: "Rice terraces",
+  },
+  {
+    charset: "dots",
+    description:
       "A redwood forest in early morning: giant trunks fading into blue-green haze, golden light shafts slanting onto a fern floor, and slow motes drifting in the light.",
     id: "redwood-light",
     load: async () => {
