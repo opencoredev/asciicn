@@ -32,6 +32,7 @@ float sfHzRow = 0.0;
 float sfS = 0.4;
 float sfTowerX = 0.4;
 float sfShift = 0.0;
+float sfGlowGain = 1.0;
 float sfSideX = 0.6;
 float sfDeckRow = 0.0;
 float sfGlowX = 0.0;
@@ -85,22 +86,28 @@ void sfSetup(vec2 res, float t) {
   sfRh = 1.0 / sfN.y;
   sfT = t;
   float tall = 1.0 - smoothstep(0.6, 1.3, sfAsp);
-  // Portrait boxes frame the bridge close up: the south tower right of
-  // centre and low, below a headline, with the main cable sweeping off the
-  // left edge. Wider boxes show the whole span. The switch is a step: a
-  // blend between the two framings would cut a tower at the edge.
+  // Portrait boxes frame the span between slim towers at the left and right
+  // edges, the deck low at about 73% down and the tower tops near half
+  // height, so a centred headline sits between the towers, not over them.
+  // Wider boxes show the whole span with the towers moving apart. The
+  // switch is a step: a blend between the framings would cut a tower.
   float portrait = step(sfAsp, 0.85);
-  sfHzRow = floor(mix(mix(0.27, 0.33, tall), 0.2, portrait) * sfN.y + 0.5);
+  sfS = mix(mix(0.5, 0.34, tall), 0.325, portrait);
+  float hz = mix(mix(0.27, 0.33, tall), 0.27 - 0.29 * sfS, portrait);
+  sfHzRow = floor(hz * sfN.y + 0.5);
   sfHz = sfHzRow / sfN.y;
-  sfS = mix(mix(0.5, 0.34, tall), 0.38, portrait);
-  sfTowerX = mix(clamp(sfAsp * 0.29, 0.155, 0.6), 0.44, portrait);
-  sfShift = portrait * (sfAsp * 0.2 - sfTowerX);
+  sfHalfW = max(3.0, floor(mix(mix(0.1, 0.085, tall), 0.1, portrait) * sfS / sfCw + 0.5));
+  float edge = sfAsp * 0.5 - (sfHalfW + 1.5) * sfCw;
+  sfTowerX = mix(clamp(sfAsp * 0.29, 0.155, 0.6), edge, portrait);
+  sfShift = 0.0;
   sfSideX = sfTowerX * 1.36;
   sfDeckRow = sfVRow(0.29);
   sfGlowX = -0.12 * min(sfAsp, 1.4);
+  // On a phone the glow and its path on the water sit right under the
+  // buttons, so they are held back there.
+  sfGlowGain = mix(1.0, 0.45, portrait);
   sfColR = sfColOf(sfTowerX + sfShift);
   sfColL = sfColR - floor(2.0 * sfTowerX / sfCw + 0.5);
-  sfHalfW = max(3.0, floor(mix(mix(0.1, 0.085, tall), 0.1, portrait) * sfS / sfCw + 0.5));
   sfLegW = max(2.0, floor(0.052 * sfS / sfCw + 0.5));
   sfPier = sfVRow(0.05);
   sfS1a = sfVRow(0.47);
@@ -149,8 +156,8 @@ vec3 sfSky(float x, float y) {
   vec3 cloud = mix(vec3(0.95, 0.55, 0.55), vec3(0.42, 0.38, 0.62), smoothstep(0.1, 0.4, h));
   cloud = mix(cloud, vec3(0.17, 0.2, 0.42), smoothstep(0.4, 0.85, h));
   c = mix(c, cloud, streak * band * 0.6);
-  c += vec3(1.0, 0.5, 0.26) * sfGlow(x, y) * 0.45;
-  c += vec3(1.0, 0.86, 0.62) * sfCore(x, y) * 0.9;
+  c += vec3(1.0, 0.5, 0.26) * sfGlow(x, y) * 0.45 * sfGlowGain;
+  c += vec3(1.0, 0.86, 0.62) * sfCore(x, y) * 0.9 * sfGlowGain;
   return c;
 }
 
@@ -192,7 +199,7 @@ vec3 sfFogColor(float x, float bx, float y) {
   float puff = fbm(vec2(bx * 8.0 - sfT * 0.06, y * 16.0 + 2.0));
   vec3 c = mix(vec3(0.22, 0.24, 0.42), vec3(0.78, 0.74, 0.88), lift * lift);
   c *= 0.75 + 0.5 * puff;
-  return c + vec3(1.0, 0.55, 0.34) * sfGlow(x, y) * 0.45 + vec3(1.0, 0.8, 0.6) * sfCore(x, y) * 0.3;
+  return c + (vec3(1.0, 0.55, 0.34) * sfGlow(x, y) * 0.45 + vec3(1.0, 0.8, 0.6) * sfCore(x, y) * 0.3) * sfGlowGain;
 }
 
 // Land: the Marin Headlands rising from the north tower on the left, the
@@ -494,7 +501,7 @@ vec4 sfScene(vec2 uv, vec2 res, float t, float fogAmount, float traffic, float b
   // viewer, broken into glints by the ripples.
   float path = exp(-pow((x - sfGlowX) * 3.2 / (0.5 + 0.9 * depth), 2.0));
   float glint = smoothstep(0.1, 0.8, snoise(vec2(x * 7.0 + t * 0.03, row * 0.8 - t * 0.45)));
-  glint *= path * (1.0 - 0.75 * depth);
+  glint *= path * (1.0 - 0.75 * depth) * sfGlowGain;
   c = mix(c, vec3(1.0, 0.7, 0.45), glint * 0.85);
   tone = mix(tone, 0.8, glint);
   if (boat > 0.5) {
