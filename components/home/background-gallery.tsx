@@ -84,37 +84,52 @@ const writeCity = (id: string) => {
   }
 };
 
-const installCommand = (origin: string, id: string) =>
-  `npx shadcn@latest add ${origin}/r/${id}.json`;
+// What the agent gets: which background, where it goes, and the install
+// command, so it can add it without opening the docs.
+const agentPrompt = (origin: string, source: StageSource) =>
+  `Add the asciicn ${source.title} background behind my hero section. Install it with \`npx shadcn@latest add ${origin}/r/${source.id}.json\`, place it as an absolute layer behind the hero content, and keep the headline readable.`;
 
-const CopyInstall = ({ source }: { source: StageSource }) => {
+const CopyPrompt = ({ source }: { source: StageSource }) => {
   const origin = useSiteOrigin();
   const { copyToClipboard, isCopied } = useCopyToClipboard({ timeout: 1500 });
-  const command = installCommand(origin, source.id);
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
       onClick={async () => {
-        if (await copyToClipboard(command)) {
+        const prompt = agentPrompt(origin, source);
+        if (await copyToClipboard(prompt)) {
           trackEvent({
-            name: "install_command_copied",
-            properties: { component_name: source.id, section: "backgrounds" },
+            name: "agent_prompt_copied",
+            properties: {
+              component_name: source.id,
+              location: "backgrounds",
+              prompt_name: "background",
+              prompt_text: prompt,
+            },
           });
         }
       }}
-      title={command}
-      aria-label={isCopied ? "Install command copied" : `Copy ${command}`}
+      aria-label={
+        isCopied
+          ? "Prompt copied"
+          : `Copy a prompt that adds ${source.title} to your app`
+      }
       className="shrink-0"
     >
       <Icon
         icon={isCopied ? Tick02Icon : Copy01Icon}
         className={cn("size-3.5", isCopied && "text-primary")}
       />
-      <span className="hidden sm:inline">
-        {isCopied ? "Copied" : "Copy install"}
-      </span>
+      {isCopied ? (
+        "Copied"
+      ) : (
+        <>
+          <span className="sm:hidden">Prompt</span>
+          <span className="hidden sm:inline">Copy prompt</span>
+        </>
+      )}
     </Button>
   );
 };
@@ -212,21 +227,18 @@ export const BackgroundGallery = () => {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-2 sm:p-5">
         <div className="bg-background/85 supports-[backdrop-filter]:bg-background/70 pointer-events-auto flex w-full max-w-[60rem] flex-col gap-2.5 rounded-[18px] border p-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.5)] backdrop-blur-md sm:gap-3 sm:p-3">
-          <div className="flex items-center gap-3 pl-1.5">
+          <div className="flex items-center gap-1.5 pl-1.5 sm:gap-3">
             <div className="flex min-w-0 flex-1 flex-col">
               <p className="flex items-baseline gap-2">
                 <span className="truncate font-medium tracking-[-0.01em]">
                   {source.title}
                 </span>
-                <span className="text-muted-foreground shrink-0 text-sm">
+                <span className="text-muted-foreground hidden shrink-0 text-sm sm:inline">
                   {GROUP_LABEL[source.group]}
                 </span>
               </p>
-              <p className="text-muted-foreground hidden truncate text-sm md:block">
-                {source.description}
-              </p>
             </div>
-            <CopyInstall source={source} />
+            <CopyPrompt source={source} />
             <Button
               asChild
               variant="ghost"
