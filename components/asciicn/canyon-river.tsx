@@ -37,6 +37,7 @@ float canyonRimN;
 float canyonRimM;
 float canyonWet;
 float canyonCalm;
+float canyonCalmX;
 
 // A stable random value per cell. hash21 repeats on integers, which tiles patterns.
 float canyonHash(vec2 p) {
@@ -62,14 +63,26 @@ float canyonRiverHalf(float ty) {
 }
 
 // A canyon wall opening around gap: an eroded slope with two soft benches,
-// buttresses and notches along the rim, and fine breaks near the top.
+// its rim broken at three scales and notched wherever a gully cuts it.
+// The calm middle of the box gets a quieter rim.
 float canyonWall(float x, float gap, float halfGap, float span, float floorY, float rim, float rough) {
   float d = abs(x - gap) - halfGap;
-  float v = d / max(span, 0.05) + 0.16 * (fbm(vec2(x * 3.2, rim * 40.0)) - 0.5);
+  float v = d / max(span, 0.05) + 0.2 * (fbm(vec2(x * 3.2, rim * 40.0)) - 0.5) + 0.05 * snoise(vec2(x * 9.0, rim * 17.0));
   float s = clamp(v, 0.0, 1.0);
   float prof = mix(pow(s, 0.75), canyonBench(s, 2.0), 0.4);
   float top = mix(floorY, rim, prof);
-  return top + rough * (0.7 * snoise(vec2(x * 16.0, rim * 9.0)) + 0.3 * snoise(vec2(x * 47.0, rim * 3.0)));
+  rough *= 1.0 - 0.5 * canyonCalmX;
+  top += rough * (1.3 * snoise(vec2(x * 5.0, rim * 11.0)) + 0.7 * snoise(vec2(x * 16.0, rim * 9.0)) + 0.35 * snoise(vec2(x * 47.0, rim * 3.0)));
+  float notch = smoothstep(0.86, 0.97, 1.0 - abs(snoise(vec2(x * 7.5, rim * 23.0))));
+  return top - rough * 2.6 * notch * prof;
+}
+
+// Where the middle wall meets the floor: rounded lobes of fallen rock that
+// spread below its foot, wider under tall wall and none at the river.
+float canyonTalus(float x, float topM) {
+  float lobe = pow(max(snoise(vec2(x * 6.5, 2.7)) * 0.7 + 0.45, 0.0), 0.6);
+  float under = smoothstep(CANYON_FLOOR_M + 0.005, CANYON_FLOOR_M + 0.05, topM);
+  return CANYON_FLOOR_M - under * (0.012 + 0.03 * lobe + 0.006 * snoise(vec2(x * 21.0, 5.1)));
 }
 
 float canyonNearTop(float x) {
@@ -87,15 +100,24 @@ float canyonMidTop(float x) {
 // One butte: a rough cap rock with sheer, jagged sides over a talus skirt.
 // Returns which side of it the point is on, from -1 (away from the sun) to
 // 1 (towards it), or -9 outside it. top is set to its rim above x.
-float canyonButte(float x, float ty, float cx, float hw, float topY, float cap, float rough, out float top) {
-  top = topY + rough * (0.7 * snoise(vec2(x * 20.0, cx * 7.0)) + 0.5 * snoise(vec2(x * 61.0, cx * 3.0)));
-  if (ty > top || ty < CANYON_FLOOR_F) {
+// Each one differs: its cap tilts by lean and sags and chips at three
+// scales, the cap rock is uneven in height, and the talus flares more on
+// one side and rounds out towards a ragged foot.
+float canyonButte(float x, float ty, float cx, float hw, float topY, float cap, float rough, float lean, out float top) {
+  float seed = cx * 7.0;
+  top = topY + lean * (x - cx) + rough * (1.2 * snoise(vec2(x * 9.0, seed)) + 1.1 * snoise(vec2(x * 26.0, seed + 3.0)) + 0.6 * snoise(vec2(x * 70.0, seed + 5.0)));
+  float foot = CANYON_FLOOR_F - 0.012 - 0.012 * snoise(vec2(x * 9.0, seed + 9.0));
+  if (ty > top || ty < foot) {
     return -9.0;
   }
-  float base = topY - cap;
-  float w = hw + max(base - ty, 0.0) * 1.3;
-  w += rough * (1.6 * snoise(vec2(ty * 52.0, cx * 13.0)) + 2.2 * snoise(vec2(ty * 12.0, cx * 5.0)));
   float d = x - cx;
+  float base = topY - cap * (1.0 + 0.5 * snoise(vec2(x * 4.0, seed + 2.0)));
+  float k = max(base - ty, 0.0);
+  float w = hw + (k * 1.1 + sqrt(k) * 0.045) * (1.0 + 0.6 * sign(d) * snoise(vec2(seed, 4.0)));
+  w += rough * (2.2 * snoise(vec2(ty * 14.0, seed)) + 2.0 * snoise(vec2(ty * 45.0, seed + 1.0)) + 0.9 * snoise(vec2(ty * 120.0, seed + 2.0)));
+  // Rounded, weathered shoulders where the cap meets the sky.
+  float sh = clamp((ty - (topY - 0.022)) / 0.022, 0.0, 1.0);
+  w -= hw * 0.45 * sh * sh * (0.6 + 0.4 * snoise(vec2(seed, 8.0 + sign(d))));
   if (abs(d) > w) {
     return -9.0;
   }
@@ -131,6 +153,8 @@ vec3 canyonStone(
 
   // Planes: which way each buttress face turns, with a hard edge.
   vec2 q = vec2(x * freq + ty * freq * 0.45, ty * freq * 0.18 + freq);
+  // Plane edges wander at two scales instead of running straight down.
+  q.x += 0.5 * snoise(q * 0.9 + 1.3) + 0.18 * snoise(q * 3.1 - 2.0);
   float r0 = fbm(q - vec2(0.18, 0.0));
   float r1 = fbm(q + vec2(0.18, 0.0));
   float plane = smoothstep(-0.015, 0.015, (r0 - r1) * sunDir + 0.03 * side);
@@ -139,10 +163,16 @@ vec3 canyonStone(
   vec3 col = mix(shade, lit, sunny * (0.75 + 0.25 * light));
   col = mix(col, sky, 0.5 * (1.0 - litSide) * plane * detail);
   col *= (0.74 + 0.26 * h) * (1.0 + 0.22 * (facet - 0.5) * detail);
+  // A dot-scale mottle of chips and crevices, as broken rock reads up close.
+  col *= 1.0 + 0.12 * detail * (snoise(vec2(x * 95.0, ty * 95.0)) + 0.6 * snoise(vec2(x * 41.0, ty * 33.0)));
 
   // Benches: a level every bench or so, wavy and broken, some skipped.
   if (bench > 0.0) {
-    float f = (ty - base) / bench + 0.8 * fbm(vec2(x * 1.6, bench * 50.0)) + 0.3 * snoise(vec2(x * 5.0, ty * 4.0));
+    // Strata dip a little, wave, and break into blocks shifted at faults
+    // whose lines wander instead of running straight.
+    float fault = floor(x * 5.0 + 0.7 * snoise(vec2(ty * 8.0, bench * 30.0)));
+    float f = (ty - base + 0.07 * x) / bench + 0.8 * fbm(vec2(x * 1.6, bench * 50.0)) + 0.3 * snoise(vec2(x * 5.0, ty * 4.0));
+    f += 0.6 * canyonHash(vec2(fault, bench * 70.0));
     float idx = floor(f);
     float fr = fract(f);
     float present = smoothstep(-0.2, 0.2, snoise(vec2(x * 3.2 + idx * 1.7, idx * 5.3)));
@@ -156,8 +186,11 @@ vec3 canyonStone(
   // Gullies: a winding trunk channel with smaller ones feeding it from above.
   vec2 g = vec2(x * freq * 1.7 + 0.9 * fbm(vec2(x * freq * 0.6, ty * freq * 0.5)), ty * freq * 0.32);
   float trunk = smoothstep(0.9, 0.975, 1.0 - abs(snoise(g)));
-  float twig = smoothstep(0.92, 0.98, 1.0 - abs(snoise(g * 2.2 + 7.3))) * (0.25 + 0.75 * h);
-  float gully = clamp(trunk + 0.8 * twig, 0.0, 1.0) * detail;
+  // Tributaries run in at a slant and finer ones feed those near the rim.
+  vec2 g2 = vec2(g.x * 2.2 + g.y * 0.9, g.y * 2.2) + 7.3;
+  float twig = smoothstep(0.92, 0.98, 1.0 - abs(snoise(g2))) * (0.25 + 0.75 * h);
+  float rill = smoothstep(0.94, 0.985, 1.0 - abs(snoise(g2 * 2.1 - vec2(g.y * 1.2, 0.0) + 3.7))) * h * h;
+  float gully = clamp(trunk + 0.8 * twig + 0.6 * rill, 0.0, 1.0) * detail;
   col = mix(col, shade * 0.6 + vec3(0.0, 0.02, 0.06), gully * 0.8);
 
   // Light reflected up from the river onto rock in shade, strongest low down.
@@ -168,7 +201,9 @@ vec3 canyonStone(
   col = mix(col, rim, edge * light * litSide * (0.55 + 0.45 * plane));
   // Rims turned away from the sun catch the cool sky instead.
   col = mix(col, vec3(0.4, 0.56, 0.86), edge * 0.55 * (1.0 - litSide));
-  return mix(col, haze, hazeAmt * (0.75 + 0.25 * (1.0 - h)));
+  // Distant rock sinks into haze at its foot, with no hard base line.
+  float mist = hazeAmt * (0.75 + 0.25 * (1.0 - h)) + min(hazeAmt * 3.0, 1.0) * 0.4 * (1.0 - smoothstep(0.0, 0.35, h));
+  return mix(col, haze, clamp(mist, 0.0, 1.0));
 }
 
 // The sky from the gold at the horizon to indigo overhead, warmest under
@@ -235,7 +270,11 @@ vec3 canyonFloor(float x, float ty) {
   vec3 ground = mix(vec3(0.07, 0.1, 0.2), vec3(0.3, 0.3, 0.4), far);
   float bank = 1.0 - smoothstep(hw, hw + 0.01 + hw * 0.5, d);
   ground = mix(ground, mix(vec3(0.38, 0.26, 0.16), vec3(0.62, 0.48, 0.36), far), bank * 0.7);
-  return ground * (0.85 + 0.3 * fbm(vec2(x * 9.0, ty * 30.0)));
+  ground *= 0.85 + 0.3 * fbm(vec2(x * 9.0, ty * 30.0));
+  // A ragged band of haze where the floor runs under the far plateau, so
+  // the two never meet along a straight line.
+  float haze = smoothstep(0.38, 0.49, ty + 0.03 * (fbm(vec2(x * 4.0, 7.7)) - 0.5) + 0.01 * snoise(vec2(x * 17.0, 2.2)));
+  return mix(ground, vec3(0.56, 0.48, 0.5), haze * 0.75);
 }
 
 vec2 canyonCacheUv = vec2(-1.0);
@@ -260,6 +299,7 @@ vec4 canyonScene(vec2 uv, vec2 res, float t) {
   canyonT = t;
   // The middle of the box, where a headline sits, keeps less detail.
   canyonCalm = (1.0 - smoothstep(0.2, 0.3, abs(uv.x - 0.5))) * (1.0 - smoothstep(0.15, 0.24, abs(uv.y - 0.52)));
+  canyonCalmX = 1.0 - smoothstep(0.2, 0.3, abs(uv.x - 0.5));
   canyonRow = 0.5 / canyonHz / res.y;
   canyonW = 0.5 * aspect / zoom;
   // Right of the middle on wide boxes, clear of a centred headline.
@@ -284,21 +324,23 @@ vec4 canyonScene(vec2 uv, vec2 res, float t) {
   float top1 = 0.0;
   float side1 = -9.0;
   float tb;
-  float s = canyonButte(x, ty, -0.66 * canyonW, 0.045, 0.565, 0.035, 0.005, tb);
+  float s = canyonButte(x, ty, -0.66 * canyonW, 0.045, 0.565, 0.035, 0.006, 0.09, tb);
   if (s > -2.0) { side1 = s; top1 = tb; }
-  s = canyonButte(x, ty, -0.9 * canyonW, 0.1, 0.61, 0.05, 0.006, tb);
+  s = canyonButte(x, ty, -0.9 * canyonW, 0.1, 0.61, 0.05, 0.007, -0.06, tb);
   if (side1 < -2.0 && s > -2.0) { side1 = s; top1 = tb; }
-  s = canyonButte(x, ty, 0.93 * canyonW, 0.09, 0.59, 0.045, 0.006, tb);
+  s = canyonButte(x, ty, 0.95 * canyonW, 0.06, 0.6, 0.055, 0.009, 0.16, tb);
   if (side1 < -2.0 && s > -2.0) { side1 = s; top1 = tb; }
   float top2 = 0.0;
   float side2 = -9.0;
-  s = canyonButte(x, ty, -0.76 * canyonW, 0.05, 0.585, 0.06, 0.003, tb);
+  s = canyonButte(x, ty, -0.76 * canyonW, 0.05, 0.585, 0.06, 0.004, 0.12, tb);
   if (s > -2.0) { side2 = s; top2 = tb; }
-  s = canyonButte(x, ty, -0.52 * canyonW, 0.025, 0.535, 0.02, 0.003, tb);
+  s = canyonButte(x, ty, -0.52 * canyonW, 0.025, 0.535, 0.02, 0.004, -0.15, tb);
   if (side2 < -2.0 && s > -2.0) { side2 = s; top2 = tb; }
-  s = canyonButte(x, ty, 0.8 * canyonW, 0.035, 0.56, 0.04, 0.003, tb);
+  s = canyonButte(x, ty, 0.8 * canyonW, 0.035, 0.56, 0.04, 0.004, -0.08, tb);
   if (side2 < -2.0 && s > -2.0) { side2 = s; top2 = tb; }
-  float topH = 0.5 + 0.005 + 0.012 * fbm(vec2(x * 2.2, 12.0));
+  float topH = 0.5 + 0.004 + 0.012 * fbm(vec2(x * 2.2, 12.0)) + 0.004 * snoise(vec2(x * 9.0, 4.0)) + 0.002 * snoise(vec2(x * 30.0, 8.0));
+  float footM = canyonTalus(x, topM);
+  float footH = 0.47 - 0.01 * snoise(vec2(x * 6.0, 3.3));
   topH = mix(0.494, topH, smoothstep(0.012, 0.05, abs(x - canyonSun)));
 
   if (ty < topN) {
@@ -310,13 +352,23 @@ vec4 canyonScene(vec2 uv, vec2 res, float t) {
       vec3(0.06, 0.1, 0.2), 0.06, canyonLight(x)
     );
     solid = 0.02;
-  } else if (ty < topM && ty > CANYON_FLOOR_M) {
+  } else if (ty < topM && ty > footM) {
     float side = clamp((canyonGapM - x) / 0.08, -1.0, 1.0) * sign(canyonSun - canyonGapM);
     col = canyonStone(
       x, ty, side, topM, CANYON_FLOOR_M, 4.4, 0.036, 1.0, 0.12,
       vec3(0.88, 0.48, 0.24), vec3(0.12, 0.18, 0.34), vec3(1.0, 0.72, 0.4),
       vec3(0.2, 0.26, 0.4), 0.18, canyonLight(x)
     );
+    if (ty < CANYON_FLOOR_M + 0.004) {
+      // Talus: rounded scree mounds, lit on the side towards the sun and
+      // fading into the dusk of the floor at their edges.
+      float m0 = snoise(vec2((x - 0.01) * 6.5, 2.7));
+      float m1 = snoise(vec2((x + 0.01) * 6.5, 2.7));
+      float mound = smoothstep(-1.0, 1.0, (m1 - m0) * 8.0 * sign(canyonSun - x) + side * 0.5);
+      float depth = clamp((ty - footM) / max(CANYON_FLOOR_M + 0.004 - footM, 1e-3), 0.0, 1.0);
+      vec3 scree = mix(vec3(0.14, 0.17, 0.3), vec3(0.74, 0.46, 0.28), mound);
+      col = mix(mix(vec3(0.08, 0.1, 0.2), scree, smoothstep(0.0, 0.6, depth)), col, smoothstep(0.75, 1.0, depth));
+    }
   } else if (side1 > -2.0 && clear > 0.5) {
     col = canyonStone(
       x, ty, side1, top1, CANYON_FLOOR_F, 5.0, 0.03, 0.5, 0.0,
@@ -329,7 +381,7 @@ vec4 canyonScene(vec2 uv, vec2 res, float t) {
       vec3(0.82, 0.58, 0.42), vec3(0.32, 0.38, 0.54), vec3(1.0, 0.8, 0.56),
       vec3(0.5, 0.52, 0.62), 0.45, canyonLight(x)
     );
-  } else if (ty < topH && ty > 0.47) {
+  } else if (ty < topH && ty > footH) {
     col = canyonStone(
       x, ty, 0.0, topH, 0.47, 3.0, 0.0, 0.0, 0.0,
       vec3(0.94, 0.66, 0.42), vec3(0.52, 0.54, 0.66), vec3(1.0, 0.84, 0.58),
