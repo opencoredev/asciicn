@@ -20,7 +20,7 @@
     "name": "tokyo",
     "type": "registry:component",
     "title": "Tokyo",
-    "description": "Tokyo at night: Tokyo Tower in orange and white with both decks lit, a dense skyline of lit windows, a train on an elevated line and Mount Fuji in the distance.",
+    "description": "Tokyo at dusk in coloured dots: Tokyo Tower glowing orange and white with both decks lit, a deep city fading into blue haze and a snow-capped Mount Fuji under an orange to indigo sky.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

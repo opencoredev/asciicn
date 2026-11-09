@@ -11,390 +11,430 @@ import type {
 import { resolveCharset } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// Minato at night, painted back to front: stars, Mount Fuji, a far
-// skyline, Tokyo Tower, a near skyline, then the elevated line and its
-// train. Nothing here moves but lights and the train. Every edge and every
-// window is placed on whole samples (`ascii_samples` is the sample count),
-// so silhouettes are crisp and window grids stay regular in any charset.
+// Tokyo at dusk turning to night, painted back to front: an orange to
+// indigo sky with thin lit cloud, Mount Fuji on the far horizon, three
+// layers of towers that get darker and clearer as they come closer, Tokyo
+// Tower, then the elevated line and the street. The field returns a tone
+// that sets dot size; the colour field returns that point's own colour.
 // World units: y runs 0 (street) to 1 (top of the sky) and x is centred and
 // measured in the same units, so shapes keep their proportions at any
-// aspect. The tower is modelled in metres from the real one: 333 m tall,
-// about 80 m across at the base, the Main Deck at 150 m and the Top Deck
-// at 250 m.
+// aspect. Fuji and the tower pull towards the centre in narrow boxes, so a
+// phone crop keeps both. Windows snap to whole glyph cells, so each one is
+// a single dot in any charset.
 const SCENE = `
-const float TOKYO_BASE = 0.11;
-const float TOKYO_HEIGHT = 0.8;
-const float TOKYO_RAIL = 0.052;
+const float TOKYO_HORIZON = 0.3;
+const float TOKYO_TOWER_BASE = 0.07;
+const float TOKYO_TOWER_HEIGHT = 0.82;
+const float TOKYO_RAIL = 0.078;
+
+vec2 tokyoCacheUv = vec2(-1.0);
+float tokyoCacheT = -1.0;
+vec4 tokyoCacheValue = vec4(0.0);
 
 float tokyoAspect;
-vec2 tokyoCount;
-vec2 tokyoCell;
-vec2 tokyoSample;
-vec2 tokyoP;
-float tokyoCw;
-float tokyoCh;
+vec2 tokyoCells;
+vec2 tokyoCellSize;
+vec2 tokyoCellIndex;
+vec2 tokyoCellCentre;
 
-float tokyoCol(float x) {
-  return floor((x / tokyoAspect + 0.5) * tokyoCount.x);
+// The sky from the horizon (s = 0) to the top (s = 1). Where warm is 1 it
+// runs gold, orange, coral and mauve; where it is 0, lavender. Both rise
+// through violet and indigo to night.
+vec3 tokyoSkyRamp(float s, float warm) {
+  vec3 c = mix(vec3(1.0, 0.8, 0.5), vec3(1.0, 0.58, 0.3), smoothstep(0.0, 0.08, s));
+  c = mix(c, vec3(0.94, 0.42, 0.36), smoothstep(0.06, 0.22, s));
+  c = mix(c, vec3(0.66, 0.34, 0.5), smoothstep(0.18, 0.38, s));
+  vec3 cool = mix(vec3(0.62, 0.52, 0.74), vec3(0.42, 0.38, 0.68), smoothstep(0.0, 0.2, s));
+  c = mix(cool, c, warm);
+  c = mix(c, vec3(0.3, 0.26, 0.56), smoothstep(0.3, 0.52, s));
+  c = mix(c, vec3(0.17, 0.17, 0.44), smoothstep(0.46, 0.72, s));
+  return mix(c, vec3(0.08, 0.09, 0.27), smoothstep(0.72, 1.0, s));
 }
 
-float tokyoRow(float y) {
-  return floor(y * tokyoCount.y);
+// The haze colour at height y: warm near the horizon, blue above it.
+vec3 tokyoHaze(float y) {
+  return mix(vec3(0.62, 0.44, 0.56), vec3(0.3, 0.32, 0.58), smoothstep(TOKYO_HORIZON - 0.06, TOKYO_HORIZON + 0.12, y));
 }
 
-// Bayer-friendly fill tones: in Braille and quadrants a quarter tone is an
-// even grid of dots; ramp charsets get a light glyph instead.
-float tokyoFill(float dots, float ramp) {
-  return tokyoGrid.y > 1.5 ? dots : ramp;
+// One layer of towers. Two staggered rows of plots, the taller one wins.
+// Returns the roof height at x; id names the building, and edge holds its
+// left and right sides in world units.
+float tokyoSkyline(float x, float plot, float seed, float base, float amp, float lift, out float id, out vec2 edge) {
+  float best = 0.0;
+  id = -1.0;
+  edge = vec2(0.0);
+  for (int row = 0; row < 2; row++) {
+    float shift = float(row) * 0.5;
+    float w = plot * (row == 0 ? 1.0 : 0.73);
+    float k = floor(x / w + shift);
+    float key = k + seed * 37.0 + float(row) * 101.0;
+    float width = mix(0.55, 0.95, hash21(vec2(key, 1.3)));
+    float left = (k - shift + (1.0 - width) * hash21(vec2(key, 2.7))) * w;
+    float right = left + width * w;
+    if (x < left || x > right) {
+      continue;
+    }
+    float h = base + amp * (0.18 + 0.82 * pow(hash21(vec2(key, 4.1)), 1.6)) + lift;
+    // Some towers step back near the roof.
+    float step1 = hash21(vec2(key, 5.9));
+    float f = (x - left) / (right - left);
+    if (step1 > 0.55 && (f < 0.22 || f > 0.78)) {
+      h -= (h - base) * 0.12;
+    }
+    // A few carry a thin mast.
+    if (step1 > 0.86 && abs(f - 0.5) < 0.5 * tokyoCellSize.x / (right - left)) {
+      h += 0.025;
+    }
+    if (h > best) {
+      best = h;
+      id = key;
+      edge = vec2(left, right);
+    }
+  }
+  return best;
 }
 
-// A slow aviation beacon: a soft swell about every 1.8 s.
-float tokyoBeacon(float t, float phase) {
-  float b = 0.5 + 0.5 * sin(t * 3.49 + phase);
-  return b * b * b;
+// Windows on a building face: a soft, uneven field of single-cell lights,
+// banded by floor, warm and cool mixed. A few switch on or off slowly.
+// Returns the light's colour in rgb and its strength in a.
+vec4 tokyoWindow(float id, vec2 edge, float roof, float density, float t) {
+  vec2 c = tokyoCellCentre;
+  // Keep one cell clear at each side and under the roof.
+  if (c.x - edge.x < tokyoCellSize.x * 0.9 || edge.y - c.x < tokyoCellSize.x * 0.9 || roof - c.y < tokyoCellSize.y * 1.2) {
+    return vec4(0.0);
+  }
+  float style = hash21(vec2(id, 8.1));
+  vec2 cell = tokyoCellIndex;
+  // Striped facades light every other column; ribbon facades every other row.
+  if (style < 0.3 && mod(cell.x, 2.0) > 0.5) {
+    return vec4(0.0);
+  }
+  if (style > 0.78 && mod(cell.y, 2.0) > 0.5) {
+    return vec4(0.0);
+  }
+  // Whole floors tend to be lit or dark together, and some towers are
+  // busier than others.
+  float floorLit = hash21(vec2(id, cell.y * 1.7));
+  float busy = mix(0.4, 1.6, hash21(vec2(id, 6.2)));
+  float chance = density * busy * (floorLit > 0.45 ? 1.9 : 0.25);
+  float pick = hash21(cell + id * 0.37);
+  float lit = step(pick, chance);
+  // A few cells drift between on and off over tens of seconds.
+  float drifting = step(hash21(cell * 1.31 + 4.2), 0.07);
+  if (drifting > 0.5) {
+    float period = 14.0 + 16.0 * hash21(cell + 9.4);
+    float phase = t / period + hash21(cell + 2.2) * 9.0;
+    float a = step(hash21(cell + floor(phase)), chance * 1.3);
+    float b = step(hash21(cell + floor(phase) + 1.0), chance * 1.3);
+    lit = mix(a, b, smoothstep(0.75, 1.0, fract(phase)));
+  }
+  if (lit <= 0.0) {
+    return vec4(0.0);
+  }
+  float tint = hash21(vec2(id, 3.3)) * 0.6 + hash21(cell + 6.6) * 0.4;
+  vec3 warm = vec3(1.0, 0.72, 0.36);
+  vec3 white = vec3(1.0, 0.92, 0.78);
+  vec3 cool = vec3(0.68, 0.84, 1.0);
+  vec3 col = tint < 0.45 ? warm : tint < 0.72 ? white : cool;
+  float strength = lit * mix(0.55, 1.0, hash21(cell + 1.9));
+  return vec4(col, strength);
 }
 
-// Half-width of the tower at height m, in metres. The legs flare like the
-// Eiffel Tower's; above the Top Deck the antenna steps in twice.
+// Half-width of Tokyo Tower at height m, in metres (333 m tall, about
+// 80 m across the base). The legs flare like the Eiffel Tower's; above the
+// Top Deck the antenna steps in twice.
 float tokyoTowerHalf(float m) {
-  if (m < 254.0) {
+  if (m < 252.0) {
     float k = max(1.0 - m / 262.0, 0.0);
-    return 3.2 + 36.8 * k * k;
+    return 3.4 + 37.0 * k * k;
   }
   if (m < 290.0) {
-    return mix(2.6, 1.6, (m - 254.0) / 36.0);
+    return mix(2.8, 1.8, (m - 252.0) / 38.0);
   }
-  return mix(0.9, 0.45, (m - 290.0) / 43.0);
+  return mix(1.2, 0.6, (m - 290.0) / 43.0);
 }
 
 // 1 where the tower is painted white, 0 for international orange.
 float tokyoTowerWhite(float m) {
   if (m < 140.0) {
-    return step(90.0, m) * step(m, 114.0);
+    return step(92.0, m) * step(m, 112.0);
   }
   if (m < 245.0) {
-    return step(177.0, m) * step(m, 197.0) + step(217.0, m) * step(m, 235.0);
+    return step(180.0, m) * step(m, 198.0) + step(220.0, m) * step(m, 236.0);
   }
   if (m < 290.0) {
     return step(m, 272.0);
   }
-  return step(m, 305.0) + step(320.0, m);
+  return step(m, 306.0) + step(320.0, m);
 }
 
-// Panel bounds of the lower lattice, where the X bracing changes.
-vec2 tokyoPanel(float m) {
-  if (m < 22.0) {
-    return vec2(0.0, 22.0);
-  }
-  if (m < 44.0) {
-    return vec2(22.0, 44.0);
-  }
-  if (m < 66.0) {
-    return vec2(44.0, 66.0);
-  }
-  if (m < 90.0) {
-    return vec2(66.0, 90.0);
-  }
-  if (m < 114.0) {
-    return vec2(90.0, 114.0);
-  }
-  return vec2(114.0, 140.0);
-}
-
-// Tokyo Tower. u and m are metres from the foot of its axis; mx and my are
-// one sample in metres. halo marks samples just outside it, which take its
-// colour at zero tone so thin parts don't fade in Braille cells.
-vec4 tokyoTower(float u, float m, float mx, float my, float t, out float cover, out float halo) {
+// Tokyo Tower at u, m metres from the foot of its axis. Returns colour and
+// tone; cover is 1 inside it.
+vec4 tokyoTower(float u, float m, float mx, float t, out float cover) {
   cover = 0.0;
-  halo = 0.0;
   float au = abs(u);
-  vec3 orange = vec3(1.0, 0.36, 0.1);
-  vec3 white = vec3(1.0, 0.89, 0.74);
-  vec3 paint = mix(orange, white, tokyoTowerWhite(m));
-  vec3 red = vec3(1.0, 0.1, 0.06);
-  bool mainDeck = m >= 140.0 && m < 157.0;
-  bool topDeck = m >= 245.0 && m < 255.0;
-  float hw = mainDeck ? 16.5 : topDeck ? 7.5 : tokyoTowerHalf(m);
-  hw = max(hw, mx * 0.5);
-  float tip = 333.0;
-  if (m < 0.0 || m > tip + my) {
-    return vec4(paint, 0.0);
+  if (m < 0.0 || m > 336.0) {
+    return vec4(0.0);
   }
-  // Beacons sit one row above each deck roof and on top of the mast.
-  float beacon = 0.0;
-  if (m > tip) {
-    beacon = au < mx * 0.5 ? 1.0 : 0.0;
-  } else if (m >= 157.0 && m < 157.0 + my) {
-    beacon = au <= 16.5 && au > 16.5 - mx ? 1.0 : 0.0;
-  } else if (m >= 255.0 && m < 255.0 + my) {
-    beacon = au <= 7.5 && au > 7.5 - mx ? 1.0 : 0.0;
-  }
-  if (beacon > 0.5) {
-    cover = 1.0;
-    float b = tokyoBeacon(t, floor(m / 50.0) * 1.3);
-    return vec4(red * mix(0.35, 1.0, b), tokyoFill(1.0, mix(0.35, 1.0, b)));
-  }
+  bool mainDeck = m >= 142.0 && m < 158.0;
+  bool topDeck = m >= 244.0 && m < 254.0;
+  float hw = mainDeck ? 17.0 : topDeck ? 8.0 : tokyoTowerHalf(m);
+  hw = max(hw, m > 290.0 ? mx * 0.55 : mx * 1.05);
   if (au > hw) {
-    halo = au < hw + mx * 2.5 && m < tip ? 1.0 : 0.0;
-    return vec4(paint, 0.0);
+    return vec4(0.0);
+  }
+  // The arch between the four legs at the base.
+  if (m < 52.0) {
+    float leg = 0.32 * hw;
+    float arch = 52.0 * sqrt(max(1.0 - pow(au / max(hw - leg, 1.0), 2.0), 0.0));
+    if (au < hw - leg && m < arch - 6.0) {
+      return vec4(0.0);
+    }
   }
   cover = 1.0;
+  float glow = 0.93 + 0.07 * sin(t * 0.55);
+  vec3 orange = vec3(1.0, 0.5, 0.18);
+  vec3 white = vec3(1.0, 0.94, 0.84);
+  vec3 col = mix(orange, white, tokyoTowerWhite(m));
+  // Below the Main Deck the lattice is open: X bracing, panel bands and the
+  // legs stay lit and the gaps between them fall darker, so the structure
+  // reads. The right side is a little shaded, away from the sunset.
+  float frame = 1.0;
+  if (m < 142.0) {
+    float panel = 24.0;
+    float v = fract(m / panel);
+    float across = au / max(hw, 1.0);
+    float diag = abs(across - abs(v * 2.0 - 1.0));
+    float brace = smoothstep(0.22, 0.06, diag);
+    float band = smoothstep(0.12, 0.0, min(v, 1.0 - v));
+    float leg = smoothstep(0.6, 0.78, across);
+    frame = max(max(brace, band), leg);
+  }
+  float shade = mix(1.0, 0.8, smoothstep(-0.2, 1.0, u / max(hw, 1.0)));
+  float gap = (1.0 - frame) * (1.0 - 0.6 * tokyoTowerWhite(m));
+  float tone = mix(0.97, 0.72, gap) * mix(1.0, shade, 0.3) * glow;
+  col *= mix(1.0, 0.76, gap) * shade * glow;
   if (mainDeck || topDeck) {
-    // Two floors of lit glass on the Main Deck, one on the Top Deck,
-    // between white slabs; ramp charsets get glass only.
-    float base = mainDeck ? 140.0 : 245.0;
-    float rows = floor((mainDeck ? 17.0 : 10.0) / my + 0.5);
-    float i = floor((m - base) / my);
-    bool slab = rows >= 5.0 && (i < 0.5 || i > rows - 1.5 || (mainDeck && abs(i - floor(rows * 0.5)) < 0.5));
-    vec3 glass = vec3(0.86, 0.95, 1.0);
-    return slab ? vec4(white, tokyoFill(1.0, 0.8)) : vec4(glass, 1.0);
+    // Lit observation windows in the middle rows of each deck.
+    float lo = mainDeck ? 146.0 : 247.0;
+    float hi = mainDeck ? 154.0 : 251.0;
+    float win = step(lo, m) * step(m, hi) * step(au, hw - mx * 0.9);
+    col = mix(vec3(0.95, 0.9, 0.82) * 0.85, vec3(1.0, 0.94, 0.78), win);
+    tone = mix(0.85, 1.0, win) * glow;
   }
-  if (m >= 140.0) {
-    return vec4(paint, tokyoFill(1.0, 0.85));
+  // The red light at the tip pulses slowly.
+  if (m > 326.0) {
+    float b = 0.5 + 0.5 * sin(t * 1.6);
+    col = mix(vec3(0.7, 0.12, 0.1), vec3(1.0, 0.2, 0.14), b);
+    tone = mix(0.7, 1.0, b * b);
   }
-  // The lower body is an open lattice: two legs, X bracing in each panel
-  // and a strut at each panel edge. The arch opens between the legs.
-  float leg = max(mx * 0.9, 0.11 * hw);
-  if (m < 36.0) {
-    float arch = (hw - leg) * sqrt(max(1.0 - (m / 36.0) * (m / 36.0), 0.0));
-    if (au < arch) {
-      cover = 0.0;
-      return vec4(paint, 0.0);
-    }
-  }
-  vec2 panel = tokyoPanel(m);
-  float f = (m - panel.x) / (panel.y - panel.x);
-  float slope = 2.0 * hw / (panel.y - panel.x);
-  float reach = 0.5 * max(mx, slope * my) + 0.01;
-  float diag = min(abs(u - hw * (2.0 * f - 1.0)), abs(u + hw * (2.0 * f - 1.0)));
-  float strut = abs(m - panel.x) < my * 0.5 ? 1.0 : 0.0;
-  float member = hw - au < leg || diag < reach || strut > 0.5 ? 1.0 : 0.0;
-  vec3 gap = paint * 0.8;
-  return vec4(mix(gap, paint, member), mix(tokyoFill(0.25, 0.3), tokyoFill(1.0, 0.85), member));
+  return vec4(col, tone);
 }
-
-// Mount Fuji: a symmetric cone with concave slopes, a small flat crater
-// and a snow cap whose lower edge runs down the gullies in short teeth.
-vec4 tokyoFuji(vec2 q, out float cover) {
-  cover = 0.0;
-  float peak = 0.345;
-  float d = max(abs(q.x) - 0.01, 0.0);
-  float top = peak - 0.36 * pow(d, 0.8);
-  if (q.y > top) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float tooth = 0.024;
-  float k = floor(q.x / tooth);
-  float tri = 1.0 - abs(2.0 * fract(q.x / tooth) - 1.0);
-  float snowline = peak - 0.045 - (0.006 + 0.02 * hash21(vec2(k, 4.0))) * tri;
-  if (q.y > snowline) {
-    return vec4(0.66, 0.72, 0.84, tokyoFill(1.0, 0.55));
-  }
-  // A faint gradient: the slopes are a touch lighter towards the snow.
-  float lift = clamp((q.y - 0.18) / (peak - 0.18), 0.0, 1.0);
-  vec3 body = mix(vec3(0.14, 0.17, 0.3), vec3(0.26, 0.31, 0.47), lift);
-  bool rim = q.y > top - tokyoCh;
-  return vec4(body, rim ? tokyoFill(0.5, 0.24) : tokyoFill(0.25, 0.12));
-}
-
-vec3 tokyoTint(float r) {
-  if (r < 0.45) {
-    return vec3(1.0, 0.7, 0.36);
-  }
-  if (r < 0.8) {
-    return vec3(0.8, 0.93, 1.0);
-  }
-  return vec3(1.0, 0.85, 0.52);
-}
-
-// One window's brightness. Each window keeps its state for ten to twenty
-// minutes and fades over a few seconds when it changes, so only a handful
-// switch at a time across the whole city.
-float tokyoWindow(vec2 id, float lit, float t) {
-  float period = 600.0 + 600.0 * hash21(id + 0.37);
-  float x = t / period + hash21(id + 9.1) * 7.0;
-  float epoch = floor(x);
-  float now = step(1.0 - lit, hash21(id + vec2(epoch * 1.31, 2.0)));
-  float before = step(1.0 - lit, hash21(id + vec2((epoch - 1.0) * 1.31, 2.0)));
-  float fade = smoothstep(0.0, 3.0 / period, fract(x));
-  return mix(before, now, fade) * (0.72 + 0.28 * hash21(id + 5.5));
-}
-
-// A row of high-rises. Slots are w wide; each holds one building whose
-// edges, roof and window grid sit on whole samples. cap(x) keeps the
-// skyline low in front of the tower and Fuji so both read.
-vec4 tokyoBlocks(float w, float off, vec2 range, float seed, vec2 pitch, float lit, float dim, float floorY, float t, float towerX, float fujiX, out float cover) {
-  cover = 0.0;
-  float x = tokyoP.x + off;
-  float id = floor(x / w);
-  float r1 = hash21(vec2(id, seed));
-  float r2 = hash21(vec2(id, seed + 7.1));
-  float r3 = hash21(vec2(id, seed + 13.7));
-  float r4 = hash21(vec2(id, seed + 19.3));
-  float c0 = tokyoCol((id + 0.02 + 0.08 * r2) * w - off);
-  float c1 = tokyoCol((id + 0.98 - 0.08 * r3) * w - off);
-  if (tokyoSample.x < c0 || tokyoSample.x >= c1) {
-    return vec4(0.0);
-  }
-  float cx = (id + 0.5) * w - off;
-  float h = range.x + (range.y - range.x) * pow(r1, 1.25);
-  h = mix(min(h, TOKYO_BASE + 0.05 + 0.02 * r2), h, smoothstep(0.07, 0.15, abs(cx - towerX)));
-  h = mix(min(h, 0.17 + 0.025 * r3), h, max(smoothstep(0.12, 0.26, abs(cx - fujiX)), 1.0 - tokyoFujiOn));
-  float roof = tokyoRow(h);
-  // Some towers carry a narrower crown, and the tallest a red beacon.
-  float inset = floor((c1 - c0) * 0.25);
-  float crown = r2 > 0.6 && c1 - c0 > 5.0 ? tokyoRow(h + 0.018 + 0.02 * r4) : roof;
-  bool inCrown = tokyoSample.x >= c0 + inset && tokyoSample.x < c1 - inset;
-  float lamp = floor((c0 + c1) * 0.5);
-  if (r1 > 0.8 && tokyoSample.x == lamp && tokyoSample.y == crown) {
-    cover = 1.0;
-    float b = tokyoBeacon(t, r4 * 6.28);
-    return vec4(vec3(1.0, 0.1, 0.06) * mix(0.3, 1.0, b), tokyoFill(1.0, mix(0.3, 1.0, b)));
-  }
-  if (tokyoSample.y >= (inCrown ? crown : roof)) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  vec3 tint = tokyoTint(r4);
-  // Windows: pitch is converted to whole samples, one sample of wall
-  // between columns and a slab between floors. Ramp charsets pair glyphs
-  // into two-wide windows, which read better than a lone glyph.
-  float px = max(tokyoFill(2.0, 3.0), floor(pitch.x / tokyoCw + 0.5));
-  float py = max(2.0, floor(pitch.y / tokyoCh + 0.5));
-  float wy = py - max(1.0, floor(py * 0.4));
-  float lx = tokyoSample.x - c0 - 1.0;
-  float ly = (inCrown ? crown : roof) - 1.0 - tokyoSample.y;
-  float cols = c1 - c0 - 2.0;
-  bool ribbon = r3 < 0.18;
-  bool strip = r3 > 0.18 && r3 < 0.3;
-  bool pane = lx >= 0.0 && lx < cols && ly >= 0.0 && tokyoSample.y > tokyoRow(floorY)
-    && (ribbon || mod(lx, px) < px - 1.0) && (strip || mod(ly, py) < wy);
-  if (!pane) {
-    return vec4(tint * dim, 0.0);
-  }
-  vec2 win = vec2(id * 31.0 + floor(lx / (ribbon ? 2.0 : px)), floor(ly / py)) + seed;
-  float glow = tokyoWindow(win, lit, t);
-  return vec4(tint * dim * glow, glow > 0.3 ? tokyoFill(1.0, 0.75) : 0.0);
-}
-
-// The elevated line: a dotted beam on thin pillars, and one train that
-// crosses slowly as a row of lit windows.
-vec4 tokyoRailLine(float t, out float cover) {
-  cover = 0.0;
-  float beam = tokyoRow(TOKYO_RAIL);
-  float s = tokyoSample.y;
-  vec3 steel = vec3(0.34, 0.38, 0.5);
-  if (s == beam) {
-    cover = 1.0;
-    return vec4(steel, tokyoFill(0.5, 0.24));
-  }
-  if (s < beam) {
-    float pillar = tokyoCol(floor(tokyoP.x / 0.16 + 0.5) * 0.16);
-    if (tokyoSample.x == pillar) {
-      cover = 1.0;
-      return vec4(steel, tokyoFill(0.5, 0.24));
-    }
-    return vec4(0.0);
-  }
-  float rows = max(1.0, floor(0.008 / tokyoCh + 0.5));
-  if (tokyoTrain < 0.5 || s > beam + rows) {
-    return vec4(0.0);
-  }
-  float car = max(4.0, floor(0.045 / tokyoCw + 0.5));
-  float cars = car * 7.0;
-  float span = tokyoCount.x + cars + car * 6.0;
-  // It starts a third of the way in, so the still frame shows it.
-  float head = mod(floor(t * 0.032 / tokyoCw) + floor(tokyoCount.x * 0.3) + cars, span) - car * 3.0;
-  float k = head - tokyoSample.x;
-  if (k < 0.0 || k >= cars) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float kk = mod(k, car);
-  vec3 light = vec3(1.0, 0.95, 0.84);
-  if (k < 0.5) {
-    return vec4(light, 1.0);
-  }
-  if (k > cars - 1.5) {
-    return vec4(1.0, 0.12, 0.08, tokyoFill(1.0, 0.7));
-  }
-  // Each car: a coupler gap, then windows two lit to one pillar.
-  if (kk > car - 1.5 || mod(kk, 3.0) > 1.5) {
-    return vec4(light * 0.8, 0.0);
-  }
-  return vec4(light, tokyoFill(1.0, 0.75));
-}
-
-// A sparse field of stars, at most one dot per glyph cell, twinkling
-// gently. The whole cell takes the star's colour so the dot stays bright.
-vec4 tokyoStars(float t) {
-  vec2 cell = floor(tokyoSample / tokyoGrid);
-  float area = tokyoGrid.x * tokyoGrid.y * tokyoCw * tokyoCh;
-  float r = hash21(cell + 11.3);
-  float y = (cell.y + 0.5) * tokyoGrid.y * tokyoCh;
-  if (y < 0.5 || r > 55.0 * area) {
-    return vec4(0.0);
-  }
-  vec2 at = floor(vec2(hash21(cell + 1.7), hash21(cell + 5.9)) * tokyoGrid);
-  float lit = tokyoSample == cell * tokyoGrid + at ? 1.0 : 0.0;
-  float twinkle = 0.62 + 0.22 * sin(t * (0.5 + hash21(cell + 3.1)) + r * 90.0);
-  float fade = smoothstep(0.5, 0.62, y);
-  return vec4(vec3(0.82, 0.88, 1.0) * twinkle * fade, lit * tokyoFill(1.0, 0.12));
-}
-
-vec2 tokyoCacheUv = vec2(-1.0);
-float tokyoCacheT = -1.0;
-vec4 tokyoCacheValue = vec4(0.0);
 
 vec4 tokyoScene(vec2 uv, vec2 res, float t) {
   if (uv == tokyoCacheUv && t == tokyoCacheT) {
     return tokyoCacheValue;
   }
   tokyoAspect = res.x / res.y;
-  tokyoCount = vec2(ascii_samples.x, res.y);
-  tokyoSample = floor(uv * tokyoCount);
-  tokyoCw = tokyoAspect / tokyoCount.x;
-  tokyoCh = 1.0 / tokyoCount.y;
-  // Positions are taken at sample centres so every layer agrees on them.
-  tokyoP = vec2(((tokyoSample.x + 0.5) / tokyoCount.x - 0.5) * tokyoAspect, (tokyoSample.y + 0.5) * tokyoCh);
-  // Landmarks sit on a sample centre so each is symmetric to the sample.
-  float towerCol = tokyoCol(min(tokyoAspect * 0.21, tokyoAspect * 0.5 - 0.13));
-  float towerX = ((towerCol + 0.5) / tokyoCount.x - 0.5) * tokyoAspect;
-  float fujiCol = tokyoCol(-tokyoAspect * 0.24);
-  float fujiX = ((fujiCol + 0.5) / tokyoCount.x - 0.5) * tokyoAspect;
+  tokyoCells = floor(ascii_samples / tokyoGrid + 0.5);
+  tokyoCellSize = vec2(tokyoAspect, 1.0) / tokyoCells;
+  tokyoCellIndex = floor(uv * tokyoCells);
+  tokyoCellCentre = vec2(((tokyoCellIndex.x + 0.5) / tokyoCells.x - 0.5) * tokyoAspect, (tokyoCellIndex.y + 0.5) / tokyoCells.y);
+  vec2 p = vec2((uv.x - 0.5) * tokyoAspect, uv.y);
+  float x = p.x;
+  float y = p.y;
+  float wide = clamp(tokyoAspect / 1.78, 0.28, 1.0);
+  float fujiX = -0.4 * wide;
+  float towerX = 0.24 * wide;
+  float drift = t * 0.008;
 
-  // Starlight white, so an empty sky never borrows a colour from below.
-  vec4 acc = vec4(0.82, 0.86, 0.95, 0.0);
-  vec4 star = tokyoStars(t);
-  if (star.r > 0.0) {
-    acc = star;
+  // Sky: a smooth gradient, a warm glow where the sun went down behind
+  // Fuji's left shoulder, thin lit cloud and the first stars.
+  float s = clamp((y - TOKYO_HORIZON) / (1.0 - TOKYO_HORIZON), 0.0, 1.0);
+  // The glow is warmest towards the sun, left of Fuji, and cools to violet
+  // behind the tower, so its orange stands out.
+  vec2 sunAt = vec2(fujiX - 0.34 * wide, TOKYO_HORIZON);
+  float warm = 1.0 - smoothstep(fujiX + 0.3 * wide, towerX - 0.12 * wide, x);
+  vec3 col = tokyoSkyRamp(s, warm);
+  vec2 sd = (p - sunAt) * vec2(1.0, 2.6);
+  float sun = exp(-dot(sd, sd) * 6.0);
+  col = mix(col, vec3(1.0, 0.76, 0.46), sun * 0.6);
+  float tone = 0.16 + 0.9 * dot(col, vec3(0.3, 0.5, 0.2));
+  float band = smoothstep(0.4, 0.48, y) * (1.0 - smoothstep(0.6, 0.72, y));
+  // Long, thin streaks: stretched noise, so they read as layers of cirrus.
+  float cloud = snoise(vec2(x * 0.8 + drift, y * 7.0 + 3.0)) * 0.65 + snoise(vec2(x * 2.2 - drift, y * 14.0)) * 0.35;
+  cloud = smoothstep(0.12, 0.6, cloud) * band;
+  vec3 cloudCol = mix(vec3(1.0, 0.68, 0.58), vec3(0.92, 0.58, 0.72), smoothstep(0.1, 0.45, s));
+  cloudCol = mix(cloudCol, vec3(0.74, 0.62, 0.9), 1.0 - warm * 0.75);
+  col = mix(col, cloudCol, cloud * 0.6);
+  tone += cloud * 0.16;
+  float starZone = smoothstep(0.42, 0.8, s);
+  float star = step(hash21(tokyoCellIndex + 0.71), 0.016 * starZone);
+  if (star > 0.5) {
+    float tw = 0.55 + 0.45 * sin(t * 0.8 + hash21(tokyoCellIndex) * 40.0);
+    col = mix(col, vec3(0.88, 0.9, 1.0), 0.75 * tw);
+    tone = mix(tone, 0.8, tw);
   }
-  float cover;
+
+  // A soft orange halo around the tower, breathing slowly.
+  float towerTop = TOKYO_TOWER_BASE + TOKYO_TOWER_HEIGHT;
+  float hy = clamp(y, TOKYO_TOWER_BASE + 0.2, towerTop - 0.16);
+  vec2 hd = vec2(x - towerX, (y - hy) * 0.7);
+  float halo = exp(-dot(hd, hd) * 160.0) * (0.85 + 0.15 * sin(t * 0.55));
+  col = mix(col, vec3(1.0, 0.56, 0.3), halo * 0.3);
+  tone += halo * 0.1;
+
+  // Mount Fuji, far and pale: a concave cone with a flat summit and a
+  // snow cap streaked down its gullies, warmer on the side facing the
+  // sunset, its foot lost in haze.
   if (tokyoFujiOn > 0.5) {
-    vec4 fuji = tokyoFuji(tokyoP - vec2(fujiX, 0.0), cover);
-    acc = cover > 0.5 ? fuji : acc;
+    float dx = abs(x - fujiX) / 0.78;
+    float peak = 0.6;
+    float prof = TOKYO_HORIZON - 0.02 + (peak - TOKYO_HORIZON + 0.02) * pow(max(1.0 - dx, 0.0), 2.3);
+    prof = min(prof, peak - 0.014);
+    if (y < prof) {
+      float lit = 1.0 - smoothstep(-0.05, 0.06, x - fujiX);
+      vec3 body = mix(vec3(0.42, 0.46, 0.74), vec3(0.54, 0.5, 0.78), lit);
+      body *= mix(0.78, 1.08, smoothstep(TOKYO_HORIZON, peak, y));
+      float gully = 1.0 - abs(snoise(vec2((x - fujiX) * 13.0, 3.0)));
+      float snowLine = peak - 0.1 - 0.035 * gully * gully - 0.008 * snoise(vec2(x * 30.0, 1.0));
+      float snow = smoothstep(snowLine - 0.005, snowLine + 0.005, y);
+      vec3 snowCol = mix(vec3(0.7, 0.74, 0.96), vec3(1.0, 0.88, 0.84), lit);
+      col = mix(body, snowCol, snow);
+      tone = mix(0.4, mix(0.88, 1.0, lit), snow);
+      float foot = 1.0 - smoothstep(TOKYO_HORIZON - 0.02, TOKYO_HORIZON + 0.12, y);
+      col = mix(col, tokyoHaze(y), foot * 0.7);
+      tone = mix(tone, 0.6, foot * 0.6);
+    }
   }
-  vec4 far = tokyoBlocks(0.046, 3.7, vec2(0.13, 0.26), 3.0, vec2(0.009, 0.011), 0.68, 0.5, TOKYO_RAIL + 0.018, t, towerX, fujiX, cover);
-  acc = cover > 0.5 ? far : acc;
-  float metre = TOKYO_HEIGHT / 333.0;
-  float halo;
-  vec4 tower = tokyoTower((tokyoP.x - towerX) / metre, (tokyoP.y - TOKYO_BASE) / metre, tokyoCw / metre, tokyoCh / metre, t, cover, halo);
-  if (cover > 0.5) {
-    acc = tower;
-  } else if (halo > 0.5 && acc.a == 0.0) {
-    acc.rgb = tower.rgb;
-  }
-  vec4 near = tokyoBlocks(0.074, 0.0, vec2(0.09, 0.42), 9.0, vec2(0.011, 0.013), 0.84, 1.0, TOKYO_RAIL + 0.018, t, towerX, fujiX, cover);
-  acc = cover > 0.5 ? near : acc;
-  vec4 rail = tokyoRailLine(t, cover);
-  acc = cover > 0.5 ? rail : acc;
 
-  // intensity dims colour in step and thins the glyphs more gently, so a
-  // dimmed scene keeps its shapes.
+  float id;
+  vec2 edge;
+
+  // The far city: a pale, hazy band on the horizon with a few faint lights.
+  float farRoof = tokyoSkyline(x, 0.03, 1.0, TOKYO_HORIZON - 0.04, 0.09, 0.0, id, edge);
+  if (y < farRoof) {
+    col = mix(vec3(0.46, 0.42, 0.7), tokyoHaze(y), 0.3);
+    tone = 0.62;
+    vec4 w = tokyoWindow(id, edge, farRoof, 0.1, t);
+    col = mix(col, w.rgb, w.a * 0.5);
+    tone += w.a * 0.2;
+  }
+
+  // A band of haze along the horizon swallows the feet of the far city.
+  float horizonHaze = exp(-pow((y - TOKYO_HORIZON + 0.03) / 0.045, 2.0));
+  horizonHaze *= mix(0.7, 1.0, fbm(vec2(x * 1.2 - drift * 1.5, y * 6.0)));
+  col = mix(col, tokyoHaze(y), horizonHaze * 0.6);
+  tone = mix(tone, 0.6, horizonHaze * 0.5);
+
+  // The middle city, nearer and bluer, its feet in a band of haze.
+  float midBase = 0.16;
+  float midLift = 0.04 * smoothstep(0.3, 0.9, abs(x - towerX * 0.3) / (0.5 * tokyoAspect + 0.01));
+  float midRoof = tokyoSkyline(x, 0.046, 2.0, midBase + 0.04, 0.12, midLift, id, edge);
+  if (y < midRoof) {
+    float rim = 1.0 - smoothstep(0.0, tokyoCellSize.x * 1.2, x - edge.x);
+    col = mix(vec3(0.18, 0.2, 0.46), vec3(0.46, 0.38, 0.62), rim * 0.7);
+    tone = 0.46 + rim * 0.14;
+    vec4 w = tokyoWindow(id, edge, midRoof, 0.22, t);
+    col = mix(col, w.rgb * 0.92, w.a * 0.85);
+    tone += w.a * 0.4;
+  }
+  // Haze drifting along the feet of the middle city.
+  float mist = fbm(vec2(x * 1.6 + drift, y * 8.0 + 5.0));
+  float veil = (1.0 - smoothstep(0.0, 0.1, y - midBase)) * mix(0.55, 0.9, smoothstep(0.35, 0.7, mist));
+  veil *= step(midBase - 0.04, y);
+  col = mix(col, vec3(0.36, 0.38, 0.68), veil * 0.6);
+  tone = mix(tone, 0.5, veil * 0.55);
+
+  // Tokyo Tower.
+  float metres = TOKYO_TOWER_HEIGHT / 333.0;
+  float cover;
+  vec4 tower = tokyoTower((x - towerX) / metres, (y - TOKYO_TOWER_BASE) / metres, tokyoCellSize.x / metres, t, cover);
+  if (cover > 0.5) {
+    col = tower.rgb;
+    tone = tower.a;
+  }
+
+  // The near city: dark towers, tall at the sides and low under the
+  // tower, each with a lit west edge and the brightest windows.
+  float side = smoothstep(0.2, 0.95, abs(x - towerX * 0.5) / (0.5 * tokyoAspect + 0.01));
+  float nearRoof = tokyoSkyline(x, 0.075, 3.0, TOKYO_RAIL + 0.03, 0.08, 0.15 * side, id, edge);
+  if (y < nearRoof) {
+    float rim = 1.0 - smoothstep(0.0, tokyoCellSize.x * 1.2, x - edge.x);
+    float roofLine = 1.0 - smoothstep(0.0, tokyoCellSize.y * 1.1, nearRoof - y);
+    col = mix(vec3(0.11, 0.12, 0.3), vec3(0.46, 0.36, 0.6), max(rim * 0.8, roofLine * 0.6));
+    col *= mix(0.8, 1.0, smoothstep(TOKYO_RAIL, nearRoof, y));
+    tone = 0.36 + max(rim, roofLine * 0.6) * 0.26;
+    vec4 w = tokyoWindow(id, edge, nearRoof, 0.32, t);
+    col = mix(col, w.rgb, w.a);
+    tone += w.a * 0.64;
+  }
+
+  // The elevated line: a deck with a row of small lamps, piers, and now and
+  // then a train gliding across.
+  float deckTop = TOKYO_RAIL + 0.014;
+  if (y < deckTop && y > TOKYO_RAIL) {
+    col = vec3(0.36, 0.33, 0.5);
+    tone = 0.62;
+    float lamp = step(mod(tokyoCellIndex.x, 11.0), 0.5) * step(deckTop - tokyoCellSize.y, y);
+    col = mix(col, vec3(1.0, 0.78, 0.48), lamp);
+    tone = mix(tone, 0.9, lamp);
+  }
+  float pier = step(abs(fract(x / 0.12) - 0.5) * 0.12, 0.007);
+  if (y <= TOKYO_RAIL && pier > 0.5) {
+    col = vec3(0.2, 0.19, 0.34);
+    tone = 0.45;
+  }
+  if (tokyoTrainOn > 0.5) {
+    float cycle = 40.0;
+    float trip = 18.0;
+    float lap = mod(t + 6.0, cycle);
+    float len = 0.42;
+    float span = tokyoAspect + len + 0.2;
+    float head = -0.5 * tokyoAspect - 0.1 + span * lap / trip;
+    float tail = head - len;
+    if (lap < trip && x < head && x > tail && y >= deckTop && y < deckTop + 0.028) {
+      float car = fract((x - tail) / (len / 5.0));
+      float gap = step(car, 0.04);
+      float upper = step(deckTop + 0.012, y);
+      vec3 body = vec3(0.5, 0.54, 0.66);
+      vec3 stripe = vec3(0.4, 0.66, 0.42);
+      vec3 win = vec3(1.0, 0.88, 0.68);
+      bool pane = mod(tokyoCellIndex.x, 3.0) < 1.5;
+      col = upper > 0.5 ? (pane ? win : body) : stripe;
+      tone = upper > 0.5 ? (pane ? 0.84 : 0.55) : 0.6;
+      col *= 1.0 - gap * 0.7;
+      tone *= 1.0 - gap * 0.6;
+    }
+  }
+
+  // The street: dark, with a warm glow from below and a few lamps.
+  if (y < TOKYO_RAIL && pier < 0.5) {
+    float glowUp = 1.0 - smoothstep(0.0, TOKYO_RAIL, y);
+    col = mix(vec3(0.08, 0.09, 0.22), vec3(0.5, 0.3, 0.3), glowUp * glowUp * 0.7);
+    tone = 0.34 + glowUp * 0.22;
+    float light = step(hash21(tokyoCellIndex + 3.7), 0.025);
+    col = mix(col, vec3(1.0, 0.76, 0.46), light * 0.8);
+    tone += light * 0.5;
+  }
+
+  // Lift dim colours a little so the smallest dots still read, then apply
+  // intensity: it dims everything and quiets the middle band most, where a
+  // headline sits.
+  float peakC = max(max(col.r, col.g), col.b);
+  col = col / max(peakC, 0.001) * (0.08 + 0.92 * pow(peakC, 0.85));
+  // The dot sizes sit high on the tone axis; this curve lifts the dark and
+  // middle values so building faces and the night sky still carry dots.
+  tone = 1.0 - pow(1.0 - clamp(tone, 0.0, 1.0), 1.1);
+  float quiet = 1.0 - tokyoIntensity;
+  float centre = (1.0 - smoothstep(0.1, 0.42, abs(y - 0.56))) * (1.0 - smoothstep(0.15, 0.6, abs(x) / (0.5 * tokyoAspect + 0.01)));
+  float dim = 1.0 - quiet * (0.45 + 0.4 * centre);
+  tone = clamp(tone, 0.0, 1.0) * mix(0.5, 1.0, dim);
+  col *= dim;
+
   tokyoCacheUv = uv;
   tokyoCacheT = t;
-  tokyoCacheValue = vec4(acc.rgb * tokyoIntensity, acc.a * sqrt(tokyoIntensity));
+  tokyoCacheValue = vec4(col, tone);
   return tokyoCacheValue;
 }
 `;
@@ -413,18 +453,18 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 
 // Modes that paint the scene's own colours need its night behind them in
 // both themes; mono and palette keep the theme's paper, or the phosphor's.
-const NIGHT = "#03050d";
+const NIGHT = "#070818";
 const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
   "duotone",
 ]);
 
-// Braille and quadrants light a dot only above the threshold. Ordered
-// dithering turns the scene's quarter and half tones into even dot grids,
-// which is how Fuji's slopes and the open lattice read.
-const DOT_CHARSETS: ReadonlySet<CharsetName> = new Set<CharsetName>([
+// Dots, Braille and quadrants blend neighbouring sizes with ordered
+// dithering, so the sky's gradient reads as a smooth halftone.
+const DITHER_CHARSETS: ReadonlySet<CharsetName> = new Set<CharsetName>([
   "braille",
+  "dots",
   "quadrants",
 ]);
 
@@ -433,7 +473,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to top, #03050d 0%, #0a1226 18%, #03050d 40%, #03050d 100%)",
+        "linear-gradient(to top, #070818 0%, #141a3a 12%, #c86a4a 30%, #6a3c62 45%, #1c1c44 70%, #0c0e28 100%)",
     }}
   />
 );
@@ -442,12 +482,18 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 export interface TokyoProps extends AsciiSceneProps {
-  /** How bright the scene is, from 0 (blank) to 1, so text on top stays readable. Default 1. */
+  /** How strongly it draws, from 0 (faint, for text on top) to 1. Lower values quiet the middle band most. Default 1. */
   intensity?: number;
   /** Mount Fuji on the horizon. Default `true`. */
   fuji?: boolean;
-  /** The train crossing on the elevated line. Default `true`. */
+  /** The train that glides along the elevated line now and then. Default `true`. */
   train?: boolean;
+  /**
+   * Cells as wide as they are tall, so the dots lay an even halftone
+   * lattice. Default `true` for one-glyph charsets such as `dots`; `false`
+   * for Braille and quadrants, which would stretch.
+   */
+  square?: boolean;
   /** Ignored: the city doesn't respond to the pointer. Accepted so any stage can pass it. */
   interactive?: boolean;
   /**
@@ -456,27 +502,29 @@ export interface TokyoProps extends AsciiSceneProps {
    * phosphor's, otherwise.
    */
   paper?: AsciiColor;
-  /** Shown without WebGL and until the first frame. Default: a night gradient. */
+  /** Shown without WebGL and until the first frame. Default: a dusk gradient. */
   fallback?: ReactNode;
 }
 
 /**
- * Tokyo at night. Tokyo Tower stands on the right in orange and white,
- * its Main Deck and Top Deck lit, over a dense skyline of lit windows.
- * Mount Fuji's snowy cone sits far off on the left. Only lights move:
- * windows switch on and off now and then, red beacons pulse slowly, and
- * one train crosses on the elevated line. Decorative and full-bleed: size
- * it with `className`, usually `absolute inset-0`.
+ * Tokyo at dusk turning to night, as a halftone of coloured dots. Tokyo
+ * Tower glows orange and white with both observation decks lit, a deep
+ * city of towers recedes into blue haze, and Mount Fuji stands pale and
+ * snow-capped against an orange to indigo sky. Motion is calm: a few
+ * windows change, the tower's glow breathes, haze drifts and a train
+ * glides along the elevated line now and then. Decorative and full-bleed:
+ * size it with `className`, usually `absolute inset-0`.
  */
 export const Tokyo = ({
-  charset = "quadrants",
+  charset = "dots",
   chars,
   colorMode,
   phosphor,
   paper,
   dither,
-  cell = 9,
-  stillTime = 6,
+  square,
+  cell = 7,
+  stillTime = 3,
   interactive: _interactive,
   intensity = 1,
   fuji = true,
@@ -492,18 +540,21 @@ export const Tokyo = ({
       colorField={COLOR_FIELD}
       uniforms={{
         tokyoFujiOn: fuji ? 1 : 0,
+        // Samples per glyph, so windows and stars snap to whole cells.
         tokyoGrid: [gridX, gridY],
         tokyoIntensity: clamp(intensity, 0, 1),
-        tokyoTrain: train ? 1 : 0,
+        tokyoTrainOn: train ? 1 : 0,
       }}
       charset={charset}
       chars={chars}
       colorMode={mode}
       phosphor={phosphor}
       dither={
-        dither ?? (DOT_CHARSETS.has(charset) && !chars ? "bayer4" : "none")
+        dither ??
+        (DITHER_CHARSETS.has(charset) && !chars ? "blue-noise" : "none")
       }
       paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
+      square={square ?? gridX * gridY === 1}
       cell={cell}
       stillTime={stillTime}
       interaction="none"

@@ -4,7 +4,7 @@ import { segmented, select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the Tokyo main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "quadrants",
+  default: "dots",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -46,11 +46,11 @@ export const intensity = slider({
 });
 
 export const cell = slider({
-  default: 9,
+  default: 7,
   id: "cell",
   label: "Cell",
   max: 20,
-  min: 8,
+  min: 5,
   step: 1,
   unit: "px",
 });

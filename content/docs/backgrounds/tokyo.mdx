@@ -1,13 +1,13 @@
 ---
 title: "Tokyo"
-description: "Tokyo at night: Tokyo Tower in orange and white with both decks lit, a dense skyline of lit windows, a train on an elevated line and Mount Fuji in the distance."
+description: "Tokyo at dusk in coloured dots: Tokyo Tower glowing orange and white with both decks lit, a deep city fading into blue haze and a snow-capped Mount Fuji under an orange to indigo sky."
 ---
 
 import TokyoDemo from "@/examples/tokyo-demo";
 import { controls as demoControls } from "@/examples/tokyo-controls";
 import TokyoHero from "@/examples/tokyo-hero";
-import TokyoPhosphor from "@/examples/tokyo-phosphor";
-import TokyoBraille from "@/examples/tokyo-braille";
+import TokyoTall from "@/examples/tokyo-tall";
+import TokyoDuotone from "@/examples/tokyo-duotone";
 
 <ComponentPreview
   src="examples/tokyo-demo.tsx"
@@ -37,38 +37,40 @@ export function Hero() {
 }
 ```
 
-The view looks across Minato at night. Tokyo Tower stands on the right, drawn to the real tower's proportions: legs that flare out like the Eiffel Tower's, an open lattice with X bracing below the Main Deck, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna. It is painted in international orange and white bands, and both decks are lit. Mount Fuji sits far off on the left, a symmetric cone with a snow cap, dimmer than the city. A dense row of high-rises fills the bottom with grids of amber, white-cyan and gold windows, and an elevated railway runs in front of them.
+The view looks west across Minato just after sunset. Tokyo Tower stands right of centre, drawn to the real tower's proportions: legs that flare out over an arch, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna with a red light. It is painted in orange and white bands, and both decks are lit. Mount Fuji stands far off on the left, a pale cone with a snow cap that is warmest on the side facing the sunset. Between them, three layers of towers recede into blue haze: the nearest are darkest and carry the brightest windows, the farthest are a pale band on the horizon.
 
-The buildings, the tower and Fuji never move, and the pointer does nothing. Only lights change: a few windows switch on or off at a time, each fading over a few seconds; red beacons on the tower and the tallest roofs pulse about once every 1.8 seconds; stars twinkle faintly; and one train crosses the elevated line slowly as a row of lit windows.
+The sky runs from gold and orange behind Fuji to violet behind the tower and indigo overhead, where the first stars come out. Windows are a soft field of warm, white and cool lights, lit floor by floor, so no two towers look the same.
 
-Every building edge and window sits on whole samples, so the window grids stay regular in every charset. It draws in `quadrants` by default at a 9px cell, which keeps the tower bold and its colours strong. In `quadrants` and `braille` it uses `bayer4` dithering, which turns Fuji's slopes and the gaps in the lattice into even grids of dots. `braille` draws the finest lattice in lighter dots, `blocks` gives solid shapes, and `standard` and `dense` a typed look. In `truecolor`, the default, glyphs take the scene's own colours on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+Motion is slow and sparse: a few windows switch on or off over tens of seconds, the tower's glow breathes, haze drifts along the foot of the middle towers, stars twinkle, and a train glides along the elevated line about every 40 seconds. Nothing responds to the pointer.
 
-`intensity` dims the colours and thins the glyphs. Lower it to keep a headline on top easy to read.
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots lay an even halftone lattice and dot size carries tone: small dots in the night sky and the shadows, large ones in the sunset glow, on the tower and in lit windows. Dots, `braille` and `quadrants` use `blue-noise` dithering, which blends neighbouring sizes without stripes. In `truecolor`, the default, every dot takes the scene's own colour on a night paper, so it looks the same on light and dark pages. In narrow boxes Fuji and the tower move towards the centre, so a phone crop keeps both.
+
+`intensity` dims the colours and shrinks the dots, most of all in the middle band where a headline sits. Lower it to keep text on top easy to read.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.55}` pushes the city back so the headline reads first.
+Full-bleed behind a centred headline and two buttons. `intensity={0.6}` quiets the middle band so the text reads first, while the tower and Fuji still frame it.
 
 <ComponentPreview src="examples/tokyo-hero.tsx" size="lg" align="stretch">
   <TokyoHero />
 </ComponentPreview>
 
-### On an amber monitor
+### In a tall card
 
-`phosphor="p3"` draws every glyph in amber on dark glass. The `standard` charset and `fx` scanlines, bloom and vignette finish the look.
+In a 9:19 box the composition narrows: Fuji and the tower move towards the centre and both stay in view.
 
-<ComponentPreview src="examples/tokyo-phosphor.tsx">
-  <TokyoPhosphor />
+<ComponentPreview src="examples/tokyo-tall.tsx">
+  <TokyoTall />
 </ComponentPreview>
 
-### In Braille
+### In sodium duotone
 
-`charset="braille"` draws the city in 2x4 dots: the finest lattice and window grids, with lighter colour than the default quadrants.
+`colorMode="duotone"` with `ramp="sodium"` runs every dot's tone through one amber ramp, so dot size alone draws the tower, Fuji and the glow.
 
-<ComponentPreview src="examples/tokyo-braille.tsx">
-  <TokyoBraille />
+<ComponentPreview src="examples/tokyo-duotone.tsx">
+  <TokyoDuotone />
 </ComponentPreview>
 
 ## Props
@@ -80,24 +82,25 @@ Every building edge and window sits on whole samples, so the window grids stay r
       type: "number",
       default: "1",
       description:
-        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+        "How strongly it draws, from 0 (faint) to 1. Lower values quiet the middle band most, so text on top stays readable.",
     },
     {
       name: "fuji",
       type: "boolean",
       default: "true",
-      description: "Draws Mount Fuji in the distance on the left.",
+      description: "Draws Mount Fuji on the far horizon, left of the tower.",
     },
     {
       name: "train",
       type: "boolean",
       default: "true",
-      description: "Draws the train that crosses the elevated line.",
+      description:
+        "Draws the train that glides along the elevated line about every 40 seconds.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the scene. See Charsets.",
     },
     {
@@ -162,9 +165,9 @@ Every building edge and window sits on whole samples, so the window grids stay r
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      default: '"blue-noise" in dots, braille and quadrants, "none" otherwise',
       description:
-        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to draw Fuji's slopes and the lattice gaps as even dot grids.",
+        "Dithering between neighbouring glyph levels. Blue noise blends dot sizes across the sky's gradient without stripes.",
     },
     {
       name: "background",
@@ -188,10 +191,18 @@ Every building edge and window sits on whole samples, so the window grids stay r
         "Accepted so any stage can pass it, and ignored: the city does not respond to the pointer.",
     },
     {
+      name: "square",
+      type: "boolean",
+      default: "true for dots and other one-glyph charsets",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even lattice. Braille and quadrants default to false, since they would stretch.",
+    },
+    {
       name: "cell",
       type: "number",
-      default: "9",
-      description: "Height of one glyph cell in CSS pixels.",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels, and its width too when square.",
     },
     {
       name: "speed",
@@ -215,9 +226,9 @@ Every building edge and window sits on whole samples, so the window grids stay r
     {
       name: "stillTime",
       type: "number",
-      default: "6",
+      default: "3",
       description:
-        "The moment drawn when motion is off or reduced, in seconds.",
+        "The moment drawn when motion is off or reduced, in seconds. The default shows the train mid-crossing.",
     },
     {
       name: "handle",
@@ -253,6 +264,6 @@ Every building edge and window sits on whole samples, so the window grids stay r
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dark night gradient.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a dusk gradient.
 - Nothing responds to the pointer, and there is no `interaction` prop.
-- The whole scene is one GPU pass with no loops over buildings, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- The whole scene is one GPU pass, so its cost depends on the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
