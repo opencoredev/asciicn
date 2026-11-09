@@ -1,0 +1,263 @@
+---
+title: "Ember"
+description: "A low, slow fire in glyphs: flames rise from the bottom edge and break into smoke, while single sparks drift up on the wind."
+---
+
+import EmberDemo from "@/examples/ember-demo";
+import { controls as demoControls } from "@/examples/ember-controls";
+import EmberHero from "@/examples/ember-hero";
+import EmberCard from "@/examples/ember-card";
+import EmberBraille from "@/examples/ember-braille";
+
+<ComponentPreview
+  src="examples/ember-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <EmberDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ember" />
+
+## Usage
+
+```tsx
+import { Ember } from "@/components/asciicn/ember";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <Ember intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+Tongues of flame rise from the bottom edge. Each one has its own height that rises and falls over several seconds, licks run up through it, and its edges fray. Near the tip, pieces tear off and the tongue carries on as a faint plume of smoke. A few sparks leave the flames, drift sideways on the wind, blink and go out. Just above the tongues, the rows waver a little, like air over a fire.
+
+Every size is measured against the height of the flames, so the same fire works as a band along the bottom of a hero and as a box filled with fire. `intensity` sets that height: at 1 the tallest tongues reach about half the box, at 0.6 they stay in the lower third, and at 1.5 or more they fill a short strip.
+
+In `truecolor` the coolest glyphs are a deep coal red, the body takes the `flame` colour, and the hottest glyphs mix toward the ink: pale gold on dark paper, deep copper on light paper. Smoke is the ink faded toward the paper. In `palette` mode the glyphs run paper, ink, flame by tone, so the hottest glyphs are the amber and the smoke fades into the paper.
+
+It draws in `standard` by default. `braille` gives fine dots, and `quadrants` a blockier fire; both use blue-noise dithering so the smoke and the tips break into scattered dots.
+
+## Examples
+
+### Hero footer glow
+
+An `intensity` of 0.6 keeps the fire in the lower third, so the headline sits on clear paper.
+
+<ComponentPreview src="examples/ember-hero.tsx" size="lg" align="stretch">
+  <EmberHero />
+</ComponentPreview>
+
+### Card strip
+
+A short strip along the bottom of a card. A high `intensity` fills the strip.
+
+<ComponentPreview src="examples/ember-card.tsx" size="lg" align="stretch">
+  <EmberCard />
+</ComponentPreview>
+
+### Braille
+
+Eight dots per glyph, for a finer fire.
+
+<ComponentPreview src="examples/ember-braille.tsx" size="full" align="stretch">
+  <EmberBraille />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How tall the flames reach, from 0 (none) to 2. At 1 the tallest tongues reach about half the box.",
+    },
+    {
+      name: "wind",
+      type: "number",
+      default: "0.2",
+      description:
+        "Sideways wind, from -1 (to the left) to 1 (to the right). It leans the flames and carries the sparks and smoke.",
+    },
+    {
+      name: "sparks",
+      type: "number",
+      default: "0.5",
+      description: "How many sparks rise, from 0 (none) to 1.",
+    },
+    {
+      name: "flame",
+      type: "AsciiColor",
+      default: '"orange"',
+      description:
+        "The flames in truecolor, the hottest glyphs in palette mode and every glyph in mono.",
+    },
+    {
+      name: "ink",
+      type: "AsciiColor",
+      default: '"--ascii-ink"',
+      description:
+        "The smoke, the cooler glyphs in palette mode, and what the flame's core mixes toward.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: '"--ascii-paper"',
+      description: "The surface behind the glyphs. Smoke fades toward it.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "\u2013",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor runs from coal red through the flame colour to a pale core; palette runs paper, ink, flame by tone; mono draws every glyph in the flame colour.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "\u2013",
+      description:
+        "In mono mode, a CRT ink and glass that replace ink and paper.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: "\u2013",
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "\u2013",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"blue-noise" for braille and quadrants, else "none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "\u2013",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "12",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast it moves.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "12",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "\u2013",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "A soft glow in the flame colour",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "\u2013",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It does not react to the pointer.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a soft glow in the flame colour along the bottom.
+- `speed` scales all of the motion together: the flames, the smoke and the sparks.

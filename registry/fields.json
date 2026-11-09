@@ -105,5 +105,22 @@
         "target": "components/asciicn/satin.tsx"
       }
     ]
+  },
+  {
+    "name": "ember",
+    "type": "registry:component",
+    "title": "Ember",
+    "description": "A low, slow fire in glyphs: flames rise from the bottom edge and break into smoke, while single sparks drift up on the wind.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/ember.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/ember.tsx"
+      }
+    ]
   }
 ]
