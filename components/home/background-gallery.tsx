@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft01Icon,
   ArrowRight01Icon,
   Copy01Icon,
   Tick02Icon,
@@ -8,8 +9,12 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { CityStill } from "@/components/home/city-still";
-import { CITY_SOURCES, findSource } from "@/components/home/sources";
+import { printSrc } from "@/components/home/city-still";
+import {
+  CITY_SOURCES,
+  findSource,
+  loadSource,
+} from "@/components/home/sources";
 import type { StageSource } from "@/components/home/sources";
 import { Stage } from "@/components/home/stage";
 import { Icon } from "@/components/icon";
@@ -21,11 +26,11 @@ import { trackEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 
 /**
- * /backgrounds: a quiet gallery. The selected background plays on a big
- * stage with nothing over it, one row below says what it is and how to get
- * it, and every background follows as a card. The look knobs live in the
- * Studio. `?city=<id>` selects one and stays in the address bar as you
- * switch, so a link reopens the same scene. `[` and `]` step through them.
+ * /backgrounds: one background fills the screen under the floating nav, and
+ * a dock at the bottom says what it is, how to get it, and switches between
+ * all of them in place. The look knobs live in the Studio. `?city=<id>`
+ * selects one and stays in the address bar as you switch, so a link reopens
+ * the same scene. The arrow keys and `[` `]` step through them.
  */
 
 const FIRST_ID = CITY_SOURCES[0]?.id ?? "";
@@ -34,6 +39,36 @@ const GROUP_LABEL = {
   cities: "City",
   landscapes: "Landscape",
 } as const satisfies Record<BackgroundGroup, string>;
+
+const PREVIOUS_KEYS = new Set(["[", "ArrowLeft"]);
+const NEXT_KEYS = new Set(["]", "ArrowRight"]);
+
+const keyStep = (key: string) => {
+  if (PREVIOUS_KEYS.has(key)) {
+    return -1;
+  }
+  return NEXT_KEYS.has(key) ? 1 : 0;
+};
+
+// Start a background's chunk early; a failure just means the print stays.
+const prefetch = async (source: StageSource) => {
+  try {
+    await loadSource(source);
+  } catch {
+    // The switch retries the load.
+  }
+};
+
+// Keep the address bar in step, without adding history entries. Written on
+// a switch, not from an effect, so the first render can't overwrite the
+// ?city= it is about to read.
+const writeCity = (id: string) => {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("city") !== id) {
+    url.searchParams.set("city", id);
+    window.history.replaceState(window.history.state, "", url);
+  }
+};
 
 const installCommand = (origin: string, id: string) =>
   `npx shadcn@latest add ${origin}/r/${id}.json`;
@@ -51,6 +86,7 @@ const CopyInstall = ({ source }: { source: StageSource }) => {
     <Button
       type="button"
       variant="outline"
+      size="sm"
       onClick={async () => {
         if (await copyToClipboard(command)) {
           trackEvent({
@@ -61,22 +97,36 @@ const CopyInstall = ({ source }: { source: StageSource }) => {
       }}
       title={command}
       aria-label={isCopied ? "Install command copied" : `Copy ${command}`}
-      className="min-w-0 justify-start font-mono text-xs font-normal max-sm:w-full"
+      className="shrink-0"
     >
       <Icon
         icon={isCopied ? Tick02Icon : Copy01Icon}
         className={cn("size-3.5", isCopied && "text-primary")}
       />
-      <span className="truncate">{isCopied ? "Copied" : command}</span>
+      <span className="hidden sm:inline">
+        {isCopied ? "Copied" : "Copy install"}
+      </span>
     </Button>
   );
 };
 
 export const BackgroundGallery = () => {
   const [selectedId, setSelectedId] = useState(FIRST_ID);
+  const select = (id: string) => {
+    setSelectedId(id);
+    writeCity(id);
+  };
   const source = findSource(selectedId) ?? CITY_SOURCES[0];
-  const stageRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLUListElement>(null);
   const index = source ? CITY_SOURCES.indexOf(source) : 0;
+  const count = CITY_SOURCES.length;
+
+  const step = (by: number) => {
+    const next = CITY_SOURCES[(index + by + count) % count];
+    if (next) {
+      select(next.id);
+    }
+  };
 
   // Read ?city= once on load; the server render shows the first scene.
   useEffect(() => {
@@ -86,145 +136,149 @@ export const BackgroundGallery = () => {
     }
   }, []);
 
-  // Keep the address bar in step, without adding history entries.
+  // Keep the selected thumbnail in view inside the strip. Scrolling the
+  // strip itself, not scrollIntoView, so the page never jumps.
   useEffect(() => {
-    if (!source) {
+    const strip = stripRef.current;
+    const item = strip?.children[index];
+    if (!(strip && item instanceof HTMLElement)) {
       return;
     }
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("city") === source.id) {
-      return;
-    }
-    url.searchParams.set("city", source.id);
-    window.history.replaceState(window.history.state, "", url);
-  }, [source]);
+    const left = item.offsetLeft - (strip.clientWidth - item.clientWidth) / 2;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    strip.scrollTo({ behavior: reduce.matches ? "auto" : "smooth", left });
+  }, [index]);
 
   useEffect(() => {
-    const step = (event: KeyboardEvent) => {
+    const onKey = (event: KeyboardEvent) => {
       if (
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
-        isTyping(event.target) ||
-        (event.key !== "[" && event.key !== "]")
+        isTyping(event.target)
       ) {
         return;
       }
-      const count = CITY_SOURCES.length;
-      const next =
-        CITY_SOURCES[(index + (event.key === "]" ? 1 : -1) + count) % count];
+      const by = keyStep(event.key);
+      if (by === 0) {
+        return;
+      }
+      event.preventDefault();
+      const next = CITY_SOURCES[(index + by + count) % count];
       if (next) {
         setSelectedId(next.id);
+        writeCity(next.id);
       }
     };
-    window.addEventListener("keydown", step);
-    return () => window.removeEventListener("keydown", step);
-  }, [index]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [index, count]);
 
   if (!source) {
     return null;
   }
 
-  const show = (id: string) => {
-    setSelectedId(id);
-    stageRef.current?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "start",
-    });
-  };
-
   return (
-    <div className="flex flex-col gap-16 md:gap-24">
-      <figure
-        ref={stageRef}
-        className="flex scroll-mt-24 flex-col gap-5"
-        aria-label={source.title}
-      >
-        <Stage
-          source={source}
-          className="h-[min(46svh,380px)] sm:h-[min(58svh,600px)]"
-        />
-        <figcaption className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
-          <div className="flex max-w-2xl min-w-0 flex-col gap-1">
-            <p className="flex items-baseline gap-3">
-              <span className="text-xl font-medium tracking-[-0.02em]">
-                {source.title}
-              </span>
-              <span className="text-muted-foreground text-sm">
-                {GROUP_LABEL[source.group]}
-              </span>
-            </p>
-            <p className="text-muted-foreground line-clamp-2 text-[15px] text-pretty">
-              {source.description}
-            </p>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
+    <section
+      aria-label={`${source.title}, background ${index + 1} of ${count}`}
+      className="relative"
+    >
+      <Stage source={source} className="h-[calc(100svh-1rem)] min-h-[32rem]" />
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-2 sm:p-5">
+        <div className="bg-background/85 supports-[backdrop-filter]:bg-background/70 pointer-events-auto flex w-full max-w-[60rem] flex-col gap-2.5 rounded-[18px] border p-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.5)] backdrop-blur-md sm:gap-3 sm:p-3">
+          <div className="flex items-center gap-3 pl-1.5">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <p className="flex items-baseline gap-2">
+                <span className="truncate font-medium tracking-[-0.01em]">
+                  {source.title}
+                </span>
+                <span className="text-muted-foreground shrink-0 text-sm">
+                  {GROUP_LABEL[source.group]}
+                </span>
+              </p>
+              <p className="text-muted-foreground hidden truncate text-sm md:block">
+                {source.description}
+              </p>
+            </div>
             <CopyInstall source={source} />
-            <Button asChild variant="ghost">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+            >
               <Link href={source.href} transitionTypes={["nav-forward"]}>
                 Docs
               </Link>
             </Button>
-            <Button asChild variant="ghost" className="gap-1 pr-3">
+            <Button asChild variant="ghost" size="sm" className="gap-1">
               <Link href={`/studio?source=${source.id}`}>
-                Open in Studio
-                <Icon icon={ArrowRight01Icon} />
+                Studio
+                <Icon icon={ArrowRight01Icon} className="size-3.5" />
               </Link>
             </Button>
           </div>
-        </figcaption>
-      </figure>
 
-      <section
-        aria-labelledby="all-backgrounds"
-        className="flex flex-col gap-6"
-      >
-        <h2
-          id="all-backgrounds"
-          className="flex items-baseline gap-3 text-xl font-medium tracking-[-0.02em]"
-        >
-          All backgrounds
-          <span className="text-muted-foreground tabular text-sm font-normal">
-            {CITY_SOURCES.length}
-          </span>
-        </h2>
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {CITY_SOURCES.map((city) => {
-            const selected = city.id === source.id;
-            return (
-              <li key={city.id}>
-                <button
-                  type="button"
-                  onClick={() => show(city.id)}
-                  aria-pressed={selected}
-                  aria-label={`Show ${city.title}`}
-                  className={cn(
-                    "focus-visible:ring-ring/60 hover:border-foreground/25 flex w-full flex-col overflow-hidden rounded-[20px] border text-left outline-none transition-colors duration-150 focus-visible:ring-[3px]",
-                    selected && "border-primary hover:border-primary"
-                  )}
-                >
-                  <CityStill source={city} />
-                  <span className="flex flex-col gap-x-3 border-t px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between">
-                    <span className="truncate font-medium tracking-[-0.01em]">
-                      {city.title}
-                    </span>
-                    <span
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => step(-1)}
+              aria-label="Previous background"
+              className="hidden shrink-0 sm:inline-flex"
+            >
+              <Icon icon={ArrowLeft01Icon} />
+            </Button>
+            <ul
+              ref={stripRef}
+              aria-label="All backgrounds"
+              className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto p-1"
+            >
+              {CITY_SOURCES.map((city) => {
+                const selected = city.id === source.id;
+                return (
+                  <li key={city.id} className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => select(city.id)}
+                      // Start the chunk on hover so the switch is instant.
+                      onPointerEnter={() => prefetch(city)}
+                      aria-pressed={selected}
+                      aria-label={`${city.title}, ${GROUP_LABEL[city.group]}`}
+                      title={city.title}
                       className={cn(
-                        "text-muted-foreground text-sm",
-                        selected && "text-primary"
+                        "bg-ascii-paper focus-visible:ring-ring/60 relative block h-9 w-16 overflow-hidden rounded-md opacity-60 outline-none transition-[opacity,box-shadow] duration-150 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-[3px] sm:h-10 sm:w-[4.5rem]",
+                        selected &&
+                          "ring-primary opacity-100 ring-2 focus-visible:ring-2"
                       )}
                     >
-                      {selected ? "Selected" : GROUP_LABEL[city.group]}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </div>
+                      {/* oxlint-disable-next-line nextjs/no-img-element -- a static print, already sized and compressed */}
+                      <img
+                        src={printSrc(city)}
+                        alt=""
+                        decoding="async"
+                        className="absolute inset-0 size-full object-cover"
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => step(1)}
+              aria-label="Next background"
+              className="hidden shrink-0 sm:inline-flex"
+            >
+              <Icon icon={ArrowRight01Icon} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 };
