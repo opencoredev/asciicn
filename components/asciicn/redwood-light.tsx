@@ -115,7 +115,7 @@ vec3 rwLeafColor(vec2 p, vec2 leaf, vec3 heart, float sunD) {
   vec3 col = mix(fringe, heart, leaf.y);
   // Sprays of leaves inside each mass catch more or less light.
   float spray = fbm(p * vec2(11.0, 14.0) + heart.g * 40.0);
-  col *= mix(0.65, 1.55, smoothstep(0.3, 0.75, spray));
+  col *= mix(0.75, 1.3, smoothstep(0.3, 0.75, spray));
   float back = (1.0 - leaf.y) * exp(-sunD / 0.16);
   return mix(col, vec3(0.86, 0.78, 0.42), back * 0.75);
 }
@@ -138,15 +138,23 @@ vec4 rwTrunks(vec2 p, float spacing, float wMin, float wMax, float base, float s
       continue;
     }
     float hw = mix(wMin, wMax, pow(rwHash(vec2(id, seed + 2.0)), 2.2));
-    float b = base + 0.025 * (rwHash(vec2(id, seed + 3.0)) - 0.5) + 0.012 * snoise(vec2(p.x * 40.0, seed));
+    float b = base + 0.04 * (rwHash(vec2(id, seed + 3.0)) - 0.5) + 0.012 * snoise(vec2(p.x * 40.0, seed));
     if (p.y < b) {
       continue;
     }
-    float lean = (rwHash(vec2(id, seed + 4.0)) - 0.5) * 0.09;
-    float w = hw * (1.0 + 0.4 * exp(-(p.y - b) / 0.04)) * mix(1.0, 0.78, smoothstep(b, 1.0, p.y));
-    float x = (u - uc - lean * (p.y - b)) / w;
-    // Bark edges are never ruled lines.
+    float h = p.y - b;
+    // Every trunk has its own lean, a slight bow, and its own taper: some
+    // narrow fast, some barely at all.
+    float lean = (rwHash(vec2(id, seed + 4.0)) - 0.5) * 0.14;
+    float bow = (rwHash(vec2(id, seed + 5.0)) - 0.5) * 0.05 * sin(h * 3.0);
+    float taper = mix(0.5, 0.95, rwHash(vec2(id, seed + 6.0)));
+    float w = hw * (1.0 + 0.4 * exp(-h / 0.04)) * mix(1.0, taper, smoothstep(b, 1.0, p.y));
+    // The girth swells and narrows a little along the height.
+    w *= 1.0 + 0.14 * snoise(vec2(p.y * 4.0, id * 1.7 + seed));
+    float x = (u - uc - lean * h - bow) / w;
+    // Bark noise breaks each edge on its own, so neither side is a ruled line.
     x += 0.12 * snoise(vec2(p.y * 7.0, id * 3.1 + seed));
+    x += sign(x) * 0.16 * snoise(vec2(p.y * 19.0, id * 2.3 + seed + step(0.0, x) * 7.0));
     float soft = rwCol / (w * rwScale(p.y));
     float cover = 1.0 - smoothstep(1.0 - soft, 1.0 + soft * 0.5, abs(x));
     if (cover <= best.a) {
@@ -156,6 +164,8 @@ vec4 rwTrunks(vec2 p, float spacing, float wMin, float wMax, float base, float s
     float lit = smoothstep(-0.5, 1.0, x * side);
     float furrow = snoise(vec2(x * 3.0 + id * 7.3, p.y * 2.0 + id));
     vec3 col = bark * mix(0.4, 1.5, lit) * (0.78 + 0.3 * furrow);
+    // Patches of moss and shade up the trunk, so no trunk is one flat tone.
+    col *= 0.78 + 0.4 * fbm(vec2(id * 3.7 + seed, p.y * 3.5));
     // A faint warm edge only: strong rims belong to the giants in front.
     col = mix(col, vec3(0.7, 0.52, 0.32), smoothstep(0.75, 0.98, x * side) * 0.22);
     best = vec4(col, cover);
@@ -191,15 +201,21 @@ vec3 rwFloor(vec2 p, float shaft) {
 // The giants in front: hand placed so the middle stays open for a
 // headline, and narrowed on tall boxes so they never fill a phone.
 vec4 rwGiant(vec2 p, float at, float hw, float base, float seed, float lean) {
-  float u = rwU(p) - lean * (p.y - base);
+  // A slight bow as well as the lean, so no trunk is a ruled line.
+  float u = rwU(p) - lean * (p.y - base) - 0.012 * sin((p.y - base) * 2.6 + seed * 1.9);
   float uc = rwCx + at * rwHalf;
   if (p.y < base) {
     return vec4(0.0);
   }
   float w = hw * (1.0 + 0.55 * exp(-(p.y - base) / 0.07));
+  // Each trunk tapers at its own rate and swells a little along its height.
+  w *= mix(1.0, 0.72 + 0.12 * fract(seed * 0.37), smoothstep(base, 1.0, p.y));
+  w *= 1.0 + 0.08 * snoise(vec2(p.y * 3.0, seed * 5.3));
   float x = (u - uc) / w;
-  // A ragged outline: bark plates and buttresses break every edge.
-  x += 0.07 * snoise(vec2(p.y * 5.0, seed * 7.0)) + 0.03 * snoise(vec2(p.y * 17.0, seed * 3.0));
+  // A ragged outline: bark plates and buttresses break every edge, each
+  // side on its own.
+  x += 0.07 * snoise(vec2(p.y * 5.0, seed * 7.0));
+  x += sign(x) * 0.07 * snoise(vec2(p.y * 21.0, seed * 3.0 + step(0.0, x) * 5.0));
   float soft = rwCol / (w * rwScale(p.y));
   float cover = 1.0 - smoothstep(1.0 - soft, 1.0 + soft * 0.5, abs(x));
   if (cover <= 0.0) {
@@ -337,6 +353,14 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
   vec4 t2 = rwTrunks(p, 0.1, 0.006, 0.02, 0.29, 23.0, 0.7, vec3(0.22, 0.22, 0.21), 0.0);
   col = mix(col, mix(t2.rgb, rwHaze(p), 0.36 + 0.3 * calm), t2.a);
 
+  // Soft sprays of far foliage and patches of high mist hide parts of the
+  // far trunks, so they never run unbroken from floor to canopy.
+  vec2 lu = rwLeaves(p, 0.6 + 0.2 * (1.0 - sides), 4.6, 41.0);
+  col = mix(col, mix(vec3(0.12, 0.2, 0.15), rwHaze(p), 0.6), lu.x * 0.85);
+  float veil = fbm(vec2(p.x * 2.6 - rwT * 0.008, p.y * 3.2 + 11.0));
+  veil = smoothstep(0.48, 0.7, veil) * smoothstep(0.33, 0.45, p.y) * (1.0 - smoothstep(0.62, 0.8, p.y));
+  col = mix(col, rwHaze(p) * 1.08, veil * 0.75 * rwMistOn);
+
   // The far canopy, pale with haze, open only right around the sun.
   vec2 lf = rwLeaves(p, 0.8, 3.2, 3.0);
   lf.x *= 1.0 - 0.9 * exp(-pow(sunD / 0.08, 2.0));
@@ -387,6 +411,10 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
   g2.a *= roomy;
   g4.a *= roomy;
   g5.a *= roomy;
+  // Mist drifts across the farther medium trunks and hides parts of them.
+  float drift = smoothstep(0.5, 0.72, fbm(vec2(p.x * 3.0 + rwT * 0.006, p.y * 2.4 + 4.0))) * rwMistOn;
+  g4.a *= 1.0 - 0.65 * drift;
+  g5.a *= 1.0 - 0.65 * drift;
   col = mix(col, g5.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g5.a);
   col = mix(col, g4.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g4.a);
   col = mix(col, g2.rgb + vec3(0.5, 0.36, 0.16) * shaft * 0.5, g2.a);
@@ -397,7 +425,13 @@ vec4 redwoodScene(vec2 uv, vec2 res, float t) {
   // overlaps the giants and frames the light.
   vec2 ln = rwLeaves(p, 0.98 - 0.32 * sides, 1.6, 17.0);
   ln.x *= 1.0 - exp(-pow(sunD / 0.24, 2.0));
-  col = mix(col, rwLeafColor(p, ln, vec3(0.06, 0.13, 0.08), sunD), ln.x);
+  // Small gaps let the sky through the near leaves, and the leaves near
+  // the top catch light from above, so the corners are never black.
+  float gaps = smoothstep(0.52, 0.61, fbm(p * vec2(13.0, 16.0) + 5.0)) * smoothstep(0.68, 0.88, p.y);
+  ln.x *= 1.0 - 0.75 * gaps;
+  vec3 nearHeart = mix(vec3(0.06, 0.13, 0.08), vec3(0.12, 0.2, 0.1), smoothstep(0.72, 1.0, p.y));
+  col = mix(col, rwLeafColor(p, ln, nearHeart, sunD), ln.x);
+  col += vec3(0.3, 0.33, 0.17) * gaps * (1.0 - ln.x) * sides;
 
   vec4 fronds = rwFronds(p, shaft);
   col = mix(col, fronds.rgb, fronds.a);
