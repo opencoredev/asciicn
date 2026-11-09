@@ -106,9 +106,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "San Francisco",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Victoria Harbour at night from Kowloon: a wall of lit towers below the ridge of Victoria Peak, with Central Plaza, the Bank of China Tower and Two IFC, calm reflections and the Star Ferry.",
+      "Victoria Harbour at blue hour in coloured dots: lit towers climbing to the misty ridge of Victoria Peak, the Bank of China Tower and Two IFC, long reflections and a red-sailed junk under a magenta to deep blue sky.",
     id: "hong-kong",
     load: async () => {
       const { HongKong } = await import("@/components/asciicn/hong-kong");
