@@ -1,0 +1,19 @@
+[
+  {
+    "name": "glacier-lagoon",
+    "type": "registry:component",
+    "title": "Glacier lagoon",
+    "description": "Icebergs glowing blue-white on a glassy lagoon below a glacier and dark peaks, under a midnight sun sitting gold and rose on the horizon.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/glacier-lagoon.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/glacier-lagoon.tsx"
+      }
+    ]
+  }
+]
