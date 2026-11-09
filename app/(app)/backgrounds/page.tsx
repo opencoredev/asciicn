@@ -9,7 +9,7 @@ export const dynamic = "force-static";
 export const revalidate = false;
 
 const TITLE = "ASCII backgrounds";
-const DESCRIPTION = `${BACKGROUNDS.length} animated backgrounds for React, cities and painted landscapes drawn in real glyphs. Switch charsets, colours and CRT effects live, then install one with the shadcn CLI or export the frame.`;
+const DESCRIPTION = `${BACKGROUNDS.length} animated backgrounds for React, cities and painted landscapes drawn in real glyphs. Each one is a component you install with the shadcn CLI.`;
 
 export const metadata = createPageMetadata({
   description: DESCRIPTION,
@@ -27,22 +27,15 @@ export default function BackgroundsPage() {
           { name: "Backgrounds", path: ROUTES.BACKGROUNDS },
         ]}
       />
-      <div className="container-wrapper pt-6 pb-20 md:pb-28">
-        <div className="flex flex-col gap-6">
-          <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
-            <div className="flex flex-col gap-2">
-              <p className="text-faint flex items-center gap-3 font-mono text-[11px]">
-                <span className="text-ink tabular">{BACKGROUNDS.length}</span>
-                components/asciicn/
-              </p>
-              <h1 className="font-display text-[2rem] leading-[1.06] tracking-[-0.035em] sm:text-[2.6rem]">
-                Backgrounds
-              </h1>
-            </div>
-            <p className="text-muted-foreground max-w-xl text-[15px] text-pretty">
-              Cities and landscapes painted in glyph dots. Each is one component
-              you can put behind a hero, and each takes every charset, colour
-              mode and CRT effect. Point at the stage to read any glyph.
+      <div className="container-wrapper pt-8 pb-20 md:pt-10 md:pb-28">
+        <div className="flex flex-col gap-8 md:gap-10">
+          <header className="flex max-w-3xl flex-col gap-3">
+            <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.04em] text-balance sm:text-5xl">
+              Backgrounds
+            </h1>
+            <p className="text-muted-foreground text-lg text-pretty">
+              {BACKGROUNDS.length} cities and landscapes drawn in glyphs. Each
+              one is a component you put behind a hero.
             </p>
           </header>
           <BackgroundGallery />
