@@ -1,0 +1,420 @@
+"use client";
+
+import type { ReactNode } from "react";
+
+import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
+import { AsciiShader } from "@/lib/ascii/shader";
+
+// The valley is painted in square units (x across from the middle of the
+// box, y up from the bottom), tested near to far: two dark foreground hills,
+// the valley floor with the river, then four ridges that open in a V under
+// the sun, each paler than the one in front, then the sky. A ridge is dark
+// at its crest with a lit rim and pales into haze below it, so the next
+// crest in front stands out; mist pools in the low ground of each V. The
+// colour is worked out first and the dot size follows its brightness, so
+// the hills are small dim dots and the sun is large bright ones, as in a
+// halftone print.
+const SCENE = `
+const float BV_HORIZON = 0.43;
+
+// Set once per sample by bvScene and read by every layer.
+float bvT;
+float bvWide;
+float bvStretch;
+float bvHalf;
+float bvSunOffset;
+vec2 bvSun;
+
+// A stable random value; hash21 repeats every 50 samples on integers.
+float bvHash(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// The sky: deep indigo overhead easing through violet and rose to peach at
+// the horizon, warmed by a wide glow round the sun and a tighter halo.
+vec3 bvSky(vec2 p) {
+  float y = p.y;
+  vec3 c = mix(vec3(0.94, 0.6, 0.58), vec3(0.8, 0.5, 0.62), smoothstep(0.44, 0.6, y));
+  c = mix(c, vec3(0.5, 0.34, 0.6), smoothstep(0.55, 0.72, y));
+  c = mix(c, vec3(0.25, 0.21, 0.48), smoothstep(0.66, 0.86, y));
+  c = mix(c, vec3(0.11, 0.12, 0.32), smoothstep(0.84, 1.04, y));
+  vec2 d = (p - bvSun) * vec2(0.5, 1.0);
+  float r = length(d);
+  c = mix(c, vec3(1.0, 0.7, 0.46), clamp(exp(-r / 0.2) * 0.95, 0.0, 1.0));
+  c = mix(c, vec3(1.0, 0.86, 0.62), clamp(exp(-length(p - bvSun) / 0.06), 0.0, 1.0));
+  return c;
+}
+
+// The last stars, fading out as the sky brightens below them, each on
+// its own slow twinkle.
+vec3 bvStars(vec2 p, vec2 res, vec3 sky) {
+  vec2 cellId = floor(p * res.y);
+  float h = bvHash(cellId + 17.0);
+  float density = 0.006 * smoothstep(0.74, 0.97, p.y);
+  if (h < 1.0 - density) {
+    return sky;
+  }
+  float twinkle = 0.75 + 0.25 * sin(bvT * (0.4 + bvHash(cellId + 3.0) * 0.6) + h * 50.0);
+  return mix(sky, vec3(0.86, 0.86, 1.0), 0.6 * twinkle);
+}
+
+// The valley floor: a flat strip in front of the ridges, seen in
+// perspective from its far edge at BV_FLOOR down to the bottom of the box.
+const float BV_FLOOR = 0.25;
+
+// Nearness on the floor: 0 at its far edge, 1 at the bottom of the box.
+float bvNear(float y) {
+  return clamp((BV_FLOOR - y) / BV_FLOOR, 0.0, 1.0);
+}
+
+// The river's centre at row y. It leaves the far edge under the sun and
+// swings wider as it comes nearer.
+float bvRiverX(float y) {
+  float k = bvNear(y);
+  return bvSun.x + bvStretch * (0.03 + 0.16 * k) * sin(k * 5.2 + 0.4);
+}
+
+float bvRiverHalf(float y) {
+  return 0.01 + 0.075 * pow(bvNear(y), 1.4);
+}
+
+// A ridge line: a soft V round its gap at gx (relative to the sun), with
+// slopes sl and sr either side easing off towards a cap, and rolling noise.
+float bvRidge(float x, float gx, float base, float sl, float sr, float cap, float seed, float rough) {
+  float d = (x - bvSun.x) / bvStretch - gx;
+  float v = (d < 0.0 ? sl : sr) * (sqrt(d * d + 0.0049) - 0.07);
+  v = cap * (1.0 - exp(-v / cap));
+  float n = 0.55 * snoise(vec2(x * 2.6 + seed, seed)) + 0.3 * snoise(vec2(x * 6.1 - seed, seed + 3.0)) + 0.15 * snoise(vec2(x * 15.0, seed + 6.0));
+  return base + v + rough * n * smoothstep(0.0, 0.04, v);
+}
+
+// Mist drifting along the valley, as a 0 to 1 density.
+float bvMist(vec2 p, float scale) {
+  vec2 q = vec2(p.x * 2.6 * scale - bvT * 0.012, p.y * 14.0 * scale + bvT * 0.004);
+  return fbm(q + vec2(fbm(q * 0.7 + bvT * 0.006) * 0.8, 0.0));
+}
+
+float bvSunward(vec2 p) {
+  return exp(-length((p - bvSun) * vec2(1.0, 2.0)) / 0.4);
+}
+
+// The colour of a ridge: an even tone that pales a little with depth
+// below the crest, a warm rim where the crest faces the sun, a faint
+// texture of woods, and mist pooled in the low ground near its V, so the
+// valley fills with haze while the high shoulders stay clear and dark.
+vec3 bvRidgeColor(vec2 p, float top, float base, vec3 crest, float pool, float rim) {
+  float sunward = bvSunward(p);
+  vec3 mistCol = mix(vec3(0.74, 0.55, 0.68), vec3(1.0, 0.76, 0.6), sunward);
+  // Backlit: the body only takes a warm tint near the sun, never its light.
+  vec3 c = crest + vec3(0.06, 0.02, -0.02) * sunward;
+  float tex = fbm(p * vec2(18.0, 30.0) + crest.r * 40.0);
+  c *= 0.9 + 0.18 * tex;
+  // Haze thickens down the face, so the next crest in front stands out.
+  c = mix(c, mistCol, smoothstep(0.015, 0.15, top - p.y) * 0.66);
+  // A lit crest about a row deep: warm towards the sun, rose elsewhere.
+  float edge = 1.0 - smoothstep(0.008, 0.016, top - p.y);
+  vec3 rimCol = mix(vec3(0.95, 0.62, 0.68), vec3(1.0, 0.8, 0.52), sunward);
+  c = mix(c, rimCol, clamp(edge * rim * (0.7 + 0.3 * sunward), 0.0, 1.0));
+  float low = 1.0 - smoothstep(base, base + pool, p.y);
+  float mist = low * (0.55 + 0.45 * smoothstep(0.3, 0.72, bvMist(p, 1.0)));
+  return mix(c, mistCol, clamp(mist * 0.7, 0.0, 1.0));
+}
+
+// The valley floor: dark meadow under pooled mist that thickens with
+// distance, and the river reflecting the dawn with the sun's glitter on it.
+vec3 bvFloor(vec2 p) {
+  float k = bvNear(p.y);
+  float sunward = exp(-abs(p.x - bvSun.x) / 0.4);
+  vec3 meadow = mix(vec3(0.36, 0.34, 0.5), vec3(0.1, 0.16, 0.24), pow(k, 0.6));
+  meadow *= 0.85 + 0.3 * fbm(p * vec2(16.0, 30.0) + 5.0);
+  float mist = smoothstep(0.32, 0.72, bvMist(vec2(p.x, p.y * 0.7), 1.2)) * (1.0 - 0.75 * k);
+  mist = max(mist, 1.0 - smoothstep(0.0, 0.05, BV_FLOOR - p.y));
+  vec3 mistCol = mix(vec3(0.62, 0.48, 0.66), vec3(1.0, 0.76, 0.6), sunward);
+  float off = abs(p.x - bvRiverX(p.y));
+  float halfWidth = bvRiverHalf(p.y);
+  vec3 c = meadow;
+  if (off < halfWidth) {
+    vec3 sky = bvSky(vec2(bvSun.x + (p.x - bvSun.x) * 0.5, BV_HORIZON + 0.02 + k * 0.3));
+    c = sky * 0.92;
+    float spread = 0.015 + 0.06 * k;
+    float glint = exp(-pow((p.x - bvSun.x) / spread, 2.0));
+    float ripple = 0.5 + 0.5 * snoise(vec2(p.x * 36.0, p.y * 90.0 - bvT * 0.3));
+    c = mix(c, vec3(1.0, 0.88, 0.64), clamp(glint * (0.4 + 0.6 * ripple), 0.0, 1.0));
+    c *= 0.9 + 0.1 * sin(bvT * 0.5);
+    // Darker banks at the edges.
+    c = mix(c, meadow, smoothstep(0.7, 1.0, off / halfWidth) * 0.55);
+  }
+  return mix(c, mistCol, clamp(mist * 0.75, 0.0, 0.85));
+}
+
+// One balloon: a round crown tapering to the mouth, gores in two colours
+// and a band, lit from the sun's side and glowing through on the shadow
+// side, with a small basket below. Returns colour and coverage.
+vec4 bvBalloon(vec2 p, vec3 b, vec3 ca, vec3 cb, float z) {
+  vec2 q = (p - b.xy) / b.z;
+  if (q.y < -2.0 || q.y > 1.05 || abs(q.x) > 1.05) {
+    return vec4(0.0);
+  }
+  float haze = 0.85 * (1.0 - exp(-z / 14.0));
+  vec3 hazeCol = bvSky(p);
+  vec2 l2 = normalize(bvSun - b.xy);
+  vec3 light = normalize(vec3(l2, 0.45 + z * 0.12));
+  // Basket and its shadowed ropes.
+  if (q.y < -1.6) {
+    if (q.y > -1.95 && q.y < -1.7 && abs(q.x) < 0.2) {
+      vec3 wicker = mix(vec3(0.42, 0.25, 0.18), vec3(0.95, 0.6, 0.36), 0.35 + 0.35 * l2.x * sign(q.x + 0.001));
+      return vec4(mix(wicker, hazeCol, haze), 1.0);
+    }
+    return vec4(0.0);
+  }
+  float w = q.y > -0.35 ? sqrt(max(0.0, 1.0 - q.y * q.y)) : mix(0.2, 0.937, pow(clamp((q.y + 1.6) / 1.25, 0.0, 1.0), 0.85));
+  if (abs(q.x) > w) {
+    return vec4(0.0);
+  }
+  float s = q.x / max(w, 0.001);
+  float ny = q.y > -0.35 ? q.y : -0.35 - (q.y + 0.35) * 0.3;
+  vec3 n = normalize(vec3(s * sqrt(max(0.0, 1.0 - ny * ny)), ny, sqrt(max(0.05, 1.0 - s * s))));
+  // Small balloons in one colour: two gores that far off read as slivers.
+  float gores = b.z < 0.035 ? 1.0 : 8.0;
+  float g = floor((asin(clamp(s, -1.0, 1.0)) / 3.14159 + 0.5) * gores);
+  vec3 cloth = mod(g, 2.0) < 0.5 ? ca : cb;
+  if (b.z > 0.03 && abs(q.y - 0.2) < 0.13) {
+    cloth = mix(ca, cb, 0.5) * 1.1;
+  }
+  float lambert = max(dot(n, light), 0.0);
+  float through = 0.62 + 0.18 * (1.0 - abs(s));
+  vec3 lit = cloth * (through + 0.6 * lambert) + vec3(0.06, 0.03, 0.06);
+  lit += vec3(1.0, 0.7, 0.4) * pow(1.0 - n.z, 3.0) * max(dot(n.xy, l2), 0.0) * 0.8;
+  return vec4(mix(lit, hazeCol, haze), 1.0);
+}
+
+// Balloon centre and radius: x as a share of the half width, wide and
+// tall layouts blended by aspect, a slow bob, and for some a slow rise and
+// fall over a few minutes.
+vec3 bvPlace(vec4 wide, vec4 tall, float rise, float period, float phase) {
+  vec4 a = mix(tall, wide, bvWide);
+  float bob = 0.004 * sin(bvT * 0.23 + phase * 7.0);
+  float up = rise * (0.5 - 0.5 * cos(6.2832 * (bvT / period + phase)));
+  return vec3(a.x * bvHalf, a.y + bob + up, a.z);
+}
+
+vec2 bvCacheUv = vec2(-1.0);
+float bvCacheT = -1.0;
+vec4 bvCacheValue = vec4(0.0);
+
+vec4 bvScene(vec2 uv, vec2 res, float t) {
+  if (uv == bvCacheUv && t == bvCacheT) {
+    return bvCacheValue;
+  }
+  float aspect = res.x / res.y;
+  bvT = t;
+  bvWide = smoothstep(0.7, 1.3, aspect);
+  bvStretch = clamp(aspect / 1.78, 0.5, 1.2);
+  bvHalf = min(aspect * 0.5, 1.0);
+  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y);
+  // The sun sits a little right of centre on wide boxes, central on tall ones.
+  bvSunOffset = 0.14 * bvWide;
+  bvSun = vec2(bvSunOffset * bvStretch, BV_HORIZON + 0.028);
+
+  // Depth of whatever is nearest at this sample, and its colour.
+  float depth = 1e4;
+  vec3 col = vec3(0.0);
+  bool found = false;
+
+  // Near to far. Each ridge: gap offset from the sun, base, left and right
+  // slopes, cap, noise seed and roughness; then its crest colour, how high
+  // mist pools above its base, and rim strength.
+  float top = bvRidge(p.x, 0.03, -0.06, 0.95, 0.85, 0.34, 1.3, 0.05);
+  if (p.y < top) {
+    col = bvRidgeColor(p, top, -0.04, vec3(0.07, 0.07, 0.15), 0.0, 0.5);
+    depth = 1.2;
+    found = true;
+  }
+  if (!found && p.y < BV_FLOOR) {
+    col = bvFloor(p);
+    depth = 2.0 + 3.0 * (1.0 - bvNear(p.y));
+    found = true;
+  }
+  top = bvRidge(p.x, -0.24, 0.24, 0.3, 0.62, 0.19, 4.7, 0.04);
+  if (!found && p.y < top) {
+    col = bvRidgeColor(p, top, 0.24, vec3(0.12, 0.11, 0.27), 0.035, 0.75);
+    depth = 4.5;
+    found = true;
+  }
+  top = bvRidge(p.x, 0.16, 0.33, 0.55, 0.2, 0.12, 9.1, 0.035);
+  if (!found && p.y < top) {
+    col = bvRidgeColor(p, top, 0.33, vec3(0.23, 0.13, 0.31), 0.04, 0.85);
+    depth = 7.0;
+    found = true;
+  }
+  top = bvRidge(p.x, -0.02, 0.4, 0.5, 0.42, 0.1, 2.9, 0.03);
+  if (!found && p.y < top) {
+    col = bvRidgeColor(p, top, 0.4, vec3(0.36, 0.21, 0.38), 0.035, 0.95);
+    depth = 11.0;
+    found = true;
+  }
+  top = bvRidge(p.x, 0.0, 0.445, 0.36, 0.34, 0.12, 7.7, 0.03);
+  if (!found && p.y < top) {
+    col = bvRidgeColor(p, top, 0.445, vec3(0.5, 0.31, 0.44), 0.03, 1.0);
+    depth = 30.0;
+    found = true;
+  }
+  if (!found) {
+    col = bvStars(p, res, bvSky(p));
+    // The sun's disc, a little flattened by the haze.
+    float r = length((p - bvSun) * vec2(1.0, 1.08));
+    col = mix(col, vec3(1.0, 0.98, 0.9), 1.0 - smoothstep(0.036, 0.042, r));
+  }
+
+  // Balloons, each drawn only where nothing nearer covers it.
+  vec4 hit;
+  vec3 b;
+  b = bvPlace(vec4(0.88, 0.42, 0.021, 0.0), vec4(0.62, 0.4, 0.017, 0.0), 0.13, 260.0, 0.32);
+  hit = bvBalloon(p, b, vec3(0.42, 0.62, 0.95), vec3(0.95, 0.92, 0.88), 10.0);
+  if (hit.a > 0.5 && depth > 10.0) {
+    col = hit.rgb;
+    depth = 10.0;
+  }
+  b = bvPlace(vec4(0.24, 0.9, 0.016, 0.0), vec4(3.0, 0.93, 0.013, 0.0), 0.0, 1.0, 0.7);
+  hit = bvBalloon(p, b, vec3(0.9, 0.3, 0.3), vec3(0.98, 0.9, 0.8), 12.0);
+  if (hit.a > 0.5 && depth > 12.0) {
+    col = hit.rgb;
+    depth = 12.0;
+  }
+  b = bvPlace(vec4(-0.36, 0.82, 0.028, 0.0), vec4(-0.7, 0.9, 0.022, 0.0), 0.0, 1.0, 0.15);
+  hit = bvBalloon(p, b, vec3(0.98, 0.78, 0.3), vec3(0.55, 0.3, 0.62), 6.0);
+  if (hit.a > 0.5 && depth > 6.0) {
+    col = hit.rgb;
+    depth = 6.0;
+  }
+  b = bvPlace(vec4(0.66, 0.6, 0.042, 0.0), vec4(0.55, 0.82, 0.034, 0.0), 0.1, 200.0, 0.6);
+  hit = bvBalloon(p, b, vec3(0.25, 0.7, 0.66), vec3(0.98, 0.9, 0.74), 4.0);
+  if (hit.a > 0.5 && depth > 4.0) {
+    col = hit.rgb;
+    depth = 4.0;
+  }
+  b = bvPlace(vec4(-0.72, 0.63, 0.095, 0.0), vec4(-0.35, 0.74, 0.068, 0.0), 0.0, 1.0, 0.0);
+  hit = bvBalloon(p, b, vec3(0.95, 0.28, 0.22), vec3(1.0, 0.72, 0.28), 1.5);
+  if (hit.a > 0.5 && depth > 1.5) {
+    col = hit.rgb;
+    depth = 1.5;
+  }
+
+  col = clamp(col, 0.0, 1.0);
+  // Dot size follows brightness, with a floor so every cell keeps at least
+  // a faint dot.
+  float luma = dot(col, vec3(0.3, 0.55, 0.15));
+  float tone = clamp(0.1 + 0.95 * pow(luma, 0.85), 0.0, 1.0);
+  // The dot size already carries the value, so dark colours are lifted:
+  // a small dot in a clear hue reads, a small dot in near-black does not.
+  col = clamp(col / (0.35 + 0.65 * sqrt(max(luma, 0.001))), 0.0, 1.0);
+  tone *= sqrt(bvIntensity);
+  bvCacheUv = uv;
+  bvCacheT = t;
+  bvCacheValue = vec4(col * bvIntensity, tone);
+  return bvCacheValue;
+}
+`;
+
+const FIELD = `${SCENE}
+float field(vec2 uv, vec2 res, float t) {
+  return bvScene(uv, res, t).a;
+}
+`;
+
+const COLOR_FIELD = `${SCENE}
+vec3 colorField(vec2 uv, vec2 res, float t) {
+  return bvScene(uv, res, t).rgb;
+}
+`;
+
+// Modes that paint the scene's own colours need its pre-dawn night behind
+// them in both themes; mono and palette keep the theme's paper.
+const NIGHT = "#0d0b1f";
+const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
+  "truecolor",
+  "ansi16",
+  "duotone",
+]);
+
+const FALLBACK = (
+  <div
+    className="absolute inset-0"
+    style={{
+      background:
+        "linear-gradient(to bottom, #15163a 0%, #3a2c5c 30%, #b06a7c 48%, #f0a070 55%, #3a2a58 60%, #15142e 100%)",
+    }}
+  />
+);
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+export interface BalloonValleyProps extends Omit<
+  AsciiSceneProps,
+  "interactive"
+> {
+  /** How strongly it draws, from 0 (faint, for text on top) to 1. Default 1. */
+  intensity?: number;
+  /**
+   * Paper behind the glyphs. Default: the scene's deep indigo in
+   * `truecolor`, `ansi16` and `duotone`; the theme's paper otherwise.
+   */
+  paper?: AsciiColor;
+  /** In `duotone`, the colour ramp from dark to light. Default `"infrared"`, indigo to amber. */
+  ramp?: AsciiSceneProps["ramp"];
+  /** Shown without WebGL and until the first frame. Default: the dawn as a flat gradient. */
+  fallback?: ReactNode;
+  /** Square cells, so the dots lie on an even lattice like a halftone screen. Default `true`. */
+  square?: boolean;
+  /** Ordered dithering between dot sizes, which turns four dots into smooth tone. Default `"bayer4"`. */
+  dither?: AsciiSceneProps["dither"];
+  /** Ignored: the valley never reacts to the pointer. Accepted so galleries can pass it to every scene. */
+  interactive?: boolean;
+}
+
+/**
+ * Sunrise over a river valley. Soft ridges fade into the haze layer by
+ * layer, mist pools in the valley and the river catches the low sun,
+ * while hot-air balloons hang at different depths and two rise and sink
+ * very slowly. Decorative and full-bleed: size it with `className`,
+ * usually `absolute inset-0`.
+ */
+export const BalloonValley = ({
+  charset = "dots",
+  chars,
+  colorMode,
+  phosphor,
+  paper,
+  ramp,
+  cell = 7,
+  square = true,
+  stillTime = 0,
+  dither = "bayer4",
+  intensity = 1,
+  fallback = FALLBACK,
+  // The valley has no pointer response; keep the flag off the DOM.
+  interactive: _interactive,
+  ...props
+}: BalloonValleyProps) => {
+  const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
+  return (
+    <AsciiShader
+      field={FIELD}
+      colorField={COLOR_FIELD}
+      uniforms={{ bvIntensity: clamp(intensity, 0, 1) }}
+      charset={charset}
+      chars={chars}
+      colorMode={mode}
+      phosphor={phosphor}
+      ramp={ramp ?? (mode === "duotone" ? "infrared" : undefined)}
+      paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
+      cell={cell}
+      square={square}
+      dither={dither}
+      stillTime={stillTime}
+      fallback={fallback}
+      {...props}
+    />
+  );
+};
