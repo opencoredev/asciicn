@@ -130,9 +130,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Rio de Janeiro",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Sydney Harbour at night: the Opera House lit cream-white on its podium, the Harbour Bridge behind it, Circular Quay's towers and one ferry on calm water.",
+      "Sydney Harbour at blue hour in halftone dots: the Opera House's sails catching a warm glow, the Harbour Bridge with its lamps lit, the city in cool haze and the harbour mirroring them under a peach afterglow.",
     id: "sydney",
     load: async () => {
       const { Sydney } = await import("@/components/asciicn/sydney");

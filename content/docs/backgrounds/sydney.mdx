@@ -1,6 +1,6 @@
 ---
 title: "Sydney"
-description: "Sydney Harbour at night: the Opera House lit cream-white on its podium, the Harbour Bridge behind it, Circular Quay's towers and one ferry on calm water."
+description: "Sydney Harbour at blue hour in halftone dots: the Opera House's sails catching a warm glow, the Harbour Bridge with its lamps lit, the city in cool haze and the harbour mirroring them under a peach afterglow."
 ---
 
 import SydneyDemo from "@/examples/sydney-demo";
@@ -28,37 +28,43 @@ import { Sydney } from "@/components/asciicn/sydney";
 
 export function Hero() {
   return (
-    <section className="relative isolate min-h-[480px]">
-      <Sydney intensity={0.6} className="absolute inset-0 -z-10" />
+    <section className="relative isolate flex min-h-[480px] flex-col items-center justify-center text-white">
+      <Sydney intensity={0.75} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The harbour is seen from the east, at night. The Opera House stands nearest, on the left: a broad podium with a lit edge and a row of foyer lights, and on it the shells in profile, pointed sails of different sizes overlapping in sequence, the tallest at the north end. They are lit cream-white, and a dark seam runs wherever one shell passes in front of another, so each one keeps its own outline. The smaller back hall peeks out behind the front one, and the restaurant's two small shells sit at the south end.
+The harbour is seen from the east at blue hour, just after sunset. The Opera House stands on the left on its podium: two halls of shells in profile, the tallest at the north end, each a curved sail with a pointed tip. Their faces are lit cream and warm, with a cool shadow along each shell's back edge and a dark seam wherever one shell passes in front of another. Glass walls under the tallest tips glow amber, and the restaurant's two small shells sit at the south end above the stairs.
 
-Behind it the Harbour Bridge spans the water to the right. Its arch is a steel truss between two curved chords, with hangers down to the deck and lamps along it. Each end has a pair of granite pylons, one either side of the deck, with one face floodlit and the other in shadow. To the left of the Opera House the towers of Circular Quay rise in a cluster, each with a grid of windows, and North Sydney's lower towers stand past the bridge.
+The Harbour Bridge spans the right of the frame: a granite pylon at each end, lit on the face toward the glow, and the arch between its two chords, with a hazy truss, hangers down to the deck and lamps along the arch and the deck. The city's towers stand behind in cool haze, with a needle tower among them and North Sydney past the bridge.
 
-Very little moves. A few windows switch on or off, each fading over a couple of seconds and changing only every minute or more. Stars glint faintly. Red aviation lights pulse slowly on the crown of the arch and on the tallest towers, about once every two seconds. One green and cream ferry crosses the harbour in about two and a half minutes. The water carries broken reflections of the lit shells, lamps, windows and steel, which shift a little from side to side. The buildings and the bridge stay still, and nothing reacts to the pointer.
+The whole frame is painted. The sky runs from deep blue at the top through lavender to a peach afterglow low between the house and the bridge. The harbour mirrors the sails, the arch and the glow through slow ripples, and the afterglow lays a path of glints on the water. Far things draw smaller, hazier dots than near ones, and only the lit sails, the glow and its reflection draw the largest.
 
-It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2 grid of samples, so the shells, the truss and the window grids land on whole samples and stay sharp. `braille` gives finer, thinner dots, and `blocks`, `standard` and `dense` also work; with one sample per glyph the bridge keeps its chords and every other post. In `truecolor`, the default, it paints its own colours on a night blue. In `mono`, `duotone` and `palette`, where colour no longer carries brightness, the podium, pylons and tower walls fill with ordered dot patterns so they stay apart from the white shells.
+Nothing built moves, and the pointer has no effect. The motion is slow: ripples break and shift the reflections, a few windows switch on or off, fading over a couple of seconds, red lights on the crown of the arch and the needle tower blink softly, stars twinkle, and one green and cream ferry crosses the harbour every few minutes.
+
+The middle of a wide box stays quiet for a headline: the house sits on the left and the bridge on the right. On a tall box both close in and sit low, the tallest shell just right of centre and the arch rising behind it, so a phone shows them under the copy.
+
+It draws in `dots` by default, on square 7px cells so the dots lay an even halftone lattice, with `bayer4` dithering so the dot sizes blend into smooth gradients. In `truecolor` mode, also the default, every dot takes its own colour and the scene paints its own blue hour behind them, so it looks the same on light and dark pages. `braille` and `standard` draw the same scene in other glyphs; Braille and quadrants keep their usual tall cells. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp`, `ember` by default.
+
+`ferry={false}` takes the ferry off the water. `intensity` thins every dot at once. Around 0.75 keeps the sails clear behind a headline; lower it under body text.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.6}` dims the colours and thins the fills, so the headline over the open sky reads first.
+The harbour full-bleed behind a centred headline and two buttons, at `intensity={0.75}`. The scene stays dark in both themes, so the copy on top is white.
 
 <ComponentPreview src="examples/sydney-hero.tsx" size="lg" align="stretch">
   <SydneyHero />
 </ComponentPreview>
 
-### Duotone glacier
+### Duotone
 
-`colorMode="duotone"` with `ramp="glacier"` runs every tone through one cold ramp. The `braille` charset at an 8px cell draws it in fine dots, with the ferry left out.
+`colorMode="duotone"` with `ramp="heliograph"` runs every tone through one blue ramp, so the scene reads by dot size alone, and `ferry={false}` leaves the water still.
 
-<ComponentPreview src="examples/sydney-duotone.tsx">
+<ComponentPreview src="examples/sydney-duotone.tsx" size="lg" align="stretch">
   <SydneyDuotone />
 </ComponentPreview>
 
@@ -71,18 +77,26 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
       type: "number",
       default: "1",
       description:
-        "How strongly the city draws, from 0 to 1. Lower it to keep text on top readable.",
+        "How much of the scene shows, from 0 (empty paper) to 1. Lower it under text.",
     },
     {
       name: "ferry",
       type: "boolean",
       default: "true",
-      description: "The ferry crossing the harbour, and its reflection.",
+      description:
+        "The ferry crossing the harbour, with its wake and reflection.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "the scene's blue hour, or the theme's paper",
+      description:
+        "The surface behind the glyphs. truecolor, ansi16 and duotone paint the scene's own blue hour; mono and palette keep the theme's paper. Ignored when a phosphor brings its own glass.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -95,21 +109,20 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "colorMode",
       type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
-      default: '"truecolor"',
+      default: '"truecolor", or "mono" with a phosphor',
       description:
-        'How glyphs are coloured. truecolor uses the scene\'s own colours, mono uses the theme ink or a phosphor, duotone runs tone through a ramp. "mono" when a phosphor is set.',
+        "How glyphs are coloured. truecolor keeps the scene's own colours; mono uses the ink or phosphor; duotone runs the tone through a ramp.",
     },
     {
       name: "phosphor",
       type: '"p1" | "p3" | "ibm" | "blueprint"',
       default: "–",
-      description:
-        "A CRT ink and glass for mono mode. Setting one switches colorMode to mono.",
+      description: "A CRT ink and glass that replace the ink and paper.",
     },
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: "–",
+      default: '"ember" in duotone',
       description: "In duotone mode, the colour ramp from dark to light.",
     },
     {
@@ -135,8 +148,7 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
       name: "threshold",
       type: "number",
       default: "0.5",
-      description:
-        "Braille and quadrants: the tone that lights a dot. The scene lights its dots at a tone of 0.6 or more, so only values above that thin it out.",
+      description: "Braille and quadrants: the tone that lights a dot.",
     },
     {
       name: "edgeThreshold",
@@ -148,9 +160,9 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
+      default: '"bayer4", or "none" in braille and quadrants',
       description:
-        "Ordered dithering between neighbouring glyph levels. In braille and quadrants the scene already fills with its own ordered patterns where colour cannot carry brightness.",
+        "Ordered dithering between neighbouring glyph levels. On dots it keeps the sky a smooth gradient.",
     },
     {
       name: "background",
@@ -169,14 +181,22 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "cell",
       type: "number",
-      default: "9",
-      description: "Height of one glyph cell in CSS pixels.",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels. With square cells it sets the width too.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true, or false in braille and quadrants",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even halftone lattice instead of rows.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
-      description: "How fast it moves.",
+      description: "How fast everything moves.",
     },
     {
       name: "animate",
@@ -188,15 +208,21 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
     {
       name: "fps",
       type: "number",
-      default: "30",
+      default: "24",
       description: "Frame rate cap.",
     },
     {
       name: "stillTime",
       type: "number",
-      default: "40",
+      default: "30",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a blue-hour gradient",
+      description: "Shown without WebGL and until the first frame.",
     },
     {
       name: "handle",
@@ -204,19 +230,6 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
       default: "–",
       description:
         "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
-    },
-    {
-      name: "paper",
-      type: "AsciiColor",
-      default: "–",
-      description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
-    },
-    {
-      name: "fallback",
-      type: "ReactNode",
-      default: "a gradient",
-      description: "Shown without WebGL and until the first frame.",
     },
     {
       name: "className",
@@ -231,7 +244,6 @@ It draws in `quadrants` by default, with 9px cells. Each glyph splits into a 2x2
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - It ignores the pointer: no parallax and no hover effect.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 40 seconds, puts the ferry in front of the Opera House.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat night-blue gradient.
-- On wide boxes the towers, the Opera House and the whole bridge fit. On narrow ones the view closes in on the Opera House and the south half of the bridge, and draws them smaller.
-- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the harbour costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops. The default, 30 seconds, puts the ferry on the water below the glow.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a blue-hour gradient.
+- The whole harbour is one shader pass on the GPU. Water samples also draw the mirrored scene, so the harbour costs about twice as much as the sky. See [Performance](/docs/engine/performance).
