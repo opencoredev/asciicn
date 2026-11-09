@@ -67,7 +67,7 @@ void sySetup(vec2 res, float t) {
   // The Opera House: its tallest shell's tip sits at the edge of the
   // middle of a wide box, with both halls in view; on narrower boxes the
   // stairs and the restaurant run off the left edge first.
-  float wideS = clamp((0.29 * syAsp - 0.02) / 1.8, 0.12, 0.22);
+  float wideS = clamp((0.29 * syAsp - 0.02) / mix(1.85, 2.3, smoothstep(1.2, 1.6, syAsp)), 0.12, 0.21);
   // On a tall box the house's tallest shell stands just right of centre,
   // its stairs running off the left edge.
   float tallS = clamp(0.37 * syAsp, 0.12, 0.2);
@@ -87,7 +87,7 @@ void sySetup(vec2 res, float t) {
 // smallest dots, sometimes none, and only the glow draws large ones.
 float syTone(vec3 c) {
   float l = dot(c, vec3(0.3, 0.55, 0.15));
-  return 0.12 + 0.5 * l;
+  return 0.1 + 0.44 * l;
 }
 
 // The afterglow: a broad warm halo low over the water, its bright core
@@ -119,6 +119,11 @@ vec3 sySky(float x, float y) {
   vec3 cloud = mix(vec3(0.95, 0.6, 0.56), vec3(0.42, 0.38, 0.6), smoothstep(0.1, 0.4, h));
   cloud = mix(cloud, vec3(0.13, 0.15, 0.32), smoothstep(0.4, 0.85, h));
   c = mix(c, cloud, streak * band * 0.55);
+  // Low mist drifting along the horizon breaks the warm band into
+  // irregular patches, thinning with height.
+  float lowH = 1.0 - smoothstep(0.02, 0.3, h);
+  float mist = fbm(vec2(x * 2.6 - syT * 0.006, y * 14.0 + 2.9));
+  c *= mix(1.0, 0.7 + 0.55 * mist, lowH);
   c += vec3(1.0, 0.55, 0.3) * syGlow(x, y) * 0.4;
   c += vec3(1.0, 0.82, 0.62) * syCore(x, y) * 0.32;
   return c;
@@ -152,7 +157,7 @@ vec4 syCity(float col, float row, float x, float y, vec3 sky, out float cover) {
   float cbd = exp(-pow((x - syOX - 0.05 * syOS) / (2.4 * syOS), 2.0));
   // Nothing tall stands in front of the afterglow, so it fades softly
   // into the far shore instead of showing through gaps.
-  float clear = smoothstep(0.08, 0.22, abs(x - syGlowX));
+  float clear = smoothstep(0.18, 0.42, abs(x - syGlowX));
   cbd *= clear;
   float mid = 0.0;
   float north = 0.5 * smoothstep(syB1 - 0.25 * (syB1 - syB0), syB1 + 0.1, x);
@@ -212,10 +217,10 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
   cover = 0.0;
   float span = syB1 - syB0;
   float v = (y - syHz) / syBH;
-  float haze = 0.2;
+  float haze = 0.15;
   // Dark steel against the afterglow, warmed a little where the glow
   // lights it from behind.
-  vec3 steel = vec3(0.44, 0.44, 0.6) + vec3(0.2, 0.1, 0.06) * syGlow(x, y);
+  vec3 steel = vec3(0.5, 0.5, 0.66) + vec3(0.22, 0.11, 0.06) * syGlow(x, y);
   float skyTone = syTone(sky);
 
   // The pylons: a granite tower each end, lit on the face toward the glow.
@@ -239,7 +244,7 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
       if (abs(v - (topV - 0.12)) < syRh / syBH * 0.6) {
         c *= 0.75;
       }
-      return vec4(mix(c, sky, haze * 0.7), 0.58 + 0.16 * lit);
+      return vec4(mix(c, sky, haze * 0.7), 0.62 + 0.2 * lit);
     }
   }
 
@@ -264,11 +269,11 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
         float b = syBeacon(0.0);
         return vec4(mix(c, vec3(1.0, 0.2, 0.14), b * 0.9), 0.5 + 0.3 * b);
       }
-      return vec4(mix(c, sky, haze), 0.62 + 0.14 * lamp);
+      return vec4(mix(c, sky, haze), 0.68 + 0.12 * lamp);
     }
     if (db < 0.6) {
       cover = 1.0;
-      return vec4(mix(steel, sky, haze), 0.58);
+      return vec4(mix(steel, sky, haze), 0.64);
     }
     if (y > yb && y < yt) {
       // The truss: posts and crossed diagonals, in thin dim steel.
@@ -281,17 +286,17 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
       bool diag = abs(fr - f) * depth < 0.55 || abs(fr - (1.0 - f)) * depth < 0.55;
       cover = 1.0;
       if (post || diag) {
-        return vec4(mix(steel * 0.8, sky, haze + 0.1), 0.42);
+        return vec4(mix(steel * 0.85, sky, haze + 0.08), 0.5);
       }
       // Between the members the sky shows through, dimmed by the lattice,
       // so the truss reads as one hazy band rather than a row of posts.
-      return vec4(mix(steel * 0.7, sky, 0.5), mix(0.36, skyTone, 0.4));
+      return vec4(mix(steel * 0.7, sky, 0.45), mix(0.4, skyTone, 0.35));
     }
     if (y < yb && y > yd) {
       float panel = max(3.0, floor(span / syCw / 24.0 + 0.5));
       if (mod(col - syColOf(syB0), panel) < 0.5) {
         cover = 1.0;
-        return vec4(mix(steel * 0.8, sky, haze + 0.1), 0.38);
+        return vec4(mix(steel * 0.8, sky, haze + 0.1), 0.42);
       }
     }
   }
@@ -304,7 +309,7 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
     if (row == syDeckRow) {
       float lamp = step(0.6, syHash(vec2(col, 11.0)));
       vec3 c = mix(steel, vec3(1.0, 0.76, 0.46), lamp * 0.9);
-      return vec4(mix(c, sky, haze * 0.8), 0.56 + 0.2 * lamp);
+      return vec4(mix(c, sky, haze * 0.8), 0.6 + 0.18 * lamp);
     }
     return vec4(mix(steel * 0.7, sky, haze), 0.42);
   }
@@ -319,20 +324,40 @@ vec4 syBridge(float col, float row, float x, float y, vec3 sky, out float cover)
   return vec4(0.0);
 }
 
-// The Opera House's shells, back to front. Each is a sail cut from two
-// circles, its tip leaning one way. at: origin (in house units), direction,
-// hall (0 the back hall, 1 the front, 2 the restaurant) and whether a glass
-// wall fills the space under its tip. f: front base, tip x and tip height.
+// The Opera House's shells, back to front. Each is a curved shell cut
+// from two circles: a convex back arc rising to the tip and a concave cut
+// under it, where the shell's underside shows. at: origin (in house
+// units), direction (1 tips toward the north end, -1 south), hall (0 the
+// taller hall behind, 1 the lower hall in front, 2 the restaurant) and
+// whether a glass wall fills the space under its tip. f: front base, tip
+// x and tip height. Heights and leans differ, so the halls read as a
+// cluster rather than a row of copies.
 void syShellAt(int i, out vec4 at, out vec3 f) {
-  if (i == 0) { at = vec4(-0.62, -1.0, 0.0, 0.0); f = vec3(0.36, 0.5, 0.5); }
-  else if (i == 1) { at = vec4(-0.86, 1.0, 0.0, 0.0); f = vec3(0.38, 0.52, 0.56); }
-  else if (i == 2) { at = vec4(-0.46, 1.0, 0.0, 1.0); f = vec3(0.42, 0.6, 0.68); }
-  else if (i == 3) { at = vec4(-0.26, -1.0, 1.0, 0.0); f = vec3(0.4, 0.58, 0.58); }
-  else if (i == 4) { at = vec4(-0.5, 1.0, 1.0, 0.0); f = vec3(0.46, 0.62, 0.6); }
-  else if (i == 5) { at = vec4(-0.14, 1.0, 1.0, 0.0); f = vec3(0.5, 0.7, 0.78); }
-  else if (i == 6) { at = vec4(0.24, 1.0, 1.0, 1.0); f = vec3(0.6, 0.86, 1.0); }
-  else if (i == 7) { at = vec4(-1.16, 1.0, 2.0, 0.0); f = vec3(0.22, 0.3, 0.34); }
-  else { at = vec4(-0.9, -1.0, 2.0, 0.0); f = vec3(0.2, 0.27, 0.3); }
+  if (i == 0) { at = vec4(-0.22, -1.0, 0.0, 0.0); f = vec3(0.52, 0.76, 0.66); }
+  else if (i == 1) { at = vec4(-0.5, 1.0, 0.0, 0.0); f = vec3(0.58, 0.78, 0.72); }
+  else if (i == 2) { at = vec4(-0.16, 1.0, 0.0, 0.0); f = vec3(0.66, 0.88, 0.86); }
+  else if (i == 3) { at = vec4(0.13, 1.0, 0.0, 1.0); f = vec3(0.74, 0.97, 1.0); }
+  else if (i == 4) { at = vec4(-0.64, -1.0, 1.0, 0.0); f = vec3(0.44, 0.64, 0.5); }
+  else if (i == 5) { at = vec4(-0.9, 1.0, 1.0, 0.0); f = vec3(0.46, 0.62, 0.52); }
+  else if (i == 6) { at = vec4(-0.6, 1.0, 1.0, 0.0); f = vec3(0.54, 0.74, 0.64); }
+  else if (i == 7) { at = vec4(-0.28, 1.0, 1.0, 1.0); f = vec3(0.58, 0.8, 0.74); }
+  else if (i == 8) { at = vec4(-1.52, 1.0, 2.0, 0.0); f = vec3(0.26, 0.34, 0.32); }
+  else { at = vec4(-1.2, -1.0, 2.0, 0.0); f = vec3(0.24, 0.32, 0.28); }
+}
+
+// Distances into shell i at a point in house units: d1 inside its back
+// arc, d2 outside its front cut (both positive inside the shell), and the
+// point relative to the back arc's centre, for the arc's direction.
+void syShellDist(float u, float v, int i, out float d1, out float d2, out vec2 r1) {
+  vec4 at;
+  vec3 f;
+  syShellAt(i, at, f);
+  vec2 q = vec2((u - at.x) * at.y, v);
+  float c1 = (f.y * f.y + f.z * f.z) / (2.0 * f.y);
+  r1 = q - vec2(c1, 0.0);
+  d1 = c1 - length(r1);
+  float c2 = (f.x * f.x - f.y * f.y - f.z * f.z) / (2.0 * (f.x - f.y));
+  d2 = length(q - vec2(c2, 0.0)) - (c2 - f.x);
 }
 
 // The house's soft floodlit bloom, which warms the air around the sails.
@@ -350,77 +375,119 @@ vec4 syOpera(float col, float row, float x, float y, out float cover) {
   float v = (y - podTop) / syOS;
   float su = syCw / syOS;
   float sv = syRh / syOS;
-  vec4 c = vec4(0.0);
-  if (v > 0.0 && v < 1.02 && u > -1.2 && u < 1.15) {
-    for (int i = 0; i < 9; i++) {
+  if (v > 0.0 && v < 1.02 && u > -1.6 && u < 1.15) {
+    // The frontmost shell here, or the glass under a tip.
+    int hit = -1;
+    bool glass = false;
+    bool behind = false;
+    float hd1 = 0.0;
+    float hd2 = 0.0;
+    vec2 hr1 = vec2(0.0, 1.0);
+    for (int i = 0; i < 10; i++) {
+      float d1;
+      float d2;
+      vec2 r1;
+      syShellDist(u, v, i, d1, d2, r1);
       vec4 at;
       vec3 f;
       syShellAt(i, at, f);
       vec2 q = vec2((u - at.x) * at.y, v);
-      float c1 = (f.y * f.y + f.z * f.z) / (2.0 * f.y);
-      vec2 r1 = q - vec2(c1, 0.0);
-      float d1 = c1 - length(r1);
-      float c2 = (f.x * f.x - f.y * f.y - f.z * f.z) / (2.0 * (f.x - f.y));
-      float d2 = length(q - vec2(c2, 0.0)) - (c2 - f.x);
       if (d1 > 0.0 && d2 > 0.0) {
-        // Distance in samples from the back edge, where the shell turns
-        // away into cool shadow; the rest of the face is lit.
-        float n = abs(normalize(r1).y);
-        float edge = d1 / mix(su, sv, n);
-        float up = q.y / f.z;
-        float hall = at.z;
-        // Faces whose tips lean toward the glow take its warmth.
-        bool toGlow = (at.y > 0.0) == (syGlowX > syOX);
-        vec3 face = toGlow ? vec3(1.0, 0.88, 0.76) : vec3(0.84, 0.82, 0.9);
-        vec3 shadow = vec3(0.46, 0.46, 0.64);
-        // The tip is too thin for a shadow; it stays lit.
-        float lit = max(smoothstep(0.5, 2.2, edge), smoothstep(0.8, 0.95, up));
-        vec3 s = mix(shadow, face, lit);
-        // Floodlit from the podium: brightest low and toward the front
-        // edge, softer toward the tip, which catches the sky instead.
-        float front = clamp(d2 / mix(su, sv, n) / 4.0, 0.0, 1.0);
-        float across = d1 / (d1 + d2);
-        s *= 0.74 + 0.16 * (1.0 - up) + 0.06 * (1.0 - front) + 0.12 * across;
-        // The whole house is lit a little more on the side facing the glow.
-        float facing = clamp((u + 1.2) / 2.3, 0.0, 1.0);
-        s *= syGlowX > syOX ? 0.9 + 0.16 * facing : 1.06 - 0.16 * facing;
-        s = mix(s, vec3(1.0, 0.86, 0.78), smoothstep(0.8, 1.0, up) * 0.25);
-        // The tiles: a faint grain, so the face never reads as flat.
-        s *= 0.94 + 0.1 * syHash(vec2(col, row) + float(i));
-        float tone = 0.7 + 0.3 * lit * (1.0 - 0.15 * up);
-        if (hall < 0.5) {
-          s = mix(s * 0.8, vec3(0.4, 0.4, 0.58), 0.2);
-          tone *= 0.82;
-        } else if (hall > 1.5) {
-          s *= 0.88;
-          tone *= 0.9;
+        behind = hit >= 0;
+        hit = i;
+        glass = false;
+        hd1 = d1;
+        hd2 = d2;
+        hr1 = r1;
+      } else if (at.w > 0.5 && d1 > 0.0 && d2 <= 0.0 && q.x < f.y && q.y < f.z * 0.3) {
+        behind = hit >= 0;
+        hit = i;
+        glass = true;
+      }
+    }
+    if (hit >= 0) {
+      cover = 1.0;
+      vec4 at;
+      vec3 f;
+      syShellAt(hit, at, f);
+      // The shells in front throw a soft contact shadow on this one, just
+      // behind their back edges, so each overlap reads as depth.
+      float occl = 0.0;
+      for (int j = 0; j < 10; j++) {
+        if (j > hit) {
+          float d1;
+          float d2;
+          vec2 r1;
+          syShellDist(u, v, j, d1, d2, r1);
+          vec4 aj;
+          vec3 fj;
+          syShellAt(j, aj, fj);
+          if (d1 < 0.0 && d2 > 0.0 && v < fj.z) {
+            occl = max(occl, 1.0 - smoothstep(0.0, 5.0, -d1 / su));
+          }
         }
-        // A dark seam where this shell passes in front of another.
-        if (cover > 0.0 && edge < 0.9) {
-          s = vec3(0.24, 0.23, 0.36);
-          tone = 0.4;
-        }
-        c = vec4(s, tone);
-        cover = 1.0;
-      } else if (at.w > 0.5 && d1 > 0.0 && d2 <= 0.0 && q.x < f.y && q.y < f.z * 0.4) {
+      }
+      if (glass) {
         // The glass wall under the tip, lit warm from the foyer.
         float glow = 0.7 + 0.3 * syHash(vec2(col, row) + 9.0);
         float mullion = mod(col, 3.0) < 0.5 ? 0.82 : 1.0;
-        // The back hall's glass shows dimmer through the haze between.
-        float dim = at.z < 0.5 ? 0.72 : 1.0;
-        c = vec4(vec3(1.0, 0.68, 0.38) * glow * mullion * dim, 0.8 * dim);
-        cover = 1.0;
+        float dim = at.z < 0.5 ? 0.8 : 1.0;
+        return vec4(vec3(1.0, 0.74, 0.48) * glow * mullion * dim * (1.0 - 0.4 * occl), 0.7 * dim);
       }
-    }
-    if (cover > 0.0) {
-      return c;
+      float n = abs(normalize(hr1).y);
+      float step1 = mix(su, sv, n);
+      float edge = hd1 / step1;
+      float lip = hd2 / mix(su, sv, 0.5);
+      float up = v / f.z;
+      // Across the shell from its back edge (0) to its front edge (1). The
+      // shell is a curved volume: its back shoulder turns away from the
+      // glow, the face swells toward it with a bright ridge, and under the
+      // overhang its underside shows in shadow.
+      float across = hd1 / (hd1 + hd2);
+      bool toGlow = (at.y > 0.0) == (syGlowX > syOX);
+      float side = toGlow ? across : 1.0 - across;
+      // Floodlit tile stays pale even in shade, so the shadow side is a
+      // cool lavender, not the colour of the sky behind it.
+      float light = smoothstep(0.0, 0.5, side);
+      float ridge = exp(-pow((side - 0.55) / 0.12, 2.0));
+      vec3 shade = vec3(0.5, 0.5, 0.72);
+      vec3 face = toGlow ? vec3(1.0, 0.86, 0.72) : vec3(0.82, 0.8, 0.9);
+      vec3 s = mix(shade, face, light);
+      s = mix(s, vec3(1.0, 0.95, 0.86), ridge * 0.4 * light);
+      float tone = mix(0.62, 0.94, light) + 0.06 * ridge;
+      // The underside: a shaded band along the concave cut, deepest low
+      // down where the overhang is widest.
+      float under = (1.0 - smoothstep(0.6, 2.4, lip)) * (1.0 - smoothstep(0.55, 0.9, up));
+      s = mix(s, vec3(0.5, 0.42, 0.5), under * 0.75);
+      tone = mix(tone, 0.56, under * 0.75);
+      // The tip catches the open sky.
+      s = mix(s, vec3(0.98, 0.9, 0.84), smoothstep(0.82, 1.0, up) * 0.3);
+      // Floodlit from the podium a little; the tiles' faint grain.
+      s *= 0.9 + 0.1 * (1.0 - up);
+      s *= 0.95 + 0.09 * syHash(vec2(col, row) + float(hit));
+      // Contact shadow from the shells in front.
+      s = mix(s, vec3(0.32, 0.31, 0.48), occl * 0.55);
+      tone = mix(tone, 0.5, occl * 0.55);
+      if (at.z < 0.5) {
+        // The hall behind sits in a little more haze.
+        s = mix(s, vec3(0.5, 0.48, 0.66), 0.14);
+      } else if (at.z > 1.5) {
+        s *= 0.88;
+        tone *= 0.92;
+      }
+      // A dark seam where this shell passes in front of another.
+      if (behind && edge < 0.9) {
+        s = vec3(0.2, 0.2, 0.33);
+        tone = 0.36;
+      }
+      return vec4(s, tone);
     }
   }
 
   // The podium, with the broad stairs falling to the forecourt at its south
   // end, a lamp-lit top edge and a dim row of foyer lights.
-  float uL = -1.18;
-  float uR = 0.98;
+  float uL = -1.56;
+  float uR = 1.0;
   float stairs = 0.3;
   float base = syHz + syRh;
   float topAt = podTop;
@@ -708,7 +775,7 @@ export const Sydney = ({
       ramp={ramp ?? (mode === "duotone" ? "ember" : undefined)}
       paper={paper ?? (DUSK_MODES.has(mode) ? DUSK : undefined)}
       cell={cell}
-      dither={dither ?? (isRamp ? "bayer4" : "none")}
+      dither={dither ?? (isRamp ? "blue-noise" : "none")}
       square={square ?? isRamp}
       fps={fps}
       stillTime={stillTime}

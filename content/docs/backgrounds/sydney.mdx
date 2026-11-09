@@ -36,7 +36,7 @@ export function Hero() {
 }
 ```
 
-The harbour is seen from the east at blue hour, just after sunset. The Opera House stands on the left on its podium: two halls of shells in profile, the tallest at the north end, each a curved sail with a pointed tip. Their faces are lit cream and warm, with a cool shadow along each shell's back edge and a dark seam wherever one shell passes in front of another. Glass walls under the tallest tips glow amber, and the restaurant's two small shells sit at the south end above the stairs.
+The harbour is seen from the east at blue hour, just after sunset. The Opera House stands on the left on its podium: two halls of overlapping curved shells, the taller hall behind and the lower one in front, with heights and leans that differ from shell to shell and the tallest tip at the north end. Each shell is shaded as a volume: the face toward the afterglow is lit warm cream with a soft ridge, its back turns away into cool lavender, the underside shows in shadow under the overhang, and every shell in front throws a soft shadow on the one behind it. Glass walls under the tallest tips glow amber, and the restaurant's two small shells sit at the south end above the stairs.
 
 The Harbour Bridge spans the right of the frame: a granite pylon at each end, lit on the face toward the glow, and the arch between its two chords, with a hazy truss, hangers down to the deck and lamps along the arch and the deck. The city's towers stand behind in cool haze, with a needle tower among them and North Sydney past the bridge.
 
@@ -46,7 +46,7 @@ Nothing built moves, and the pointer has no effect. The motion is slow: ripples 
 
 The middle of a wide box stays quiet for a headline: the house sits on the left and the bridge on the right. On a tall box both close in and sit low, the tallest shell just right of centre and the arch rising behind it, so a phone shows them under the copy.
 
-It draws in `dots` by default, on square 7px cells so the dots lay an even halftone lattice, with `bayer4` dithering so the dot sizes blend into smooth gradients. In `truecolor` mode, also the default, every dot takes its own colour and the scene paints its own blue hour behind them, so it looks the same on light and dark pages. `braille` and `standard` draw the same scene in other glyphs; Braille and quadrants keep their usual tall cells. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp`, `ember` by default.
+It draws in `dots` by default, on square 7px cells so the dots lay an even halftone lattice, with `blue-noise` dithering so the dot sizes blend into smooth gradients without a regular pattern. In `truecolor` mode, also the default, every dot takes its own colour and the scene paints its own blue hour behind them, so it looks the same on light and dark pages. `braille` and `standard` draw the same scene in other glyphs; Braille and quadrants keep their usual tall cells. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp`, `ember` by default.
 
 `ferry={false}` takes the ferry off the water. `intensity` thins every dot at once. Around 0.75 keeps the sails clear behind a headline; lower it under body text.
 
@@ -160,9 +160,9 @@ The harbour full-bleed behind a centred headline and two buttons, at `intensity=
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4", or "none" in braille and quadrants',
+      default: '"blue-noise", or "none" in braille and quadrants',
       description:
-        "Ordered dithering between neighbouring glyph levels. On dots it keeps the sky a smooth gradient.",
+        "Dithering between neighbouring glyph levels. On dots it keeps the sky a smooth gradient without stripes.",
     },
     {
       name: "background",
