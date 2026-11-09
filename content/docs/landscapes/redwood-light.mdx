@@ -42,9 +42,9 @@ The sun sits behind the canopy, above and right of centre, as a soft halo. Shaft
 
 The motion is slow. Dust and pollen drift through the shafts and catch the light, each mote fading in and out. The shafts brighten and dim a little, and a thin mist drifts between the far trunks. Nothing reacts to the pointer.
 
-The middle of the box is open haze, so a centred headline sits on calm ground. On tall boxes the giants narrow and move in, and the sun moves to the middle, so a phone still shows the trunks, the light and the floor.
+The middle of the box is open haze between two dark trunks, and the shafts dim a little as they cross it, so a centred headline sits on calm ground. On tall boxes the giants narrow and move in, and the sun moves to the middle, so a phone still shows the trunks, the light and the floor.
 
-It draws in `dots` by default, at a 9px cell: dot size carries the light and `truecolor` gives every dot its own colour, so even the deepest shade keeps a faint dot. `braille` and `quadrants` draw the same forest in finer dots. In `truecolor`, `ansi16` and `duotone` it paints on its own dark green shade, so it looks the same on the light and dark site themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the scene by tone alone.
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots sit on an even lattice like a halftone screen. `square={false}` goes back to the font's narrower cells. Dot size carries the light and `truecolor` gives every dot its own colour, so even the deepest shade keeps a faint dot. `braille` and `quadrants` draw the same forest in finer dots. In `truecolor`, `ansi16` and `duotone` it paints on its own dark green shade, so it looks the same on the light and dark site themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the scene by tone alone.
 
 `intensity` dims the colours and shrinks the dots together. Around 0.6 the forest falls back behind a headline.
 
@@ -188,8 +188,15 @@ It draws in `dots` by default, at a 9px cell: dot size carries the light and `tr
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Square cells, as wide as they are tall, so the dots form an even lattice. false uses the font's narrower cells.",
     },
     {
       name: "speed",
