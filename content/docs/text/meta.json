@@ -6,6 +6,7 @@
     "scramble-text",
     "glitch-text",
     "typewriter-text",
-    "ascii-marquee"
+    "ascii-marquee",
+    "ascii-countdown"
   ]
 }

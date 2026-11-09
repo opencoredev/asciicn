@@ -1,0 +1,214 @@
+---
+title: "ASCII countdown"
+description: "A launch countdown in big glyph digits that scramble for a beat when they change, with softly blinking colons, labels under each group and a done state at zero."
+---
+
+import AsciiCountdownDemo from "@/examples/ascii-countdown-demo";
+import { controls as asciiCountdownControls } from "@/examples/ascii-countdown-controls";
+import AsciiCountdownBanner from "@/examples/ascii-countdown-banner";
+import AsciiCountdownDone from "@/examples/ascii-countdown-done";
+import AsciiCountdownBraille from "@/examples/ascii-countdown-braille";
+
+<ComponentPreview
+  src="examples/ascii-countdown-demo.tsx"
+  size="md"
+  controls={asciiCountdownControls}
+>
+  <AsciiCountdownDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="ascii-countdown" />
+
+## Usage
+
+```tsx
+import { AsciiCountdown } from "@/components/asciicn/ascii-countdown";
+
+export function Launch() {
+  return (
+    <AsciiCountdown
+      to="2026-12-01T17:00:00Z"
+      onComplete={() => console.log("launched")}
+    />
+  );
+}
+```
+
+`to` takes a `Date`, an ISO string or epoch milliseconds. The clock shows days, hours, minutes and seconds, each digit drawn from a 5x7 pixel font. At zero it draws `doneText` in the same type and calls `onComplete` once.
+
+The countdown fills its container's width. It picks the largest digit that fits, up to `size` pixels tall, by changing how many cells each font pixel covers. When one row would make the digits smaller than 40 px, as on a phone, it splits into two rows: days and hours, then minutes and seconds.
+
+When a digit changes, only the cells that differ run through a few glyphs and settle, each at its own moment. `scramble` sets how long that takes. The colons dim and brighten once a second, in step with the seconds.
+
+## Examples
+
+### Banner
+
+`size={22}` and 6 px cells keep the digits small enough for a strip at the top of a page. Labels and ghost pixels are off, and only the colons take the accent.
+
+<ComponentPreview src="examples/ascii-countdown-banner.tsx" size="sm">
+  <AsciiCountdownBanner />
+</ComponentPreview>
+
+### Done state
+
+Five seconds out, with `hideZeroDays`. At zero the last digits scramble into `doneText` and `onComplete` changes the button.
+
+<ComponentPreview src="examples/ascii-countdown-done.tsx" size="sm">
+  <AsciiCountdownDone />
+</ComponentPreview>
+
+### Braille dot matrix
+
+`charset="braille"` draws each font pixel as a patch of dots. `colorMode="duotone"` shades each digit from the top of the `sodium` ramp down. Duotone ramps are tuned for dark paper.
+
+<ComponentPreview src="examples/ascii-countdown-braille.tsx" size="sm">
+  <AsciiCountdownBraille />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "to",
+      type: "Date | string | number",
+      description:
+        "The moment to count down to: a Date, an ISO string or epoch milliseconds.",
+    },
+    {
+      name: "labels",
+      type: "readonly [string, string, string, string] | false",
+      default: '["DAYS", "HRS", "MIN", "SEC"]',
+      description:
+        "Labels under days, hours, minutes and seconds, or false for none.",
+    },
+    {
+      name: "doneText",
+      type: "string",
+      default: '"LIVE"',
+      description:
+        "Drawn in the same big type once the countdown reaches zero. Letters, digits and ! ? . - /.",
+    },
+    {
+      name: "onComplete",
+      type: "() => void",
+      description:
+        "Called once when the countdown reaches zero, or on mount if to has already passed.",
+    },
+    {
+      name: "scramble",
+      type: "number",
+      default: "0.45",
+      description:
+        "Seconds a changed digit scrambles before it settles. 0 turns it off.",
+    },
+    {
+      name: "hideZeroDays",
+      type: "boolean",
+      default: "false",
+      description: "Drop the days group once fewer than 24 hours are left.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"blocks"',
+      description:
+        "Glyphs the digits are drawn with. blocks draws half blocks, quadrants and braille split each cell, ramps use their densest glyph.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      description:
+        "A custom ramp from empty to dense. Its densest glyph inks the digits. Wins over charset.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "duotone"',
+      default: '"mono"',
+      description:
+        "mono draws digits in ink and the accent; duotone shades the ink digits top to bottom along ramp.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | readonly string[]",
+      default: '"sodium"',
+      description: "duotone: a ramp name or #rrggbb stops.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description:
+        "The accent colour: a palette name, CSS variable name or any CSS colour.",
+    },
+    {
+      name: "accentOn",
+      type: '"seconds" | "colons" | "both" | "none"',
+      default: '"seconds"',
+      description: "Which parts take the accent.",
+    },
+    {
+      name: "ghost",
+      type: "boolean",
+      default: "true",
+      description: "Faint dots on the unlit pixels of each digit.",
+    },
+    {
+      name: "size",
+      type: "number",
+      default: "128",
+      description:
+        "Largest digit height in CSS pixels. The digits shrink to fit the width.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "8",
+      description:
+        "Glyph cell height in CSS pixels. Smaller cells fit the width more closely.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false holds still: no scramble or blinking, though the time still ticks.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "paper",
+      type: 'AsciiColor | "transparent"',
+      default: '"transparent"',
+      description: "Background behind the glyphs.",
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      description: "CRT effects, drawn as a CSS overlay.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description:
+        "Filled with a handle for export: the latest frame and the canvas.",
+    },
+  ]}
+/>
+
+Other props pass through to the root `div`.
+
+## Notes
+
+- The digits are drawn on a canvas that is `aria-hidden`. A visually hidden `role="timer"` element gives the time left to the minute and the target date, so a screen reader is not told every second.
+- Nothing that depends on the clock renders on the server. The first client render matches the server, then the countdown starts, so there is no hydration mismatch.
+- With reduced motion, or `animate={false}`, digits change without scrambling and the colons hold steady. The time still updates every second.
+- The canvas pauses offscreen and in hidden tabs. When it comes back, the digits that changed while it was away scramble once.
+- Labels are page text under the canvas, so they stay readable at any cell size. They take `--ascii-ink` at reduced opacity and are hidden from screen readers, which get the timer text instead.
