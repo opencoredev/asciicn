@@ -487,6 +487,7 @@ export const AsciiShader = ({
   matrix,
   levels,
   cell,
+  square,
   speed = 1,
   animate = true,
   fps,
@@ -588,6 +589,7 @@ export const AsciiShader = ({
   const settingsRef = useRef(settings);
   const glowRef = useRef(1);
   const cellRef = useRef(cell);
+  const squareRef = useRef(square);
   const ditherRef = useRef(ditherMatrix);
 
   useEffect(() => {
@@ -744,6 +746,7 @@ export const AsciiShader = ({
         cell: cellRef.current ?? readCell(root),
         dpr,
         font: readFont(root),
+        square: squareRef.current,
       });
       const { charset: current } = live.current;
       const glyphs =
@@ -891,8 +894,9 @@ export const AsciiShader = ({
   // A new charset or cell size re-measures and rebuilds the atlas, no recompile.
   useEffect(() => {
     cellRef.current = cell;
+    squareRef.current = square;
     relayoutRef.current?.();
-  }, [cell, charsetId]);
+  }, [cell, square, charsetId]);
 
   useEffect(() => {
     ditherRef.current = ditherMatrix;
