@@ -1,13 +1,13 @@
 ---
 title: "Paris"
-description: "Paris at a clear blue hour in dots: a cobalt sky over cool stone rooftops and the dome of Les Invalides, and the Eiffel Tower lit gold in a soft halo as the one warm light, its long reflection in the Seine."
+description: "Paris at blue hour, built in 3D and printed in dots: the Seine runs between stone quays and Haussmann blocks to the Eiffel Tower, lit gold from within, its reflection broken by slow ripples."
 ---
 
 import ParisDemo from "@/examples/paris-demo";
 import { controls as demoControls } from "@/examples/paris-controls";
 import ParisFine from "@/examples/paris-fine";
 import ParisHero from "@/examples/paris-hero";
-import ParisPhosphor from "@/examples/paris-phosphor";
+import ParisPortrait from "@/examples/paris-portrait";
 
 <ComponentPreview
   src="examples/paris-demo.tsx"
@@ -37,19 +37,19 @@ export function Hero() {
 }
 ```
 
-The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the smallest dots, barely lighter than the paper, in the deep sky and the far water, middle dots in the luminous cobalt band along the rooftops, and the biggest dots kept for the tower, its beacon and its reflection. The light is a clear, cool blue hour with no sunset colour: the sky runs from cobalt at the horizon to ink blue, the stone city is grey-blue, and the gold tower is the only warm note.
+The scene is modelled in 3D and raymarched for every dot, then printed as a halftone. You stand at the water's edge, three metres above the Seine, looking downstream. The river runs away between stone quays, 150 m apart, towards the Eiffel Tower on the right bank about 700 m off. Perspective does the rest: the near blocks are tall at the edges of the frame, the far ones shrink towards the vanishing point, and the tower rises over them at its true height.
 
-The Eiffel Tower is drawn to its real proportions: four splayed legs with the great arch between them, the first floor, the curved taper to the second floor, the long third stage to the top floor, and the antenna. Its lattice is lit gold, warmer at the feet and paler near the top, inside a soft amber halo. At the tip the beacon turns slowly and swells about every eleven seconds.
+The tower follows the real measurements: four legs splayed 125 m apart at the foot, the great arch on each face, the first floor at 58 m, the legs closing to the second floor at 116 m, the long tapering shaft to the top floor at 276 m, then the campanile and the antenna to 330 m. It is lit gold from within. The face turned towards you burns brightest, the face turned to the river sits in deeper amber, and the iron on the far side and inside the legs falls into shadow. The lattice is open, so the sky shows through the gaps, most of all through the far side. Its glow warms the haze around it, and the beacon on top swells slowly about every eleven seconds.
 
-On the far bank, Haussmann blocks stand in blue shadow either side of the Champ de Mars, their walls unevenly shaded, with cool white windows lit in loose clusters, zinc mansards whose ridges catch the sky, dormers and chimney stacks. Plane trees flank the tower's feet. Behind the roofs, the dome of Les Invalides takes a pale silver sheen on the side facing the brightest sky, and a hazy far skyline fades into low mist.
+Along both quays stand rows of Haussmann blocks: pale limestone facades with floors of tall windows, some lit warm, iron balconies on the second and fifth floors, grey-blue zinc mansards with dormers, and chimney stacks on the party walls. The right bank faces the last of the afterglow and stands paler; the left bank is in cooler shade. Street lamps line the tops of the quay walls, and the Pont d'Iéna crosses the river at the tower's feet.
 
-The Seine mirrors all of it, darker and cooler, broken into ripples that widen towards you. Under the tower runs a long golden reflection that shimmers as the ripples drift. Cool white lamps stand along the quay.
+The Seine reflects all of it by tracing each view ray back up off the water, bent by slow ripples, so the reflections are darker than the scene and break into long dashes. Haze thickens with distance, so the far blocks fade towards the sky. Every dot's colour then snaps to a palette of 40 colours (night blues, limestone, zinc, the tower's gold and the warm light of windows), and ordered dithering blends the dot sizes, which is what makes it look printed rather than smoothly shaded.
 
-Motion is slow: the reflection shimmers, the beacon glows, a few windows turn on or off every few minutes, thin clouds drift, stars twinkle faintly, and one bateau-mouche takes about three minutes to cross a wide box. The pointer does nothing.
+Motion is slow: the ripples drift, the beacon glows, a few windows turn on or off every few minutes, thin clouds drift, stars twinkle faintly, and one bateau-mouche comes up the river towards you, about six minutes from the haze to the edge of the frame. The pointer does nothing.
 
-On wide boxes the tower sits right of centre, so the middle stays calm for a headline. On tall boxes it stands in the middle, with the dome at the left edge.
+On wide boxes the camera turns so the tower stands right of centre and the middle stays calm sky for a headline. On tall boxes it turns to put the tower in the middle, with the river below.
 
-It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the lit parts (the tower, the cobalt horizon, windows and the reflection) and leave the dark sky empty. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `dots` by default on square 7px cells, about 200 across a 1440px screen. `square={false}` returns to text cells, twice as tall as wide. Other ramp charsets read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the tower, the windows and the lamps. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 `intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
@@ -57,7 +57,7 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
 
 ### Hero
 
-`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The tower stays right of the text on wide screens.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The tower stands right of the text on wide screens, and the sky behind the text stays calm.
 
 <ComponentPreview src="examples/paris-hero.tsx" size="lg" align="stretch">
   <ParisHero />
@@ -71,12 +71,12 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
   <ParisFine />
 </ComponentPreview>
 
-### On an amber monitor
+### On a phone
 
-`colorMode="mono"` with `phosphor="p3"` draws every glyph in one amber. The `standard` charset in text cells (`square={false}`), a 10px cell and `fx` scanlines, bloom and vignette finish the look.
+In a tall box the camera turns so the tower stands in the middle of the frame, with the river and its reflection below.
 
-<ComponentPreview src="examples/paris-phosphor.tsx">
-  <ParisPhosphor />
+<ComponentPreview src="examples/paris-portrait.tsx">
+  <ParisPortrait />
 </ComponentPreview>
 
 ## Props
@@ -100,7 +100,7 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
       name: "boat",
       type: "boolean",
       default: "true",
-      description: "The bateau-mouche crossing the river.",
+      description: "The bateau-mouche coming up the river.",
     },
     {
       name: "paper",
@@ -184,8 +184,9 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
-      description: "Ordered dithering between neighbouring glyph levels.",
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between neighbouring glyph levels. Ramp charsets default to bayer4; braille and quadrants to none.",
     },
     {
       name: "background",
@@ -212,14 +213,14 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
       type: "boolean",
       default: "true",
       description:
-        "Cells as wide as they are tall, so the dots lie in an even lattice. false uses text cells, twice as tall as wide.",
+        "Cells as wide as they are tall, so the dots lie in an even lattice. false uses text cells, twice as tall as wide. Braille and quadrants default to false.",
     },
     {
       name: "speed",
       type: "number",
       default: "1",
       description:
-        "How fast the lights, the clouds, the water and the boat move.",
+        "How fast the ripples, the clouds, the lights and the boat move.",
     },
     {
       name: "animate",
@@ -231,15 +232,15 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
     {
       name: "fps",
       type: "number",
-      default: "30",
+      default: "24",
       description: "Frame rate cap.",
     },
     {
       name: "stillTime",
       type: "number",
-      default: "0",
+      default: "300",
       description:
-        "The moment drawn when motion is off or reduced, in seconds. At 0 the boat is on the left and the beacon is at its brightest.",
+        "The moment drawn when motion is off or reduced, in seconds. At 300 the boat is about 300 m off, coming towards you.",
     },
     {
       name: "handle",
@@ -263,4 +264,4 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
 - It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat blue-hour gradient.
-- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the river costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
+- The whole scene is raymarched on the GPU every frame, at 24 frames a second by default. Rays that rise above the roofs skip the march, so the sky is cheap; water samples trace a second, reflected ray, so the river costs about twice as much as the buildings. It is the heaviest of the city backgrounds: on slow GPUs lower `fps` or raise `cell`. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

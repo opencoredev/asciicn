@@ -6,223 +6,375 @@ import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { resolveCharset } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// Paris at blue hour, painted in dots: every sample returns a colour and a
-// tone, and the tone only sets how big the dot is. Layers are tested near to
-// far: the quay and its lamps, the tower, the trees of the Champ de Mars, the
-// Haussmann blocks, the dome of Les Invalides, a far hazy skyline, then the
-// sky. Rows below `parisWaterRow` are the Seine, which reads the same layers
-// mirrored. `s` is a whole sample (column, row from the bottom) and `p` the
-// same point in box heights, so the tower keeps its exact shape on the
-// sample grid while the light around it is painted in smooth gradients.
+// Paris at blue hour, built in 3D and printed in dots. The camera stands on a
+// landing at the water's edge, three metres above the Seine, looking
+// downstream. The river runs along +z between stone quays 150 m apart; the
+// Eiffel Tower stands on the right bank about 900 m away, with rows of
+// Haussmann blocks along both quays. Every sample raymarches the scene (signed
+// distances in metres), shades what it hits with the sky, the street lamps and
+// the tower's own gold light, and if it lands on the water traces the mirrored
+// ray back into the scene. Distance hazes everything towards the sky. The
+// colour then snaps to a palette of 40 hand-picked colours and its brightness
+// sets the dot size.
 const SCENE = `
-const float PARIS_WATER = 0.24;
-const float PARIS_QUAY = 0.026;
-const float PARIS_HEIGHT = 0.64;
+const float PARIS_RIVER = 75.0;
+const float PARIS_QUAY = 8.0;
+const float PARIS_LOW = 1.6;
+const float PARIS_WALL = 87.0;
+const float PARIS_EYE = 3.0;
+const float PARIS_CAM_X = -66.0;
+const float PARIS_TAN = 0.42;
+const float PARIS_SHIFT = 0.42;
+const vec3 PARIS_TOWER = vec3(172.0, 8.0, 700.0);
+const float PARIS_FAR = 4000.0;
 
-// Set once per sample by parisScene and read by every layer.
-float parisSw;
-float parisSh;
+// Set once per sample by parisScene.
 float parisT;
-float parisAspect;
-float parisAxis;
-float parisAxisX;
-float parisWaterRow;
-float parisWaterY;
-float parisGroundRow;
-float parisGroundY;
-float parisMesh;
-float parisDomeX;
-float parisSunX;
-float parisGap;
+float parisPix;
+vec3 parisCam;
 
-// A height in tower units (0 at the ground, 1 at the antenna tip) as whole rows above the ground.
-float parisRows(float v) {
-  return floor(v * PARIS_HEIGHT / parisSh + 0.5);
-}
-
-// A half width in tower units as whole columns either side of the axis, so
-// every part is an odd number of columns wide and exactly symmetric.
-float parisCols(float w) {
-  return floor(w * PARIS_HEIGHT / parisSw + 0.5);
-}
-
-// Half the tower's width at height v, in tower units, fitted to the real
-// thing: 62 m at the feet, 35 m at the first floor, 20 m at the second and
-// 8 m under the top, on 330 m.
-float parisOuter(float v) {
-  return 0.015 + 0.175 * exp(-3.78 * v);
-}
-
-// A stable random value for whole-sample inputs. The engine's hash21
-// repeats every 50 samples on integers, which shows up as tiled stars.
 float parisHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// The great arch between the legs: a half ellipse 0.105 tower units wide
-// each side, springing from the legs low down and touching the first floor.
-const float PARIS_ARCH_W = 0.105;
-const float PARIS_SPRING = 0.045;
-
-// Rows above the ground to the underside of the arch at column jx.
-float parisArch(float jx) {
-  float x = jx * parisSw / PARIS_HEIGHT / PARIS_ARCH_W;
-  return parisRows(PARIS_SPRING + (0.153 - PARIS_SPRING) * sqrt(max(0.0, 1.0 - x * x)));
+float parisBox2(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
-// A floor of the tower: bright rims top, bottom and at the ends, and a row
-// of lit bays between them.
-float parisDeck(float jx, float ry, float r0, float r1, float n) {
-  if (jx > n - 0.5 || ry < r0 + 0.5 || ry > r1 - 1.5) {
-    return 1.0;
-  }
-  return mod(jx, 2.0) < 0.5 ? 0.9 : 0.5;
+float parisBox3(vec3 p, vec3 b) {
+  vec3 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
-// The cross-bracing: two families of diagonals a few samples apart, mirrored
-// about the axis. Bars draw the biggest dot, the gaps a middle one, so the
-// iron reads as a lit lattice rather than a solid shape.
-float parisLattice(float jx, float ry, float bar, float gap) {
-  float d = min(mod(jx + ry, parisMesh), mod(jx - ry, parisMesh));
-  return d < 0.5 ? bar : gap;
+// ---------------------------------------------------------------- the tower
+// Half the tower's width at height h above its ground, fitted to the real
+// thing: 62.5 m at the feet, 35.3 m at the first floor (57.6 m), 20.5 m at the
+// second (115.7 m) and about 7 m under the top floor (276 m).
+float parisHalf(float h) {
+  return 4.5 + 58.0 * exp(-h / 91.0);
 }
 
-// The tower's gold: a warm sodium amber at the feet, paler towards the top.
-vec3 parisGold(float v, float bright) {
-  vec3 low = mix(vec3(0.86, 0.46, 0.16), vec3(1.0, 0.66, 0.28), bright);
-  vec3 high = mix(vec3(0.96, 0.66, 0.3), vec3(1.0, 0.86, 0.56), bright);
-  return mix(low, high, clamp(v * 1.3, 0.0, 1.0));
+// The width of one leg: 25 m square at the foot, about 13 m where the four
+// legs meet at the second floor.
+float parisLeg(float h) {
+  return 9.0 + 16.0 * exp(-h / 80.0);
 }
 
-vec4 parisTower(vec2 s, out float cover) {
-  cover = 0.0;
-  float jx = abs(s.x - parisAxis);
-  float ry = s.y - parisGroundRow;
-  float v = (ry + 0.5) * parisSh / PARIS_HEIGHT;
-  if (ry < 0.0 || v > 1.0 || jx > parisCols(0.2)) {
-    return vec4(0.0);
+float parisTower(vec3 p) {
+  vec3 l = p - PARIS_TOWER;
+  float bound = parisBox3(l - vec3(0.0, 166.0, 0.0), vec3(66.0, 168.0, 66.0));
+  if (bound > 6.0) {
+    return bound;
   }
-  vec3 gold = parisGold(v, 0.2);
-  vec3 bright = parisGold(v, 1.0);
-  // Floors and the top, in rows, each kept at least a row apart.
-  float a0 = parisRows(0.157);
-  float a1 = max(parisRows(0.19), a0 + 1.0);
-  float b0 = max(parisRows(0.345), a1 + 2.0);
-  float b1 = max(parisRows(0.366), b0 + 1.0);
-  float c0 = max(parisRows(0.828), b1 + 2.0);
-  float c1 = max(parisRows(0.846), c0 + 1.0);
-  float d1 = max(parisRows(0.884), c1 + 1.0);
-  float e1 = max(parisRows(0.905), d1 + 1.0);
-  float tone = 0.0;
-  if (ry >= e1) {
-    // The antenna, a single column.
-    if (jx > 0.5) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return vec4(bright, 0.6);
-  }
-  if (ry >= d1) {
-    // The lantern that houses the beacon.
-    if (jx > parisCols(0.008)) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return vec4(1.0, 0.95, 0.82, 1.0);
-  }
-  if (ry >= c1) {
-    // The top: a small lit cabin over the third floor.
-    float n = parisCols(0.017);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    tone = parisDeck(jx, ry, c1 - 1.0, d1, n);
-    return vec4(tone > 0.95 ? bright : gold, tone);
-  }
-  if (ry >= c0) {
-    float n = parisCols(0.032);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    tone = parisDeck(jx, ry, c0, c1, n);
-    return vec4(tone > 0.95 ? bright : gold, tone);
-  }
-  if (ry >= b0 && ry < b1) {
-    float n = parisCols(parisOuter(0.345) + 0.005);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    tone = parisDeck(jx, ry, b0, b1, n);
-    return vec4(tone > 0.95 ? bright : gold, tone);
-  }
-  if (ry >= a0 && ry < a1) {
-    float n = parisCols(parisOuter(0.157) + 0.006);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    tone = parisDeck(jx, ry, a0, a1, n);
-    return vec4(tone > 0.95 ? bright : gold, tone);
-  }
-  // The legs and the shaft, with the openings between the legs.
-  float n = parisCols(parisOuter(v));
-  if (jx > n) {
-    return vec4(0.0);
-  }
-  float m = 0.0;
-  if (ry < a0) {
-    float acol = parisCols(PARIS_ARCH_W);
-    float spring = parisRows(PARIS_SPRING);
-    // Below the spring the legs stand apart with straight inner faces.
-    if (jx < acol && ry < parisArch(jx)) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    if (ry < spring + 1.0 && jx < acol + 0.5) {
-      return vec4(bright, 1.0);
-    }
-    if (jx < acol) {
-      float ra = parisArch(jx);
-      // The arch is a line two rows thick in fine charsets, and it stays
-      // unbroken where it runs steeply by reaching up to its neighbours' rows.
-      float thick = parisSh < 0.008 ? 2.0 : 1.0;
-      float reach = max(parisArch(jx + 1.0), parisArch(abs(jx - 1.0)));
-      if (ry < max(ra + thick, reach)) {
-        return vec4(bright, 1.0);
-      }
-    }
-    // Above the arch the legs lean in towards the first floor; between
-    // their inner faces and the arch runs a lighter web.
-    float k = clamp((v - PARIS_SPRING) / (0.157 - PARIS_SPRING), 0.0, 1.0);
-    m = parisCols(parisOuter(v) - mix(0.058, 0.047, k));
-    if (jx < m - 0.5) {
-      return vec4(gold * 0.85, parisLattice(jx, ry, 0.8, 0.34));
-    }
-    if (ry < spring) {
-      m = acol;
-    }
-  } else if (ry < b0) {
-    float k = clamp((v - 0.19) / 0.155, 0.0, 1.0);
-    m = parisCols(parisOuter(v) - mix(0.042, 0.027, k));
-    if (jx < m) {
-      return vec4(0.0);
-    }
+  // The tower is the same on all four faces and either side of each
+  // diagonal, so fold the point into one eighth of it.
+  vec2 q = abs(l.xz);
+  float a = max(q.x, q.y);
+  float b = min(q.x, q.y);
+  float h = l.y;
+  float w = parisHalf(max(h, 0.0));
+  float d;
+  if (h < 116.0) {
+    float leg = parisLeg(h);
+    d = parisBox2(vec2(a, b) - (w - 0.5 * leg), vec2(0.5 * leg));
   } else {
-    // Above the second floor the legs close up in a long narrow slot.
-    float k = clamp((v - 0.366) / 0.23, 0.0, 1.0);
-    m = parisCols(0.024 * (1.0 - k));
-    if (jx < m) {
-      return vec4(0.0);
+    d = max(a - w, h - 276.0);
+  }
+  d = max(d, -h) * 0.8;
+  // The great arch on each face, springing low from the legs and touching
+  // the girder under the first floor.
+  float e = length(vec2(b / 38.0, (h - 6.0) / 45.0));
+  float arch = max(max(abs(e - 1.0) * 38.0 - 2.2, abs(a - 45.0) - 1.6), 6.0 - h);
+  d = min(d, arch);
+  // The three floors, the campanile and the antenna.
+  d = min(d, parisBox2(vec2(a, h - 57.0), vec2(37.0, 5.0)));
+  d = min(d, parisBox2(vec2(a, h - 115.5), vec2(22.0, 3.5)));
+  d = min(d, parisBox2(vec2(a, h - 276.5), vec2(9.5, 4.0)));
+  d = min(d, parisBox2(vec2(a, h - 290.0), vec2(5.5 - (h - 280.0) * 0.15, 10.0)));
+  d = min(d, parisBox2(vec2(a, h - 314.0), vec2(1.4, 16.0)));
+  return d;
+}
+
+// ---------------------------------------------------------------- the quays
+float parisLand(vec3 p) {
+  float right = max(PARIS_RIVER - p.x, p.y - PARIS_QUAY);
+  float low = max(p.x + PARIS_RIVER, p.y - PARIS_LOW);
+  float high = max(p.x + PARIS_WALL, p.y - PARIS_QUAY);
+  return min(right, min(low, high));
+}
+
+// ------------------------------------------------------------ the buildings
+// Facade line and depth of each row, in metres from the river's middle.
+const float PARIS_ROW_R = 104.0;
+const float PARIS_ROW_L = 118.0;
+const float PARIS_DEPTH = 16.0;
+const float PARIS_LOT = 20.0;
+
+// Cornice height of lot c on one side (0 for a cross street or the open
+// ground around the tower), in metres above the quay.
+float parisCornice(float c, float side) {
+  if (mod(c, 7.0) < 0.5 || c < -3.0) {
+    return 0.0;
+  }
+  if (side > 0.0 && c > 14.0 && c < 52.0) {
+    return 0.0;
+  }
+  return 16.0 + 8.0 * parisHash(vec2(c, side * 3.1));
+}
+
+// One lot: the stone block, its mansard roof and a chimney stack on the
+// party wall. u is the depth from the facade, w the distance along the quay
+// from the lot's start, y the height above the quay.
+float parisLot(float u, float y, float w, float c, float side) {
+  float h = parisCornice(c, side);
+  if (h < 0.5) {
+    return 1e3;
+  }
+  vec3 local = vec3(u - 0.5 * PARIS_DEPTH, y, w - 0.5 * PARIS_LOT);
+  float block = parisBox3(local - vec3(0.0, 0.5 * h, 0.0), vec3(0.5 * PARIS_DEPTH, 0.5 * h, 0.5 * PARIS_LOT - 0.05));
+  // The mansard: a steep face, about 70 degrees, front and back, then flat.
+  float r = y - h;
+  float roof = max(parisBox3(local - vec3(0.0, h + 2.75, 0.0), vec3(0.5 * PARIS_DEPTH, 2.75, 0.5 * PARIS_LOT - 0.05)),
+    (r - 2.75 * (0.5 * PARIS_DEPTH - abs(local.x) - 0.4)) / 2.93);
+  float d = min(block, roof);
+  if (parisHash(vec2(c, side + 5.3)) > 0.15) {
+    d = min(d, parisBox3(vec3(local.x + 1.0, y - h - 6.0, w - 0.7), vec3(3.2, 1.6 + 0.6 * parisHash(vec2(c, side)), 0.7)));
+  }
+  return d;
+}
+
+float parisRow(vec3 p, float side) {
+  float face = side > 0.0 ? PARIS_ROW_R : PARIS_ROW_L;
+  float u = side * p.x - face;
+  float y = p.y - PARIS_QUAY;
+  float bound = parisBox2(vec2(u - 0.5 * PARIS_DEPTH, y - 16.0), vec2(0.5 * PARIS_DEPTH, 16.0));
+  if (bound > 3.0) {
+    return bound;
+  }
+  float c = floor(p.z / PARIS_LOT);
+  float w = p.z - c * PARIS_LOT;
+  // Neighbouring lots differ in height, so test them too.
+  float d = parisLot(u, y, w, c, side);
+  d = min(d, parisLot(u, y, w + PARIS_LOT, c - 1.0, side));
+  d = min(d, parisLot(u, y, w - PARIS_LOT, c + 1.0, side));
+  return d;
+}
+
+// ---------------------------------------------------------------- the trees
+// Plane trees along the top of both quays, and a grove either side of the
+// tower's feet on the Champ de Mars.
+float parisCrowns(vec3 p, float x, float spacing, float size) {
+  float k = floor(p.z / spacing + 0.5);
+  float dz = p.z - k * spacing;
+  float s = size * (0.85 + 0.3 * parisHash(vec2(k, x)));
+  vec3 r = vec3(p.x - x, p.y - PARIS_QUAY - 6.0 - s * 0.7, dz);
+  float d = (length(r / vec3(s * 0.8, s * 0.75, s)) - 1.0) * s * 0.7;
+  return d;
+}
+
+float parisTrees(vec3 p) {
+  float bound = abs(p.x - 89.0) - 8.0;
+  bound = max(bound, p.y - PARIS_QUAY - 22.0);
+  float grove = parisBox3(p - vec3(PARIS_TOWER.x, PARIS_QUAY + 8.0, PARIS_TOWER.z), vec3(110.0, 8.0, 260.0));
+  if (min(bound, grove) > 3.0) {
+    return min(max(bound, 0.0) + 3.0, grove);
+  }
+  float d = max(parisCrowns(p, 89.0, 9.0, 6.5), 280.0 - p.z);
+  if (grove < 3.0) {
+    // Rows of trees along the sides of the lawn, clear of the tower's legs.
+    float lane = abs(p.x - PARIS_TOWER.x);
+    float rowX = lane < 95.0 ? 85.0 : 105.0;
+    vec3 g = vec3(PARIS_TOWER.x + sign(p.x - PARIS_TOWER.x) * rowX, p.y, p.z);
+    float clear = 70.0 - length(p.xz - PARIS_TOWER.xz);
+    d = min(d, max(parisCrowns(vec3(p.x - g.x + 89.0, p.y, p.z), 89.0, 10.0, 6.0), clear));
+  }
+  return d;
+}
+
+// ----------------------------------------------------------------- the boat
+// A bateau-mouche coming upstream, towards the camera, at walking pace.
+vec3 parisBoatAt() {
+  float z = 1500.0 - mod(parisT * 4.0, 1420.0);
+  return vec3(18.0, 0.0, z);
+}
+
+float parisBoat(vec3 p) {
+  if (parisBoatOn < 0.5) {
+    return 1e3;
+  }
+  vec3 l = p - parisBoatAt();
+  float hull = parisBox3(l - vec3(0.0, 1.0, 0.0), vec3(4.5, 1.2, 30.0));
+  float cabin = parisBox3(l - vec3(0.0, 3.4, 2.0), vec3(3.8, 1.3, 22.0));
+  return min(hull, cabin);
+}
+
+// ---------------------------------------------------------------- the bridge
+// The Pont d'Iena, which crosses to the tower's feet: five stone arches
+// with a lamp over each pier.
+const float PARIS_BRIDGE = 640.0;
+
+float parisBridge(vec3 p) {
+  vec3 l = p - vec3(0.0, 0.0, PARIS_BRIDGE);
+  float bound = parisBox3(l - vec3(0.0, 6.0, 0.0), vec3(92.0, 7.0, 9.0));
+  if (bound > 2.0) {
+    return bound;
+  }
+  float body = parisBox3(l - vec3(0.0, 5.5, 0.0), vec3(90.0, 5.5, 8.0));
+  // Five arch openings, 30 m across and 7 m high.
+  float xc = clamp(floor(l.x / 35.0 + 0.5), -2.0, 2.0) * 35.0;
+  float opening = (length(vec2((l.x - xc) / 14.5, (l.y + 0.5) / 7.5)) - 1.0) * 7.5;
+  body = max(body, -max(opening, abs(l.z) - 9.0));
+  float parapet = parisBox3(l - vec3(0.0, 11.6, 0.0), vec3(90.0, 0.6, 7.6));
+  parapet = max(parapet, -parisBox3(l - vec3(0.0, 11.6, 0.0), vec3(91.0, 1.0, 7.0)));
+  return min(body, parapet);
+}
+
+float parisMap(vec3 p) {
+  float d = parisLand(p);
+  d = min(d, parisBridge(p));
+  d = min(d, parisTower(p));
+  d = min(d, parisRow(p, 1.0));
+  d = min(d, parisRow(p, -1.0));
+  d = min(d, parisTrees(p));
+  d = min(d, parisBoat(p));
+  return d;
+}
+
+// Which surface p lies on: 1 quay, 2 tower, 3 buildings, 4 trees, 5 boat.
+float parisMaterial(vec3 p) {
+  float best = parisLand(p);
+  float id = 1.0;
+  float d = parisTower(p);
+  if (d < best) {
+    best = d;
+    id = 2.0;
+  }
+  d = min(parisRow(p, 1.0), parisRow(p, -1.0));
+  if (d < best) {
+    best = d;
+    id = 3.0;
+  }
+  d = parisTrees(p);
+  if (d < best) {
+    best = d;
+    id = 4.0;
+  }
+  d = parisBridge(p);
+  if (d < best) {
+    best = d;
+    id = 1.0;
+  }
+  if (parisBoat(p) < best) {
+    id = 5.0;
+  }
+  return id;
+}
+
+// Distance along the ray to the first surface, or -1 for none before tMax.
+float parisMarch(vec3 ro, vec3 rd, float tMax) {
+  // Rising rays leave the city above its roofs, or above the tower if they
+  // pass through its bounding box, so most of the sky costs a few steps.
+  if (rd.y > 0.0) {
+    vec3 inv = 1.0 / rd;
+    vec3 lo = (PARIS_TOWER - vec3(66.0, 0.0, 66.0) - ro) * inv;
+    vec3 hi = (PARIS_TOWER + vec3(66.0, 332.0, 66.0) - ro) * inv;
+    vec3 near = min(lo, hi);
+    vec3 far = max(lo, hi);
+    bool tower = max(near.x, max(near.y, near.z)) < min(far.x, min(far.y, far.z));
+    tMax = min(tMax, ((tower ? 342.0 : 46.0) - ro.y) / rd.y);
+  }
+  float t = 0.5;
+  for (int i = 0; i < 96; i++) {
+    vec3 p = ro + rd * t;
+    float d = parisMap(p);
+    // Far off, a hit only needs to be good to a fraction of a sample.
+    if (d < 0.002 * t + 0.02) {
+      return t;
+    }
+    t += d * 0.9;
+    if (t > tMax) {
+      return -1.0;
     }
   }
-  cover = 1.0;
-  if (jx > n - 0.5 || (m > 0.5 && jx < m + 0.5)) {
-    return vec4(bright, 1.0);
+  return t < tMax ? t : -1.0;
+}
+
+vec3 parisNormal(vec3 p, float t) {
+  vec2 e = vec2(1.0, -1.0) * max(0.03, t * 0.0012);
+  return normalize(e.xyy * parisMap(p + e.xyy) + e.yyx * parisMap(p + e.yyx) + e.yxy * parisMap(p + e.yxy) + e.xxx * parisMap(p + e.xxx));
+}
+
+// ------------------------------------------------------------------ the sky
+// Blue hour with no sunset colour: a luminous cobalt at the horizon, paler
+// where the sun went down ahead and to the left, deepening to ink overhead.
+vec3 parisSky(vec3 rd) {
+  float e = max(rd.y, 0.0);
+  vec3 col = mix(vec3(0.26, 0.38, 0.8), vec3(0.13, 0.22, 0.6), smoothstep(0.0, 0.1, e));
+  col = mix(col, vec3(0.06, 0.1, 0.32), smoothstep(0.08, 0.3, e));
+  col = mix(col, vec3(0.025, 0.035, 0.13), smoothstep(0.25, 0.6, e));
+  float west = max(dot(normalize(rd.xz), normalize(vec2(-0.45, 1.0))), 0.0);
+  col += vec3(0.16, 0.22, 0.3) * pow(west, 6.0) * exp(-e * 9.0);
+  // Long thin clouds, lit faintly from below by the city, drifting slowly.
+  vec2 cp = rd.xz / max(rd.y + 0.04, 0.04);
+  float cloud = fbm(vec2(cp.x * 0.35 + parisT * 0.004, cp.y * 0.06));
+  cloud = smoothstep(0.52, 0.75, cloud) * smoothstep(0.06, 0.14, e) * (1.0 - smoothstep(0.3, 0.55, e));
+  col = mix(col, vec3(0.22, 0.28, 0.5), cloud * 0.6);
+  return col;
+}
+
+// The tower's glow in the air: light scattered by the haze, strongest around
+// the second floor and fading out towards the top.
+float parisHalo(vec3 ro, vec3 rd, float tHit) {
+  vec2 c = PARIS_TOWER.xz;
+  vec2 d2 = rd.xz;
+  float k = dot(d2, d2);
+  float tc = max(dot(c - ro.xz, d2) / max(k, 1e-5), 0.0);
+  float side = length(ro.xz + d2 * tc - c);
+  float y = ro.y + rd.y * tc - PARIS_TOWER.y;
+  float reach = parisHalf(clamp(y, 0.0, 300.0)) + 20.0;
+  float across = max(side - reach * 0.6, 0.0) / 110.0;
+  float up = (y - 120.0) / 170.0;
+  float glow = exp(-across * across - up * up);
+  // Whatever stands well in front of the tower hides its glow.
+  return glow * smoothstep(tc - 260.0, tc - 40.0, tHit);
+}
+
+// The beacon in the lantern on top, which swells slowly as it turns to face
+// you, about every eleven seconds.
+float parisBeacon(vec3 ro, vec3 rd, float tHit) {
+  vec3 c = PARIS_TOWER + vec3(0.0, 300.0, 0.0);
+  float tc = dot(c - ro, rd);
+  if (tHit > 0.0 && tHit < tc - 30.0) {
+    return 0.0;
   }
-  return vec4(gold, parisLattice(jx, ry, 0.9, 0.46));
+  float ang = length(ro + rd * tc - c) / max(tc, 1.0);
+  float turn = 0.5 + 0.5 * cos(parisT * 0.55);
+  return parisBeaconOn * (0.35 + 0.65 * turn * turn) * exp(-ang / 0.006);
+}
+
+// Street lamps along the top of both quays: warm heads on cast-iron posts.
+vec3 parisLamps(vec3 ro, vec3 rd, float tHit) {
+  vec3 sum = vec3(0.0);
+  for (int i = 0; i < 3; i++) {
+    // Two rows along the quays, one along the bridge's parapet.
+    float x = i == 0 ? 78.0 : -89.0;
+    float t = i == 2 ? (PARIS_BRIDGE - 8.0 - ro.z) / rd.z : (x - ro.x) / rd.x;
+    if (t > 1.0 && (tHit < 0.0 || t < tHit + 2.0)) {
+      vec3 q = ro + rd * t;
+      float sp = i == 2 ? 35.0 : 26.0;
+      float along = i == 2 ? q.x + 17.5 : q.z + 13.0;
+      float dz = (mod(along, sp) - 0.5 * sp) * max(abs(i == 2 ? rd.z : rd.x), 0.05);
+      if (i == 2 && abs(q.x) > 88.0) {
+        dz = 1e3;
+      }
+      float dy = q.y - (i == 2 ? 15.5 : PARIS_QUAY + 4.5);
+      float ang = length(vec2(dy, dz)) / t;
+      float near = smoothstep(2200.0, 600.0, t);
+      sum += vec3(1.0, 0.8, 0.55) * near * (exp(-ang / 0.0025) * 0.9 + exp(-ang / 0.012) * 0.12);
+    }
+  }
+  return sum;
 }
 
 // Most windows keep their state. One in four turns on or off every few
@@ -239,518 +391,300 @@ float parisLit(vec2 id, float chance) {
   return mix(before, now, smoothstep(0.0, 3.0 / period, fract(phase)));
 }
 
-// The afterglow: strongest low in the sky behind the dome, where the sun
-// went down, and fading along the horizon away from it.
-float parisAfter(vec2 p) {
-  float d = (p.x - parisSunX) / 0.9;
-  return exp(-d * d);
+// How much of a pattern with this period survives at the sample's footprint:
+// 1 when it is several samples wide, 0 when it falls between samples.
+float parisDetail(float period, float t) {
+  return smoothstep(1.2, 3.0, period / max(t * parisPix, 1e-4));
 }
 
-// The sky from the horizon up: a clear blue hour with no sunset colour,
-// luminous cobalt low down, deepening through ultramarine to ink blue.
-vec3 parisSkyRamp(float h) {
-  vec3 c = mix(vec3(0.55, 0.72, 1.0), vec3(0.36, 0.56, 1.0), smoothstep(0.06, 0.2, h));
-  c = mix(c, vec3(0.22, 0.38, 0.88), smoothstep(0.18, 0.36, h));
-  c = mix(c, vec3(0.13, 0.22, 0.6), smoothstep(0.32, 0.55, h));
-  c = mix(c, vec3(0.08, 0.12, 0.34), smoothstep(0.5, 0.78, h));
-  return mix(c, vec3(0.05, 0.07, 0.2), smoothstep(0.75, 1.0, h));
+// The sky's light on a surface, and the low warm light of the street lamps.
+vec3 parisAmbient(vec3 n, float y) {
+  vec3 sky = mix(vec3(0.12, 0.15, 0.28), vec3(0.34, 0.42, 0.72), 0.5 + 0.5 * n.y);
+  float west = max(dot(n, normalize(vec3(-0.45, 0.25, 1.0))), 0.0);
+  sky += vec3(0.12, 0.17, 0.3) * west;
+  float lamp = exp(-max(y - PARIS_QUAY, 0.0) / 9.0) * smoothstep(-0.2, 0.6, -n.y + 0.6);
+  return sky + vec3(0.42, 0.32, 0.2) * lamp;
 }
 
-// The sky, with thin clouds lit pink from below and a few faint stars high up.
-vec4 parisSky(vec2 s, vec2 p) {
-  float h = max(p.y - parisGroundY, 0.0) / (1.0 - parisGroundY);
-  float glow = parisAfter(p);
-  // Away from the afterglow the colours run cooler, as if a little higher.
-  float hc = h + 0.1 * (1.0 - glow);
-  vec3 col = parisSkyRamp(hc);
-  // Where the sun went down the horizon is a paler, clearer blue.
-  col = mix(col, vec3(0.7, 0.84, 1.0), 0.35 * glow * exp(-h * 10.0));
-  // Dot size follows the light: middle rose dots low down, the smallest
-  // dots in a blue close to the paper high up, so the deep sky reads as
-  // quiet air and the big dots stay with the tower.
-  // A narrow, full band right over the roofs silhouettes them; above it
-  // the dots thin out quickly into the quiet dark.
-  float tone = 0.1 + 0.52 * exp(-max(hc - 0.2, 0.0) * 5.5) + 0.12 * glow * exp(-h * 5.0);
-  // High up, most cells drop to nothing, so the dark sky is sparse air.
-  if (parisHash(s + 71.0) < 0.55 * smoothstep(0.35, 0.7, h)) {
-    tone = 0.0;
-  }
-  // Long thin clouds drifting slowly to the right, brightest near the horizon.
-  vec2 cp = vec2(p.x * 1.3 - parisT * 0.004, p.y * 7.0);
-  float c = fbm(cp + vec2(3.1, 1.7));
-  float band = smoothstep(0.16, 0.26, h) * (1.0 - smoothstep(0.44, 0.6, h));
-  float cloud = smoothstep(0.5, 0.72, c) * band;
-  vec3 cloudCol = mix(vec3(0.62, 0.74, 0.96), vec3(0.3, 0.4, 0.74), smoothstep(0.1, 0.42, h));
-  col = mix(col, cloudCol, cloud * 0.75);
-  tone += cloud * 0.08;
-  // Stars only where the sky is dark, and only a few.
-  float star = parisHash(s + 17.0);
-  float density = 0.0035 * smoothstep(0.42, 0.75, h);
-  if (star > 1.0 - density) {
-    float twinkle = 0.5 + 0.5 * sin(parisT * (0.4 + star * 0.5) + parisHash(s + 3.0) * 40.0);
-    col = mix(vec3(0.62, 0.7, 0.95), vec3(0.95, 0.96, 1.0), twinkle);
-    tone = mix(0.34, 0.6, twinkle);
-  }
-  return vec4(col, tone);
+vec3 parisGold(float h) {
+  return mix(vec3(1.0, 0.5, 0.14), vec3(1.0, 0.78, 0.42), smoothstep(20.0, 280.0, h));
 }
 
-// The far city: a low, hazy skyline of roofs and the odd spire, lighter and
-// cooler than anything nearer, with a few faint windows.
-vec4 parisFar(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - parisGroundY;
-  float bw = 0.045;
-  float id = floor(p.x / bw);
-  float u = (p.x - id * bw) / bw;
-  float hgt = 0.045 + 0.035 * parisHash(vec2(id, 2.3)) + 0.012 * sin(id * 0.7);
-  // A short mansard at each end of a roof.
-  hgt -= 0.012 * max(0.0, abs(u - 0.5) * 2.0 - 0.6) / 0.4;
-  float spire = parisHash(vec2(id, 9.1)) > 0.9 ? 0.07 * max(0.0, 1.0 - abs(u - 0.5) * 7.0) : 0.0;
-  if (y < 0.0 || y > max(hgt, hgt + spire)) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float glow = parisAfter(p);
-  vec3 haze = mix(vec3(0.36, 0.48, 0.78), vec3(0.5, 0.64, 0.92), glow * 0.6);
-  vec3 col = mix(haze * 0.82, haze, smoothstep(0.0, hgt, y));
-  // Haze: a shade below the sky behind it, closest to it at the roofline,
-  // so the far city is only a soft step in the afterglow, not a band.
-  vec4 sky = parisSky(s, p);
-  float edge = smoothstep(hgt * 0.4, hgt, y);
-  col = mix(mix(col, sky.rgb, 0.55), sky.rgb, edge * 0.5);
-  float tone = sky.a * mix(0.72, 0.9, edge);
-  if (parisHash(s + 51.0) > 0.975 && y < hgt - 0.006) {
-    col = vec3(0.82, 0.88, 1.0);
-    tone = 0.7;
-  }
-  return vec4(col, tone);
+// The tower lit from within by its sodium lamps: every face glows gold, the
+// faces turned towards you brightest, those turned away and the insides of
+// the legs deeper and redder. Floors and edges catch the most light.
+vec3 parisShadeTower(vec3 p, vec3 n, vec3 rd, float t, out float density) {
+  vec3 l = p - PARIS_TOWER;
+  float h = l.y;
+  vec3 gold = parisGold(h);
+  float facing = max(dot(n, -rd), 0.0);
+  // The lamps favour the front, so the face turned to the river falls
+  // into a deeper amber and the tower reads as a solid with two sides.
+  float river = smoothstep(0.3, 0.8, -n.x);
+  float under = max(-n.y, 0.0);
+  float light = (0.5 + 0.5 * facing) * mix(1.0, 0.5, river) - 0.25 * under;
+  // Iron seen through the openings, on the far side of the tower or facing
+  // in towards its middle, sits in shadow, so the arches and the gaps
+  // between the legs open up.
+  vec2 q = abs(l.xz);
+  float a = max(q.x, q.y);
+  vec2 view = normalize(PARIS_TOWER.xz - parisCam.xz);
+  float rear = smoothstep(-0.25, 0.45, dot(l.xz, view) / max(length(l.xz), 1.0));
+  float inward = smoothstep(0.1, 0.6, -dot(n.xz, l.xz) / max(length(l.xz), 1.0));
+  light *= mix(1.0, 0.32, max(rear * step(h, 150.0), inward));
+  // The corner posts of each leg catch the most light.
+  float w = parisHalf(max(h, 0.0));
+  float leg = parisLeg(h);
+  float b0 = min(q.x, q.y);
+  float post = min(min(abs(a - w), abs(b0 - w)), min(abs(a - w + leg), abs(b0 - w + leg)));
+  light *= 1.0 + 0.5 * (1.0 - smoothstep(1.5, 3.5, post)) * step(h, 116.0);
+  // The lattice: diagonal bracing across each face, in bays a few metres
+  // square, which the eye reads as lit iron and dark gaps.
+  // Where the real bays fall between samples they are drawn at the finest
+  // size the dots can hold, so the iron always reads as a lattice.
+  float b = min(q.x, q.y);
+  float bay = max(h < 116.0 ? 10.0 : 7.0, 2.6 * t * parisPix);
+  float brace = min(abs(fract((b + h) / bay) - 0.5), abs(fract((b - h) / bay) - 0.5));
+  float iron = 1.0 - smoothstep(0.1, 0.22, brace);
+  light *= mix(0.62, 1.12, iron);
+  // The lattice is open: what lies behind shows through the gaps, most of
+  // all through the far side of the tower.
+  density = mix(mix(0.62, 1.0, iron), mix(0.18, 0.5, iron), rear);
+  density = max(density, step(abs(h - 57.0), 5.0) + step(abs(h - 115.5), 3.5) + step(h, 2.0));
+  // Floors burn brighter.
+  float floors = max(max(step(abs(h - 57.0), 5.0), step(abs(h - 115.5), 3.5)), step(abs(h - 276.5), 4.0));
+  vec3 col = gold * light * 1.15;
+  // The floors are lit hardest of all, a paler gold right round the tower.
+  return mix(col, vec3(1.0, 0.86, 0.6) * 1.5, floors * 0.85);
 }
 
-// The dome of Les Invalides, mid-distance: a pavilion, a drum ringed with
-// columns, the gilded dome with its ribs, the lantern and the spire. The
-// side facing the afterglow catches the last light.
-vec4 parisDome(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float d = 0.32;
-  float dx = p.x - parisDomeX;
-  float u = abs(dx) / d;
-  float v = (p.y - parisGroundY) / d;
-  if (v < 0.0 || v > 1.0 || u > 0.34) {
-    return vec4(0.0);
+// Pale limestone facades in the blue light, rows of tall windows, some lit
+// warm, under grey-blue zinc mansards with dormers and chimney stacks.
+vec3 parisShadeBuilding(vec3 p, vec3 n, vec3 rd, float t) {
+  float side = p.x > 0.0 ? 1.0 : -1.0;
+  float face = side > 0.0 ? PARIS_ROW_R : PARIS_ROW_L;
+  float u = side * p.x - face;
+  float y = p.y - PARIS_QUAY;
+  float c = floor(p.z / PARIS_LOT);
+  float h = parisCornice(c, side);
+  // The lot this point belongs to, which may be the neighbour's.
+  float w = p.z - c * PARIS_LOT;
+  if (h < 0.5 || y > h + 8.0) {
+    float cn = w < 10.0 ? c - 1.0 : c + 1.0;
+    h = max(parisCornice(cn, side), 0.5);
+    c = cn;
   }
-  float side = sign(parisSunX - parisDomeX);
-  float w = 0.0;
-  vec3 col = vec3(0.0);
-  float tone = 0.0;
-  // The sun side, 0 facing away to 1 facing it.
-  float facing = 0.0;
-  vec3 stoneDark = vec3(0.2, 0.26, 0.48);
-  vec3 stoneLit = vec3(0.62, 0.74, 0.96);
-  if (v < 0.36) {
-    w = 0.3;
-    facing = 0.5 + 0.5 * side * dx / (w * d);
-    col = mix(stoneDark, stoneLit, 0.2 * facing);
-    tone = 0.36;
-    vec2 cs = s - vec2(floor(parisDomeX / parisSw), parisGroundRow);
-    if (mod(cs.x, 2.0) > 0.5 && mod(cs.y, 2.0) > 0.5 && v < 0.32 && parisLit(cs + 300.0, 0.3) > 0.5) {
-      col = vec3(0.84, 0.9, 1.0);
-      tone = 0.46;
+  vec3 amb = parisAmbient(n, p.y);
+  float tint = parisHash(vec2(c, side + 9.0));
+  vec3 stone = mix(vec3(0.74, 0.7, 0.64), vec3(0.86, 0.8, 0.7), tint);
+  vec3 zinc = vec3(0.17, 0.21, 0.31);
+  if (y > h + 6.2) {
+    // A chimney stack.
+    return vec3(0.42, 0.4, 0.42) * amb * 1.2;
+  }
+  if (y > h - 0.2 || n.y > 0.3) {
+    // The mansard: zinc, its steep face pierced by a row of dormers.
+    vec3 col = zinc * amb;
+    float along = p.z;
+    float dormer = step(abs(mod(along, 3.4) - 1.7), 0.55) * step(abs(y - h - 2.0), 0.9) * step(n.y, 0.6);
+    float on = parisLit(vec2(floor(along / 3.4), c * 3.0 + 77.0), 0.22);
+    float k = parisDetail(3.4, t);
+    vec3 glass = mix(vec3(0.05, 0.06, 0.12), vec3(1.0, 0.72, 0.38), on);
+    col = mix(col, glass, dormer * mix(on * 0.25, 1.0, k));
+    // The ridge catches the open sky.
+    col += vec3(0.14, 0.18, 0.3) * smoothstep(0.6, 0.95, n.y) * step(h + 5.0, y);
+    // A pale cornice line along the foot of the roof.
+    col = mix(col, stone * vec3(0.45, 0.47, 0.58), step(y, h + 0.6) * step(-0.2, n.y));
+    return col;
+  }
+  // Stone takes the open sky over the river and, low down, the warm light
+  // of the street lamps, so the facades stand pale against the blue.
+  // The left bank faces away from the afterglow and stands in cooler shade.
+  float lampLit = exp(-y / 9.0);
+  float shade = side > 0.0 ? 1.0 : 0.8;
+  vec3 col = stone * ((vec3(0.28, 0.31, 0.43) + vec3(0.14, 0.17, 0.26) * max(dot(n, normalize(vec3(-0.45, 0.25, 1.0))), 0.0)) * shade + vec3(0.46, 0.34, 0.2) * lampLit);
+  if (abs(n.x) > 0.7) {
+    // Seen along the quay a window bay shrinks, so judge its detail by its
+    // foreshortened width.
+    float squeeze = sqrt(max(1.0 - rd.z * rd.z, 0.0));
+    // The facade: a ground floor of shops, a cornice, and in between five
+    // floors of windows, 3.3 m apart, with the long balconies of the second
+    // and fifth floors.
+    float along = p.z;
+    float col3 = floor(along / 3.3);
+    float fx = abs(mod(along, 3.3) - 1.65);
+    float storey = floor((y - 4.6) / 3.1);
+    float fy = mod(y - 4.6, 3.1);
+    // Floors resolve long before the bays along them do: the window rows
+    // then read as bands of glass that run towards the vanishing point.
+    float kv = parisDetail(3.1, t);
+    float kh = parisDetail(3.3 * squeeze, t);
+    if (y < 4.2) {
+      float shop = parisLit(vec2(col3, c + 31.0), 0.45);
+      vec3 window = mix(vec3(0.08, 0.07, 0.1), vec3(1.0, 0.76, 0.46), shop);
+      col = mix(col, window, step(0.6, y) * mix(0.45, step(fx, 1.25) * 0.9, kh));
+    } else if (y < h - 1.0) {
+      float band = mix(0.5, step(0.5, fy) * step(fy, 2.6), kv);
+      float pane = band * mix(0.7, step(fx, 0.62), kh);
+      float chance = mix(0.05, 0.3, step(0.6, parisHash(vec2(c, storey + 13.0))));
+      float on = parisLit(vec2(col3, storey + c * 11.0), chance);
+      vec3 lit = parisHash(vec2(col3, storey + 4.0)) > 0.75 ? vec3(0.95, 0.9, 0.8) : vec3(1.0, 0.7, 0.36);
+      vec3 glass = mix(vec3(0.07, 0.08, 0.14), lit, on);
+      // A lit window keeps its light even when it is smaller than a sample.
+      col = mix(col, glass, max(pane, on * 0.5 * band));
+      // A pale string course under every floor, iron balconies on the
+      // second and fifth.
+      col *= 1.0 + 0.35 * kv * step(2.7, fy);
+      float balcony = (abs(storey - 1.0) < 0.5 || abs(storey - 4.0) < 0.5) ? step(fy, 0.4) : 0.0;
+      col = mix(col, vec3(0.08, 0.09, 0.15), balcony * kv * 0.85);
+    } else {
+      col *= 1.15;
     }
-  } else if (v < 0.42) {
-    // A shallow pediment over the pavilion.
-    w = 0.24 - (v - 0.36) * 1.6;
-    facing = 0.5 + 0.5 * side * dx / (w * d);
-    col = mix(stoneDark, stoneLit, 0.5 * facing);
-    tone = mix(0.26, 0.6, facing);
-  } else if (v < 0.6) {
-    // The drum: columns every other sample, lit on the sun side.
-    w = 0.165;
-    facing = clamp(0.62 + 0.5 * side * dx / (w * d), 0.0, 1.0);
-    col = mix(stoneDark, stoneLit, facing * facing);
-    tone = mix(0.4, mod(s.x, 2.0) < 0.5 ? 0.95 : 0.6, facing * facing);
-  } else if (v < 0.63) {
-    w = 0.185;
-    facing = clamp(0.5 + 0.6 * side * dx / (w * d), 0.0, 1.0);
-    col = mix(stoneDark, stoneLit, facing) * 1.1;
-    tone = mix(0.4, 0.9, facing);
-  } else if (v < 0.84) {
-    // The gilded dome, shaded as a sphere lit low from the sun side.
-    float e = (v - 0.63) / 0.21;
-    w = 0.175 * sqrt(max(0.0, 1.0 - e * e));
-    float nx = clamp(dx / max(w * d, 1e-4), -1.0, 1.0);
-    float lit = clamp(0.55 + 0.5 * side * nx + 0.25 * e, 0.0, 1.0);
-    // The gilding reads as a cool sheen in this light, a touch of pale gold
-    // only on the ribs that face the bright horizon.
-    col = mix(vec3(0.24, 0.3, 0.52), vec3(0.74, 0.82, 0.98), lit);
-    // Gilded ribs down the dome.
-    float rib = abs(fract(asin(nx) * 2.6 + 0.5) - 0.5);
-    tone = rib < 0.14 ? mix(0.6, 1.0, lit) : mix(0.42, 0.66, lit);
-    // A bright rim where the dome meets the sky.
-    if (abs(dx) > w * d - parisSw * 1.5 || v > 0.84 - parisSh / d * 1.5) {
-      tone = 0.95;
-      col = mix(col, vec3(0.86, 0.92, 1.0), 0.5);
-    }
-  } else if (v < 0.92) {
-    w = 0.034;
-    col = mix(vec3(0.3, 0.36, 0.58), vec3(0.8, 0.86, 1.0), clamp(0.5 + side * dx / (w * d), 0.0, 1.0));
-    tone = 0.62;
+  }
+  return col;
+}
+
+vec3 parisShade(vec3 ro, vec3 rd, float t, bool primary) {
+  vec3 p = ro + rd * t;
+  vec3 n = parisNormal(p, t);
+  float id = parisMaterial(p);
+  vec3 col;
+  if (id < 1.5) {
+    // Stone quay walls, darker towards the water, with a pale coping.
+    vec3 amb = parisAmbient(n, p.y);
+    float coping = smoothstep(PARIS_QUAY - 0.8, PARIS_QUAY - 0.4, p.y);
+    float courses = parisDetail(0.6, t) * 0.12 * step(0.5, mod(p.y, 0.6) / 0.6);
+    col = vec3(0.4, 0.4, 0.42) * amb * (0.55 + 0.3 * smoothstep(0.0, PARIS_QUAY, p.y) - courses);
+    col += vec3(0.1, 0.11, 0.17) * coping;
+    // Lamp light pooled on the wall under each lamp.
+    float lz = abs(mod(p.z + 13.0, 26.0) - 13.0);
+    col += vec3(0.4, 0.27, 0.12) * exp(-lz / 4.0) * smoothstep(2.0, PARIS_QUAY, p.y) * 0.3;
+  } else if (id < 2.5) {
+    float density;
+    col = parisShadeTower(p, n, rd, t, density);
+    col = mix(parisSky(rd), col, clamp(density, 0.0, 1.0));
+  } else if (id < 3.5) {
+    col = parisShadeBuilding(p, n, rd, t);
+  } else if (id < 4.5) {
+    // Plane trees: dark blue-green, lit warm from beneath by the lamps and
+    // gold on the side facing the tower.
+    vec3 amb = parisAmbient(n, p.y - 4.0);
+    col = vec3(0.16, 0.24, 0.24) * amb;
+    float leaves = parisHash(floor(p.xz * 0.6) + floor(p.y * 0.6));
+    col *= 0.75 + 0.5 * leaves * parisDetail(2.0, t);
+    vec3 toTower = PARIS_TOWER + vec3(0.0, 60.0, 0.0) - p;
+    float dist = length(toTower);
+    col += vec3(0.7, 0.38, 0.1) * max(dot(n, toTower / dist), 0.0) * 30.0 / (30.0 + dist * dist / 900.0);
   } else {
-    w = 0.014 * (1.0 - v) / 0.08;
-    col = vec3(0.86, 0.9, 1.0);
-    tone = 0.5;
+    // The boat: a pale hull and a long glass cabin lit warm.
+    vec3 l = p - parisBoatAt();
+    float cabin = step(2.2, l.y) * step(l.y, 4.4);
+    float mullion = step(0.35, abs(mod(l.z, 2.4) - 1.2));
+    col = mix(vec3(0.5, 0.52, 0.62) * parisAmbient(n, p.y) * 1.6, vec3(1.0, 0.86, 0.62), cabin * mix(0.6, mullion, parisDetail(2.4, t)));
   }
-  if (abs(dx) > max(w * d, parisSw * 0.5)) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  // A little haze: it stands further off than the blocks.
-  return vec4(mix(col, vec3(0.4, 0.52, 0.82), 0.12), tone);
+  return col;
 }
 
-// Facade and mansard heights of block id, in box heights. None where the
-// Champ de Mars opens around the tower, and lower blocks nearest it.
-vec2 parisBlock(float id, float bw) {
-  float gap = abs((id + 0.5) * bw - parisAxisX);
-  if (gap < parisGap) {
-    return vec2(0.0);
-  }
-  float low = mix(0.72, 1.0, smoothstep(parisGap, parisGap + 0.3, gap));
-  float facade = (0.052 + 0.03 * parisHash(vec2(id, 3.7))) * low;
-  float roof = 0.024 + 0.012 * parisHash(vec2(id, 8.1));
-  return vec2(facade, roof);
+// ---------------------------------------------------------------- the water
+vec3 parisRipple(vec3 p, float t) {
+  // Long, low swells across the river, finer and fainter with distance, so
+  // far off they only break the reflections into horizontal dashes.
+  float far = 1.0 / (1.0 + t / 250.0);
+  vec2 q = p.xz * vec2(0.05, 0.16) * mix(0.35, 1.0, far);
+  float a = snoise(q + vec2(parisT * 0.03, -parisT * 0.22));
+  float b = snoise(q * 2.3 + vec2(-parisT * 0.05, parisT * 0.31) + 4.7);
+  float slope = (a * 0.7 + b * 0.45) * mix(0.05, 0.16, far * far);
+  return normalize(vec3(slope * 0.3, 1.0, slope));
 }
 
-// Haussmann blocks on the far bank in blue shadow: floors of tall windows
-// under a pale cornice, a zinc mansard with dormers and a ridge that
-// catches the sky, and chimney stacks with their pots on the party walls.
-vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - parisGroundY;
-  if (y < 0.0) {
-    return vec4(0.0);
+// The colour along one ray: whatever it hits, the sky beyond, the haze in
+// between and the glows it passes. Water rays go round once more.
+vec3 parisTrace(vec3 ro, vec3 rd, out float tHit, bool primary) {
+  float tWater = rd.y < 0.0 ? (0.0 - ro.y) / rd.y : PARIS_FAR;
+  float t = parisMarch(ro, rd, min(tWater, PARIS_FAR));
+  tHit = t;
+  vec3 col;
+  if (t > 0.0) {
+    col = parisShade(ro, rd, t, primary);
+  } else if (rd.y < 0.0) {
+    tHit = tWater;
+    col = vec3(0.0);
+  } else {
+    col = parisSky(rd);
+    tHit = -1.0;
   }
-  float bw = 0.15;
-  float id = floor(p.x / bw);
-  float u = p.x - id * bw;
-  vec2 b = parisBlock(id, bw);
-  vec2 left = parisBlock(id - 1.0, bw);
-  float top = b.x + b.y;
-  float glow = parisAfter(p);
-  // A chimney stack on the party wall, above the taller of the two roofs.
-  float cw = max(0.014, parisSw * 2.5);
-  if (u < cw && b.x > 0.0 && left.x > 0.0 && parisHash(vec2(id, 5.3)) > 0.25) {
-    float stackTop = max(top, left.x + left.y) + 0.018;
-    if (y < stackTop && y > min(b.x, left.x)) {
-      cover = 1.0;
-      if (y > stackTop - parisSh * 1.5) {
-        // The pots: every other sample along the top.
-        if (mod(s.x, 2.0) > 0.5) {
-          return vec4(0.0);
-        }
-        return vec4(0.4, 0.48, 0.72, 0.34);
+  // Haze thickens with distance towards the sky at the horizon.
+  float dist = tHit < 0.0 ? PARIS_FAR : tHit;
+  vec3 haze = parisSky(vec3(rd.x, 0.02, rd.z)) * 0.95;
+  col = mix(col, haze, (1.0 - exp(-dist / 2600.0)) * step(0.0, tHit));
+  float halo = parisHalo(ro, rd, tHit < 0.0 ? 1e5 : tHit);
+  col += vec3(0.75, 0.4, 0.13) * halo * 0.38;
+  col += vec3(1.0, 0.9, 0.7) * parisBeacon(ro, rd, tHit);
+  col += parisLamps(ro, rd, tHit);
+  return col;
+}
+
+vec3 parisWater(vec3 ro, vec3 rd, float t) {
+  vec3 p = ro + rd * t;
+  vec3 n = parisRipple(p, t);
+  vec3 r = reflect(rd, n);
+  r.y = max(r.y, 0.002);
+  float hit;
+  vec3 refl = parisTrace(p + vec3(0.0, 0.05, 0.0), r, hit, false);
+  float fresnel = 0.5 + 0.45 * pow(1.0 - max(dot(-rd, n), 0.0), 4.0);
+  vec3 deep = vec3(0.015, 0.025, 0.06);
+  vec3 col = deep + refl * fresnel * vec3(0.82, 0.88, 1.0);
+  vec3 haze = parisSky(vec3(rd.x, 0.02, rd.z)) * 0.95;
+  return mix(col, haze, 1.0 - exp(-t / 2600.0));
+}
+
+// ------------------------------------------------------------- the palette
+// Five families of eight colours each: the night blues of sky and water, the
+// limestone, the zinc, the tower's gold and the warm light of windows and
+// lamps. Every sample snaps to the nearest, which reads as a print rather
+// than a gradient.
+vec3 parisRamp(vec3 a, vec3 b, vec3 c, vec3 d, float k) {
+  float s = k * 3.0;
+  if (s < 1.0) {
+    return mix(a, b, s);
+  }
+  if (s < 2.0) {
+    return mix(b, c, s - 1.0);
+  }
+  return mix(c, d, s - 2.0);
+}
+
+vec3 parisFamily(int f, float k) {
+  if (f == 0) {
+    return parisRamp(vec3(0.05, 0.07, 0.19), vec3(0.11, 0.18, 0.46), vec3(0.24, 0.39, 0.84), vec3(0.64, 0.75, 1.0), k);
+  }
+  if (f == 1) {
+    return parisRamp(vec3(0.14, 0.15, 0.25), vec3(0.37, 0.38, 0.5), vec3(0.64, 0.63, 0.68), vec3(0.9, 0.86, 0.8), k);
+  }
+  if (f == 2) {
+    return parisRamp(vec3(0.1, 0.15, 0.23), vec3(0.2, 0.3, 0.42), vec3(0.4, 0.5, 0.66), vec3(0.68, 0.76, 0.88), k);
+  }
+  if (f == 3) {
+    return parisRamp(vec3(0.42, 0.16, 0.05), vec3(0.78, 0.36, 0.08), vec3(0.98, 0.6, 0.2), vec3(1.0, 0.86, 0.56), k);
+  }
+  return parisRamp(vec3(0.5, 0.3, 0.16), vec3(0.86, 0.56, 0.28), vec3(1.0, 0.8, 0.54), vec3(1.0, 0.95, 0.86), k);
+}
+
+vec3 parisQuantize(vec3 c) {
+  vec3 best = c;
+  float bd = 1e9;
+  for (int f = 0; f < 5; f++) {
+    for (int j = 0; j < 8; j++) {
+      vec3 p = parisFamily(f, float(j) / 7.0);
+      vec3 d = p - c;
+      float e = dot(d * d, vec3(0.3, 0.5, 0.2));
+      if (e < bd) {
+        bd = e;
+        best = p;
       }
-      vec3 brick = mix(vec3(0.14, 0.18, 0.36), vec3(0.4, 0.5, 0.78), 0.35 * glow);
-      return vec4(u < parisSw * 1.2 ? brick * 1.5 : brick, 0.3);
     }
   }
-  if (b.x <= 0.0 || y >= top) {
-    return vec4(0.0);
-  }
-  // Windows burn a cool white; the tower stays the only warm light.
-  vec3 lamp = vec3(0.8, 0.88, 1.0);
-  float sy = y - b.x;
-  float col0 = floor(id * bw / parisSw);
-  float cx = s.x - col0;
-  float ncols = floor((id + 1.0) * bw / parisSw) - col0;
-  if (sy >= 0.0) {
-    // The mansard: steep at both ends, about 70 degrees.
-    float inset = sy * 0.4 + 0.004;
-    if (u < inset || u > bw - inset) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float k = sy / b.y;
-    vec3 zinc = mix(vec3(0.16, 0.22, 0.42), vec3(0.32, 0.42, 0.68), k);
-    zinc = mix(zinc, vec3(0.5, 0.62, 0.9), 0.25 * glow);
-    // The ridge catches the sky; the cornice under it is pale stone.
-    if (sy > b.y - parisSh * 1.5) {
-      // Broken along its length, so it never reads as a ruled line.
-      float catchLight = 0.3 + 0.18 * parisHash(vec2(s.x, id) + 23.0);
-      return vec4(mix(vec3(0.46, 0.56, 0.82), vec3(0.7, 0.82, 1.0), 0.4 * glow), catchLight);
-    }
-    if (sy < parisSh) {
-      return vec4(0.36, 0.36, 0.6, 0.3);
-    }
-    // Dormers in one row halfway up, every third column.
-    float dr = floor((b.x + b.y * 0.4) / parisSh);
-    if (s.y - parisGroundRow == dr && mod(cx, 3.0) > 1.5 && cx > 2.0 && cx < ncols - 3.0) {
-      float on = parisLit(vec2(s.x, id + 101.0), 0.32);
-      return vec4(mix(vec3(0.1, 0.12, 0.3), lamp, on), mix(0.16, 0.85, on));
-    }
-    return vec4(zinc * 0.8, 0.26);
-  }
-  cover = 1.0;
-  float fr = s.y - parisGroundRow;
-  float nrows = floor(b.x / parisSh);
-  // The facade in shadow: each block a slightly different stone, the side
-  // facing the afterglow a touch lighter, the street level darkest, and a
-  // slow mottle so no two stretches of wall read the same.
-  float facing = clamp(0.5 + 0.5 * sign(parisSunX - p.x) * (u / bw - 0.5) * -2.0, 0.0, 1.0);
-  float mottle = fbm(vec2(p.x * 18.0, y * 40.0) + id * 3.1);
-  vec3 wall = mix(vec3(0.09, 0.13, 0.26), vec3(0.22, 0.28, 0.44), smoothstep(0.0, b.x, y));
-  wall *= 0.85 + 0.3 * parisHash(vec2(id, 6.6)) + 0.25 * facing;
-  wall = mix(wall, vec3(0.32, 0.4, 0.6), 0.25 * glow);
-  float wallTone = 0.14 + 0.16 * smoothstep(0.35, 0.7, mottle) + 0.06 * facing;
-  if (fr > nrows - 1.5) {
-    // The cornice, catching a little sky.
-    return vec4(0.34, 0.34, 0.56, 0.2 + 0.1 * parisHash(vec2(s.x, id) + 31.0));
-  }
-  // Windows lit in uneven clusters: some floors of a block are lived in,
-  // others dark, and a few lone windows burn on their own.
-  bool bay = cx > 1.5 && cx < ncols - 2.5 && mod(cx, 2.0) > 0.5;
-  if (bay && mod(fr, 2.0) > 0.5) {
-    float cluster = smoothstep(0.45, 0.65, fbm(vec2(s.x * 0.09, fr * 0.35) + id * 7.7));
-    float chance = mix(0.06, 0.65, cluster) * (fr < 1.5 ? 1.2 : 1.0);
-    vec3 tint = parisHash(vec2(s.x, fr) + 41.0) > 0.8 ? vec3(0.96, 0.9, 0.78) : lamp;
-    float on = parisLit(vec2(s.x, fr + id * 13.0), chance);
-    float bright = 0.55 + 0.25 * parisHash(vec2(s.x, fr) + 9.0);
-    return vec4(mix(wall * 0.7, tint, on), mix(wallTone * 0.7, bright, on));
-  }
-  return vec4(wall, wallTone);
-}
-
-// Plane trees on the Champ de Mars either side of the tower's feet, dark
-// blue-green, their crowns rimmed gold on the side facing the tower.
-vec4 parisTrees(vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - parisGroundY;
-  float dx = abs(p.x - parisAxisX);
-  float base = parisOuter(0.0) * PARIS_HEIGHT;
-  if (y < 0.0 || dx < base + 0.006 || dx > parisGap + 0.06) {
-    return vec4(0.0);
-  }
-  float crown = 0.024 + 0.008 * abs(sin(p.x * 70.0)) + 0.004 * snoise(vec2(p.x * 40.0, 1.3));
-  crown *= smoothstep(base, base + 0.03, dx);
-  if (y > crown) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float near = exp(-(dx - base) / 0.05);
-  vec3 col = mix(vec3(0.1, 0.17, 0.28), vec3(0.17, 0.25, 0.38), y / max(crown, 1e-4));
-  col = mix(col, vec3(0.95, 0.62, 0.3), near * smoothstep(crown * 0.4, crown, y) * 0.7);
-  return vec4(col, 0.22 + 0.2 * near);
-}
-
-// The stone quay along the water: courses of blue stone under a pale
-// coping, with warm lamps standing along the top.
-vec4 parisQuay(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  if (s.y < parisWaterRow) {
-    return vec4(0.0);
-  }
-  float spacing = 0.26;
-  float k = floor(p.x / spacing);
-  float lampX = (k + 0.5) * spacing;
-  float lampCol = floor(lampX / parisSw);
-  bool hasLamp = abs(lampX - parisAxisX) > parisGap + 0.04;
-  float ry = s.y - parisGroundRow;
-  if (hasLamp && s.x == lampCol && ry >= 0.0 && ry < 3.5) {
-    cover = 1.0;
-    if (ry > 2.5) {
-      return vec4(0.86, 0.92, 1.0, 0.9);
-    }
-    return vec4(0.3, 0.3, 0.5, 0.28);
-  }
-  if (s.y >= parisGroundRow) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  if (s.y > parisGroundRow - 1.5) {
-    return vec4(0.34, 0.34, 0.54, 0.34);
-  }
-  float course = mod(s.y - parisWaterRow, 2.0) < 0.5 ? 0.85 : 1.0;
-  // Darker than the facades above, so the roofs stand clear of the wall.
-  return vec4(vec3(0.08, 0.09, 0.2) * course, 0.18);
-}
-
-// The warm pools of light around the quay lamps.
-float parisLampGlow(vec2 p) {
-  float spacing = 0.26;
-  float lampX = (floor(p.x / spacing) + 0.5) * spacing;
-  if (abs(lampX - parisAxisX) < parisGap + 0.04) {
-    return 0.0;
-  }
-  vec2 c = vec2((floor(lampX / parisSw) + 0.5) * parisSw, parisGroundY + 3.5 * parisSh);
-  vec2 d = (p - c) * vec2(1.0, 1.4);
-  return exp(-length(d) / 0.014);
-}
-
-// The tower's glow in the air around it, and the beacon on top, which turns
-// slowly and swells as it faces you, about every eleven seconds.
-float parisHalo(vec2 p) {
-  // Centred high on the tower, where the sky behind is dark enough to show it.
-  float v = (p.y - parisGroundY) / PARIS_HEIGHT;
-  float reach = parisOuter(clamp(v, 0.0, 1.0)) * PARIS_HEIGHT;
-  // Narrower on tall boxes, so it never fills a phone's width, and faded
-  // near the feet, where the afterglow is already bright.
-  float dx = max(abs(p.x - parisAxisX) - reach, 0.0) / min(0.105, parisAspect * 0.11);
-  float dy = (v - 0.5) / 0.62;
-  return 0.6 * exp(-dx * dx - dy * dy * 1.4) * smoothstep(0.08, 0.35, v) * (1.0 - smoothstep(0.85, 1.05, v));
-}
-
-float parisBeacon(vec2 p) {
-  vec2 c = vec2(parisAxisX, parisGroundY + PARIS_HEIGHT * 0.895);
-  vec2 d = (p - c) * vec2(0.8, 1.1);
-  float turn = 0.5 + 0.5 * cos(parisT * 0.55);
-  return (0.45 + 0.55 * turn * turn) * exp(-length(d) / 0.03) * parisBeaconOn;
-}
-
-// Everything above the water at sample s.
-vec4 parisAbove(vec2 s) {
-  vec2 p = (s + 0.5) * vec2(parisSw, parisSh);
-  float cover;
-  // How far back the hit is: 0 near, 1 the dome, 2 far city, 3 sky.
-  float depth = 0.0;
-  vec4 hit = parisQuay(s, p, cover);
-  if (cover < 0.5) {
-    hit = parisTower(s, cover);
-    if (cover > 0.5) {
-      depth = -1.0;
-    }
-  }
-  if (cover < 0.5) {
-    hit = parisTrees(p, cover);
-  }
-  if (cover < 0.5) {
-    hit = parisBlocks(s, p, cover);
-  }
-  if (cover < 0.5) {
-    hit = parisDome(s, p, cover);
-    depth = 1.0;
-  }
-  if (cover < 0.5) {
-    hit = parisFar(s, p, cover);
-    depth = 2.0;
-  }
-  if (cover < 0.5) {
-    hit = parisSky(s, p);
-    depth = 3.0;
-  }
-  float y = p.y - parisGroundY;
-  // The tower's halo warms the air in front of everything behind it. Its
-  // dots are a dimmer amber than the tower's own and stop short of full
-  // size, so the iron still stands clear of its glow.
-  if (depth > -0.5) {
-    float halo = parisHalo(p) * (depth > 0.5 ? 1.0 : 0.45);
-    // Amber outright rather than a blend, which would turn grey against
-    // the blue; the halo shows in dot size instead.
-    vec3 amber = mix(vec3(0.6, 0.34, 0.16), vec3(0.86, 0.52, 0.24), smoothstep(0.1, 0.45, halo));
-    hit.rgb = mix(hit.rgb, amber, smoothstep(0.04, 0.2, halo) * 0.92);
-    hit.a = max(hit.a, min(hit.a + halo * 0.55, 0.5));
-  }
-  // The sky and the haze are dithered per sample, so their gradients blend
-  // between dot sizes instead of stepping in bands; the tower stays crisp.
-  if (depth > 1.5) {
-    float high = smoothstep(0.45, 0.75, y / (1.0 - parisGroundY));
-    hit.a += (parisHash(s + 0.37) - 0.5) * mix(0.26, 0.06, high);
-  }
-  // Mist lying low over the far bank, drifting slowly.
-  if (depth > 0.5) {
-    float mist = (1.0 - smoothstep(0.0, 0.05, y)) * smoothstep(0.35, 0.75, fbm(vec2(p.x * 3.0 + parisT * 0.01, y * 30.0)));
-    hit.rgb = mix(hit.rgb, vec3(0.46, 0.58, 0.86), mist * 0.5);
-    hit.a = mix(hit.a, 0.3, mist * 0.4);
-  }
-  float lampGlow = parisLampGlow(p);
-  hit.rgb = mix(hit.rgb, vec3(0.74, 0.84, 1.0), lampGlow * 0.5);
-  hit.a += lampGlow * 0.25;
-  float beacon = parisBeacon(p);
-  hit.rgb = mix(hit.rgb, vec3(1.0, 0.94, 0.8), clamp(beacon, 0.0, 0.9));
-  hit.a += beacon * 0.6;
-  return hit;
-}
-
-// A bateau-mouche heading downstream: a pale hull, a long glass cabin lit
-// warm between its mullions, and a flat roof. It moves in whole columns.
-float parisBoatRow;
-
-vec4 parisBoat(vec2 s, out float cover) {
-  cover = 0.0;
-  if (parisBoatOn < 0.5) {
-    return vec4(0.0);
-  }
-  float len = max(12.0, floor(0.17 / parisSw + 0.5));
-  float travel = parisAspect + 0.5;
-  float x0 = floor((mod(parisT * 0.011 + parisAspect * 0.12 + 0.25, travel) - 0.25) / parisSw);
-  float u = s.x - x0;
-  float r = s.y - parisBoatRow;
-  float hull = max(1.0, floor(0.008 / parisSh + 0.5));
-  float cabin = max(1.0, floor(0.01 / parisSh + 0.5));
-  if (u < 0.0 || u > len - 0.5 || r < 0.0 || r > hull + cabin) {
-    return vec4(0.0);
-  }
-  if (r < hull) {
-    // The bow rakes forward and the stern tucks in at the waterline.
-    float cut = hull - 1.0 - r;
-    if (u < cut || u > len - 1.0 - cut * 2.0) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return vec4(0.66, 0.68, 0.86, r < 0.5 ? 0.3 : 0.5);
-  }
-  float c0 = floor(len * 0.12);
-  float c1 = floor(len * 0.8);
-  if (u < c0 || u > c1) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  if (r > hull + cabin - 0.5) {
-    return vec4(0.6, 0.62, 0.84, 0.4);
-  }
-  return vec4(0.84, 0.9, 1.0, mod(u - c0, 3.0) < 0.5 ? 0.36 : 0.8);
-}
-
-// The Seine: the boat, then everything above mirrored, darkened and cooled,
-// broken into ripples that widen towards you. Under the tower runs a long
-// golden streak where its light lies on the moving water.
-vec4 parisWater(vec2 s) {
-  vec2 p = (s + 0.5) * vec2(parisSw, parisSh);
-  float cover;
-  vec4 boat = parisBoat(s, cover);
-  if (cover > 0.5) {
-    return boat;
-  }
-  float k = parisWaterY - p.y;
-  float dn = clamp(k / parisWaterY, 0.0, 1.0);
-  // Ripples: long and thin far off, wider and taller near the bottom.
-  float rip = snoise(vec2(p.x * mix(7.0, 2.6, dn) + parisT * 0.015, k * mix(110.0, 34.0, dn) - parisT * 0.42));
-  float rip2 = snoise(vec2(p.x * 3.0 - parisT * 0.01, k * mix(60.0, 20.0, dn) + parisT * 0.3 + 7.0));
-  float sway = rip2 * (0.002 + 0.012 * dn);
-  float off = floor(sway / parisSw + 0.5);
-  vec2 m = vec2(s.x + off, 2.0 * parisWaterRow - 1.0 - s.y);
-  vec4 hit = parisBoat(m, cover);
-  float focus = cover;
-  if (cover < 0.5) {
-    hit = parisAbove(m);
-    // The tower's own reflection keeps its strength; the rest of the
-    // mirrored city sinks towards the paper.
-    parisTower(m, focus);
-  }
-  float keep = mix(mix(0.7, 0.38, dn), 0.95, focus);
-  vec3 col = hit.rgb * keep + vec3(0.02, 0.03, 0.08);
-  col = mix(col, col * vec3(0.78, 0.86, 1.15), 0.45);
-  float tone = hit.a * mix(mix(0.85, 0.55, dn), 1.0, focus) * (0.85 + 0.3 * rip);
-  // The golden streak, broken into dashes that drift down the river.
-  float dx = abs(p.x - parisAxisX);
-  float sw = parisOuter(0.0) * PARIS_HEIGHT * mix(0.45, 0.85, dn);
-  float streak = exp(-dx * dx / (sw * sw)) * mix(1.0, 0.55, dn);
-  float dash = smoothstep(-0.15, 0.55, rip);
-  float gold = streak * dash;
-  col = mix(col, vec3(1.0, 0.68, 0.32) * mix(1.0, 0.8, dn), clamp(gold * 1.1, 0.0, 1.0));
-  tone = max(tone, gold * 0.92);
-  // The water is never empty: a faint ripple texture all over.
-  tone = max(tone, 0.17 + 0.05 * rip);
-  tone += (parisHash(s + 0.53) - 0.5) * 0.12 * (1.0 - gold);
-  return vec4(col, tone);
+  return best;
 }
 
 vec2 parisCacheUv = vec2(-1.0);
@@ -761,36 +695,52 @@ vec4 parisScene(vec2 uv, vec2 res, float t) {
   if (uv == parisCacheUv && t == parisCacheT) {
     return parisCacheValue;
   }
-  parisAspect = res.x / res.y;
-  parisSh = 1.0 / res.y;
-  parisSw = parisAspect / max(ascii_samples.x, 1.0);
   parisT = t;
-  vec2 s = floor(vec2(uv.x * ascii_samples.x, uv.y * res.y));
-  // Right of centre on wide boxes, so the middle stays calm for a headline;
-  // centred on tall ones.
-  float axis = parisAspect * mix(0.5, 0.68, smoothstep(0.95, 1.4, parisAspect));
-  parisAxis = floor(axis / parisSw);
-  parisAxisX = (parisAxis + 0.5) * parisSw;
-  // The waterline and the ground sit on cell boundaries, so the quay, the
-  // blocks and their mirror images line up with whole glyphs.
-  float rows = parisSh * parisGrid.y;
-  parisWaterRow = floor(PARIS_WATER / rows + 0.5) * parisGrid.y;
-  parisWaterY = parisWaterRow * parisSh;
-  parisGroundRow = parisWaterRow + max(1.0, floor(PARIS_QUAY / rows + 0.5)) * parisGrid.y;
-  parisGroundY = parisGroundRow * parisSh;
-  parisMesh = clamp(floor(PARIS_HEIGHT / parisSh / 40.0 + 0.5), 3.0, 6.0);
-  parisGap = parisOuter(0.0) * PARIS_HEIGHT + 0.07;
-  parisDomeX = max(parisAxisX - 0.64, 0.075);
-  parisSunX = parisDomeX - 0.14;
-  parisBoatRow = floor(0.09 / rows + 0.5) * parisGrid.y;
+  float aspect = res.x / res.y;
+  parisPix = 2.0 * PARIS_TAN / res.y;
+  // A level camera with a shifted lens, so verticals stay vertical and the
+  // horizon sits a third of the way up. It turns so the tower lands right of
+  // centre on wide boxes, leaving the middle for a headline, and in the
+  // middle on tall ones.
+  vec3 ro = vec3(PARIS_CAM_X, PARIS_EYE, 0.0);
+  parisCam = ro;
+  vec2 toTower = PARIS_TOWER.xz - ro.xz;
+  float bearing = atan(toTower.x, toTower.y);
+  float place = aspect * mix(0.0, 0.4, smoothstep(0.95, 1.4, aspect));
+  float yaw = bearing - atan(place * PARIS_TAN);
+  vec3 fwd = vec3(sin(yaw), 0.0, cos(yaw));
+  vec3 right = vec3(cos(yaw), 0.0, -sin(yaw));
+  vec2 s = vec2((uv.x - 0.5) * 2.0 * aspect, (uv.y - 0.5) * 2.0 + PARIS_SHIFT);
+  vec3 rd = normalize(fwd + (right * s.x + vec3(0.0, 1.0, 0.0) * s.y) * PARIS_TAN);
 
-  vec4 hit = s.y < parisWaterRow ? parisWater(s) : parisAbove(s);
-  // Intensity dims colour in step and shrinks the dots more gently, so the
-  // shapes keep their place behind text.
-  float tone = clamp(hit.a, 0.0, 1.0) * sqrt(parisIntensity);
+  float tHit;
+  vec3 col = parisTrace(ro, rd, tHit, true);
+  if (rd.y < 0.0 && tHit > 0.0 && abs(ro.y + rd.y * tHit) < 0.01) {
+    col = parisWater(ro, rd, tHit);
+  }
+  if (tHit < 0.0) {
+    // Stars, few and faint, only where the sky is dark.
+    vec2 cellId = floor(uv * res);
+    float star = parisHash(cellId + 17.0);
+    float density = 0.004 * smoothstep(0.18, 0.45, rd.y);
+    if (star > 1.0 - density) {
+      float twinkle = 0.5 + 0.5 * sin(parisT * (0.4 + star * 0.5) + parisHash(cellId + 3.0) * 40.0);
+      col = max(col, mix(vec3(0.45, 0.52, 0.8), vec3(0.85, 0.88, 1.0), twinkle));
+    }
+  }
+
+  // Dot size follows brightness; even the darkest sky keeps a faint screen.
+  float peak = max(max(col.r, col.g), max(col.b, 1e-4));
+  float bright = dot(col, vec3(0.28, 0.55, 0.17));
+  float tone = 0.1 + 0.9 * pow(clamp(bright * 1.25, 0.0, 1.0), 0.8);
+  // Each dot is drawn in its full hue, darkened a little when it is small,
+  // then snapped to the palette.
+  vec3 hue = clamp(col / peak, 0.0, 1.0) * mix(0.45, 1.0, smoothstep(0.03, 0.5, peak));
+  vec3 ink = parisQuantize(hue);
+
   parisCacheUv = uv;
   parisCacheT = t;
-  parisCacheValue = vec4(clamp(hit.rgb, 0.0, 1.0) * parisIntensity, tone);
+  parisCacheValue = vec4(ink * parisIntensity, clamp(tone, 0.0, 1.0) * sqrt(parisIntensity));
   return parisCacheValue;
 }
 `;
@@ -821,7 +771,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #060a1e 0%, #0d1a4a 40%, #22408c 68%, #3a5cb0 74%, #0a1028 76%, #050817 100%)",
+        "linear-gradient(to bottom, #060a1e 0%, #0d1a4a 40%, #22408c 62%, #3a5cb0 66%, #0a1028 68%, #050817 100%)",
     }}
   />
 );
@@ -834,14 +784,14 @@ export interface ParisProps extends Omit<AsciiSceneProps, "interactive"> {
   intensity?: number;
   /** The slow glow of the beacon on top of the tower. Default `true`. */
   beacon?: boolean;
-  /** The bateau-mouche crossing the river. Default `true`. */
+  /** The bateau-mouche coming up the river. Default `true`. */
   boat?: boolean;
   /**
    * Paper behind the glyphs. Default: a deep night blue in `truecolor`,
    * `ansi16` and `duotone`; the theme's paper, or the phosphor's, otherwise.
    */
   paper?: AsciiColor;
-  /** Cells as wide as they are tall, so the dots lie in an even lattice. Default `true`. */
+  /** Cells as wide as they are tall, so the dots lie in an even lattice. Default `true` for ramp charsets, `false` for Braille and quadrants. */
   square?: boolean;
   /** In `duotone`, the colour ramp from dark to light. Default `"sodium"`, gold on the night blue. */
   ramp?: AsciiSceneProps["ramp"];
@@ -852,12 +802,11 @@ export interface ParisProps extends Omit<AsciiSceneProps, "interactive"> {
 }
 
 /**
- * Paris at a clear blue hour, painted in dots. The Eiffel Tower stands lit
- * gold in a soft halo over the Seine, which carries its long golden
- * reflection: the one warm light among cool grey-blue Haussmann rooftops and
- * the dome of Les Invalides, under a sky running from cobalt to ink blue.
- * Decorative and full-bleed: size it with `className`, usually
- * `absolute inset-0`.
+ * Paris at a clear blue hour, built in 3D and printed in dots. From the
+ * water's edge the Seine runs away between stone quays and Haussmann blocks
+ * towards the Eiffel Tower, lit gold from within, the one warm light under a
+ * cobalt sky, mirrored and broken by slow ripples. Decorative and full-bleed:
+ * size it with `className`, usually `absolute inset-0`.
  */
 export const Paris = ({
   charset = "dots",
@@ -867,8 +816,10 @@ export const Paris = ({
   paper,
   ramp,
   cell = 7,
-  square = true,
-  stillTime = 0,
+  dither,
+  square,
+  fps = 24,
+  stillTime = 300,
   intensity = 1,
   beacon = true,
   boat = true,
@@ -878,7 +829,9 @@ export const Paris = ({
   ...props
 }: ParisProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
-  const [gx, gy] = resolveCharset(charset, chars).grid;
+  // Dithering blends dot sizes into smooth gradients on ramps; Braille and
+  // quadrants would turn it into an even mesh, so they keep the threshold.
+  const isRamp = resolveCharset(charset, chars).kind === "ramp";
   return (
     <AsciiShader
       field={FIELD}
@@ -886,9 +839,6 @@ export const Paris = ({
       uniforms={{
         parisBeaconOn: beacon ? 1 : 0,
         parisBoatOn: boat ? 1 : 0,
-        // The samples per glyph, so the waterline and the ground land on
-        // whole cells in every charset.
-        parisGrid: [gx, gy],
         parisIntensity: clamp(intensity, 0, 1),
       }}
       charset={charset}
@@ -898,8 +848,11 @@ export const Paris = ({
       ramp={ramp ?? (mode === "duotone" ? "sodium" : undefined)}
       paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
       cell={cell}
-      square={square}
+      dither={dither ?? (isRamp ? "bayer4" : "none")}
+      square={square ?? isRamp}
+      fps={fps}
       stillTime={stillTime}
+      interaction="none"
       fallback={fallback}
       {...props}
     />

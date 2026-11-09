@@ -8,7 +8,7 @@ export default function ParisHero() {
         Ship it before the lights come on
       </h3>
       <p className="max-w-md text-sm text-pretty text-white/75 sm:text-base">
-        A launch week in Paris, with the tower lit gold behind the headline.
+        A launch week in Paris, with the tower lit gold beside the headline.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <a
