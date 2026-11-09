@@ -310,7 +310,9 @@ const layoutMessage = (
 ): Layout | null => {
   const halfColumns = columns * 2;
   const halfRows = rows * 2;
-  const fitWidth = Math.floor(halfColumns * 0.9);
+  // Keep at least three cells clear on each side, so the last letter and
+  // its shadow never sit on the edge of a narrow box.
+  const fitWidth = Math.floor(Math.min(halfColumns * 0.9, halfColumns - 12));
   const fitHeight = Math.floor(halfRows * 0.6);
   // Half columns per pixel for a square pixel at `down` half rows.
   const square = cellHeight / cellWidth;

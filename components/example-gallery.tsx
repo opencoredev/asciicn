@@ -71,7 +71,10 @@ interface Example {
   /** Grid span and stage height at each width. */
   span: string;
   stage: string;
-  /** Leave off phones, where a long single column would bury the rest of the page. */
+  /**
+   * Leave off phones, where a long single column would bury the rest of
+   * the page: six tiles show there, then a link to the catalog.
+   */
   wide?: boolean;
 }
 
@@ -96,6 +99,7 @@ const EXAMPLES: readonly Example[] = [
     span: "lg:col-span-2",
     stage: "h-80",
     url: "/docs/scenes/ascii-globe",
+    wide: true,
   },
   {
     Demo: TerminalWindowDemo,
@@ -117,6 +121,7 @@ const EXAMPLES: readonly Example[] = [
     span: "lg:col-span-2",
     stage: "h-[380px]",
     url: "/docs/scenes/dna-helix",
+    wide: true,
   },
   {
     Demo: SynthwaveSunDemo,
@@ -132,6 +137,7 @@ const EXAMPLES: readonly Example[] = [
     span: "sm:col-span-2 lg:col-span-2",
     stage: "h-[380px]",
     url: "/docs/images/ascii-canvas",
+    wide: true,
   },
   {
     Demo: AsciiPortraitDemo,

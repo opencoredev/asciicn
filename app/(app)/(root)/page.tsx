@@ -14,6 +14,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { ROUTES } from "@/constants/routes";
 import { SITE } from "@/constants/site";
 import { countPieces, getCatalog } from "@/lib/catalog";
+import { cn } from "@/lib/utils";
 import { BreadcrumbJsonLd } from "@/seo/json-ld";
 
 const H2_CLS =
@@ -116,6 +117,15 @@ export default function IndexPage() {
               </div>
             </div>
             <ExampleGallery catalog={catalog} />
+            {/* Phones see six tiles, so they get the way to the rest here. */}
+            <Link
+              href={ROUTES.DOCS_EXAMPLES}
+              transitionTypes={["nav-forward"]}
+              className={cn(LINK_CLS, "sm:hidden")}
+            >
+              See all {pieceCount} components
+              <LinkArrow />
+            </Link>
           </div>
         </section>
 
