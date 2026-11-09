@@ -14,7 +14,7 @@ The charset decides what the picture is made of; the colour mode decides how it 
 | `cp437`     | 1x1              | `·•○◘♠♣♥♦▲▼☺☻░▒▓█`                     | DOS, BBS and retro-PC moods                                                  | Corporate UI                                 |
 | `petscii`   | 1x1              | `╱╲─│╭╮●◆▄▌█`                          | Commodore 64 moods, playful retro                                            | Photos                                       |
 | `katakana`  | 1x1              | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits                | Signage, glyph streams                                                       | Anything that should read as calm            |
-| `dots`      | 1x1              | ` ·•●`                                 | Halftone print, newsprint, soft glows                                        | Text-like art                                |
+| `dots`      | 1x1              | ` ·∙•⦁●`                               | Halftone print, newsprint, soft glows                                        | Text-like art                                |
 | `edge`      | 1x1              | `- / \| \` on edges, `standard` inside | Line drawings, outlines of a photo or a 3D shape, blueprints                 | Flat fields with no edges                    |
 
 Custom ramps: `chars=" .oO@"` (empty to dense, at least two glyphs) wins over `charset`. Use a custom ramp for a brand ("` -=≡`" for a minimal look, `" 01"` for binary). Order glyphs by how much ink they show in the font, or the tones will jump.

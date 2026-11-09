@@ -163,7 +163,8 @@ export const CHARSETS = {
     label: "Dense 70",
   },
   dots: {
-    glyphs: split(" ·•●"),
+    // Five dot sizes, so mid-tones step evenly from a speck to a full dot.
+    glyphs: split(" ·∙•⦁●"),
     grid: [1, 1],
     id: "dots",
     kind: "ramp",

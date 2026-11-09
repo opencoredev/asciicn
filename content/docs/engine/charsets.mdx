@@ -29,7 +29,7 @@ A charset is the set of glyphs a renderer draws tones with. Every component that
 | `cp437`     | IBM PC symbols, `·` to `█`             | 1                | DOS-era texture                                   |
 | `petscii`   | Commodore lines and blocks             | 1                | Retro computer screens                            |
 | `katakana`  | Half-width katakana and digits         | 1                | Signage, glyph streams                            |
-| `dots`      | `" ·•●"`                               | 1                | Halftone print                                    |
+| `dots`      | `" ·∙•⦁●"`                             | 1                | Halftone print                                    |
 | `edge`      | `- / \ \|` on edges, `standard` inside | 1                | Line drawings and outlines                        |
 
 Ramps are ordered by how much ink each glyph puts on the cell in a typical monospace font, so they read correctly even where coverage can't be measured, such as in an `AsciiPre` rendered on the server. `CHARSET_NAMES` lists the ids in picker order and `CHARSETS[id]` holds each set's label, kind, glyphs and sample grid.

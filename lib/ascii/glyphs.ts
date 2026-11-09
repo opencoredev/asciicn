@@ -174,8 +174,9 @@ define(String.fromCodePoint(BRAILLE_BASE), []);
 
 // Halftone dots, smallest to largest.
 define("·", [dot(0.5, 0.5, 0.11)]);
-define("∙", [dot(0.5, 0.5, 0.15)]);
+define("∙", [dot(0.5, 0.5, 0.16)]);
 define("•", [dot(0.5, 0.5, 0.24)]);
+define("⦁", [dot(0.5, 0.5, 0.33)]);
 define("●", [dot(0.5, 0.5, 0.42)]);
 
 // Diagonals run corner to corner, so they join into continuous lines.
