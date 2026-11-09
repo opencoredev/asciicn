@@ -1,12 +1,12 @@
 ---
 title: "Hong Kong"
-description: "Victoria Harbour at night from Kowloon: a wall of lit towers below the ridge of Victoria Peak, with Central Plaza, the Bank of China Tower and Two IFC, calm reflections and the Star Ferry."
+description: "Victoria Harbour at blue hour in coloured dots: lit towers climbing to the misty ridge of Victoria Peak, the Bank of China Tower and Two IFC, long reflections and a red-sailed junk under a magenta to deep blue sky."
 ---
 
 import HongKongDemo from "@/examples/hong-kong-demo";
 import { controls as demoControls } from "@/examples/hong-kong-controls";
-import HongKongDuotone from "@/examples/hong-kong-duotone";
 import HongKongHero from "@/examples/hong-kong-hero";
+import HongKongTall from "@/examples/hong-kong-tall";
 
 <ComponentPreview
   src="examples/hong-kong-demo.tsx"
@@ -36,30 +36,36 @@ export function Hero() {
 }
 ```
 
-The view looks across Victoria Harbour from Kowloon. At the back, the long ridge of Victoria Peak runs across the sky as a single dim line over a dark slope, with a few strings of street lights. Below it a dense wall of towers with lit window grids climbs toward the summit. Three towers stand above the wall: Central Plaza on the left, with lit floor bands, a glowing pyramid top and a mast; the Bank of China Tower in the middle, its X braces drawn as white lines on dark glass, its slanted roofs stepping up to twin masts; and Two IFC, the tallest, striped with vertical light and topped with a crown of fins.
+The view looks across Victoria Harbour from Kowloon at blue hour. Victoria Peak fills the middle of the sky as a dark, wooded ridge with a lower spur in front of it. Its slopes facing the afterglow catch a little magenta and the rest falls into shadow, and soft banks of mist lie across its upper slopes. The sky behind it runs from hot magenta along the crest through mauve and violet to a deep, quiet blue overhead, where a few stars show.
 
-Nothing built moves. Only the lights change: a window switches on or off now and then, the red light on the Bank of China mast pulses about once every two seconds, Central Plaza and a few rooftops drift slowly through colours, the reflections shift by a cell or two every few seconds, and the Star Ferry crosses the harbour once every two and a half minutes. The pointer does nothing.
+Below the Peak, the towers of the Mid-Levels climb its slope in violet haze, and in front of them runs the waterfront: a wall of dark towers lit in warm, white, cool and teal windows, floor by floor, with a few crowns in slowly changing LED colours. Two landmarks stand either side of the frame. The Bank of China Tower is on the left, with dark glass, white edges, softer X braces and slanted roofs that step up to twin masts. Two IFC is on the right, striped with vertical light, with a crown of fins in front of the afterglow.
 
-Every building covers whole sample columns and rows, and windows fill whole glyph cells, so edges stay hard and window grids stay square in any charset. It draws in `quadrants` by default, which gives the sharpest outlines and draws the X braces as clean lines. In `quadrants` and `braille` the facades are solid and unlit windows are gaps; in ramp charsets such as `blocks`, `standard` and `dense` the facades and the Peak are faint glyphs and lit windows the densest ones. In `truecolor`, the default, glyphs take the scene's own colours on a deep blue night. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+The harbour mirrors the city in long coloured streaks, broken by slow ripples, and a column of rose glints runs under the afterglow. A junk with three battened red sails crosses it.
 
-`intensity` dims the scene. Lower it to keep a headline on top easy to read. In `quadrants` and `braille` it dims colours only, because those charsets draw a dot or nothing and a lower tone would erase whole facades. `lights` fades the colour-changing tops to plain white without touching the windows.
+Motion is slow and sparse: the junk takes about two minutes to cross a wide screen, the reflections shimmer, a few windows switch on or off over tens of seconds, the mist drifts, the red light on the Bank of China mast pulses and the stars twinkle. Nothing responds to the pointer.
+
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen. Dot size carries tone: small, dim dots in the deep sky, the shadowed hills and the open water, and large ones only for the landmarks' lit edges, the windows, the afterglow and its reflection. Dots, `braille` and `quadrants` use `blue-noise` dithering, which blends neighbouring sizes without stripes. In `truecolor`, the default, every dot takes the scene's own colour on a night paper, so it looks the same on light and dark pages.
+
+The middle of the frame stays calm for a headline. The landmarks stand outside the middle half of the width, the waterfront towers are lowest in the centre and their windows dim there, and the junk sails below the text. In narrow boxes the two towers move to the edges and the Peak stays centred, so a phone crop keeps all three.
+
+`intensity` dims the colours and shrinks the dots, most of all in the middle band where a headline sits. Lower it to keep text on top easy to read.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.55}` pushes the harbour back so the headline reads first.
+Full-bleed behind a centred headline and two buttons. `intensity={0.65}` quiets the middle band so the text reads first, while the two towers frame it.
 
 <ComponentPreview src="examples/hong-kong-hero.tsx" size="lg" align="stretch">
   <HongKongHero />
 </ComponentPreview>
 
-### Duotone print
+### In a tall card
 
-`colorMode="duotone"` with the `vapor` ramp runs every tone from violet to pink, and the `dense` charset fills the towers with typed glyphs.
+In a 9:19 box the Bank of China Tower and Two IFC move to the edges and the Peak stays centred, so all three stay in view.
 
-<ComponentPreview src="examples/hong-kong-duotone.tsx">
-  <HongKongDuotone />
+<ComponentPreview src="examples/hong-kong-tall.tsx">
+  <HongKongTall />
 </ComponentPreview>
 
 ## Props
@@ -71,25 +77,39 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
       type: "number",
       default: "1",
       description:
-        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+        "How strongly it draws, from 0 (faint) to 1. Lower values quiet the middle band most, so text on top stays readable.",
     },
     {
       name: "lights",
       type: "number",
       default: "1",
       description:
-        "How strongly Central Plaza and a few rooftops show their slowly changing colours, from 0 (plain white) to 1.",
+        "How strongly the few LED crowns on the waterfront show their slowly changing colours, from 0 (plain white) to 1.",
+    },
+    {
+      name: "junk",
+      type: "boolean",
+      default: "true",
+      description:
+        "Draws the junk with red sails crossing the harbour, about every two minutes on a wide screen.",
     },
     {
       name: "ferry",
       type: "boolean",
       default: "true",
-      description: "Draws the Star Ferry crossing the harbour.",
+      description: "Deprecated. Use junk. false still turns the boat off.",
+    },
+    {
+      name: "mist",
+      type: "number",
+      default: "1",
+      description:
+        "How much mist drifts on Victoria Peak and between its ridges, from 0 (none) to 1.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the scene. See Charsets.",
     },
     {
@@ -142,8 +162,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
       name: "threshold",
       type: "number",
       default: "0.5",
-      description:
-        "Braille and quadrants: the tone that lights a dot. The scene lifts its facades just over 0.5, so raising it leaves only the lights and lines.",
+      description: "Braille and quadrants: the tone that lights a dot.",
     },
     {
       name: "edgeThreshold",
@@ -155,9 +174,9 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"bayer4" in braille and quadrants, "none" otherwise',
+      default: '"blue-noise" in dots, braille and quadrants, "none" otherwise',
       description:
-        "Ordered dithering between neighbouring glyph levels. Braille and quadrants use it to keep dim layers visible.",
+        "Dithering between neighbouring glyph levels. Blue noise blends dot sizes across the sky's gradient without stripes.",
     },
     {
       name: "background",
@@ -174,10 +193,25 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
         "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
     },
     {
+      name: "interactive",
+      type: "boolean",
+      default: "–",
+      description:
+        "Accepted so any stage can pass it, and ignored: the city does not respond to the pointer.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true for dots and other one-glyph charsets",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even lattice. Braille and quadrants default to false, since they would stretch.",
+    },
+    {
       name: "cell",
       type: "number",
-      default: "9",
-      description: "Height of one glyph cell in CSS pixels.",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels, and its width too when square.",
     },
     {
       name: "speed",
@@ -201,9 +235,9 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "stillTime",
       type: "number",
-      default: "2",
+      default: "3",
       description:
-        "The moment drawn when motion is off or reduced, in seconds.",
+        "The moment drawn when motion is off or reduced, in seconds. The default shows the junk just right of centre.",
     },
     {
       name: "handle",
@@ -224,7 +258,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
       type: "ReactNode",
       default: "–",
       description:
-        "Shown without WebGL and until the first frame. By default a deep blue night gradient.",
+        "Shown without WebGL and until the first frame. By default a blue-hour gradient.",
     },
     {
       name: "className",
@@ -238,7 +272,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops. At the default of 2 seconds the mast light is lit.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a deep blue night gradient.
-- It has no pointer response. An `interactive` prop passed by a gallery is accepted and ignored.
-- The scene is one GPU pass with no loops: the rows of towers are looked up by slot. The harbour draws the skyline a second time for its reflection, so its cost follows the number of samples. `braille` samples eight times per cell and `quadrants` four; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a blue-hour gradient.
+- Nothing responds to the pointer, and there is no `interaction` prop.
+- The whole scene is one GPU pass. The harbour draws the city a second time for its reflection, so its cost follows the number of samples. `braille` samples eight times per cell; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).

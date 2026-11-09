@@ -12,7 +12,8 @@ export default function HongKongDemo() {
       colorMode={usePreviewValue(knobs.colorMode)}
       phosphor={phosphor === "none" ? undefined : phosphor}
       lights={usePreviewValue(knobs.lights)}
-      ferry={usePreviewValue(knobs.ferry)}
+      junk={usePreviewValue(knobs.junk)}
+      mist={usePreviewValue(knobs.mist)}
       intensity={usePreviewValue(knobs.intensity)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}

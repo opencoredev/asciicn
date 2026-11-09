@@ -122,7 +122,7 @@
     "name": "hong-kong",
     "type": "registry:component",
     "title": "Hong Kong",
-    "description": "Victoria Harbour at night from Kowloon: a wall of lit towers below the ridge of Victoria Peak, with Central Plaza, the Bank of China Tower and Two IFC, calm reflections and the Star Ferry.",
+    "description": "Victoria Harbour at blue hour in coloured dots: lit towers climbing to the misty ridge of Victoria Peak, the Bank of China Tower and Two IFC, long reflections and a red-sailed junk under a magenta to deep blue sky.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
