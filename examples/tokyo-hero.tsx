@@ -1,7 +1,8 @@
 import { Tokyo } from "@/components/asciicn/tokyo";
 
 // Full-bleed behind a centred headline. At 0.6 intensity the middle band,
-// where the text sits, drops back most, and the tower and Fuji still read.
+// where the text sits, drops back most, and the Skytree and the city still
+// read.
 export default function TokyoHero() {
   return (
     <section className="relative isolate flex size-full min-h-[480px] flex-col items-center justify-center gap-5 overflow-hidden bg-[#050b0e] px-6 py-16 text-center text-white">

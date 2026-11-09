@@ -30,10 +30,10 @@ export const fuji = toggle({
   label: "Mount Fuji",
 });
 
-export const train = toggle({
+export const tokyoTower = toggle({
   default: true,
-  id: "train",
-  label: "Train",
+  id: "tokyoTower",
+  label: "Tokyo Tower",
 });
 
 export const intensity = slider({
@@ -67,7 +67,7 @@ export const controls = [
   colorMode,
   phosphor,
   fuji,
-  train,
+  tokyoTower,
   intensity,
   cell,
   animate,

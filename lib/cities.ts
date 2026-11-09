@@ -35,7 +35,7 @@ export const CITIES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "Tokyo at night in coloured dots: Tokyo Tower glowing orange and white with both decks lit, a deep city in faint cyan haze and a moonlit, snow-capped Mount Fuji under a teal sky.",
+      "Tokyo at night in coloured dots, built in 3D: the Tokyo Skytree in pale blue light over a dense city that runs to the horizon, with neon on the near streets, Tokyo Tower small in the distance and a moonlit Mount Fuji under a teal sky.",
     id: "tokyo",
     load: async () => {
       const { Tokyo } = await import("@/components/asciicn/tokyo");

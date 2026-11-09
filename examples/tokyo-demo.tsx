@@ -12,7 +12,7 @@ export default function TokyoDemo() {
       colorMode={usePreviewValue(knobs.colorMode)}
       phosphor={phosphor === "none" ? undefined : phosphor}
       fuji={usePreviewValue(knobs.fuji)}
-      train={usePreviewValue(knobs.train)}
+      tokyoTower={usePreviewValue(knobs.tokyoTower)}
       intensity={usePreviewValue(knobs.intensity)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
