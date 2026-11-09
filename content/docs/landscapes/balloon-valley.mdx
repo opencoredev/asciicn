@@ -1,6 +1,6 @@
 ---
 title: "Balloon valley"
-description: "Sunrise over a river valley in halftone dots: layered hills fading into haze, mist on the valley floor, a river catching the low sun and hot-air balloons hanging at different depths."
+description: "Early morning over a river valley in halftone dots on cream: cool blue hills fading into haze, pale gold mist, a river catching the low sun and hot-air balloons at different depths."
 ---
 
 import BalloonValleyDemo from "@/examples/balloon-valley-demo";
@@ -36,13 +36,13 @@ export function Hero() {
 }
 ```
 
-The sun is coming up behind the farthest ridge, its disc half over the line, with a wide warm glow round it. Four ridges step down towards you and open in a V under the sun. Each is darker than the one behind it, with a lit rim along its crest and haze below it, and mist pools in the low ground of every V. At the bottom, two dark hills frame the valley floor, where the river winds towards you catching the dawn and the sun's glitter.
+It is early morning. The sky is a soft blue overhead, paling to cream in the middle and pale peach at the horizon, and a gold sun sits half over the farthest ridge in a warm glow. Four ridges in cool blue shadow step down towards you and open in a V under the sun. Each is paler than the one in front, sinking into the haze, and the faces turned to the sun warm up. Pale gold mist pools in the low ground of every V. At the bottom, two blue hills frame a sage valley floor, where the river winds towards you as a pale ribbon with gold glints on it.
 
 Five hot-air balloons hang in the sky at different depths. The nearest is large and striped red and gold, lit from the sun's side and glowing through its shaded side. The far ones are smaller and fade into the haze. Two of them rise and sink over a few minutes, and the low one drops behind the ridges and comes back up.
 
-Every cell is a dot, and the dot grows steeply with the brightness of its colour. The night sky and the shadowed hills are the smallest dots in colours just above the paper, some cells empty, so they read as quiet dark air. Far ridges sink into the colour of the sky behind them. Only the sun, the river's glints and the lit balloons get large bright dots. `bayer4` dithering, the default, mixes neighbouring dot sizes so gradients stay smooth. `square` cells, on by default, lay the dots on an even lattice like a halftone screen, about 200 columns across a 1440px screen at the default 7px cell. In `truecolor`, the default, the scene paints its own sky on a deep indigo paper, so it looks the same in light and dark themes. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
+The scene is printed like ink on warm cream paper: the dot grows with how far a colour is from the paper. The pale sky is the faintest dots, so the middle of the box is almost bare paper. The cool blue hills and the gold mist are small and medium dots, and only the sun, the river's glints and the balloons get large ones. `bayer4` dithering, the default, mixes neighbouring dot sizes so gradients stay smooth. `square` cells, on by default, lay the dots on an even lattice like a halftone screen, about 200 columns across a 1440px screen at the default 7px cell. In `truecolor`, the default, the scene prints on its own cream paper, so it looks the same in light and dark themes. Put dark text on it. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
 
-The motion is slow: mist drifts along the valley, the last stars twinkle, the river shimmers and its glow breathes, and the balloons bob. Nothing reacts to the pointer.
+The motion is slow: mist drifts along the valley, the river's glints shimmer and breathe, and the balloons bob. Nothing reacts to the pointer.
 
 The land sits in the lower third, so a centred headline lands on quiet sky with the sun just below it. On wide boxes the sun sits a little right of centre and the balloons keep to the sides and the top. On tall boxes the balloons gather above the headline and the sun and the river sit below it.
 
@@ -50,7 +50,7 @@ The land sits in the lower third, so a centred headline lands on quiet sky with 
 
 ### Hero
 
-A centred headline and two buttons over the full scene at full intensity. The headline lands on quiet sky; a soft radial shade and a text shadow keep it readable.
+A centred headline and two buttons over the full scene at full intensity. The headline is a dark slate blue taken from the hills and lands on almost bare cream; a soft wash of the paper behind it keeps it clean.
 
 <ComponentPreview
   src="examples/balloon-valley-hero.tsx"
@@ -62,7 +62,7 @@ A centred headline and two buttons over the full scene at full intensity. The he
 
 ### Duotone print
 
-`colorMode="duotone"` with a four-stop `ramp` draws the valley in plum and peach, like a two-ink print. `cell={6}` adds detail in a smaller card.
+`colorMode="duotone"` with a four-stop `ramp` draws the valley in rust and slate on the cream, like a two-ink print. `cell={6}` adds detail in a smaller card.
 
 <ComponentPreview src="examples/balloon-valley-duotone.tsx">
   <BalloonValleyDuotone />
@@ -77,14 +77,14 @@ A centred headline and two buttons over the full scene at full intensity. The he
       type: "number",
       default: "1",
       description:
-        "How strongly the valley draws, from 0 to 1. Lower it to keep text on top readable.",
+        "How strongly the valley draws, from 0 to 1. Lower values fade it back into its paper.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep indigo; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone print on a warm cream; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -122,8 +122,9 @@ A centred headline and two buttons over the full scene at full intensity. The he
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: '"infrared"',
-      description: "In duotone mode, the colour ramp from dark to light.",
+      default: "cream to slate",
+      description:
+        "In duotone mode, the colour ramp from the faintest dots to the strongest. The default runs from the paper's cream to slate-blue ink.",
     },
     {
       name: "ansi",

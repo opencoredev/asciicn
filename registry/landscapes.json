@@ -20,7 +20,7 @@
     "name": "balloon-valley",
     "type": "registry:component",
     "title": "Balloon valley",
-    "description": "Sunrise over a river valley in halftone dots: layered hills fading into haze, mist on the valley floor, a river catching the low sun and hot-air balloons hanging at different depths.",
+    "description": "Early morning over a river valley in halftone dots on cream: cool blue hills fading into haze, pale gold mist, a river catching the low sun and hot-air balloons at different depths.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
