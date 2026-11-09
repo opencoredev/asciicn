@@ -60,12 +60,11 @@ export const BACKGROUNDS: readonly BackgroundEntry[] = tagged.toSorted(
 // scrim, so balloon valley's cream morning paper stays out of it.
 const HERO_IDS = [
   "san-francisco",
-  "canyon-river",
+  "glacier-lagoon",
   "tokyo",
   "lighthouse",
-  "paris",
-  "glacier-lagoon",
   "new-york",
+  "paris",
 ] as const;
 
 export const HERO_BACKGROUNDS: readonly BackgroundEntry[] = HERO_IDS.flatMap(
