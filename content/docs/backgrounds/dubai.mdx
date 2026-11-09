@@ -1,12 +1,12 @@
 ---
 title: "Dubai"
-description: "Dubai at night from the water: the Burj Khalifa stepping up to its spire and beacon, the Emirates Towers, the Marina and the sail of the Burj Al Arab, with lit windows and calm reflections."
+description: "Dubai at dusk from the desert in dots: the Burj Khalifa rising far above a cluster of towers in blue haze, its stepped spire gold in the last light, over rose and amber dunes under a gold-to-blue sky."
 ---
 
 import DubaiDemo from "@/examples/dubai-demo";
 import { controls as demoControls } from "@/examples/dubai-controls";
+import DubaiDuotone from "@/examples/dubai-duotone";
 import DubaiHero from "@/examples/dubai-hero";
-import DubaiSodium from "@/examples/dubai-sodium";
 
 <ComponentPreview
   src="examples/dubai-demo.tsx"
@@ -29,37 +29,45 @@ import { Dubai } from "@/components/asciicn/dubai";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <Dubai intensity={0.6} className="absolute inset-0 -z-10" />
+      <Dubai intensity={0.85} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The city is seen from the water at night. The Burj Khalifa stands in the middle, more than twice the height of anything around it. Its three wings step back in turn as it climbs, so the setbacks alternate sides, each with a lit ledge, up to a long spire. The faces carry vertical strips of light. To the left stand the two Emirates Towers with their sloped crowns, to the right the towers of the Marina, and on the shore the sail of the Burj Al Arab on its island. The water below repeats the lights as broken, dimmer copies.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the smallest dots in the deep blue at the top of the sky and in the shadows between the dunes, middle dots through the rose and violet, and the largest dots on the lit spire, the afterglow and the sunlit dune crests.
 
-Nothing built moves. Only the lights change: the red beacon on the tip pulses about once every two seconds, a window switches on or off now and then, the stars twinkle faintly, the reflections shift by a cell or two every few seconds, the floodlights on the Burj Al Arab drift slowly through soft colours, and a small boat crosses the water once every two minutes. The pointer does nothing.
+The sun has just set to the left, behind the desert. The sky runs from a hazy gold horizon through rose to deep blue, with thin clouds lit from below and the first stars overhead.
 
-Every building covers whole sample columns and rows, and windows fill whole glyph cells, so edges stay hard and window grids stay square in any charset. It draws in `quadrants` by default, which gives the sharpest silhouette. In `quadrants` and `braille` the facades are solid and unlit windows are gaps; in ramp charsets such as `blocks`, `standard` and `dense` the facades are faint glyphs and lit windows the densest ones. In `truecolor`, the default, glyphs take the scene's silver, warm window light and red beacon on a night paper. In `mono` every glyph takes the theme ink or a `phosphor`, and in `duotone` the tone runs through a `ramp`.
+The Burj Khalifa rises far above everything else. Its wings step back in turn as it climbs, so the setbacks alternate sides, and it narrows to a long spire. The lower floors already stand in the blue of dusk with a few lit windows; above them the faces turned to the sunset are still gold and amber, and the far face takes rose from the sky. A red beacon pulses slowly on the tip. A cluster of towers stands round its foot in blue haze, with lit windows and warm edges on the side facing the light, and further towers fade into the haze along the horizon, where the city's glow lies.
 
-`intensity` dims the scene. Lower it to keep a headline on top easy to read. In `quadrants` and `braille` it dims colours only, because those charsets draw a dot or nothing and a lower tone would erase whole facades.
+In front, three rows of dunes run to the bottom of the frame. The faces turned to the sunset are rose and amber; behind each crest a violet shadow widens down the slip face. The far dunes are hazier and paler, and fine ripples cross the near one.
+
+Motion is slow: the beacon pulses, a window turns on or off now and then, dust drifts over the dunes, thin clouds move and stars twinkle faintly. The pointer does nothing.
+
+The Burj stands right of centre at every aspect, and the towers in the middle of the box stay low, so a centred headline sits over open sky. On a tall phone screen it stands near the right edge, beside the text rather than behind it.
+
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen, with `bayer4` dithering between dot sizes for smooth gradients. `square={false}` returns to the usual text cells, twice as tall as wide; `braille` and `quadrants` use them by default. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. In `truecolor`, the default, the scene paints its own dusk-blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+
+`intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`intensity={0.6}` pushes the city back so the headline reads first.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The Burj stays right of the text.
 
 <ComponentPreview src="examples/dubai-hero.tsx" size="lg" align="stretch">
   <DubaiHero />
 </ComponentPreview>
 
-### Sodium print
+### Duotone
 
-`colorMode="duotone"` with `ramp="sodium"` and the `blocks` charset turn the skyline into a two-colour print.
+`colorMode="duotone"` with a four-colour `ramp` from indigo to pale gold reads the dusk by tone alone, at `cell={6}` in a card.
 
-<ComponentPreview src="examples/dubai-sodium.tsx">
-  <DubaiSodium />
+<ComponentPreview src="examples/dubai-duotone.tsx">
+  <DubaiDuotone />
 </ComponentPreview>
 
 ## Props
@@ -71,12 +79,12 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
       type: "number",
       default: "1",
       description:
-        "How bright the scene is, from 0 (blank) to 1. Lower it so text on top stays readable.",
+        "How strongly it draws, from 0 (faint) to 1. Lower it so text on top stays readable.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the scene. See Charsets.",
     },
     {
@@ -103,7 +111,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: "–",
+      default: '"infrared"',
       description: "In duotone mode, the colour ramp from dark to light.",
     },
     {
@@ -141,8 +149,9 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
-      description: "Ordered dithering between neighbouring glyph levels.",
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between neighbouring dot sizes. The default turns four dots into smooth tone.",
     },
     {
       name: "background",
@@ -161,8 +170,15 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Square cells, so the dots lie on an even lattice. false uses the font's narrower cells, the default for braille and quadrants.",
     },
     {
       name: "speed",
@@ -186,7 +202,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
     {
       name: "stillTime",
       type: "number",
-      default: "2",
+      default: "0",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
@@ -202,14 +218,14 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
       type: "AsciiColor",
       default: "–",
       description:
-        "Paper behind the glyphs. By default the scene's night colour in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
+        "Paper behind the glyphs. By default the scene's dusk blue in truecolor, ansi16 and duotone, and the theme's paper (or the phosphor's) otherwise.",
     },
     {
       name: "fallback",
       type: "ReactNode",
       default: "–",
       description:
-        "Shown without WebGL and until the first frame. By default a night gradient.",
+        "Shown without WebGL and until the first frame. By default the dusk as a flat gradient.",
     },
     {
       name: "className",
@@ -223,7 +239,7 @@ Every building covers whole sample columns and rows, and windows fill whole glyp
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- With reduced motion turned on, it draws one still frame at `stillTime` and stops. At the default of 2 seconds the beacon is lit.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a night gradient.
-- It has no pointer response. An `interactive` prop passed by a gallery is accepted and ignored.
-- The scene is one GPU pass with one short loop over the seven Marina towers; the other rows of buildings are looked up by slot. The water draws the land a second time for its reflection, so its cost follows the number of samples. `braille` samples eight times per cell and `quadrants` four; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).
+- It ignores the pointer: no parallax and no hover effect. An `interactive` prop passed by a gallery is accepted and ignored.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dusk gradient.
+- The whole scene is one shader pass on the GPU, with one short loop over the twelve towers round the Burj. `braille` samples eight times per cell and `quadrants` four; a larger `cell` makes it cheaper. See [Performance](/docs/engine/performance).

@@ -1,10 +1,10 @@
-import { CHARSET_NAMES, COLOR_MODES, PHOSPHOR_NAMES } from "@/lib/ascii";
-import { segmented, select, slider, toggle } from "@/lib/preview-controls";
+import { CHARSET_NAMES, COLOR_MODES } from "@/lib/ascii";
+import { select, slider, toggle } from "@/lib/preview-controls";
 
 // Knobs for the Dubai main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "quadrants",
+  default: "dots",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -17,30 +17,29 @@ export const colorMode = select({
   options: COLOR_MODES,
 });
 
-export const phosphor = segmented({
-  default: "none",
-  id: "phosphor",
-  label: "Phosphor (mono)",
-  options: ["none", ...PHOSPHOR_NAMES],
-});
-
 export const intensity = slider({
   default: 1,
   id: "intensity",
   label: "Intensity",
   max: 1,
-  min: 0.2,
+  min: 0,
   step: 0.05,
 });
 
 export const cell = slider({
-  default: 9,
+  default: 7,
   id: "cell",
   label: "Cell",
   max: 16,
   min: 6,
   step: 1,
   unit: "px",
+});
+
+export const square = toggle({
+  default: true,
+  id: "square",
+  label: "Square cells",
 });
 
 export const animate = toggle({
@@ -50,11 +49,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [
-  charset,
-  colorMode,
-  phosphor,
-  intensity,
-  cell,
-  animate,
-];
+export const controls = [charset, colorMode, intensity, cell, square, animate];
