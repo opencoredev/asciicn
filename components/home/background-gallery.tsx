@@ -140,7 +140,7 @@ export const BackgroundGallery = () => {
       <figure
         ref={stageRef}
         className="flex scroll-mt-24 flex-col gap-5"
-        aria-label={`${source.title}, playing`}
+        aria-label={source.title}
       >
         <Stage
           source={source}
@@ -216,7 +216,7 @@ export const BackgroundGallery = () => {
                         selected && "text-primary"
                       )}
                     >
-                      {selected ? "Playing" : GROUP_LABEL[city.group]}
+                      {selected ? "Selected" : GROUP_LABEL[city.group]}
                     </span>
                   </span>
                 </button>
