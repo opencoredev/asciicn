@@ -59,7 +59,7 @@ export const LANDSCAPES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "Flooded rice terraces at dawn: each curved pool mirrors the pink and gold sky, mist fills the valley below and distant ridges fade into blue haze.",
+      "Flooded rice terraces at a fresh dawn: silver-blue fields between dark earthen banks with lit grassy tops, mist in the valley and far ridges fading into haze.",
     id: "rice-terraces",
     load: async () => {
       const { RiceTerraces } =
