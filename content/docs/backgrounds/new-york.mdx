@@ -1,11 +1,11 @@
 ---
 title: "New York"
-description: "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water."
+description: "Manhattan at dusk across the East River: the Empire State Building's lit spire, the Chrysler crown and One World Trade Center against an amber-to-blue sky, with soft window light, broken reflections and a slow ferry."
 ---
 
 import NewYorkDemo from "@/examples/new-york-demo";
 import { controls as demoControls } from "@/examples/new-york-controls";
-import NewYorkHeadline from "@/examples/new-york-headline";
+import NewYorkHero from "@/examples/new-york-hero";
 import NewYorkPhosphor from "@/examples/new-york-phosphor";
 
 <ComponentPreview
@@ -29,36 +29,34 @@ import { NewYork } from "@/components/asciicn/new-york";
 export function Hero() {
   return (
     <section className="relative isolate min-h-[480px]">
-      <NewYork intensity={0.7} className="absolute inset-0 -z-10" />
+      <NewYork intensity={0.6} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The view looks at Manhattan from Brooklyn. One World Trade Center stands at the left, a tapering glass tower with a V of lit glass down its middle, a bright parapet and a spire. Right of centre, the Empire State Building rises in setbacks to its floodlit gold crown, mast and antenna. Beside it, the Chrysler Building's crown steps up in lit arches around triangular windows under its needle. Lower Manhattan and Midtown fill in with towers of window grids, with the low Village between them.
+The view looks west at Manhattan from Brooklyn just after sunset. The sun has gone down behind Midtown, so the sky runs from amber on the horizon through coral and violet to deep blue, with a warm glow between the towers. The Empire State Building stands right of centre with its top floors floodlit gold and a lit crown, mast and antenna. The Chrysler Building's arched crown is outlined in white beside it, and One World Trade Center stands to the west, its glass catching the afterglow on one side. Two rows of towers behind them fade into the dusk haze.
 
-The buildings never move. A few windows switch on or off at a time, each on its own slow clock. The red lights on the two spires pulse about once every two seconds, stars brighten and fade, the river's reflections break and shift a sample at a time, and a ferry crosses in about two minutes. Nothing follows the pointer.
+Windows light the skyline in warm lamp light, amber and a few cool office tubes, varied per tower and per floor. The river mirrors the city in long, broken streaks, with a glitter path under the afterglow.
 
-It draws in `quadrants` at a 9px cell by default, so every edge and window lands on a 2x2 sub-cell. `braille` gives finer outlines, `blocks` and `dense` solid shapes, and `standard` a classic ASCII look. In `truecolor`, the default, warm and cool window light sits on a night navy. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+The buildings never move. A few windows fade on or off at a time, each on its own clock of one to two minutes. The reflections shimmer, the spire lights breathe, a few stars twinkle, thin clouds drift and a ferry crosses in about three minutes. Nothing follows the pointer.
+
+It draws in `dots` on square 7px cells by default, about 200 columns across a wide screen, so the dots lay an even halftone lattice and dot size carries tone: the deep sky and the dark facades are small dots, and lit windows and the afterglow are large ones. In `truecolor`, the default, every dot takes its own colour on the scene's dusk navy, so it looks the same on light and dark pages. `braille` and `quadrants` want `square={false}`, and draw only the brighter parts, as outlines and lights. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 ## Examples
 
-### Behind a headline
+### Hero
 
-`intensity={0.55}` dims the city so white text over the river reads first, and `windows={0.7}` lights more of the skyline to make up for it.
+`intensity={0.6}` dims the city so a centred headline and buttons read first, and the skyline still shows around them.
 
-<ComponentPreview
-  src="examples/new-york-headline.tsx"
-  size="lg"
-  align="stretch"
->
-  <NewYorkHeadline />
+<ComponentPreview src="examples/new-york-hero.tsx" size="lg" align="stretch">
+  <NewYorkHero />
 </ComponentPreview>
 
 ### On a green monitor
 
-`colorMode="mono"` with `phosphor="p1"` draws every glyph in one green. The `braille` charset, a 9px cell and `fx` scanlines, bloom and vignette finish the look.
+`colorMode="mono"` with `phosphor="p1"` draws every dot in one green, and `fx` scanlines, bloom and vignette finish the look.
 
 <ComponentPreview src="examples/new-york-phosphor.tsx">
   <NewYorkPhosphor />
@@ -87,14 +85,21 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
       type: "boolean",
       default: "true",
       description:
-        "The ferry crossing the river, once every two minutes or so.",
+        "The ferry crossing the river, once every three minutes or so.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even halftone lattice. false uses the font's narrow cells.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep navy; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on the scene's dusk navy; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -105,7 +110,7 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -190,7 +195,7 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
     {
       name: "cell",
       type: "number",
-      default: "9",
+      default: "7",
       description: "Height of one glyph cell in CSS pixels.",
     },
     {
@@ -238,7 +243,7 @@ It draws in `quadrants` at a 9px cell by default, so every edge and window lands
 ## Notes
 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
-- The buildings never move and nothing reacts to the pointer. Only lights, stars, the reflections and the ferry change.
+- The buildings never move and nothing reacts to the pointer. Only window lights, the spire lights, stars, clouds, the reflections and the ferry change.
 - With reduced motion turned on, it draws one still frame at `stillTime`, with the ferry on the river, and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a gradient in the same colours.
-- The whole city is one shader pass on the GPU. The river reflection reads the skyline a second time, and in `quadrants` and `braille` an empty sample also reads its neighbours so cell colours stay true at edges. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).
+- The whole city is one shader pass on the GPU. The river reads the skyline three times to mirror it and stretch its lights, so a water cell costs about three sky cells. `braille` samples eight times per cell, so it costs the most. See [Performance](/docs/engine/performance).

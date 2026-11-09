@@ -45,9 +45,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Tokyo",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water.",
+      "Manhattan at dusk across the East River: the Empire State Building's lit spire, the Chrysler crown and One World Trade Center against an amber-to-blue sky, with soft window light, broken reflections and a slow ferry.",
     id: "new-york",
     load: async () => {
       const { NewYork } = await import("@/components/asciicn/new-york");

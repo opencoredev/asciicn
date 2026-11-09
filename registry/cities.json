@@ -37,7 +37,7 @@
     "name": "new-york",
     "type": "registry:component",
     "title": "New York",
-    "description": "Manhattan at night from across the river: One World Trade Center, the Empire State and Chrysler buildings, a skyline of lit windows and a slow ferry on calm water.",
+    "description": "Manhattan at dusk across the East River: the Empire State Building's lit spire, the Chrysler crown and One World Trade Center against an amber-to-blue sky, with soft window light, broken reflections and a slow ferry.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"

@@ -13,6 +13,7 @@ export default function NewYorkDemo() {
       windows={usePreviewValue(knobs.windows)}
       ferry={usePreviewValue(knobs.ferry)}
       cell={usePreviewValue(knobs.cell)}
+      square={usePreviewValue(knobs.square)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
