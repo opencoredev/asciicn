@@ -59,7 +59,7 @@ export const CITIES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "Paris at a clear blue hour in dots: a cobalt sky over cool stone rooftops and the dome of Les Invalides, and the Eiffel Tower lit gold in a soft halo as the one warm light, its long reflection in the Seine.",
+      "Paris at blue hour, built in 3D and printed in dots: the Seine runs between stone quays and Haussmann blocks to the Eiffel Tower, lit gold from within, its reflection broken by slow ripples.",
     id: "paris",
     load: async () => {
       const { Paris } = await import("@/components/asciicn/paris");
