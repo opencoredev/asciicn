@@ -83,7 +83,11 @@ vec4 rtSky(vec2 s, vec2 p) {
   // the sun's tight core grows the dots; the wide bloom is colour alone.
   vec2 sd = (p - vec2(rtSunX, rtSunY)) * vec2(0.6, 1.0);
   float core = exp(-length(sd) / 0.05);
-  float tone = 0.05 + 0.15 * exp(-v / 0.22) * warm + 0.14 * exp(-v / 0.12) * rtSunward(p, 0.55) + 0.12 * halo + 0.55 * core;
+  // A bright silver band along the horizon, so the morning reads fresh.
+  // It rises clear of the ridges and breaks into soft drifts, so it never
+  // draws a ruled line.
+  float drift = fbm(vec2(x * 2.2 + rtT * 0.006, y * 12.0)) + 0.25;
+  float tone = 0.05 + 0.15 * exp(-v / 0.22) * warm + (0.1 + 0.16 * rtSunward(p, 0.4 * clamp(rtAspect / 1.6, 0.3, 1.0))) * exp(-abs(v - 0.18) / 0.1) * smoothstep(0.35, 0.85, drift) + 0.14 * exp(-v / 0.12) * rtSunward(p, 0.55) + 0.12 * halo + 0.55 * core;
   // Thin high cloud, silver, gilded only near the sun.
   float band = smoothstep(0.72, 0.8, y) * (1.0 - smoothstep(0.9, 0.97, y));
   float n = fbm(vec2(x * 1.2 + rtT * 0.004, y * 12.0));
@@ -92,7 +96,7 @@ vec4 rtSky(vec2 s, vec2 p) {
   c = mix(c, mix(RT_SILVER, RT_GOLD, lit), cloud * (0.3 + 0.5 * lit));
   tone += cloud * (0.03 + 0.16 * lit);
   // The sky thins toward the zenith: many cells there are left empty.
-  float keep = mix(1.0, 0.4, smoothstep(0.15, 0.85, v)) + core + cloud;
+  float keep = mix(1.0, 0.4, smoothstep(0.2, 0.85, v)) + core + cloud;
   if (rtHash(s + 5.3) > keep) {
     tone = 0.0;
   }
@@ -119,7 +123,7 @@ float rtFold(float v) {
 // A ridgeline over the scene's x. detail scales the fine noise, so far
 // layers keep only their broad shape.
 float rtRidge(float x, float seed, float base, float amp, float detail) {
-  float n = 0.6 * rtFold(x * 1.3 + seed) + 0.28 * rtFold(x * 3.1 + seed * 2.3);
+  float n = 0.55 * rtFold(x * 1.3 + seed) + 0.26 * rtFold(x * 3.1 + seed * 2.3) + 0.12 * rtFold(x * 7.3 + seed * 1.7);
   n += detail * (0.08 * snoise(vec2(x * 8.0, seed)) + 0.025 * snoise(vec2(x * 19.0, seed + 1.0)));
   return base + amp * n;
 }
@@ -181,7 +185,7 @@ float rtNearCrest(float x) {
 
 // The middle hill: a rounded spur on the right, its feet in the mist.
 float rtMidCrest(float x) {
-  return 0.35 + 0.17 * exp(-pow((x - 0.62) / 0.3, 2.0)) + 0.012 * snoise(vec2(x * 4.0, 9.0));
+  return 0.35 + 0.17 * exp(-pow((x - 0.62) / 0.3, 2.0)) + 0.02 * snoise(vec2(x * 4.0, 9.0)) + 0.008 * snoise(vec2(x * 13.0, 4.0));
 }
 
 // The dark ridge in the very front, higher on the left.
@@ -202,9 +206,10 @@ float rtContour(vec2 p, vec4 bows) {
   return e;
 }
 
-// Shifts each terrace edge by its own amount, so widths vary level to level.
-float rtEdge(float k) {
-  return 0.38 * (rtHash(vec2(k, 11.0)) - 0.5);
+// Shifts each terrace edge by its own amount, so widths vary level to
+// level, and wobbles it along the hill, so no bank runs dead straight.
+float rtEdge(float k, float x) {
+  return 0.38 * (rtHash(vec2(k, 11.0)) - 0.5) + 0.07 * snoise(vec2(x * 9.0, k * 3.1)) + 0.03 * snoise(vec2(x * 23.0, k * 1.7));
 }
 
 // Terraces on a hill. From the near edge up, each level is a flooded field,
@@ -214,14 +219,15 @@ float rtEdge(float k) {
 vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, float split) {
   float g = pow(clamp(rtContour(p, bows) / top, 0.0, 1.2), 1.2) * count;
   float g2 = pow(clamp(rtContour(p + vec2(0.0, rtSh), bows) / top, 0.0, 1.2), 1.2) * count;
+  float x = rtX(p.x);
   float k = floor(g);
-  if (g < k + rtEdge(k)) {
+  if (g < k + rtEdge(k, x)) {
     k -= 1.0;
-  } else if (g >= k + 1.0 + rtEdge(k + 1.0)) {
+  } else if (g >= k + 1.0 + rtEdge(k + 1.0, x)) {
     k += 1.0;
   }
-  float lo = k + rtEdge(k);
-  float hi = k + 1.0 + rtEdge(k + 1.0);
+  float lo = k + rtEdge(k, x);
+  float hi = k + 1.0 + rtEdge(k + 1.0, x);
   float f = (g - lo) / (hi - lo);
   float rows = (hi - lo) / max(g2 - g, 1e-3);
   float into = f * rows;
@@ -243,13 +249,21 @@ vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, f
     tone = h < 0.12 ? tone * 0.5 : tone;
     return vec4(c, mix(tone, 0.14, haze));
   }
-  // Bunds close the fields off at irregular lengths.
+  // Fields end at irregular lengths. Where one ends, its top edge curves
+  // down onto the bank below, so each field closes in a rounded, tapering
+  // tip and the bank shows between it and the next.
   float col = floor(s.x / rtGrid.x);
   float span = floor(mix(34.0, 18.0, clamp(e, 0.0, 1.0)) * (0.7 + 0.6 * rtHash(vec2(k, 5.0))));
   float offset = floor(rtHash(vec2(k, 2.0)) * span);
   float slot = floor((col + offset) / span);
-  bool bund = mod(col + offset, span) < 0.5 && rtHash(vec2(k, slot)) < split;
-  if (left < 1.0 + wallRows || bund) {
+  float u = mod(col + offset, span) + 0.5;
+  float toLeft = rtHash(vec2(k, slot)) < split ? u : 1e3;
+  float toRight = rtHash(vec2(k, slot + 1.0)) < split ? span - u : 1e3;
+  float fieldRows = rows - 1.0 - wallRows;
+  float tipLength = max(3.0, fieldRows * 2.4) * (0.8 + 0.5 * rtHash(vec2(k, slot + 9.0)));
+  float tip = sqrt(clamp(min(toLeft, toRight) / tipLength, 0.0, 1.0));
+  float reach = fieldRows * tip + 0.6 * snoise(vec2(col * 0.4, k * 5.0)) - 0.3;
+  if (left < 1.0 + wallRows || into > reach) {
     // The retaining wall: dark earth, a few cells left empty.
     float n = rtHash(s + vec2(k, 7.0));
     vec3 c = mix(RT_SHADOW, RT_EARTH, n);
@@ -257,7 +271,7 @@ vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, f
     return vec4(c, n < 0.25 ? 0.0 : 0.07 + 0.06 * n + haze * 0.06);
   }
   float field = rtHash(vec2(k, slot + 0.5));
-  float depthIn = into / max(rows - 1.0 - wallRows, 1.0);
+  float depthIn = into / max(fieldRows, 1.0);
   if (field < 0.2) {
     // A planted field: young rice, soft green-gold, combed in rows.
     float comb = 0.75 + 0.25 * step(0.5, fract(s.x / rtGrid.x * 0.5));
@@ -271,19 +285,19 @@ vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, f
   // blue overhead, far ones the silver at the horizon, each a little
   // brighter or duller than its neighbour. Along its far edge it mirrors
   // the dark wall standing above it.
-  vec3 sky = rtSkyRamp(0.57 + max(0.6 - bandY, 0.0) * 0.45) * (0.82 + 0.3 * field);
+  vec3 sky = rtSkyRamp(0.57 + max(0.6 - bandY, 0.0) * 0.4) * (0.92 + 0.3 * field);
   float wallMirror = smoothstep(0.55, 1.0, depthIn);
   float shimmer = fbm(vec2(p.x * 9.0 / max(rtAspect, 0.9) + rtT * 0.03, k * 3.7 + f * 1.5 - rtT * 0.02));
   float glint = sunPath * smoothstep(0.5, 0.75, shimmer);
-  vec3 c = mix(sky, RT_SHADOW, wallMirror * 0.6);
+  vec3 c = mix(sky, RT_SHADOW, wallMirror * 0.55);
   c = mix(c, mix(RT_GOLD, RT_SUN, glint), glint);
-  c *= 1.0 - 0.3 * shade;
+  c *= 1.0 - 0.2 * shade;
   c = mix(c, rtMistColor(p) * 0.8, haze);
   float lum = dot(c, vec3(0.3, 0.55, 0.15));
   // Fields high on the slope mirror the bright horizon; they step down a
   // dot size so the hill's top doesn't flare.
-  float high = smoothstep(0.4, 0.58, bandY) * (1.0 - sunPath);
-  float tone = 0.18 + 0.66 * lum - 0.22 * wallMirror + 0.45 * glint - 0.08 * shade - 0.25 * high;
+  float high = smoothstep(0.38, 0.56, bandY) * (1.0 - sunPath);
+  float tone = 0.26 + 0.7 * lum - 0.22 * wallMirror + 0.45 * glint - 0.06 * shade - 0.32 * high;
   tone += 0.03 * sin(p.x * 70.0 / max(rtAspect, 0.9) + rtT * 0.5 + k * 1.7);
   return vec4(c, mix(tone, 0.1, haze));
 }
@@ -336,10 +350,11 @@ vec4 rtFront(vec2 s, vec2 p, float x, float crest, out float cover) {
   // the trees stay pure silhouettes against the fields behind.
   float rim = (1.0 - smoothstep(0.0, 1.5 * rtSh, abs(p.y - crest))) * (1.0 - tree) * 0.7;
   float n = rtHash(s + 31.0);
-  vec3 c = mix(RT_SHADOW, RT_EARTH, n * 0.6);
+  // Sparse grass catches a little light, so the ridge isn't a black slab.
+  vec3 c = mix(RT_SHADOW, mix(RT_EARTH, RT_RICE * 0.6, step(0.7, n)), n);
   c = mix(c, RT_GRASS * 0.85, step(0.5, rim) * (0.55 + 0.45 * rtSunward(p, 0.8)));
   float sun = 0.4 + 0.6 * rtSunward(p, 0.8);
-  return vec4(c, rim > 0.5 ? 0.5 + 0.3 * sun : (n < 0.3 ? 0.0 : 0.06 + 0.05 * n));
+  return vec4(c, rim > 0.5 ? 0.5 + 0.3 * sun : (n < 0.3 ? 0.0 : 0.08 + 0.1 * n * step(0.7, n) + 0.04 * n));
 }
 
 // One far bird gliding across the sky, with a slow flap now and then.
@@ -402,8 +417,8 @@ vec4 rtScene(vec2 uv, vec2 res, float t) {
   } else {
     float midCrest = rtMidCrest(x);
     float r1 = rtRidge(x, 3.0, 0.43, 0.13, 0.7);
-    float r2 = rtRidge(x, 7.0, 0.5, 0.12, 0.4);
-    float r3 = rtRidge(x, 13.0, 0.56, 0.1, 0.15);
+    float r2 = rtRidge(x, 7.0, 0.5, 0.12, 0.6);
+    float r3 = rtRidge(x, 13.0, 0.56, 0.1, 0.45);
     float midTall = rtTrees(x, 6.0) * 0.8;
     float midTrees = midCrest + midTall;
     if (p.y < midTrees && p.y > midCrest - 0.012) {
@@ -460,7 +475,7 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 
 // Modes that paint the scene's own colours need its night-blue paper behind
 // them in both themes; mono and palette keep the theme's paper, or the phosphor's.
-const DAWN_PAPER = "#0a1419";
+const DAWN_PAPER = "#0d1a22";
 const DAWN_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
