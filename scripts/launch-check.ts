@@ -339,13 +339,15 @@ const checkInBrowser = (path: string, width: number, height: number) => {
   if (!browserJson(where, "open", `${BASE}${path}`)) {
     return;
   }
-  browser("wait", "2500");
-  // Walk the page so lazy sections mount, then come back to the top.
-  browser(
+  browserJson(where, "wait", "2500");
+  // Walk the page so lazy sections mount, then come back to the top. If
+  // the walk fails, lazy sections were never audited, so it counts.
+  browserJson(
+    where,
     "eval",
-    "(async()=>{for(let y=0;y<document.body.scrollHeight;y+=600){scrollTo(0,y);await new Promise(r=>setTimeout(r,120))}scrollTo(0,0)})()"
+    "(async()=>{for(let y=0;y<document.body.scrollHeight;y+=600){scrollTo(0,y);await new Promise(r=>setTimeout(r,120))}scrollTo(0,0);return true})()"
   );
-  browser("wait", "1500");
+  browserJson(where, "wait", "1500");
 
   checkOverflow(where);
   checkConsole(where);
