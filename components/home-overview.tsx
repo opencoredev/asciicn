@@ -66,7 +66,7 @@ export const HomeOverview = ({
         <h3 className="text-foreground text-lg font-medium">
           {countPieces(catalog)} examples in {catalog.length} groups
         </h3>
-        <ul className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.map((category) => (
             <li
               key={category.id}

@@ -3,7 +3,7 @@
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/icon";
 import {
@@ -111,6 +111,30 @@ export const DocsSidebar = ({
   ...props
 }: React.ComponentProps<typeof Sidebar> & { tree: typeof source.pageTree }) => {
   const pathname = usePathname();
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Bring the current page into the clear middle of the list, out from
+  // under the fades at the top and bottom. Its group opens with a short
+  // animation first, so measure once that has settled.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const content = contentRef.current;
+      const active = content?.querySelector<HTMLElement>(
+        '[data-active="true"]'
+      );
+      if (!(content && active)) {
+        return;
+      }
+      const box = content.getBoundingClientRect();
+      const row = active.getBoundingClientRect();
+      const clearTop = box.top + 64;
+      const clearBottom = box.bottom - 96;
+      if (row.top < clearTop || row.bottom > clearBottom) {
+        content.scrollTop += row.top - box.top - content.clientHeight / 2;
+      }
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
 
   return (
     <Sidebar
@@ -121,7 +145,10 @@ export const DocsSidebar = ({
       <div className="h-9" />
       <div className="absolute top-8 z-10 h-8 w-(--sidebar-menu-width) shrink-0 bg-linear-to-b from-background via-background/80 to-background/50 blur-xs" />
       <div className="absolute top-12 right-2 bottom-0 hidden h-full w-px bg-linear-to-b from-transparent via-border to-transparent lg:flex" />
-      <SidebarContent className="mx-auto no-scrollbar w-(--sidebar-menu-width) overflow-x-hidden px-2 pt-4">
+      <SidebarContent
+        ref={contentRef}
+        className="mx-auto no-scrollbar w-(--sidebar-menu-width) overflow-x-hidden px-2 pt-4"
+      >
         {getDocsNav(tree).map((section) => (
           <SidebarGroup key={section.id}>
             <SidebarGroupLabel className="text-foreground font-semibold">
