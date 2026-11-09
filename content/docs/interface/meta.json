@@ -14,6 +14,7 @@
     "status-dot",
     "kbd-shortcut",
     "skeleton",
-    "empty-state"
+    "empty-state",
+    "glyph-trail"
   ]
 }

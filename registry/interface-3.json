@@ -73,5 +73,19 @@
         "target": "components/asciicn/status-dot.tsx"
       }
     ]
+  },
+  {
+    "name": "glyph-trail",
+    "type": "registry:component",
+    "title": "Glyph trail",
+    "description": "A layer where the pointer paints glyphs that burn bright, cool through the charset and drift away like smoke, with a slow wanderer when nobody draws.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/glyph-trail.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/glyph-trail.tsx"
+      }
+    ]
   }
 ]

@@ -1,0 +1,177 @@
+---
+title: "Glyph trail"
+description: "A layer where the pointer paints glyphs that burn bright, cool through the charset and drift away like smoke, with a slow wanderer when nobody draws."
+---
+
+import GlyphTrailCard from "@/examples/glyph-trail-card";
+import { controls as glyphTrailControls } from "@/examples/glyph-trail-controls";
+import GlyphTrailDemo from "@/examples/glyph-trail-demo";
+import GlyphTrailHero from "@/examples/glyph-trail-hero";
+
+<ComponentPreview
+  src="examples/glyph-trail-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={glyphTrailControls}
+>
+  <GlyphTrailDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="glyph-trail" />
+
+## Usage
+
+```tsx
+import { GlyphTrail } from "@/components/asciicn/glyph-trail";
+
+export function Hero() {
+  return (
+    <GlyphTrail className="flex min-h-[480px] items-center justify-center">
+      <h1>Your headline</h1>
+    </GlyphTrail>
+  );
+}
+```
+
+Move the mouse, a pen or a finger across the box. The pointer lays puffs of glyphs along its path. Each one starts hot, in the densest glyphs of the charset and the `hot` colour, then cools: its glyphs thin out toward the sparse end of the charset, its colour fades to `cool`, and it drifts up and aside on a slow current before it vanishes. The tail frays into wisps while the head stays solid.
+
+Speed sets how much is laid down. A slow move leaves a short, thin line. A quick flick lays hotter, wider puffs, throws a few single-glyph sparks and leaves a long comet behind it.
+
+While nobody draws, a wanderer traces a slow loop across the box and leaves the same trail, so the first frame is never empty. It fades out when the pointer starts drawing and comes back after a few seconds of stillness. Set `idle={false}` for a layer that stays blank until someone touches it.
+
+Children render above the trail. The trail clears itself behind their text and controls, so a headline keeps its contrast while the smoke flows around it. Set `clearContent={false}` to let it pass straight behind. With no children it is a plain layer: place it with `className`, behind or over a section.
+
+```tsx
+<section className="relative">
+  <YourContent />
+  <GlyphTrail className="absolute inset-0 z-10" />
+</section>
+```
+
+## Examples
+
+### A hero with a button
+
+The headline and the button are children, so they sit above the trail, which clears around them. The trail never takes pointer events, so the button clicks as usual.
+
+<ComponentPreview src="examples/glyph-trail-hero.tsx" size="lg">
+  <GlyphTrailHero />
+</ComponentPreview>
+
+### A small card
+
+Braille draws the trail in fine dots on a card. A wider `spread` keeps the dots in a full plume at a small cell size.
+
+<ComponentPreview src="examples/glyph-trail-card.tsx">
+  <GlyphTrailCard />
+</ComponentPreview>
+
+## Props
+
+Every other `div` prop goes to the wrapper. `charset`, `chars`, `phosphor`, `grade`, `threshold`, `edgeThreshold`, `fx`, `speed`, `animate` and `handle` work as on the [ASCII image](/docs/images/ascii-image#props). `dither` defaults to `"bayer4"` for Braille and quadrants, so the smoke keeps a dot gradient.
+
+<PropsTable
+  rows={[
+    {
+      name: "decay",
+      type: "number",
+      default: "2.4",
+      description: "How long a glyph takes to cool and vanish, in seconds.",
+    },
+    {
+      name: "spread",
+      type: "number",
+      default: "1.8",
+      description: "How wide the trail fans out around the path, in cells.",
+    },
+    {
+      name: "idle",
+      type: "boolean",
+      default: "true",
+      description:
+        "A slow wanderer draws the trail while nobody moves the pointer.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"standard"',
+      description: "Which glyphs draw the trail, densest at the head.",
+    },
+    {
+      name: "colorMode",
+      type: '"truecolor" | "duotone" | "mono"',
+      default: '"truecolor"',
+      description:
+        '"truecolor" cools from hot to cool, "duotone" uses ramp, "mono" draws in the ink. "mono" when a phosphor is set and no mode is.',
+    },
+    {
+      name: "hot",
+      type: "AsciiColor",
+      default: '"orange"',
+      description: "The colour of a fresh glyph in truecolor.",
+    },
+    {
+      name: "cool",
+      type: "AsciiColor",
+      default: '"ink"',
+      description:
+        "The colour a glyph cools to in truecolor, and the ink in mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"ember"',
+      description: "Duotone: a ramp name or stops as #rrggbb, cold to hot.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"transparent"',
+      description:
+        'Fill the box behind the glyphs. "paper" when a phosphor is set.',
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "14",
+      description: "Glyph cell height in CSS pixels.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "60",
+      description:
+        "Frame rate cap while the pointer draws. The wanderer runs at up to 30.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "7",
+      description:
+        "Where the wanderer's path ends in the still frame drawn under reduced motion, in seconds.",
+    },
+    {
+      name: "clearContent",
+      type: "boolean",
+      default: "true",
+      description:
+        "Clear the trail behind the children's text and controls so they stay readable.",
+    },
+    {
+      name: "children",
+      type: "ReactNode",
+      description: "Content drawn above the trail.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The canvas is decorative and hidden from assistive technology. Children stay in the accessibility tree as usual.
+- The canvas has `pointer-events: none`. Moves are read from `window` and kept only when they land inside the box, so links and buttons under or over the trail still work. With no children the wrapper ignores pointer events too.
+- Touch is read without blocking scroll: a finger dragging down the page scrolls it and leaves a trail.
+- Under reduced motion it draws one still frame of the wanderer's path at `stillTime` and ignores the pointer. With `idle={false}` that frame is empty.
+- It pauses offscreen and in hidden tabs. With `idle={false}` the loop stops entirely once the last glyph has burned out, and starts again when the pointer enters the box.
+- The tail is drawn translucent, so it fades into whatever is behind the box. On a light page the hottest glyphs deepen instead of paling.
