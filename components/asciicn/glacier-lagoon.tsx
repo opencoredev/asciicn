@@ -61,6 +61,12 @@ vec3 glacierSky(float x, float y) {
   float wisp = fbm(vec2(x * 0.7 + y * 1.2 - glacierT * 0.004, y * 6.0 + 3.0));
   float high = smoothstep(0.5, 0.72, h) * (1.0 - smoothstep(0.9, 1.0, h));
   col = mix(col, vec3(0.56, 0.38, 0.64), smoothstep(0.54, 0.74, wisp) * high * 0.7);
+  // Soft banks of afterglow cloud in the upper sky, broad and dim, so the
+  // top of the frame has some air without drawing the eye.
+  float bank = fbm(vec2(x * 0.45 - glacierT * 0.003, y * 2.6 + 7.0));
+  float upper = smoothstep(0.45, 0.7, h);
+  vec3 bankCol = mix(vec3(0.3, 0.22, 0.46), vec3(0.44, 0.28, 0.48), exp(-abs(dx) * 1.2));
+  col = mix(col, bankCol, smoothstep(0.4, 0.75, bank) * upper * 0.5);
 
   vec2 d = vec2(dx, y - glacierSun.y);
   float r = length(d);
@@ -198,8 +204,24 @@ vec3 glacierAbove(float x, float y) {
   return col;
 }
 
-// Iceberg profiles: 0 rounded, 1 tabular, 2 pinnacle.
+// The height of a faceted berg at knot i of six across its width.
+float glacierKnot(float i, float seed) {
+  if (i < 0.5 || i > 5.5) {
+    return 0.04;
+  }
+  float u = i / 3.0 - 1.0;
+  return sqrt(1.0 - u * u) * (1.0 - 0.2 * u) * (0.72 + 0.36 * glacierHash(vec2(i, seed)));
+}
+
+// Iceberg profiles: 0 rounded, 1 tabular, 2 pinnacle, 3 faceted, which has
+// straight edges between knots like ice that has split along its planes.
 float glacierProfile(float u, float kind, float seed) {
+  if (kind > 2.5) {
+    float k = (u + 1.0) * 3.0;
+    float i = floor(k);
+    float edge = mix(glacierKnot(i, seed), glacierKnot(i + 1.0, seed), k - i);
+    return edge * (1.0 + 0.03 * snoise(vec2(u * 9.0, seed))) * smoothstep(1.0, 0.9, abs(u));
+  }
   float rounded = pow(max(0.0, 1.0 - u * u), 0.6);
   float tabular = 1.0 - smoothstep(0.7, 1.0, abs(u));
   float spike = pow(max(0.0, 1.0 - abs(u - 0.2) * 1.05), 1.4);
@@ -229,7 +251,21 @@ vec4 glacierBerg(float x, float y, vec4 geo, vec2 info) {
   vec3 litCol = mix(vec3(0.82, 0.91, 1.0), vec3(1.0, 0.9, 0.8), clamp(v * 0.6 + near * 0.4, 0.0, 1.0));
   litCol *= 0.86 + 0.14 * facet;
   vec3 shade = mix(vec3(0.06, 0.2, 0.52), vec3(0.24, 0.5, 0.86), clamp(facet * 0.75 + v * 0.25, 0.0, 1.0));
-  vec3 col = mix(shade, litCol, smoothstep(-0.04, 0.04, u - split));
+  float lit = smoothstep(-0.04, 0.04, u - split);
+  if (info.x > 2.5) {
+    // Facets: one flat, slanted plane under each edge of the top. Planes
+    // step from shadow on the left to sunlit on the right, brighter where
+    // the edge above falls toward the sun.
+    float k = clamp((u + 0.3 * v + 1.0) * 3.0, 0.0, 5.99);
+    float i = floor(k);
+    float slope = glacierKnot(i + 1.0, info.y) - glacierKnot(i, info.y);
+    float centre = (i + 0.5) / 3.0 - 1.0;
+    lit = clamp(0.5 + 0.9 * centre - 1.2 * slope, 0.0, 1.0);
+    facet = glacierHash(vec2(i, info.y + 1.0));
+    litCol = mix(vec3(0.82, 0.91, 1.0), vec3(1.0, 0.9, 0.8), clamp(v * 0.6, 0.0, 1.0)) * (0.82 + 0.18 * facet);
+    shade = mix(vec3(0.06, 0.2, 0.52), vec3(0.24, 0.5, 0.86), clamp(facet * 0.6 + v * 0.3, 0.0, 1.0));
+  }
+  vec3 col = mix(shade, litCol, lit);
   // The rim along the top catches the low sun even on the shadow side.
   float rim = smoothstep(0.12, 0.0, vt - v);
   col = mix(col, vec3(0.92, 0.94, 1.0), rim * 0.6);
@@ -253,7 +289,7 @@ vec2 glacierBergInfo(int i) {
   if (i == 1) return vec2(0.0, 5.0);
   if (i == 2) return vec2(1.0, 8.0);
   if (i == 3) return vec2(2.0, 13.0);
-  if (i == 4) return vec2(0.0, 21.0);
+  if (i == 4) return vec2(3.0, 21.0);
   return vec2(1.0, 34.0);
 }
 
@@ -347,6 +383,11 @@ vec4 glacierScene(vec2 uv, vec2 res, float t) {
   // Small dots read darker than the light they stand for, so lift the darks.
   float peak = max(col.r, max(col.g, col.b));
   vec3 ink = col / max(peak, 1e-3) * pow(peak, 0.6);
+  // Deep sky and dark water stay quiet air: the smallest dots, in a colour
+  // only a little lighter than the paper.
+  float quiet = 1.0 - smoothstep(0.1, 0.3, value);
+  ink = mix(ink, vec3(0.13, 0.14, 0.27), quiet * 0.55);
+  tone *= 1.0 - 0.3 * quiet;
   // Below full intensity the middle band, where a headline sits, quiets most.
   float k = glacierIntensity;
   vec2 c = vec2((uv.x - 0.5) * res.x / res.y / 0.55, (uv.y - 0.5) / 0.14);
