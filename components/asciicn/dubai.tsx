@@ -27,6 +27,10 @@ float dbAxis;
 float dbWide;
 vec2 dbSun;
 vec2 dbCell;
+// The dot-size ceiling the building that was hit asks for.
+float dbHold;
+// 1 where the sky sample is a star, which keeps a slightly larger dot.
+float dbStar;
 
 // A stable random value; hash21 repeats every 50 samples on integers.
 float dbHash(vec2 p) {
@@ -36,16 +40,17 @@ float dbHash(vec2 p) {
 // The afterglow: gold where the sun went down, rose above it, deep blue
 // overhead. h is 0 at the city's ground line and 1 at the top of the box.
 vec3 dbSkyRamp(float h) {
-  vec3 c = mix(vec3(0.88, 0.58, 0.5), vec3(0.8, 0.5, 0.5), smoothstep(0.0, 0.1, h));
-  c = mix(c, vec3(0.76, 0.42, 0.54), smoothstep(0.06, 0.26, h));
+  vec3 c = mix(vec3(0.74, 0.48, 0.5), vec3(0.7, 0.44, 0.52), smoothstep(0.0, 0.1, h));
+  c = mix(c, vec3(0.62, 0.38, 0.56), smoothstep(0.06, 0.26, h));
   c = mix(c, vec3(0.46, 0.31, 0.6), smoothstep(0.2, 0.44, h));
   c = mix(c, vec3(0.22, 0.22, 0.52), smoothstep(0.4, 0.68, h));
   return mix(c, vec3(0.1, 0.12, 0.34), smoothstep(0.64, 1.0, h));
 }
 
-// How close a point is to the set sun, 0 to 1.
+// How close a point is to the set sun, 0 to 1. Weaker on tall screens,
+// where the glow would otherwise spread under a centred headline.
 float dbAfter(vec2 p) {
-  return exp(-length((p - dbSun) * vec2(0.6, 1.0)) / 0.28);
+  return mix(0.55, 1.0, dbWide) * exp(-length((p - dbSun) * vec2(0.6, 1.0)) / 0.28);
 }
 
 // The warm light the city throws up into the haze around its towers.
@@ -58,7 +63,7 @@ vec3 dbSky(vec2 p) {
   float glow = dbAfter(p);
   // Away from the afterglow the colours run cooler, as if a little higher.
   vec3 col = dbSkyRamp(h + 0.12 * (1.0 - glow));
-  col = mix(col, vec3(1.0, 0.82, 0.52), 0.85 * glow * exp(-h * 5.0));
+  col = mix(col, vec3(1.0, 0.8, 0.52), 0.95 * glow * exp(-h * 4.0));
   col = mix(col, vec3(1.0, 0.68, 0.42), 0.25 * dbCityGlow(p));
   // The last light on the spire warms the air round it.
   float spire = exp(-length((p - vec2(dbAxis, DB_BASE + DB_BURJ * 0.62)) * vec2(1.0, 0.4)) / 0.1);
@@ -77,6 +82,7 @@ vec3 dbSky(vec2 p) {
   if (star > 1.0 - density) {
     float twinkle = 0.5 + 0.5 * sin(dbT * (0.4 + star * 0.5) + dbHash(id + 3.0) * 40.0);
     col = mix(col, vec3(0.86, 0.9, 1.0), 0.3 + 0.35 * twinkle);
+    dbStar = 1.0;
   }
   return col;
 }
@@ -128,13 +134,19 @@ vec4 dbTower(vec2 p, vec2 s, float xc, float hw, float ht, float kind, float see
     // The roof line and crown catch the light.
     c = mix(vec3(0.7, 0.56, 0.78), vec3(1.0, 0.72, 0.5), 0.7 * (1.0 - u));
     return vec4(mix(c, hazeCol, haze * 0.5), 1.0);
-  } else if (abs(dx) > hw - dbSw && u < 0.5) {
-    c = mix(c, vec3(0.92, 0.6, 0.54), 0.7 * smoothstep(0.2, 0.8, y / max(ht, 0.01)));
+  } else if (dx < -hw + dbSw && haze < 0.5) {
+    // The sunward edge catches the afterglow, brightest near the top.
+    c = mix(vec3(0.72, 0.5, 0.66), vec3(1.0, 0.68, 0.5), smoothstep(0.1, 0.9, y / max(ht, 0.01)));
+    return vec4(mix(c, hazeCol, haze * 0.5), 1.0);
+  } else if (dx > hw - dbSw && haze < 0.5) {
+    // The far edge falls into shadow, so each tower stands apart.
+    c = shade * 0.7;
   } else {
     // Windows a glyph apart, so they stay a clean grid in every charset.
     vec2 g = floor(s / dbCell);
     if (mod(g.x, 2.0) < 0.5 && mod(g.y, 2.0) < 0.5 && y > 0.012) {
-      if (dbLit(g + seed * 31.0, 0.4) > 0.5) {
+      // Far towers keep only a few lights, so they don't stripe the haze.
+      if (dbLit(g + seed * 31.0, haze < 0.5 ? 0.4 : 0.12) > 0.5) {
         float tint = dbHash(vec2(seed, floor(g.y / 3.0)));
         c = tint < 0.6 ? vec3(1.0, 0.78, 0.48) : vec3(0.86, 0.9, 1.0);
         return vec4(mix(c, hazeCol, haze * 0.45), 1.0);
@@ -162,18 +174,19 @@ vec4 dbCluster(vec2 p, vec2 s) {
     float rank = floor(fi / 2.0);
     float h1 = dbHash(vec2(fi, 4.0));
     float h2 = dbHash(vec2(fi, 9.0));
-    float off = side * (0.07 + rank * 0.04 + (h1 - 0.5) * 0.016);
+    // Spaced wider than they are broad, so each tower stands on its own.
+    float off = side * (0.082 + rank * 0.052 + (h1 - 0.5) * 0.012);
     // Taller close in, lower further out, so the cluster rises to the Burj.
     float ht = (0.31 - rank * 0.04) * mix(0.55, 1.0, h2);
-    float hw = 0.011 + 0.008 * h1;
-    hit = dbTower(p, s, dbAxis + off, hw, ht * dbCalm(dbAxis + off), mod(fi * 7.0, 3.0), fi + 11.0, 0.12 + 0.05 * rank);
-    if (hit.a > 0.0) return hit;
+    float hw = 0.01 + 0.006 * h1;
+    hit = dbTower(p, s, dbAxis + off, hw, ht * dbCalm(dbAxis + off), mod(fi * 7.0, 3.0), fi + 11.0, 0.1 + 0.05 * rank);
+    if (hit.a > 0.0) return vec4(hit.rgb, 0.86);
   }
   return vec4(-1.0);
 }
 
-// A second rank of towers behind, hazier, spread wider along the horizon,
-// with the Marina's group standing up on wide screens to the left.
+// A second rank of towers behind, hazier, thinning out away from the Burj
+// so the left of the horizon stays open for the afterglow.
 vec4 dbBack(vec2 p, vec2 s) {
   const float SLOT = 0.032;
   float slot = floor(p.x / SLOT);
@@ -181,13 +194,14 @@ vec4 dbBack(vec2 p, vec2 s) {
   float h2 = dbHash(vec2(slot, 23.0));
   float xc = (slot + 0.5 + (h2 - 0.5) * 0.3) * SLOT;
   float near = exp(-pow((xc - dbAxis) / 0.34, 2.0));
-  float marina = dbWide * exp(-pow((xc + 0.42 * dbAspect) / 0.12, 2.0));
-  float envelope = max(max(near, marina * 0.75), 0.18);
-  if (h1 > envelope + 0.3) {
+  float envelope = near;
+  if (near < 0.2 || h1 > envelope + 0.3) {
     return vec4(-1.0);
   }
   float ht = mix(0.04, 0.2, h1 * h1) * envelope + 0.015;
-  return dbTower(p, s, xc, SLOT * mix(0.2, 0.36, h2), ht * dbCalm(xc), floor(h2 * 3.0), slot + 101.0, 0.55);
+  vec4 hit = dbTower(p, s, xc, SLOT * mix(0.2, 0.36, h2), ht * dbCalm(xc), floor(h2 * 3.0), slot + 101.0, 0.7);
+  // Far towers draw in small dots only, so they read as haze.
+  return hit.a > 0.0 ? vec4(hit.rgb, 0.55) : hit;
 }
 
 // Half width of the Burj on one side at height h (0 at its base, 1 at the
@@ -284,7 +298,7 @@ float dbDuneTop(float x, float base, float amp, float freq, float tilt, float se
 // in violet shadow; the slope is read along a slant, so each crest throws a
 // shadow that widens down and to the right, the way a slip face does. Haze
 // pales the far dunes, and fine ripples run across the near one.
-vec3 dbDune(vec2 p, float top, float base, float amp, float freq, float tilt, float seed, vec3 litCol, vec3 shadowCol, float rippled) {
+vec3 dbDune(vec2 p, float top, float base, float amp, float freq, float tilt, float seed, vec3 litCol, vec3 shadowCol, float near) {
   float below = top - p.y;
   float x = p.x / clamp(dbAspect / 1.78, 0.55, 1.2) + below * 1.6;
   float e = 0.02;
@@ -293,13 +307,15 @@ vec3 dbDune(vec2 p, float top, float base, float amp, float freq, float tilt, fl
   // The low light falls toward the sun, so the warmth also grows leftwards.
   lit = clamp(lit + 0.25 * dbAfter(p) - 0.1, 0.0, 1.0);
   vec3 c = mix(shadowCol, litCol, lit);
-  // A bright lip right on the crest where it faces the light.
+  // A bright lip on the crest where it faces the light, only on the near
+  // dunes and broken along its length; far crests just soften into haze.
   float lip = 1.0 - smoothstep(0.0, dbSh * 1.5, below);
-  c = mix(c, litCol * 1.12 + vec3(0.06), lip * (0.25 + 0.6 * lit));
+  lip *= near * smoothstep(-0.2, 0.4, snoise(vec2(p.x * 9.0, seed)));
+  c = mix(c, litCol * 1.12 + vec3(0.06), lip * (0.2 + 0.6 * lit));
   // Wind ripples, slanted, strongest on the lit faces.
   float r = sin(p.x * 50.0 + p.y * 130.0 + snoise(p * vec2(4.0, 9.0) + seed) * 6.0);
   float patch = smoothstep(0.1, 0.6, snoise(p * 3.0 + seed));
-  c *= 1.0 + rippled * patch * smoothstep(0.6, 1.0, r) * 0.12 * lit;
+  c *= 1.0 + near * near * patch * smoothstep(0.6, 1.0, r) * 0.12 * lit;
   // Darker down into the trough, so the dune in front stands out.
   c *= 1.0 - 0.2 * smoothstep(0.02, 0.14, below);
   return c;
@@ -326,6 +342,7 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
   dbSh = 1.0 / samples.y;
   dbCell = max(dbGrid, vec2(1.0));
   dbWide = smoothstep(0.95, 1.4, dbAspect);
+  dbStar = 0.0;
   vec2 s = floor(uv * samples);
   vec2 p = vec2(((s.x + 0.5) / samples.x - 0.5) * dbAspect, (s.y + 0.5) / samples.y);
   // Out to the right at every aspect, beside a centred headline rather than
@@ -340,7 +357,7 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
   float stretch = clamp(dbAspect / 1.78, 0.55, 1.2);
   float nearTop = dbDuneTop(p.x / stretch, 0.12, 0.08, 0.8, 0.05, 2.3);
   float midTop = dbDuneTop(p.x / stretch, 0.235, 0.05, 1.3, -0.03, 7.9);
-  float farTop = dbDuneTop(p.x / stretch, 0.322, 0.024, 2.0, 0.0, 13.1);
+  float farTop = dbDuneTop(p.x / stretch, 0.322, 0.038, 2.0, 0.0, 13.1);
   if (p.y < nearTop) {
     col = dbDune(p, nearTop, 0.12, 0.08, 0.8, 0.05, 2.3, vec3(0.98, 0.6, 0.38), vec3(0.4, 0.25, 0.44), 1.0);
     depth = 1.0;
@@ -348,7 +365,11 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
     col = dbDune(p, midTop, 0.235, 0.05, 1.3, -0.03, 7.9, vec3(0.96, 0.6, 0.42), vec3(0.38, 0.26, 0.48), 0.5);
     depth = 2.0;
   } else if (p.y < farTop) {
-    col = dbDune(p, farTop, 0.322, 0.024, 2.0, 0.0, 13.1, vec3(0.66, 0.44, 0.52), vec3(0.36, 0.26, 0.44), 0.0);
+    col = dbDune(p, farTop, 0.322, 0.038, 2.0, 0.0, 13.1, vec3(0.66, 0.44, 0.52), vec3(0.36, 0.26, 0.44), 0.0);
+    // Near the sun the far dune sits in glowing dust, so the afterglow
+    // fades down into it instead of stopping at its crest.
+    float dusk = smoothstep(0.35, 0.9, dbAfter(p)) * (1.0 - smoothstep(0.0, 0.06, farTop - p.y));
+    col = mix(col, vec3(0.96, 0.66, 0.48), 0.6 * dusk);
     depth = 3.0;
   } else {
     depth = 10.0;
@@ -358,6 +379,7 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
     if (hit.a > 0.0) {
       col = hit.rgb;
       depth = 5.0;
+      dbHold = hit.a;
     } else {
       col = dbSky(p);
     }
@@ -365,8 +387,8 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
 
   // The city's glow hangs in the haze over the far dunes and the skyline's
   // feet, and the last of the afterglow lies along the horizon.
-  float horizon = exp(-abs(p.y - DB_BASE) / 0.035);
-  col = mix(col, vec3(1.0, 0.72, 0.5), horizon * clamp(0.25 * dbCityGlow(p) + 0.3 * dbAfter(p), 0.0, 0.5) * step(2.5, depth));
+  float horizon = exp(-abs(p.y - DB_BASE) / 0.06);
+  col = mix(col, vec3(1.0, 0.72, 0.5), horizon * clamp(0.2 * dbCityGlow(p) + 0.35 * dbAfter(p), 0.0, 0.45) * step(2.5, depth));
   // Dust and heat haze drifting over the dunes.
   if (depth < 4.0) {
     float band = 1.0 - smoothstep(0.0, 0.2, abs(p.y - 0.25));
@@ -375,9 +397,21 @@ vec4 dbScene(vec2 uv, vec2 res, float t) {
   }
 
   col = clamp(col, 0.0, 1.0);
-  // Open sky holds back a little, so the lit tower and the sun's afterglow
-  // carry the largest dots.
-  float hold = depth > 9.0 ? 0.86 : 1.0;
+  // Each layer has its own ceiling on dot size, so near forms and the lights
+  // carry the large dots while the sky and the far dunes stay sparse specks.
+  // The afterglow round the sun is let through as the one big soft light.
+  float hold = 1.0;
+  if (depth > 9.0) {
+    hold = max(mix(0.52, 1.0, smoothstep(0.25, 0.8, dbAfter(p))), 0.9 * dbStar);
+  } else if (depth > 4.0) {
+    hold = dbHold;
+  } else if (depth > 2.5) {
+    // The far dune takes the afterglow near the sun, so the glow fades
+    // into the sand instead of stopping at its crest.
+    hold = mix(0.5, 0.95, smoothstep(0.3, 0.85, dbAfter(p)));
+  } else if (depth > 1.5) {
+    hold = 0.78;
+  }
   // Dot size follows brightness on a steep curve: dark air and shadow get
   // the smallest dots or none, mid-tones medium ones, and only the lights
   // and lit edges the largest.
