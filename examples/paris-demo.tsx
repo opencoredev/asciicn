@@ -13,6 +13,7 @@ export default function ParisDemo() {
       beacon={usePreviewValue(knobs.beacon)}
       boat={usePreviewValue(knobs.boat)}
       cell={usePreviewValue(knobs.cell)}
+      square={usePreviewValue(knobs.square)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
