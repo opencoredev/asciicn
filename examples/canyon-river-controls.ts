@@ -26,10 +26,10 @@ export const intensity = slider({
   step: 0.05,
 });
 
-export const stars = toggle({
+export const clouds = toggle({
   default: true,
-  id: "stars",
-  label: "Stars",
+  id: "clouds",
+  label: "Clouds",
 });
 
 export const cell = slider({
@@ -49,4 +49,4 @@ export const animate = toggle({
 });
 
 /** Display order of the tray. */
-export const controls = [charset, colorMode, intensity, stars, cell, animate];
+export const controls = [charset, colorMode, intensity, clouds, cell, animate];

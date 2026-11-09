@@ -1,6 +1,6 @@
 ---
 title: "Canyon river"
-description: "A desert canyon at dusk from a high rim: terraced walls step back to glowing mesas in violet haze while a river winds below, mirroring the sunset."
+description: "A desert canyon in late golden hour from a high rim: sunlit terracotta walls with blue shadows step back to glowing buttes while a river winds below, mirroring the blue sky."
 ---
 
 import CanyonRiverDemo from "@/examples/canyon-river-demo";
@@ -36,15 +36,15 @@ export function Hero() {
 }
 ```
 
-You look down a desert canyon from its rim just after sunset. Eroded walls rise on both sides with broken rims, leaning buttresses, broken benches at uneven heights and gullies that branch down from the rim. Each buttress splits into planes: on the sunward wall, warm sunlit planes beside shaded ones under a lit rim; on the far wall, cool planes that catch the sky, with light reflected up from the river low down. Behind them a middle wall and two overlapping rows of buttes step back towards a hazy plateau on the horizon, each farther layer paler and softer. The buttes stand at the sides, so the middle stays open.
+You look down a desert canyon from its rim in late golden hour. Eroded walls rise on both sides with broken rims, leaning buttresses, broken benches at uneven heights and gullies that branch down from the rim. Each buttress splits into planes: on the sunward wall, terracotta and rust planes in warm sunlight beside shaded ones under a lit rim; on the far wall, blue shadow planes that catch the sky, with light reflected up from the river low down. Behind them a middle wall and two overlapping rows of buttes step back towards a hazy plateau on the horizon, each farther layer paler and softer. The buttes stand at the sides, so the middle stays open.
 
-The sun sits half set behind the plateau with a soft halo. A river leaves it through a notch in the plateau and winds towards you, showing through the gap in each wall in turn. It mirrors the sky: gold under the sun, violet and indigo where you look straight down into it. The sky runs from gold at the horizon through rose and violet to indigo overhead, with soft bands of cloud lit from below and the first stars higher up.
+The sun hangs low over the plateau in a soft halo. A river leaves through a notch in the plateau below it and winds towards you, showing through the gap in each wall in turn. It mirrors the sky: gold under the sun, clear blue where you look down into it. The sky runs from amber at the horizon through pale blue to a deeper blue overhead, with a few thin streaks of cloud lit gold underneath.
 
-Only light moves. The last light slides slowly along the far rims, streaks of shimmer cross the water, the clouds drift, the glow breathes and the stars twinkle. The pointer does nothing.
+Only light moves. The light slides slowly along the rims, streaks of shimmer cross the water, the clouds drift and the glow breathes. The pointer does nothing.
 
-On wide boxes the sun sits well right of centre, so the middle stays calm for a headline. On tall boxes the view narrows and the horizon rises, so on a phone the sunset sits above a centred headline and the river runs down beside it.
+On wide boxes the sun sits well right of centre, so the middle stays calm for a headline. On tall boxes the view narrows and the horizon rises, so on a phone the sun sits above a centred headline and the river runs down beside it.
 
-It draws in `dots` by default: dot size follows brightness, and in `truecolor` every dot takes its own colour, so shadow and the high sky stay a quiet grain of small, dim dots and the largest dots are kept for the sun, its reflection and the sunlit rims. Cells are square by default, so the dots sit on an even halftone lattice about 200 columns across a 1440px screen. With `square={false}` the cells are tall again and `dots` lights every other column to keep the lattice even. The scene paints its own sky on a deep dusk paper, so it looks the same on light and dark pages. Text charsets such as `standard` and `dense` give a typed look and read best with `square={false}`, and `braille` and `quadrants` light a dot only above half tone. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `dots` by default: dot size follows brightness, and in `truecolor` every dot takes its own colour, so shadow and the high sky stay a quiet grain of small, dim dots and the largest dots are kept for the sun, its reflection and the sunlit rims. Cells are square by default, so the dots sit on an even halftone lattice about 200 columns across a 1440px screen. With `square={false}` the cells are tall again and `dots` lights every other column to keep the lattice even. The scene paints its own sky on a deep blue paper, so it looks the same on light and dark pages. Text charsets such as `standard` and `dense` give a typed look and read best with `square={false}`, and `braille` and `quadrants` light a dot only above half tone. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 `intensity` dims the scene: colours fade in step with it and the dots shrink a little. It quiets the middle of the box more than the edges, so a centred headline reads first while the walls and the sky still frame it.
 
@@ -82,17 +82,17 @@ It draws in `dots` by default: dot size follows brightness, and in `truecolor` e
         "How strongly the canyon draws, from 0 to 1. Lower it to keep text on top readable.",
     },
     {
-      name: "stars",
+      name: "clouds",
       type: "boolean",
       default: "true",
-      description: "The first stars twinkling in the upper sky.",
+      description: "Thin streaks of cloud drifting across the sky.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep dusk; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -132,7 +132,7 @@ It draws in `dots` by default: dot size follows brightness, and in `truecolor` e
       type: "RampName | string[]",
       default: '"sodium"',
       description:
-        "In duotone mode, the colour ramp from dark to light. The default draws gold on the dusk.",
+        "In duotone mode, the colour ramp from dark to light. The default draws gold on dark.",
     },
     {
       name: "ansi",
@@ -197,8 +197,7 @@ It draws in `dots` by default: dot size follows brightness, and in `truecolor` e
       name: "speed",
       type: "number",
       default: "1",
-      description:
-        "How fast the light, the water, the clouds and the stars move.",
+      description: "How fast the light, the water and the clouds move.",
     },
     {
       name: "animate",
@@ -241,5 +240,5 @@ It draws in `dots` by default: dot size follows brightness, and in `truecolor` e
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
-- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dusk gradient.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat gradient of the scene.
 - The whole canyon is one shader pass on the GPU, one sample per cell in `dots`. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).

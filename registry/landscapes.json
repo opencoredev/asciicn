@@ -3,7 +3,7 @@
     "name": "canyon-river",
     "type": "registry:component",
     "title": "Canyon river",
-    "description": "A desert canyon at dusk from a high rim: terraced walls step back to glowing mesas in violet haze while a river winds below, mirroring the sunset.",
+    "description": "A desert canyon in late golden hour from a high rim: sunlit terracotta walls with blue shadows step back to glowing buttes while a river winds below, mirroring the blue sky.",
     "registryDependencies": [
       "{{REGISTRY_URL}}/ascii-core.json",
       "{{REGISTRY_URL}}/ascii-shader.json"
