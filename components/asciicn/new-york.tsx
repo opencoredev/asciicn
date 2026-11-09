@@ -31,6 +31,15 @@ float nyEsX = 0.0;
 float nyChX = 0.0;
 float nyWtX = 0.0;
 float nySunX = 0.0;
+// The landmarks' scale: 1 on wide boxes, smaller on tall phones so all
+// three fit beside a headline.
+float nyK = 1.0;
+// How far the layer that drew the current sample stands, 0 near to 1 lost
+// in the haze. Farther layers draw smaller dots.
+float nyFar = 0.0;
+// 1 when the sample shows open sky, which takes a stronger size jitter so
+// its gradient blends; buildings keep even dots and read as shapes.
+float nySkyHit = 0.0;
 
 // A stable random value that keeps its spread for large inputs, unlike a
 // sin-based hash.
@@ -50,6 +59,11 @@ float nyHalf(float w) {
   return (floor(w / nySw) + 0.5) * nySw;
 }
 
+// A landmark half width at the current scale.
+float nyHk(float w) {
+  return nyHalf(w * nyK);
+}
+
 float nySq(float v) {
   return v * v;
 }
@@ -58,35 +72,36 @@ float nySq(float v) {
 // amber, coral, mauve, violet, dusk blue, deep blue.
 vec3 nySkyRamp(float h) {
   h = clamp(h, 0.0, 1.0);
-  vec3 c0 = vec3(1.0, 0.74, 0.44);
-  vec3 c1 = vec3(0.92, 0.52, 0.4);
+  vec3 c0 = vec3(0.88, 0.58, 0.34);
+  vec3 c1 = vec3(0.78, 0.43, 0.37);
   vec3 c2 = vec3(0.6, 0.36, 0.5);
   vec3 c3 = vec3(0.38, 0.31, 0.58);
-  vec3 c4 = vec3(0.16, 0.19, 0.43);
-  vec3 c5 = vec3(0.05, 0.075, 0.21);
+  vec3 c4 = vec3(0.13, 0.14, 0.32);
+  vec3 c5 = vec3(0.045, 0.05, 0.12);
   vec3 c = mix(c0, c1, smoothstep(0.0, 0.16, h));
   c = mix(c, c2, smoothstep(0.1, 0.36, h));
   c = mix(c, c3, smoothstep(0.3, 0.55, h));
-  c = mix(c, c4, smoothstep(0.5, 0.78, h));
-  return mix(c, c5, smoothstep(0.74, 1.05, h));
+  c = mix(c, c4, smoothstep(0.48, 0.76, h));
+  return mix(c, c5, smoothstep(0.62, 1.1, h));
 }
 
 // The sun has just set behind Midtown's west side: a wide warm glow on the
 // horizon, brightest just above the skyline.
 float nySunGlow(vec2 p) {
-  vec2 d = (p - vec2(nySunX, nyS + 0.07)) * vec2(0.6, 1.0);
+  vec2 d = (p - vec2(nySunX, nyS + 0.025)) * vec2(0.5, 1.35);
   float r = dot(d, d);
-  return exp(-r * 9.0) * 0.22 + exp(-r * 90.0) * 0.78;
+  return exp(-r * 10.0) * 0.3 + exp(-r * 110.0) * 0.4;
 }
 
 // The soft floodlit halo around the Empire State's crown, breathing slowly.
 float nySpireGlow(vec2 p) {
-  vec2 d = (p - vec2(nyEsX, nyS + 0.46)) * vec2(1.0, 0.7);
+  vec2 d = (p - vec2(nyEsX, nyS + 0.46 * nyK)) * vec2(1.0, 0.7) / nyK;
   float pulse = 0.85 + 0.15 * sin(nyT * 0.45);
   return exp(-dot(d, d) * 520.0) * pulse;
 }
 
 vec3 nySky(vec2 p) {
+  nySkyHit = 1.0;
   float h = (p.y - nyS) / (1.0 - nyS);
   vec3 c = nySkyRamp(h - 0.05 * exp(-nySq((p.x - nySunX) / 0.5)));
   // Long stratus bands, lit pink from below near the sun, drifting east.
@@ -100,7 +115,7 @@ vec3 nySky(vec2 p) {
   c += vec3(1.0, 0.8, 0.5) * nySpireGlow(p) * 0.2;
   // A few stars where the sky has gone deep blue.
   vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
-  float star = step(0.986, nyHash(cell + 41.7)) * smoothstep(0.55, 0.85, h) * (1.0 - cloud);
+  float star = step(0.992, nyHash(cell + 41.7)) * smoothstep(0.55, 0.85, h) * (1.0 - cloud);
   float twinkle = 0.55 + 0.45 * sin(nyT * (0.5 + nyHash(cell + 3.3)) + nyHash(cell) * 40.0);
   return c + vec3(0.75, 0.8, 1.0) * star * twinkle * 0.55;
 }
@@ -108,14 +123,16 @@ vec3 nySky(vec2 p) {
 // Midtown and Lower Manhattan rise in two clusters with the low Village
 // between them.
 float nyEnv(float x) {
-  float mid = exp(-nySq((x - (nyEsX + nyChX) * 0.5) / 0.42));
-  float down = exp(-nySq((x - nyWtX) / 0.26));
-  return 0.3 + 0.7 * max(mid, down * 0.85);
+  float mid = exp(-nySq((x - (nyEsX + nyChX) * 0.5) / (0.3 * nyK)));
+  float down = exp(-nySq((x - nyWtX) / (0.24 * nyK)));
+  return 0.2 + 0.8 * max(mid, down * 0.85);
 }
 
 // One row of buildings on lots of lotW. Each lot holds one building 50 to
-// 100 percent of its width, some with a setback crown or a mast. Returns
-// 1 inside, with the building's id, roof height and edges.
+// 100 percent of its width, some with a setback crown. Heights follow a
+// slow noise along the row as well as the lot, so rooflines rise and fall
+// in clusters, and a few roof cells carry a tank or a plant room. Returns 1
+// inside, with the building's id, roof height and edges.
 float nyRow(vec2 p, float lotW, float base, float span, float seed, float env, out float bid, out float top, out vec2 edges) {
   float i = floor(p.x / lotW);
   vec2 key = vec2(i, seed);
@@ -123,17 +140,19 @@ float nyRow(vec2 p, float lotW, float base, float span, float seed, float env, o
   float c = (i + 0.5) * lotW + (nyHash(key + 0.71) - 0.5) * (lotW - w);
   float l = floor((c - w * 0.5) / nySw) * nySw;
   float r = floor((c + w * 0.5) / nySw) * nySw;
-  float tall = nyHash(key + 0.37);
-  top = nyS + (base + span * tall * tall) * mix(1.0, nyEnv(c), env);
+  float drift = 0.5 + 0.5 * snoise(vec2(c * 2.6 / nyK + seed * 7.1, seed));
+  float tall = mix(nyHash(key + 0.37), drift, 0.6);
+  top = nyS + (base + span * tall * tall * mix(1.0, nyEnv(c), env)) * nyK;
   float setback = step(0.5, nyHash(key + 0.91));
-  float inset = floor(w * 0.2 / nySw) * nySw * setback;
-  float shoulder = top - (0.025 + 0.04 * nyHash(key + 0.5)) * setback;
+  float inset = floor(w * 0.22 / nySw) * nySw * setback;
+  float shoulder = top - (0.02 + 0.035 * nyHash(key + 0.5)) * setback * nyK;
+  float col = floor(p.x / nyCw);
+  float bump = step(0.86, nyHash(vec2(col, seed + 3.0))) * nyCh;
   bool body = p.x >= l && p.x < r && p.y < shoulder;
-  bool crown = p.x >= l + inset && p.x < r - inset && p.y < top;
-  bool mast = nyHash(key + 0.23) > 0.93 && abs(p.x - nySnapX(c)) < nySw * 0.5 && p.y < top + 0.035;
+  bool crown = p.x >= l + inset && p.x < r - inset && p.y < top + bump * (1.0 - setback);
   bid = i * 3.17 + seed * 11.0;
   edges = vec2(l, r);
-  return (body || crown || mast) ? 1.0 : 0.0;
+  return (body || crown) ? 1.0 : 0.0;
 }
 
 // Window light: warm lamps, amber, soft white and a few cool office tubes.
@@ -173,19 +192,24 @@ vec3 nyFacade(vec2 p, float bid, vec2 edges, float top, vec3 body, float haze, f
   vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
   float type = nyHash(vec2(bid, 1.9));
   // Some towers have piers between window columns, some lit bands of floors.
-  bool pier = type > 0.62 && mod(cell.x, 2.0) > 0.5;
+  bool pier = type > 0.7 && mod(cell.x, 2.0) > 0.5;
   bool edge = p.x < edges.x + nyCw || p.x >= edges.y - nyCw || p.y > top - nyCh;
   float sky = smoothstep(top - 0.12, top, p.y);
-  vec3 wall = body * (0.8 + 0.35 * nyHash(cell + 0.5)) * (0.9 + 0.35 * sky);
+  // The face turned toward the afterglow is lighter and warmer than the
+  // face turned away from it.
+  float centre = (edges.x + edges.y) * 0.5;
+  float lit = step(0.0, (p.x - centre) * (nySunX - centre));
+  vec3 face = mix(vec3(0.8), vec3(1.2, 1.08, 1.0), lit);
+  vec3 wall = body * face * (0.85 + 0.25 * nyHash(cell + 0.5)) * (0.9 + 0.3 * sky);
   if (pier || edge) {
     return wall;
   }
-  float lit = nyLit(cell, bid, share);
+  float on = nyLit(cell, bid, share);
   float warm = nyHash(vec2(bid, 4.4));
   float pick = fract(nyHash(cell + 8.8) * 0.6 + warm * 0.7);
   vec3 light = nyTint(pick) * (0.5 + 0.5 * nyHash(cell + 2.2));
-  light = mix(light, body * 1.6, haze * 0.7);
-  return mix(wall, light, lit);
+  light = mix(light, body * 1.6, haze * 0.85);
+  return mix(wall, light, on);
 }
 
 // The rim of a backlit tower: the edge that faces the afterglow catches it.
@@ -193,9 +217,13 @@ vec3 nyRim(vec2 p, vec2 edges, float top, vec3 c) {
   float facing = p.x < nySunX ? edges.y - nyCw : edges.x;
   bool side = p.x < nySunX ? p.x >= facing : p.x < facing + nyCw;
   bool roof = p.y > top - nyCh;
-  float glow = nySunGlow(vec2(p.x, max(p.y, top)));
-  if (side || roof) {
-    return c + vec3(1.0, 0.62, 0.36) * glow * 0.55;
+  vec2 d = (vec2(p.x, top) - vec2(nySunX, nyS)) * vec2(0.45, 1.0);
+  float glow = exp(-dot(d, d) * 6.0);
+  if (roof) {
+    return c + vec3(1.0, 0.6, 0.34) * glow * 0.45;
+  }
+  if (side) {
+    return c + vec3(1.0, 0.62, 0.36) * glow * 0.25;
   }
   return c;
 }
@@ -204,15 +232,15 @@ vec3 nyRim(vec2 p, vec2 edges, float top, vec3 c) {
 // tiers, the mast and the antenna with a slow red light.
 vec4 nyEmpire(vec2 p) {
   float x = abs(p.x - nyEsX);
-  float y = p.y - nyS;
+  float y = (p.y - nyS) / nyK;
   float lit = 0.0;
   vec3 c = vec3(0.0);
-  if (y < 0.36 && x < nyHalf(0.042)) {
+  if (y < 0.36 && x < nyHk(0.042)) {
     vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
     vec3 body = vec3(0.13, 0.11, 0.21);
     // The central recess and the piers.
-    if (x < nyHalf(0.006) || mod(cell.x, 2.0) > 0.5) {
-      c = body * 1.25;
+    if (x < nyHk(0.006) || mod(cell.x, 2.0) > 0.5) {
+      c = body * 1.1;
     } else {
       c = mix(body, nyTint(nyHash(cell + 0.7) * 0.75) * 0.9, nyLit(cell, 71.0, 0.62));
     }
@@ -220,30 +248,30 @@ vec4 nyEmpire(vec2 p) {
     float wash = smoothstep(0.16, 0.36, y);
     c = mix(c, vec3(0.95, 0.72, 0.4) * (0.7 + 0.3 * nyHash(cell)), wash * wash * 0.85);
     lit = 1.0;
-  } else if (y < 0.385 && x < nyHalf(0.031)) {
+  } else if (y < 0.385 && x < nyHk(0.031)) {
     c = vec3(0.98, 0.78, 0.45);
     lit = 1.0;
-  } else if (y < 0.41 && x < nyHalf(0.022)) {
+  } else if (y < 0.41 && x < nyHk(0.022)) {
     c = vec3(1.0, 0.84, 0.52);
     lit = 1.0;
-  } else if (y < 0.44 && x < nyHalf(0.015)) {
+  } else if (y < 0.44 && x < nyHk(0.015)) {
     float stripe = mod(floor(p.x / nySw), 2.0);
     c = mix(vec3(1.0, 0.9, 0.62), vec3(0.9, 0.7, 0.42), stripe);
     lit = 1.0;
-  } else if (y < 0.465 && x < nyHalf(0.009)) {
+  } else if (y < 0.465 && x < nyHk(0.009)) {
     c = vec3(1.0, 0.95, 0.8);
     lit = 1.0;
-  } else if (y < 0.5 && x < nyHalf(0.004)) {
+  } else if (y < 0.5 && x < nyHk(0.004)) {
     c = vec3(0.95, 0.92, 0.85);
     lit = 1.0;
   } else if (y < 0.55 && x < nySw * 0.5) {
     c = vec3(0.42, 0.38, 0.5);
-    if (y > 0.55 - nyPx * 2.0) {
+    if ((0.55 - y) * nyK < nyPx * 2.0) {
       c = vec3(1.0, 0.25, 0.2) * (0.55 + 0.45 * sin(nyT * 1.1));
     }
     lit = 1.0;
   }
-  c *= 0.85 + 0.15 * sin(nyT * 0.45) * step(0.3, y);
+  c *= 0.93 + 0.07 * sin(nyT * 0.45) * step(0.3, y);
   return vec4(c, lit);
 }
 
@@ -251,13 +279,13 @@ vec4 nyEmpire(vec2 p) {
 // outlined in light with triangular windows, under the steel needle.
 vec4 nyChrysler(vec2 p) {
   float x = abs(p.x - nyChX);
-  float y = p.y - nyS;
+  float y = (p.y - nyS) / nyK;
   vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
-  if (y < 0.15 && x < nyHalf(0.04)) {
-    return vec4(nyFacade(p, 23.0, vec2(nyChX - nyHalf(0.04), nyChX + nyHalf(0.04)), nyS + 0.15, vec3(0.12, 0.1, 0.2), 0.0, 0.45), 1.0);
+  if (y < 0.15 && x < nyHk(0.04)) {
+    return vec4(nyFacade(p, 23.0, vec2(nyChX - nyHk(0.04), nyChX + nyHk(0.04)), nyS + 0.15 * nyK, vec3(0.12, 0.1, 0.2), 0.0, 0.45), 1.0);
   }
-  if (y < 0.3 && x < nyHalf(0.03)) {
-    return vec4(nyFacade(p, 29.0, vec2(nyChX - nyHalf(0.03), nyChX + nyHalf(0.03)), nyS + 0.3, vec3(0.13, 0.11, 0.21), 0.0, 0.45), 1.0);
+  if (y < 0.3 && x < nyHk(0.03)) {
+    return vec4(nyFacade(p, 29.0, vec2(nyChX - nyHk(0.03), nyChX + nyHk(0.03)), nyS + 0.3 * nyK, vec3(0.13, 0.11, 0.21), 0.0, 0.45), 1.0);
   }
   float crown = 0.11;
   if (y < 0.3) {
@@ -267,7 +295,7 @@ vec4 nyChrysler(vec2 p) {
     float u = (y - 0.3) / crown * 4.0;
     float tier = floor(u);
     float v = fract(u);
-    float hw = nyHalf(0.03 * (1.0 - 0.21 * tier));
+    float hw = nyHk(0.03 * (1.0 - 0.21 * tier));
     float arch = hw * sqrt(max(0.0, 1.0 - v * v * 0.92));
     if (x < arch) {
       vec3 steel = vec3(0.46, 0.44, 0.58);
@@ -288,12 +316,12 @@ vec4 nyChrysler(vec2 p) {
 // One World Trade Center: a tapering glass tower whose facets catch the
 // afterglow in a long V, a lit parapet and a spire with a white light.
 vec4 nyTrade(vec2 p) {
-  float y = p.y - nyS;
+  float y = (p.y - nyS) / nyK;
   float H = 0.43;
   float dx = abs(p.x - nyWtX);
   if (y < H) {
     float u = y / H;
-    float hw = nyHalf(mix(0.05, 0.028, u));
+    float hw = nyHk(mix(0.05, 0.028, u));
     if (dx >= hw) {
       return vec4(0.0);
     }
@@ -311,14 +339,14 @@ vec4 nyTrade(vec2 p) {
     }
     vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
     c = mix(c, vec3(0.75, 0.86, 1.0) * 0.8, nyLit(cell, 53.0, 0.2) * step(facet, dx));
-    if (y > H - nyCh) {
+    if ((H - y) * nyK < nyCh) {
       c = vec3(0.92, 0.95, 1.0);
     }
     return vec4(c, 1.0);
   }
   if (y < H + 0.15 && dx < nySw * 0.5) {
     vec3 c = vec3(0.55, 0.55, 0.66);
-    if (y > H + 0.15 - nyPx * 2.0) {
+    if ((H + 0.15 - y) * nyK < nyPx * 2.0) {
       c = vec3(1.0) * (0.7 + 0.3 * sin(nyT * 0.8));
     }
     return vec4(c, 1.0);
@@ -331,7 +359,7 @@ vec4 nyTrade(vec2 p) {
 // thicker near the water.
 vec3 nyHaze(vec3 c, vec2 p, float haze) {
   vec3 air = mix(nySkyRamp((p.y - nyS) / (1.0 - nyS)), vec3(0.42, 0.4, 0.62), 0.35);
-  air = (air + vec3(1.0, 0.5, 0.2) * nySunGlow(p) * 0.5) * 0.72;
+  air = (air + vec3(1.0, 0.5, 0.2) * nySunGlow(p) * 0.16) * 0.62;
   float low = 1.0 - smoothstep(nyS, nyS + 0.1, p.y);
   return mix(c, air, clamp(haze + low * 0.22, 0.0, 1.0));
 }
@@ -352,8 +380,10 @@ vec3 nyCity(vec2 p, float share) {
     }
     return c;
   }
+  nyFar = 0.0;
+  nySkyHit = 0.0;
   if (nyRow(p, 0.032, 0.012, 0.045, 1.0, 0.0, bid, top, edges) > 0.5) {
-    vec3 c = nyFacade(p, bid, edges, top, vec3(0.085, 0.075, 0.15), 0.0, share * 0.8);
+    vec3 c = nyFacade(p, bid, edges, top, vec3(0.07, 0.062, 0.125), 0.0, share * 0.7);
     return nyHaze(c, p, 0.0);
   }
   vec4 lm = nyEmpire(p);
@@ -364,22 +394,33 @@ vec3 nyCity(vec2 p, float share) {
   if (lm.a > 0.5) {
     return nyHaze(lm.rgb, p, 0.06);
   }
-  if (nyRow(p, 0.04, 0.03, 0.17, 2.0, 1.0, bid, top, edges) > 0.5) {
-    vec3 c = nyFacade(p, bid, edges, top, vec3(0.12, 0.1, 0.2), 0.1, share);
+  nyFar = 0.1;
+  if (nyRow(p, 0.04, 0.015, 0.17, 2.0, 1.0, bid, top, edges) > 0.5) {
+    vec3 c = nyFacade(p, bid, edges, top, vec3(0.11, 0.095, 0.19), 0.1, share);
     return nyHaze(nyRim(p, edges, top, c), p, 0.1);
   }
+  nyFar = 0.15;
   lm = nyTrade(p);
   if (lm.a > 0.5) {
     return nyHaze(lm.rgb, p, 0.14);
   }
-  if (nyRow(p, 0.047, 0.03, 0.24, 3.0, 1.0, bid, top, edges) > 0.5) {
-    vec3 c = nyFacade(p, bid, edges, top, vec3(0.16, 0.13, 0.26), 0.3, share * 0.8);
-    return nyHaze(nyRim(p, edges, top, c), p, 0.32);
+  // Three far rows, each hazier, flatter in value and quieter than the
+  // one in front, so the city recedes into the dusk.
+  nyFar = 0.4;
+  if (nyRow(p, 0.034, 0.03, 0.22, 3.0, 1.0, bid, top, edges) > 0.5) {
+    vec3 c = nyFacade(p, bid, edges, top, vec3(0.15, 0.13, 0.25), 0.4, share * 0.6);
+    return nyHaze(nyRim(p, edges, top, c), p, 0.48);
   }
-  if (nyRow(p, 0.043, 0.04, 0.27, 4.0, 1.0, bid, top, edges) > 0.5) {
-    vec3 c = nyFacade(p, bid, edges, top, vec3(0.2, 0.16, 0.3), 0.55, share * 0.5);
-    return nyHaze(c, p, 0.55);
+  nyFar = 0.65;
+  if (nyRow(p, 0.028, 0.045, 0.26, 4.0, 1.0, bid, top, edges) > 0.5) {
+    vec3 c = nyFacade(p, bid, edges, top, vec3(0.2, 0.17, 0.3), 0.7, share * 0.3);
+    return nyHaze(nyRim(p, edges, top, c), p, 0.7);
   }
+  nyFar = 0.85;
+  if (nyRow(p, 0.022, 0.06, 0.3, 5.0, 1.0, bid, top, edges) > 0.5) {
+    return nyHaze(nyRim(p, edges, top, vec3(0.24, 0.2, 0.34)), p, 0.92);
+  }
+  nyFar = 0.0;
   return nySky(p);
 }
 
@@ -430,12 +471,19 @@ vec3 nyRiver(vec2 p, float share) {
   float ripple = snoise(vec2(p.x * 7.0 + nyT * 0.05, p.y * 95.0 + nyT * 0.35));
   float dash = smoothstep(-0.25, 0.55, ripple);
   float near = clamp(depth / nyS, 0.0, 1.0);
-  vec3 c = mirror * mix(0.5, 0.26, near) * (0.75 + 0.35 * dash) * vec3(0.78, 0.85, 1.1);
+  vec3 c = mirror * mix(0.5, 0.34, near) * (0.75 + 0.35 * dash) * vec3(0.78, 0.85, 1.1);
   float bright = dot(smear, vec3(0.3, 0.55, 0.15));
-  c += smear * smoothstep(0.3, 0.8, bright) * dash * mix(0.7, 0.4, near);
+  c += smear * smoothstep(0.3, 0.8, bright) * dash * mix(0.7, 0.5, near);
+  // The landmarks' lights run down the water in long broken columns that
+  // widen toward the viewer.
+  vec3 cols = vec3(1.0, 0.76, 0.4) * exp(-nySq((p.x - nyEsX) / (0.014 * nyK + depth * 0.05)));
+  cols += vec3(0.86, 0.88, 1.0) * 0.75 * exp(-nySq((p.x - nyChX) / (0.011 * nyK + depth * 0.04)));
+  cols += vec3(0.8, 0.86, 1.0) * 0.4 * exp(-nySq((p.x - nyWtX) / (0.01 * nyK + depth * 0.03)));
+  float streak = smoothstep(0.05, 0.7, snoise(vec2(p.x * 16.0 + nyT * 0.04, p.y * 75.0 + nyT * 0.3)));
+  c += cols * streak * 0.7 * (1.0 - near * 0.4) * smoothstep(0.0, 0.06, depth);
   // The afterglow's glitter path.
   float path = exp(-nySq((p.x - nySunX) / (0.04 + depth * 0.3)));
-  c += vec3(1.0, 0.5, 0.22) * path * smoothstep(0.0, 0.7, ripple) * (1.0 - near * 0.7) * 0.55;
+  c += vec3(1.0, 0.5, 0.22) * path * smoothstep(0.0, 0.7, ripple) * (1.0 - near * 0.5) * 0.6;
   c += vec3(0.02, 0.025, 0.06);
   if (nyFerryOn > 0.5) {
     float bow = nyFerryX();
@@ -470,29 +518,44 @@ vec4 nyScene(vec2 uv, vec2 res, float t) {
   nyCw = nySw * nyGrid.x;
   nyCh = nyPx * nyGrid.y;
   nyT = t;
-  nyS = floor(0.3 / nyCh) * nyCh;
-  // The Empire State stands just right of centre, the Chrysler Building a
-  // step east of it and One World Trade Center to the west; on a narrow
-  // phone they close up so all three stay in view.
+  nyK = mix(0.72, 1.0, smoothstep(0.55, 1.3, nyA));
+  nyS = floor(mix(0.24, 0.28, smoothstep(0.6, 1.4, nyA)) / nyCh) * nyCh;
+  // The landmarks stand clear of the middle half, where a headline goes:
+  // One World Trade Center to the west, the Empire State and the Chrysler
+  // Building to the east. The afterglow sits low on the west side, under
+  // the headline, with only the low Village between.
   float mid = nyA * 0.5;
-  nyEsX = nySnapX(mid + nyA * 0.1);
-  nyChX = nySnapX(nyEsX + clamp(nyA * 0.1, 0.1, 0.24));
-  nyWtX = nySnapX(mid - clamp(nyA * 0.3, 0.13, 0.62));
-  nySunX = mid - nyA * 0.11;
+  nyEsX = nySnapX(mid + nyA * 0.29);
+  nyChX = nySnapX(min(nyEsX + max(nyA * 0.085, 0.075), nyA - 0.04 * nyK - nySw * 2.0));
+  nyWtX = nySnapX(mid - nyA * 0.33);
+  nySunX = mid - nyA * 0.2;
   vec2 p = vec2(uv.x * nyA, uv.y);
   float share = nyWindows * 0.85;
-  vec3 c = p.y < nyS ? nyRiver(p, share) : nyCity(p, share);
-  // Tone follows brightness, with a little per-glyph jitter so gradients
-  // mix dot sizes instead of banding. Even the largest dot inks under a
-  // third of its cell, so mid tones already reach for it.
+  vec3 c;
+  if (p.y < nyS) {
+    c = nyRiver(p, share);
+    nyFar = 0.15;
+    nySkyHit = 0.5;
+  } else {
+    c = nyCity(p, share);
+  }
+  // Tone follows brightness. Dark air and shadow get the smallest dots,
+  // or none in the deepest shadow; mid tones get small and medium dots;
+  // only the afterglow, lit crowns and windows reach the largest. Far
+  // layers draw smaller dots, and a little per-glyph jitter mixes sizes
+  // instead of banding.
   float luma = dot(c, vec3(0.3, 0.55, 0.15));
   vec2 cell = floor(vec2(p.x / nyCw, p.y / nyCh));
-  float tone = 0.12 + 0.85 * pow(max(luma, 0.0), 0.75) + 0.25 * smoothstep(0.6, 0.95, luma) + (nyHash(cell + 0.37) - 0.5) * mix(0.06, 0.14, smoothstep(0.3, 0.6, luma));
-  c = min(c * 1.1, vec3(1.0));
-  tone = clamp(tone, 0.0, 1.0) * sqrt(nyIntensity);
+  float tone = 0.07 + 0.6 * pow(max(luma, 0.0), 0.8) + 0.42 * smoothstep(0.52, 0.9, luma) + (nyHash(cell + 0.37) - 0.5) * mix(0.03, 0.16, nySkyHit);
+  tone *= mix(1.0, 0.8, nyFar);
+  // Lowering intensity dims the city but keeps its lights, so the crowns
+  // still read behind a headline.
+  float hi = smoothstep(0.4, 0.7, luma);
+  c = min(c * 1.1, vec3(1.0)) * mix(mix(0.25, 1.0, nyIntensity), mix(0.7, 1.0, nyIntensity), hi);
+  tone = clamp(tone, 0.0, 1.0) * mix(sqrt(nyIntensity), mix(0.8, 1.0, nyIntensity), hi);
   nyCacheUv = uv;
   nyCacheT = t;
-  nyCacheValue = vec4(c * mix(0.25, 1.0, nyIntensity), tone);
+  nyCacheValue = vec4(c, tone);
   return nyCacheValue;
 }
 `;
