@@ -118,9 +118,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Hong Kong",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "Rio de Janeiro at night from the sea: Sugarloaf with its cable car, Christ the Redeemer lit white on Corcovado, and the lamps of Copacabana on a calm bay.",
+      "Rio de Janeiro at dusk from the water in dots: Sugarloaf beside Morro da Urca with one cable car crossing, Christ the Redeemer pale on Corcovado, and the lamps of Copacabana curving along the shore under a gold to violet sky.",
     id: "rio",
     load: async () => {
       const { Rio } = await import("@/components/asciicn/rio");

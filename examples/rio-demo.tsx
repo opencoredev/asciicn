@@ -12,6 +12,7 @@ export default function RioDemo() {
       intensity={usePreviewValue(knobs.intensity)}
       cableCar={usePreviewValue(knobs.cableCar)}
       cell={usePreviewValue(knobs.cell)}
+      square={usePreviewValue(knobs.square)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"
     />
