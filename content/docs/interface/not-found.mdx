@@ -1,0 +1,232 @@
+---
+title: "Not found"
+description: "A 404 page whose code is drawn in sand: gusts wear its edges and grains drift downwind and settle, over a terminal line that echoes the missing path."
+---
+
+import NotFoundDemo from "@/examples/not-found-demo";
+import { controls as notFoundControls } from "@/examples/not-found-controls";
+import NotFoundCard from "@/examples/not-found-card";
+import NotFoundClassic from "@/examples/not-found-classic";
+import NotFoundError from "@/examples/not-found-error";
+
+<ComponentPreview
+  src="examples/not-found-demo.tsx"
+  controls={notFoundControls}
+  size="lg"
+>
+  <NotFoundDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="not-found" />
+
+## Usage
+
+In Next.js, render it from `app/not-found.tsx`. That file handles unknown URLs and every `notFound()` call, and Next.js answers with a 404 status.
+
+```tsx
+import Link from "next/link";
+
+import { NotFound } from "@/components/asciicn/not-found";
+import { Button } from "@/components/ui/button";
+
+export default function NotFoundPage() {
+  return (
+    <main className="flex min-h-svh flex-col items-center justify-center">
+      <NotFound
+        actions={
+          <>
+            <Button asChild>
+              <Link href="/">Back home</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/docs">Browse the docs</Link>
+            </Button>
+          </>
+        }
+      />
+    </main>
+  );
+}
+```
+
+The code is set in the page's own typeface at a heavy weight, then sampled into glyphs. Each sample knows how far it sits from the edge of a digit. Two gusts per loop sweep across the code and wear its edges down a few samples deep, so it changes shape without ever breaking up. Grains lift off the tops and right-hand faces, arc downwind in `accent` and fade as they settle, and the hole each one leaves fills back in as it lands. Faint wind ripples run through the sand. The loop lasts 16 seconds.
+
+The terminal line types `$ cd <path>`, answers `cd: no such file or directory: <path>` and waits at a blinking cursor. Without `path` it reads `window.location.pathname` after mount, so the server markup and the first client render match. `command` and `message` change the two lines, for a failed request rather than a missing page:
+
+```tsx
+<NotFound
+  code="500"
+  title="Something broke"
+  path="/api/orders"
+  command="curl -f"
+  message="(22) the server returned 500"
+/>
+```
+
+## Examples
+
+### Something broke
+
+A 500 page with a `curl` line, a red accent and a stronger wind.
+
+<ComponentPreview src="examples/not-found-error.tsx" size="lg">
+  <NotFoundError />
+</ComponentPreview>
+
+### Inside a card
+
+`compact` shrinks the art, the terminal line and the type, for a missing record inside an app.
+
+<ComponentPreview src="examples/not-found-card.tsx">
+  <NotFoundCard />
+</ComponentPreview>
+
+### Classic ramp
+
+The `standard` charset at a 12px cell. The sand thins from `@` to `.` toward its edges, and the grains in flight are `.` and `:`.
+
+<ComponentPreview src="examples/not-found-classic.tsx" size="lg">
+  <NotFoundClassic />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "code",
+      type: "string",
+      default: '"404"',
+      description: "The code drawn in sand.",
+    },
+    {
+      name: "title",
+      type: "ReactNode",
+      default: '"Page not found"',
+      description: "The heading under the art.",
+    },
+    {
+      name: "description",
+      type: "ReactNode",
+      default: "A line about a moved or mistyped link",
+      description: "One or two sentences under the heading.",
+    },
+    {
+      name: "path",
+      type: "string",
+      default: "window.location.pathname",
+      description:
+        "The path echoed in the terminal line. Read after mount when omitted.",
+    },
+    {
+      name: "command",
+      type: "string",
+      default: '"cd"',
+      description: "The command typed before the path.",
+    },
+    {
+      name: "message",
+      type: "string",
+      default: '"no such file or directory"',
+      description: "The error the command prints.",
+    },
+    {
+      name: "actions",
+      type: "ReactNode",
+      description: "Buttons or links, laid out in a centred row.",
+    },
+    {
+      name: "titleAs",
+      type: '"h1" | "h2" | "h3" | "p"',
+      default: '"h1"',
+      description: "Heading level of the title, to fit the page outline.",
+    },
+    {
+      name: "accent",
+      type: "AsciiColor",
+      default: '"orange"',
+      description:
+        "Colour of the drifting grains, the prompt and the cursor: a palette name or any CSS colour.",
+    },
+    {
+      name: "wind",
+      type: "number",
+      default: "1",
+      description:
+        "How hard the wind blows, from 0 (still sand, no grains) to 2.",
+    },
+    {
+      name: "compact",
+      type: "boolean",
+      default: "false",
+      description: "A smaller layout for cards and panels.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"braille"',
+      description:
+        "Glyphs the sand is drawn with. Braille draws one dot per grain.",
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "`truecolor` draws the sand in ink and the grains in `accent`; `mono` draws both in ink.",
+    },
+    {
+      name: "dither",
+      type: '"none" | DitherMatrix',
+      default: '"blue-noise" for Braille and quadrants, "none" for ramps',
+      description:
+        "Ordered dithering. Blue noise turns the thinning edges into a stipple of loose grains.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10, or 8 when compact",
+      description: "Glyph cell height of the art in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "Time multiplier for the wind.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "`false` holds a still frame, prints the terminal line at once and stops the cursor blinking.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "5.5",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "chars, phosphor, ramp, ansi, grade, invert, threshold, edgeThreshold, background, fx",
+      type: "AsciiLook",
+      description:
+        "The shared look props. See [the engine](/docs/engine/ascii-engine).",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      description: "Filled with a handle for export.",
+    },
+  ]}
+/>
+
+## Notes
+
+- The art is a canvas of real glyphs and is labelled with the code (`role="img"`). The terminal line, the title and the description are DOM text, so they are readable, selectable and translatable. Screen readers get the error line once, not letter by letter.
+- The motion is a function of time on a 16 second loop, so a still frame needs no history. Under `prefers-reduced-motion` the art holds the `stillTime` frame, the terminal line prints at once and the cursor stays lit.
+- The art pauses offscreen and in hidden tabs, and follows the theme: ink glyphs on the page, the accent from the `--ascii-color-*` tokens.
+- The code fits its box, so a three-digit code and a word such as `"gone"` both work. Short codes read best.
