@@ -71,7 +71,7 @@ export const CITIES: readonly CityEntry[] = [
   {
     charset: "dots",
     description:
-      "Westminster at dusk in dots: the Elizabeth Tower's clock face glowing warm, the palace roofline lit gold, Westminster Bridge and its lamps, and the Thames holding long broken reflections under a misty gold to slate sky.",
+      "Westminster at dusk in dots, modelled in 3D: the floodlit Elizabeth Tower with its clock faces glowing, the Palace of Westminster receding along the river to the Victoria Tower, Westminster Bridge and its lamps, and the Thames mirroring it all under a pale gold to slate sky.",
     id: "london",
     load: async () => {
       const { London } = await import("@/components/asciicn/london");

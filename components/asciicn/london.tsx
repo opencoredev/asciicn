@@ -6,950 +6,730 @@ import type { AsciiColor, AsciiSceneProps, ColorMode } from "@/lib/ascii";
 import { resolveCharset } from "@/lib/ascii";
 import { AsciiShader } from "@/lib/ascii/shader";
 
-// Westminster at dusk from across the Thames, painted in dots: every sample
-// returns a colour and a tone, and the tone only sets how big the dot is.
-// Layers are tested near to far: Westminster Bridge, the embankment wall,
-// the Elizabeth Tower, the Palace of Westminster with the Central and
-// Victoria Towers, the trees on the far bank, a hazy far skyline, then the
-// sky. Rows below `ldWaterRow` are the river, which reads the same layers
-// mirrored. `s` is a whole sample (column, row from the bottom) and `p` the
-// same point in box heights, so the tower keeps its exact shape on the
-// sample grid while the light around it is painted in smooth gradients.
+// Westminster at dusk, seen across the Thames from the South Bank just
+// south of Westminster Bridge. The scene is a 3D model raymarched from a
+// camera on the embankment: the Elizabeth Tower, the Palace of Westminster
+// receding along the far bank to the Victoria Tower, and the bridge on its
+// arches. Units are metres; x runs north along the river, y is up and z
+// points west across it, so the camera looks roughly west into the
+// afterglow. The water is a plane that traces the mirrored ray through
+// slow ripples. Each sample's colour is snapped to the scene's palette and
+// its brightness sets the dot size.
 const SCENE = `
-const float LD_WATER = 0.22;
-const float LD_BANK = 0.022;
-const vec3 LD_MIST = vec3(0.74, 0.64, 0.64);
-// Westminster Bridge: arch spans widen towards you, from LD_SPAN0 box heights
-// at the tower's foot, growing by LD_SPANK of the distance.
-const float LD_SPAN0 = 0.07;
-const float LD_SPANK = 0.14;
+// The far bank's ground above the water, the palace's river front, the
+// Elizabeth Tower's centre and the camera.
+const float LD_G = 3.5;
+const float LD_ZF = 185.0;
+const float LD_TX = 20.0;
+const float LD_TZ = 191.7;
+const vec3 LD_CAM = vec3(48.0, 7.0, 40.0);
+// The bridge's centre line and the spacing of its piers.
+const float LD_BX = 66.0;
+const float LD_SPAN = 25.4;
 
-// Set once per sample by ldScene and read by every layer.
-float ldHeight;
-float ldSw;
-float ldSh;
 float ldT;
-float ldAspect;
-float ldAxis;
-float ldAxisX;
-float ldWaterRow;
-float ldWaterY;
-float ldGroundRow;
-float ldGroundY;
-float ldDialRow;
-float ldDialY;
-float ldDialX;
-float ldSunX;
-float ldBridgeX;
-float ldCentralX;
-float ldVictoriaX;
-float ldPalaceL;
-float ldBoatRow;
+float ldPix;
+float ldHz;
+float ldK;
+float ldAsp;
+float ldGlowAz;
+vec3 ldFw;
+vec3 ldRt;
+vec3 ldFlood;
 
-// A height in tower units (0 at the ground, 1 at the finial) as whole rows above the ground.
-float ldRows(float v) {
-  return floor(v * ldHeight / ldSh + 0.5);
-}
-
-// A half width in tower units as whole columns either side of the axis, so
-// every part is an odd number of columns wide and exactly symmetric.
-float ldCols(float w) {
-  return floor(w * ldHeight / ldSw + 0.5);
-}
-
-// A stable random value for whole-sample inputs. The engine's hash21
-// repeats every 50 samples on integers, which shows up as tiled stars.
 float ldHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Floodlit limestone: deep amber in shadow, pale gold where the light is full.
-vec3 ldStone(float lit) {
-  return mix(vec3(0.62, 0.38, 0.2), vec3(1.0, 0.8, 0.5), clamp(lit, 0.0, 1.0));
+float ldBox(vec3 p, vec3 b) {
+  vec3 q = abs(p) - b;
+  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
-// Most windows keep their state. One in four turns on or off every few
-// minutes, fading over three seconds, so the palace changes slowly.
-float ldLit(vec2 id, float chance) {
-  if (ldHash(id) > 0.25) {
-    return step(1.0 - chance, ldHash(id + 7.1));
-  }
-  float period = 90.0 + 120.0 * ldHash(id + 3.3);
-  float phase = ldT / period + ldHash(id + 5.5);
-  float k = floor(phase);
-  float now = step(1.0 - chance, ldHash(id + k * 1.37));
-  float before = step(1.0 - chance, ldHash(id + (k - 1.0) * 1.37));
-  return mix(before, now, smoothstep(0.0, 3.0 / period, fract(phase)));
+// A square pyramid between heights y0 and y1, half width h0 at the foot
+// and h1 at the top.
+float ldPyr(vec3 p, float y0, float y1, float h0, float h1) {
+  float k = (h0 - h1) / (y1 - y0);
+  float side = (max(abs(p.x), abs(p.z)) - (h0 - k * (p.y - y0))) / sqrt(1.0 + k * k);
+  return max(side, max(y0 - p.y, p.y - y1));
 }
 
-// The tower is seen a little off square, so two faces show. The face
-// towards the afterglow fills the left of each section and the corner
-// stands ldCorner(n) columns right of the axis, for a section n columns
-// either side of it. The narrow right face is in shadow.
-float ldCorner(float n) {
-  return floor(n * 0.42 + 0.5);
+float ldOct(vec2 p) {
+  vec2 a = abs(p);
+  return max(max(a.x, a.y), (a.x + a.y) * 0.7071);
 }
 
-// 1 on the lit face, 0 on the shadow face, 2 on the corner between them.
-float ldFace(vec2 s, float n) {
-  float c = ldCorner(n);
-  float x = s.x - ldAxis;
-  if (abs(x - c) < 0.5) {
-    return 2.0;
-  }
-  return x < c ? 1.0 : 0.0;
+float ldOctPyr(vec3 p, float y0, float y1, float r0, float r1) {
+  float k = (r0 - r1) / (y1 - y0);
+  float side = (ldOct(p.xz) - (r0 - k * (p.y - y0))) / sqrt(1.0 + k * k);
+  return max(side, max(y0 - p.y, p.y - y1));
 }
 
-// Stone on each face, with lit from 0 to 1: floodlit gold on the lit face,
-// cool violet slate on the shadow face, and a pale gold arris on the corner.
-vec3 ldFaceCol(float face, float lit) {
-  if (face > 1.5) {
-    return vec3(1.0, 0.88, 0.62);
-  }
-  if (face > 0.5) {
-    return ldStone(lit);
-  }
-  return mix(vec3(0.3, 0.3, 0.46), vec3(0.62, 0.58, 0.74), clamp(lit, 0.0, 1.0));
+// The Elizabeth Tower, 96 m to the finial, in its own frame: the base's
+// centre at the origin. A panelled shaft 12 m square with corner piers,
+// the clock stage with a dial on each face, the open belfry, then the iron
+// spire with its corner pinnacles and the Ayrton light.
+float ldTower(vec3 p) {
+  vec2 c = abs(p.xz);
+  float d = ldBox(p - vec3(0.0, 25.0, 0.0), vec3(5.6, 25.0, 5.6));
+  d = min(d, ldBox(vec3(c.x - 5.4, p.y - 25.0, c.y - 5.4), vec3(0.6, 25.0, 0.6)));
+  d = min(d, ldBox(p - vec3(0.0, 56.3, 0.0), vec3(6.3, 6.2, 6.3)));
+  // A pointed gable over each dial.
+  float gz = max(abs(c.y - 5.8) - 0.5, max((c.x + p.y - 66.8) * 0.7071, 62.5 - p.y));
+  float gx = max(abs(c.x - 5.8) - 0.5, max((c.y + p.y - 66.8) * 0.7071, 62.5 - p.y));
+  d = min(d, min(gz, gx));
+  // The belfry, open in two tall arches on each face.
+  float b = ldBox(p - vec3(0.0, 67.6, 0.0), vec3(5.0, 5.1, 5.0));
+  float oz = ldBox(vec3(abs(c.x - 2.0), p.y - 67.4, c.y - 5.0), vec3(0.9, 3.7, 1.3));
+  float ox = ldBox(vec3(abs(c.y - 2.0), p.y - 67.4, c.x - 5.0), vec3(0.9, 3.7, 1.3));
+  d = min(d, max(b, -min(oz, ox)));
+  d = min(d, ldBox(p - vec3(0.0, 73.2, 0.0), vec3(5.6, 0.5, 5.6)));
+  d = min(d, ldPyr(p, 73.7, 86.0, 5.0, 2.0));
+  d = min(d, ldBox(p - vec3(0.0, 87.2, 0.0), vec3(1.9, 1.3, 1.9)));
+  d = min(d, ldPyr(p, 88.5, 96.0, 1.75, 0.12));
+  d = min(d, ldBox(p - vec3(0.0, 97.3, 0.0), vec3(0.12, 1.3, 0.12)));
+  d = min(d, ldPyr(vec3(c.x - 5.0, p.y, c.y - 5.0), 72.6, 81.5, 0.75, 0.06));
+  d = min(d, ldPyr(vec3(c.x - 6.0, p.y, c.y - 6.0), 60.0, 66.8, 0.55, 0.05));
+  return d;
 }
 
-// A clock dial as an ellipse, foreshortened on the narrow face, centred at
-// column cx with half sizes rx columns and ry rows: a dark bronze rim, an
-// opal face glowing brightest at the centre, and two hands keeping slow
-// time from ten to nine. Alpha 0 outside.
-vec4 ldDial(vec2 s, float cx, float rx, float ry, float bright) {
-  vec2 q = vec2((s.x - cx) / (rx + 0.5), (s.y - ldDialRow) / (ry + 0.5));
-  float k = length(q);
-  if (k > 1.0) {
-    return vec4(0.0);
-  }
-  if (k > 0.84) {
-    return vec4(vec3(0.3, 0.19, 0.12) * mix(0.75, 1.0, bright), 0.46);
-  }
-  float minutes = 50.0 + ldT / 60.0;
-  float am = minutes / 60.0 * 6.28318;
-  float ah = (8.0 + minutes / 60.0) / 12.0 * 6.28318;
-  float alongM = dot(q, vec2(sin(am), cos(am)));
-  float acrossM = abs(dot(q, vec2(cos(am), -sin(am))));
-  float alongH = dot(q, vec2(sin(ah), cos(ah)));
-  float acrossH = abs(dot(q, vec2(cos(ah), -sin(ah))));
-  float hand = 0.5 / (max(rx, ry) + 0.5);
-  if ((alongM > -0.05 && alongM < 0.7 && acrossM < hand) || (alongH > -0.05 && alongH < 0.46 && acrossH < hand)) {
-    return vec4(0.3, 0.18, 0.1, 0.42);
-  }
-  vec3 opal = mix(vec3(1.0, 0.88, 0.64), vec3(1.0, 0.98, 0.9), 1.0 - k);
-  return vec4(opal * mix(0.72, 1.0, bright), mix(0.78, 1.0, bright));
+// The palace in river-front coordinates: s metres south of the tower, y
+// above the ground, z inland from the front.
+vec3 ldPalaceFrame(vec3 p) {
+  return vec3((LD_TX - 6.8) - p.x, p.y - LD_G, p.z - LD_ZF);
 }
 
-// A horizontal band (cornice, gallery) across both faces.
-vec4 ldBand(vec2 s, float n, float tone) {
-  float face = ldFace(s, n);
-  return vec4(ldFaceCol(face, face > 0.5 ? 1.0 : 0.6), face > 0.5 ? tone : tone * 0.92);
+// The river front, 266 m of buttressed gothic wall with four pavilions and
+// their corner turrets, under steep slate roofs. Returns the distance and
+// whether the nearest part is roof.
+vec2 ldFront(vec3 q) {
+  float inS = abs(q.x - 133.0) - 133.0;
+  float d = ldBox(q - vec3(133.0, 10.0, 45.0), vec3(133.0, 10.0, 45.0));
+  // Buttresses every 6.5 m, each ending in a pinnacle above the parapet.
+  float sr = mod(q.x, 6.5) - 3.25;
+  float bu = ldBox(vec3(sr, q.y - 11.5, q.z + 0.5), vec3(0.6, 11.5, 0.9));
+  bu = min(bu, ldPyr(vec3(sr, q.y, q.z + 0.5), 23.0, 27.8, 0.6, 0.05));
+  d = min(d, max(bu, inS));
+  // Pavilions standing forward of the wall, with square corner turrets.
+  float k = clamp(floor((q.x - 11.0) / 81.33 + 0.5), 0.0, 3.0);
+  float sc = q.x - 11.0 - 81.33 * k;
+  d = min(d, ldBox(vec3(sc, q.y - 12.5, q.z - 8.0), vec3(10.5, 12.5, 11.0)));
+  vec3 tq = vec3(abs(sc) - 10.2, q.y, q.z + 2.6);
+  d = min(d, ldBox(tq - vec3(0.0, 14.5, 0.0), vec3(1.3, 14.5, 1.3)));
+  d = min(d, ldPyr(tq, 29.0, 36.0, 1.4, 0.08));
+  // Roofs: one ridge over the river range, a higher one behind, and a hip
+  // over each pavilion.
+  float roof = max(max(inS, 19.5 - q.y), (abs(q.z - 9.0) + q.y - 28.5) * 0.7071);
+  roof = min(roof, max(max(abs(q.x - 133.0) - 118.0, 19.5 - q.y), (abs(q.z - 46.0) + q.y - 32.0) * 0.7071));
+  roof = min(roof, ldPyr(vec3(sc, q.y, q.z - 8.0), 25.0, 31.5, 10.5, 2.5));
+  // Spirelets along the back ridge.
+  float br = mod(q.x, 11.0) - 5.5;
+  roof = min(roof, max(ldPyr(vec3(br, q.y, q.z - 46.0), 28.0, 37.0, 0.7, 0.05), abs(q.x - 133.0) - 110.0));
+  return roof < d ? vec2(roof, 1.0) : vec2(d, 0.0);
 }
 
-// The Elizabeth Tower: the panelled shaft with its recessed windows, the
-// clock stage with a dial on each face, the open belfry lit from inside,
-// the gallery with corner pinnacles, the slate spire and the finial.
-vec4 ldTower(vec2 s, out float cover) {
-  cover = 0.0;
-  float jx = abs(s.x - ldAxis);
-  float x = s.x - ldAxis;
-  float ry = s.y - ldGroundRow;
-  float v = (ry + 0.5) * ldSh / ldHeight;
-  if (ry < 0.0 || v > 1.0 || jx > ldCols(0.1)) {
-    return vec4(0.0);
-  }
-  float c1 = ldRows(0.5);
-  float c2 = max(ldRows(0.52), c1 + 1.0);
-  float c3 = max(ldRows(0.715), c2 + 5.0);
-  float c4 = max(ldRows(0.735), c3 + 1.0);
-  float c5 = max(ldRows(0.805), c4 + 3.0);
-  float c6 = max(ldRows(0.83), c5 + 1.0);
-  float c7 = max(ldRows(0.975), c6 + 4.0);
-  if (ry >= c7) {
-    if (jx > 0.5) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return vec4(1.0, 0.84, 0.5, 0.75);
-  }
-  if (ry >= c6) {
-    // The spire: slate banded in gold, its lit face catching the afterglow.
-    float k = (ry - c6) / (c7 - c6);
-    float n = floor(ldCols(0.064) * pow(1.0 - k, 1.2) + 0.5);
-    float pin = ldCols(0.076);
-    if (jx > pin - 0.5 && ry < c6 + max(2.0, ldRows(0.05))) {
-      cover = 1.0;
-      bool litPin = x < 0.0;
-      return vec4(litPin ? vec3(1.0, 0.8, 0.46) : vec3(0.56, 0.48, 0.58), litPin ? (ry < c6 + 1.0 ? 0.9 : 0.72) : 0.5);
-    }
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float face = ldFace(s, n);
-    if (face > 1.5) {
-      return vec4(1.0, 0.84, 0.56, 0.8);
-    }
-    bool lit = face > 0.5;
-    if (jx > n - 0.5) {
-      return lit ? vec4(1.0, 0.8, 0.46, 0.82) : vec4(0.5, 0.48, 0.66, 0.8);
-    }
-    if (mod(ry - c6, 3.0) < 0.5) {
-      return lit ? vec4(0.9, 0.64, 0.36, 0.6) : vec4(0.44, 0.36, 0.42, 0.36);
-    }
-    return lit ? vec4(0.46, 0.42, 0.54, 0.5) : vec4(0.28, 0.29, 0.44, 0.6);
-  }
-  if (ry >= c5) {
-    float n = ldCols(0.078);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return ldBand(s, n, 0.9);
-  }
-  if (ry >= c4) {
-    // The belfry: an arcade of tall openings, warm inside, between piers.
-    float n = ldCols(0.07);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float face = ldFace(s, n);
-    bool open = face < 1.5 && jx < n - 0.5 && mod(s.x - ldAxis + n, 2.0) > 0.5 && ry > c4 && ry < c5 - 1.0;
-    if (open) {
-      return face > 0.5 ? vec4(1.0, 0.7, 0.38, 0.62) : vec4(0.66, 0.42, 0.3, 0.5);
-    }
-    return vec4(ldFaceCol(face, face > 0.5 ? 0.8 : 0.45), face > 0.5 ? 0.84 : 0.8);
-  }
-  if (ry >= c3) {
-    float n = ldCols(0.092);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return ldBand(s, n, 0.95);
-  }
-  if (ry >= c2) {
-    // The clock stage: the big dial in the middle of the lit face and a
-    // narrow, dimmer one on the shadow face, each in a frame of tracery.
-    float n = ldCols(0.088);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    float c = ldCorner(n);
-    float face = ldFace(s, n);
-    float halfRows = max((c3 - c2) * 0.5 - 1.0, 1.0);
-    float rx = (n + c) * 0.5 - 0.8;
-    float ry2 = min(rx * ldSw / ldSh, halfRows);
-    if (face > 0.5 && face < 1.5) {
-      vec4 dial = ldDial(s, ldAxis + (c - 1.0 - n) * 0.5, rx, ry2, 1.0);
-      if (dial.a > 0.0) {
-        return dial;
-      }
-    }
-    if (face < 0.5) {
-      float rs = max((n - c - 1.0) * 0.5 - 0.5, 0.5);
-      vec4 dial = ldDial(s, ldAxis + (c + 1.0 + n) * 0.5, rs, ry2, 0.0);
-      if (dial.a > 0.0) {
-        return dial;
-      }
-    }
-    if (face > 1.5) {
-      return vec4(ldFaceCol(face, 1.0), 0.92);
-    }
-    if (jx > n - 0.5) {
-      return face > 0.5 ? vec4(ldStone(1.0), 0.88) : vec4(ldFaceCol(0.0, 0.7), 0.86);
-    }
-    // Tracery in the corners around the dial: a fine chequer of stone.
-    float trace = mod(s.x + s.y, 2.0) < 0.5 ? 1.0 : 0.0;
-    if (face > 0.5) {
-      // Set back in shade, so the dial is the brightest thing on the stage.
-      return vec4(ldStone(mix(0.15, 0.45, trace)) * 0.85, mix(0.5, 0.66, trace));
-    }
-    return vec4(ldFaceCol(0.0, mix(0.2, 0.5, trace)), mix(0.62, 0.8, trace));
-  }
-  if (ry >= c1) {
-    float n = ldCols(0.084);
-    if (jx > n) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    return ldBand(s, n, 0.9);
-  }
-  // The shaft: a plinth, then long ribs of panelling with recessed windows
-  // between them. Floodlit from below, so it is warmest and fullest at the
-  // foot and dims up the shaft towards the afterglow's rose.
-  float n = ldCols(ry < ldRows(0.035) ? 0.08 : 0.072);
-  if (jx > n) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float face = ldFace(s, n);
-  float lit = 0.95 - 0.4 * v;
-  if (face > 1.5) {
-    return vec4(ldFaceCol(face, 1.0), 0.94);
-  }
-  bool rib = mod(s.x - ldAxis + n, 2.0) < 0.5;
-  bool edge = jx > n - 0.5;
-  // Windows two rows tall in the recesses, a band every few metres.
-  float period = max(5.0, ldRows(0.075));
-  bool window = !rib && !edge && mod(ry - ldRows(0.04), period) < 2.0 && ry > ldRows(0.04);
-  if (face > 0.5) {
-    if (edge) {
-      return vec4(ldStone(lit + 0.15), 0.92);
-    }
-    if (window) {
-      float on = ldLit(vec2(s.x, floor(ry / period)) + 61.0, 0.18);
-      return vec4(mix(vec3(0.24, 0.14, 0.1), vec3(1.0, 0.84, 0.54), on), mix(0.28, 0.7, on));
-    }
-    if (rib) {
-      return vec4(ldStone(lit), 0.92 - 0.24 * v);
-    }
-    return vec4(ldStone(lit - 0.35) * 0.86, 0.62 - 0.16 * v);
-  }
-  // The shadow face keeps full dots in cool slate, so the tower stays one
-  // solid mass and the light, not the outline, tells the faces apart.
-  if (edge) {
-    return vec4(ldFaceCol(0.0, 0.7), 0.86);
-  }
-  if (window) {
-    return vec4(0.14, 0.14, 0.24, 0.3);
-  }
-  if (rib) {
-    return vec4(ldFaceCol(0.0, 0.25 + 0.4 * lit), 0.84);
-  }
-  return vec4(ldFaceCol(0.0, 0.1 + 0.2 * lit), 0.62);
+// The Central Tower's octagonal lantern and spire, and the Victoria Tower,
+// 98.5 m to its corner pinnacles, set back at the far end.
+float ldTowers(vec3 q) {
+  vec3 cq = vec3(q.x - 133.0, q.y, q.z - 75.0);
+  float ct = max(ldOct(cq.xz) - 8.0, max(-q.y, q.y - 57.0));
+  ct = min(ct, ldOctPyr(cq, 57.0, 88.0, 8.6, 0.2));
+  vec3 vq = vec3(q.x - 260.0, q.y, q.z - 48.0);
+  float vt = ldBox(vq - vec3(0.0, 43.0, 0.0), vec3(11.5, 43.0, 11.5));
+  vec3 vc = vec3(abs(vq.x) - 10.6, vq.y, abs(vq.z) - 10.6);
+  vt = min(vt, max(ldOct(vc.xz) - 2.3, max(-q.y, q.y - 92.0)));
+  vt = min(vt, ldOctPyr(vc, 92.0, 99.0, 2.3, 0.1));
+  vt = min(vt, ldBox(vq - vec3(0.0, 98.0, 0.0), vec3(0.15, 12.0, 0.15)));
+  return min(ct, vt);
 }
 
-// Heights of the palace shrink towards its far end, which stands further off.
-float ldFall(float x) {
-  return 1.0 - 0.24 * clamp((ldAxisX - x) / 1.0, 0.0, 1.0);
+// Westminster Bridge: seven low arches on stone piers, a parapet each side
+// and a lamp standard over every pier.
+float ldBridge(vec3 p) {
+  vec3 q = vec3(p.x - LD_BX, p.y, p.z);
+  float zc = clamp((floor((q.z - 2.0) / LD_SPAN) + 0.5) * LD_SPAN + 2.0, 2.0 + LD_SPAN * 0.5, 2.0 + LD_SPAN * 6.5);
+  float body = ldBox(q - vec3(0.0, 4.2, 91.0), vec3(12.5, 4.2, 89.5));
+  body = max(body, -(length(vec2((q.z - zc) / 11.0, q.y / 5.9)) - 1.0) * 5.9);
+  float par = ldBox(vec3(abs(q.x) - 12.6, q.y - 9.0, q.z - 91.0), vec3(0.35, 0.6, 89.5));
+  float pz = floor((q.z - 2.0) / LD_SPAN + 0.5) * LD_SPAN + 2.0;
+  float post = ldBox(vec3(abs(q.x) - 12.6, q.y - 11.6, q.z - pz), vec3(0.2, 2.9, 0.2));
+  return min(min(body, par), post);
 }
 
-// The Victoria Tower at the far end: a square tower in panels with
-// pinnacled corners and a flagpole.
-vec4 ldVictoria(vec2 s, float y, out float cover) {
-  cover = 0.0;
-  float col = floor(ldVictoriaX / ldSw);
-  float jx = abs(s.x - col);
-  float n = floor(0.046 / ldSw + 0.5);
-  float ry = s.y - ldGroundRow;
-  float top = floor(0.4 / ldSh + 0.5);
-  float pin = floor(0.024 / ldSh + 0.5);
-  if (ry < 0.0 || jx > n) {
-    return vec4(0.0);
-  }
-  if (ry >= top) {
-    if (jx < 0.5 && ry < top + pin * 2.0) {
-      cover = 1.0;
-      return vec4(0.6, 0.52, 0.5, 0.36);
-    }
-    if (jx > n - 0.5 && ry < top + pin) {
-      cover = 1.0;
-      return vec4(1.0, 0.8, 0.5, 0.72);
-    }
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float lit = 0.5 + 0.35 * y / 0.4;
-  if (ry > top - 1.5 || jx > n - 0.5) {
-    return vec4(ldStone(lit + 0.25), 0.74);
-  }
-  if (mod(jx, 2.0) < 0.5) {
-    return vec4(ldStone(lit), 0.58);
-  }
-  return vec4(ldStone(lit - 0.2) * 0.92, 0.48);
+// The river cruiser, heading downstream past the palace and under the
+// bridge, about 0.8 m/s. It is in view for about four minutes of every
+// eight, and mid-river at the default still time.
+float ldBoatX() {
+  return mod(ldT * 0.8 + 256.0, 400.0) - 320.0;
 }
 
-// The Central Tower over the middle of the palace: an octagonal lantern of
-// lit lancets under a slender spire.
-vec4 ldCentral(vec2 s, float y, float roof, out float cover) {
-  cover = 0.0;
-  float col = floor(ldCentralX / ldSw);
-  float jx = abs(s.x - col);
-  float ry = s.y - ldGroundRow;
-  float base = floor(roof / ldSh);
-  float lantern = floor(0.17 / ldSh + 0.5);
-  float tip = floor(0.24 / ldSh + 0.5);
-  float n = floor(0.024 / ldSw + 0.5);
-  if (ry < base || ry > tip || jx > n) {
-    return vec4(0.0);
-  }
-  if (ry < lantern) {
-    cover = 1.0;
-    if (jx > n - 0.5 || ry > lantern - 1.5) {
-      return vec4(ldStone(0.8), 0.66);
-    }
-    if (mod(jx, 2.0) > 0.5 && ry > base + 1.0) {
-      return vec4(1.0, 0.84, 0.6, 0.58);
-    }
-    return vec4(ldStone(0.45), 0.46);
-  }
-  float k = (ry - lantern) / max(tip - lantern, 1.0);
-  float w = floor(n * 0.8 * (1.0 - k) + 0.5);
-  if (jx > w) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  if (jx > w - 0.5) {
-    return vec4(0.96, 0.76, 0.46, 0.6);
-  }
-  return vec4(0.34, 0.32, 0.44, 0.36);
+float ldBoat(vec3 p) {
+  vec3 q = p - vec3(ldBoatX(), 0.0, 125.0);
+  float d = ldBox(q - vec3(0.0, 1.2, 0.0), vec3(15.0, 1.5, 3.0));
+  return min(d, ldBox(q - vec3(-1.5, 3.5, 0.0), vec3(10.5, 1.0, 2.5)));
 }
 
-// The river front of the palace: a terrace on the water, floors of tall
-// windows between lit buttresses, a pinnacle on every buttress, a turret
-// every fifth bay, and the long dark roof with gold cresting on its ridge.
-vec4 ldRange(vec2 s, float y, out float cover) {
-  cover = 0.0;
-  float f = ldFall((s.x + 0.5) * ldSw);
-  float parapet = floor(0.104 * f / ldSh + 0.5);
-  float ridge = parapet + max(3.0, floor(0.044 * f / ldSh + 0.5));
-  float ry = s.y - ldGroundRow;
-  float d = ldAxis - s.x;
-  float bay = 3.0;
-  float cx = mod(d, bay);
-  float group = floor(d / bay);
-  // Turrets stand at uneven intervals, never two bays running.
-  bool turret = ldHash(vec2(group, 4.7)) > 0.8 && ldHash(vec2(group - 1.0, 4.7)) <= 0.8;
-  float spike = ldHash(vec2(group, 6.1));
-  // Not every buttress carries a pinnacle, so the roofline never reads as a comb.
-  bool pinnacle = cx < 0.5 && spike > 0.3;
-  if (ry < 0.0) {
-    return vec4(0.0);
+// The scene: distance and what was hit. 1 tower, 2 palace stone, 3 roof,
+// 4 bridge, 5 bank, 6 the buildings north of the bridge, 7 boat.
+vec2 ldMap(vec3 p) {
+  // Only the bank's edge is in the distance field; the ground beyond it is
+  // a plane that ldTrace meets exactly, since grazing rays would creep.
+  vec2 r = vec2(max(max(p.y - LD_G, 181.0 - p.z), p.z - 186.0), 5.0);
+  float wall = ldBox(p - vec3(-60.0, LD_G + 0.6, 181.4), vec3(110.0, 0.6, 0.4));
+  if (wall < r.x) {
+    r = vec2(wall, 5.0);
   }
-  if (turret) {
-    // A turret whole bay wide, rising past the ridge to a point.
-    float tt = ridge + max(3.0, floor((0.03 + 0.025 * spike) * f / ldSh + 0.5));
-    if (ry >= parapet && ry < tt) {
-      bool point = ry > tt - 2.5;
-      if (point && abs(cx - 1.0) > 0.5) {
-        return vec4(0.0);
-      }
-      cover = 1.0;
-      if (point || abs(cx - 1.0) > 0.5) {
-        return vec4(1.0, 0.82, 0.5, 0.8);
-      }
-      return vec4(0.9, 0.62, 0.36, 0.5);
+  vec3 tp = p - vec3(LD_TX, LD_G, LD_TZ);
+  if (ldBox(tp - vec3(0.0, 50.0, 0.0), vec3(7.5, 50.0, 7.5)) < r.x) {
+    float d = ldTower(tp);
+    if (d < r.x) {
+      r = vec2(d, 1.0);
     }
   }
-  if (ry >= ridge) {
-    // Pinnacle tips poke above the ridge, some taller than others.
-    if (pinnacle && ry < ridge + (spike > 0.65 ? 2.0 : 1.0)) {
-      cover = 1.0;
-      return vec4(1.0, 0.84, 0.54, 0.7);
-    }
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  if (ry >= parapet) {
-    if (pinnacle) {
-      return vec4(1.0, 0.78, 0.46, 0.72);
-    }
-    if (ry > ridge - 1.5) {
-      return ldHash(vec2(s.x, 8.8)) > 0.45 ? vec4(1.0, 0.76, 0.44, 0.6) : vec4(0.3, 0.3, 0.44, 0.24);
-    }
-    return vec4(0.13, 0.14, 0.24, 0.2);
-  }
-  // Floodlights on the terrace throw uneven pools up the front: brightest
-  // low down and where a light stands, softer up high and between them.
-  float x = (s.x + 0.5) * ldSw;
-  float pool = 0.5 + 0.5 * sin(x * 23.0 + 1.3) * (0.6 + 0.4 * snoise(vec2(x * 9.0, 2.7)));
-  if (ry > parapet - 1.5) {
-    return vec4(ldStone(0.75 + 0.25 * pool), 0.6 + 0.26 * pool);
-  }
-  float terrace = max(2.0, floor(0.018 / ldSh + 0.5));
-  float lit = 0.62 + 0.36 * pool - 0.3 * ry / max(parapet, 1.0);
-  if (ry < terrace) {
-    return vec4(ldStone(0.35), 0.4);
-  }
-  if (cx < 0.5) {
-    return vec4(ldStone(lit + 0.12), 0.56 + 0.16 * pool);
-  }
-  if (mod(ry - terrace, 3.0) > 1.5) {
-    float on = ldLit(vec2(s.x, ry), 0.22);
-    return vec4(mix(vec3(0.36, 0.22, 0.16), vec3(1.0, 0.9, 0.66), on), mix(0.22, 0.8, on));
-  }
-  // Big dots only where a pool of light is strongest, low on the front.
-  float rise = ry / max(parapet, 1.0);
-  return vec4(ldStone(lit), 0.4 + 0.42 * pool * (1.0 - 0.7 * rise));
-}
-
-vec4 ldPalace(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - ldGroundY;
-  if (y < 0.0 || p.x > ldAxisX - 0.025 || p.x < ldPalaceL) {
-    return vec4(0.0);
-  }
-  vec4 hit = ldVictoria(s, y, cover);
-  if (cover < 0.5) {
-    hit = ldCentral(s, y, 0.104 * ldFall(ldCentralX) + 0.03, cover);
-  }
-  if (cover < 0.5) {
-    hit = ldRange(s, y, cover);
-  }
-  // A little evening haze over all of it, so it stands back from the
-  // tower, and more towards the far end.
-  float haze = 0.16 + 0.4 * clamp((ldAxisX - p.x) / 1.1, 0.0, 1.0);
-  hit.rgb = mix(hit.rgb, LD_MIST, haze);
-  hit.a = mix(hit.a, 0.36, haze * 0.6);
-  return hit;
-}
-
-// The afterglow: strongest low in the sky behind the palace, where the sun
-// went down, and fading along the horizon away from it.
-float ldAfter(vec2 p) {
-  float d = (p.x - ldSunX) / 1.0;
-  return exp(-d * d);
-}
-
-// The sky from the horizon up: pale gold, peach, dusty mauve, slate blue.
-vec3 ldSkyRamp(float h) {
-  vec3 c = mix(vec3(1.0, 0.84, 0.6), vec3(0.96, 0.7, 0.56), smoothstep(0.03, 0.15, h));
-  c = mix(c, vec3(0.72, 0.58, 0.64), smoothstep(0.12, 0.32, h));
-  c = mix(c, vec3(0.44, 0.48, 0.66), smoothstep(0.28, 0.52, h));
-  c = mix(c, vec3(0.26, 0.32, 0.52), smoothstep(0.48, 0.78, h));
-  return mix(c, vec3(0.12, 0.15, 0.27), smoothstep(0.7, 1.0, h));
-}
-
-// The sky, with long soft bands of mist lit from below and a few faint stars.
-vec4 ldSky(vec2 s, vec2 p) {
-  float h = max(p.y - ldGroundY, 0.0) / (1.0 - ldGroundY);
-  float glow = ldAfter(p);
-  float hc = h + 0.1 * (1.0 - glow);
-  vec3 col = ldSkyRamp(hc);
-  // The pale gold lies just above the roofline, where the sun has gone down.
-  float low = exp(-max(h - 0.16, 0.0) * 7.0);
-  // Broken by irregular mist, so it never lies as one even band.
-  low *= 0.45 + 0.75 * fbm(vec2(p.x * 2.4 - ldT * 0.003, h * 9.0 + 1.7));
-  col = mix(col, vec3(1.0, 0.86, 0.6), 0.65 * glow * low);
-  // Dots shrink fast up the sky, so the deep slate reads as quiet air.
-  float tone = 0.13 + 0.2 * exp(-max(hc - 0.04, 0.0) * 4.0) + 0.12 * glow * low * low;
-  vec2 cp = vec2(p.x * 1.1 - ldT * 0.004, p.y * 6.0);
-  float c = fbm(cp + vec2(5.3, 2.1));
-  float band = smoothstep(0.12, 0.22, h) * (1.0 - smoothstep(0.5, 0.7, h));
-  float cloud = smoothstep(0.46, 0.76, c) * band * clamp(ldFog * 2.0, 0.0, 1.4);
-  // Dark sky dots dim towards the paper, so the deep slate reads as quiet air.
-  col *= mix(1.0, 0.7, smoothstep(0.5, 1.0, h));
-  vec3 cloudCol = mix(vec3(1.0, 0.76, 0.62), vec3(0.6, 0.56, 0.72), smoothstep(0.12, 0.5, h));
-  col = mix(col, cloudCol, min(cloud * 0.6, 0.8));
-  tone += cloud * 0.12;
-  float star = ldHash(s + 23.0);
-  float density = 0.003 * smoothstep(0.5, 0.8, h);
-  if (star > 1.0 - density) {
-    float twinkle = 0.5 + 0.5 * sin(ldT * (0.4 + star * 0.5) + ldHash(s + 3.0) * 40.0);
-    col = mix(vec3(0.64, 0.7, 0.92), vec3(0.95, 0.96, 1.0), twinkle);
-    tone = mix(0.32, 0.56, twinkle);
-  }
-  return vec4(col, tone);
-}
-
-// The far city: Whitehall's roofs and turrets beyond the bridge and lower
-// roofs past the palace's far end, hazy and cooler than anything nearer.
-vec4 ldFar(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - ldGroundY;
-  float bw = 0.05;
-  float id = floor(p.x / bw);
-  float u = (p.x - id * bw) / bw;
-  float right = step(ldAxisX, p.x);
-  float hgt = mix(0.035, 0.05, right) + mix(0.025, 0.04, right) * ldHash(vec2(id, 2.3));
-  hgt -= 0.01 * max(0.0, abs(u - 0.5) * 2.0 - 0.6) / 0.4;
-  float turret = ldHash(vec2(id, 9.1)) > 0.8 ? 0.05 * max(0.0, 1.0 - abs(u - 0.5) * 8.0) : 0.0;
-  if (y < 0.0 || y > hgt + turret) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float glow = ldAfter(p);
-  vec3 haze = mix(vec3(0.5, 0.46, 0.6), vec3(0.82, 0.64, 0.6), glow * 0.55);
-  vec3 col = mix(haze * 0.78, haze, smoothstep(0.0, hgt, y));
-  float tone = 0.24 + 0.04 * smoothstep(0.0, hgt, y);
-  if (ldHash(s + 51.0) > 0.975 && y < hgt - 0.008) {
-    col = vec3(0.96, 0.78, 0.56);
-    tone = 0.5;
-  }
-  return vec4(col, tone);
-}
-
-// Plane trees along the embankments either side of the palace: dark
-// blue-green crowns, the tops rimmed by the sky.
-vec4 ldTrees(vec2 p, out float cover) {
-  cover = 0.0;
-  float y = p.y - ldGroundY;
-  bool beyond = p.x > ldAxisX + 0.04 || p.x < ldPalaceL + 0.02;
-  if (y < 0.0 || !beyond) {
-    return vec4(0.0);
-  }
-  float crown = 0.026 + 0.01 * abs(sin(p.x * 55.0)) + 0.006 * snoise(vec2(p.x * 30.0, 4.1));
-  if (y > crown) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float k = y / max(crown, 1e-4);
-  vec3 col = mix(vec3(0.09, 0.12, 0.2), vec3(0.18, 0.22, 0.32), k);
-  col = mix(col, vec3(0.62, 0.5, 0.52), 0.3 * smoothstep(0.75, 1.0, k));
-  return vec4(col, 0.16 + 0.12 * k);
-}
-
-// The embankment wall along the far bank: lit warm under the palace, blue
-// stone elsewhere, with a pale coping.
-vec4 ldBank(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  if (s.y < ldWaterRow || s.y >= ldGroundRow) {
-    return vec4(0.0);
-  }
-  cover = 1.0;
-  float front = step(ldPalaceL, p.x) * step(p.x, ldAxisX + 0.04);
-  if (s.y > ldGroundRow - 1.5) {
-    return vec4(mix(vec3(0.4, 0.4, 0.52), vec3(0.96, 0.74, 0.48), front), mix(0.3, 0.62, front));
-  }
-  return vec4(mix(vec3(0.16, 0.18, 0.3), vec3(0.56, 0.38, 0.28), front), mix(0.16, 0.38, front));
-}
-
-// Westminster Bridge, running from the tower's foot towards you on the right.
-float ldBridgeQ(float u) {
-  return log(1.0 + LD_SPANK * u / LD_SPAN0) / LD_SPANK;
-}
-
-float ldBridgeU(float q) {
-  return LD_SPAN0 * (exp(LD_SPANK * q) - 1.0) / LD_SPANK;
-}
-
-float ldBridgeTop(float u) {
-  return ldGroundY + 0.012 + 0.05 * u;
-}
-
-float ldBridgeBase(float u) {
-  return ldWaterY - 0.08 * u;
-}
-
-float ldPostH(float u) {
-  return 0.02 + 0.03 * u;
-}
-
-// The lamp nearest along the bridge: x, the row of its head, and how far along.
-vec3 ldLamp(float u) {
-  float i = max(floor(ldBridgeQ(u) - 0.08 + 0.5), 0.0);
-  float lu = ldBridgeU(i + 0.08);
-  float col = floor((ldBridgeX + lu) / ldSw);
-  float head = floor(ldBridgeTop(lu) / ldSh + 0.5) + floor(ldPostH(lu) / ldSh + 0.5);
-  return vec3(col, head, lu);
-}
-
-// Green iron arches on stone piers, a pale parapet, and lamp standards
-// with warm lanterns, three to a post on the nearer ones.
-vec4 ldBridge(vec2 s, vec2 p, out float cover) {
-  cover = 0.0;
-  float u = p.x - ldBridgeX;
-  if (u < 0.0) {
-    return vec4(0.0);
-  }
-  float topRow = floor(ldBridgeTop(u) / ldSh + 0.5);
-  float baseRow = floor(ldBridgeBase(u) / ldSh + 0.5);
-  vec3 lamp = ldLamp(u);
-  float dc = abs(s.x - lamp.x);
-  float postTop = floor(ldBridgeTop(lamp.z) / ldSh + 0.5);
-  if (s.y >= postTop - 1.0 && s.y <= lamp.y) {
-    bool head = s.y > lamp.y - 1.5;
-    bool three = lamp.z > 0.2 && head && dc < 1.5;
-    if (dc < 0.5 || three) {
-      cover = 1.0;
-      if (head) {
-        return vec4(1.0, 0.88, 0.6, 1.0);
-      }
-      return vec4(0.24, 0.36, 0.34, 0.38);
+  vec3 q = ldPalaceFrame(p);
+  if (ldBox(q - vec3(133.0, 19.0, 46.0), vec3(136.0, 19.0, 50.0)) < r.x) {
+    vec2 f = ldFront(q);
+    if (f.x < r.x) {
+      r = vec2(f.x, 2.0 + f.y);
     }
   }
-  if (s.y >= topRow || s.y < baseRow) {
-    return vec4(0.0);
-  }
-  float deck = max(2.0, floor((0.012 + 0.02 * u) / ldSh + 0.5));
-  float fr = fract(ldBridgeQ(u));
-  bool pier = fr < 0.16;
-  if (!pier) {
-    float ax = (fr - 0.58) / 0.42;
-    float spring = baseRow + (topRow - deck - baseRow) * 0.2;
-    float crown = topRow - deck;
-    float arch = spring + (crown - spring) * sqrt(max(0.0, 1.0 - ax * ax));
-    if (s.y < arch - 0.5) {
-      return vec4(0.0);
-    }
-    cover = 1.0;
-    if (s.y < arch + 0.5) {
-      return vec4(0.46, 0.66, 0.54, 0.52);
+  if (ldBox(q - vec3(196.0, 56.0, 60.0), vec3(78.0, 56.0, 28.0)) < r.x) {
+    float d = ldTowers(q);
+    if (d < r.x) {
+      r = vec2(d, 2.0);
     }
   }
-  cover = 1.0;
-  if (s.y > topRow - 1.5) {
-    return vec4(0.96, 0.82, 0.58, 0.66);
+  if (ldBox(p - vec3(LD_BX, 8.0, 91.0), vec3(13.5, 8.0, 90.0)) < r.x) {
+    float d = ldBridge(p);
+    if (d < r.x) {
+      r = vec2(d, 4.0);
+    }
   }
-  if (s.y > topRow - deck - 0.5) {
-    return vec4(0.26, 0.5, 0.42, 0.42);
+  // Portcullis House and its chimneys beyond the bridge.
+  float ph = ldBox(p - vec3(106.0, LD_G + 17.0, 205.0), vec3(22.0, 17.0, 19.0));
+  if (ph < r.x) {
+    ph = ldBox(p - vec3(106.0, LD_G + 13.0, 205.0), vec3(22.0, 13.0, 19.0));
+    ph = min(ph, ldBox(vec3(mod(p.x - 84.0, 8.0) - 4.0, p.y - LD_G - 30.0, abs(p.z - 205.0) - 16.0), vec3(1.2, 4.0, 1.2)));
+    ph = max(ph, abs(p.x - 106.0) - 22.0);
+    if (ph < r.x) {
+      r = vec2(ph, 6.0);
+    }
   }
-  if (pier) {
-    return vec4(0.36, 0.34, 0.42, 0.34);
+  if (ldBoatOn > 0.5 && ldBox(p - vec3(ldBoatX(), 2.5, 125.0), vec3(16.0, 3.0, 4.0)) < r.x) {
+    float d = ldBoat(p);
+    if (d < r.x) {
+      r = vec2(d, 7.0);
+    }
   }
-  return vec4(0.1, 0.18, 0.2, 0.16);
+  return r;
 }
 
-// The glow of the clock dial, the focal light: a tight bright core and a
-// wide soft warmth that breathes very slowly.
-float ldHalo(vec2 p) {
-  vec2 d = (p - vec2(ldDialX, ldDialY)) * vec2(1.0, 0.85);
-  float r = length(d);
-  float pulse = 0.92 + 0.08 * sin(ldT * 0.5);
-  float wide = min(0.2, ldAspect * 0.24);
-  return (0.8 * exp(-r / 0.035) + 0.4 * exp(-r * r / (wide * wide))) * pulse;
+// March until the ray comes within a cell's footprint of a surface, so
+// thin parts such as the spire and the pinnacles still cover a dot.
+float ldTrace(vec3 ro, vec3 rd, float tmax, float steps, out float id) {
+  float t = 0.5;
+  id = 0.0;
+  // Rays already above the tallest roof by the far bank miss everything.
+  if (rd.y > 0.0 && rd.z > 0.0 && ro.y + rd.y * (181.0 - ro.z) / rd.z > 112.0) {
+    return -1.0;
+  }
+  if (rd.y < 0.0 && ro.y > LD_G) {
+    float tg = (LD_G - ro.y) / rd.y;
+    if (ro.z + rd.z * tg > 186.0) {
+      tmax = min(tmax, tg);
+      id = 5.0;
+    }
+  }
+  float ground = id;
+  id = 0.0;
+  for (int i = 0; i < 120; i++) {
+    if (float(i) >= steps) {
+      break;
+    }
+    vec3 p = ro + rd * t;
+    vec2 h = ldMap(p);
+    if (h.x < ldPix * t * 0.45 + 0.01) {
+      id = h.y;
+      return t;
+    }
+    // Never less than a quarter of the cell's footprint, so rays grazing a
+    // long wall don't creep along it.
+    t += max(h.x * 0.92, ldPix * t * 0.25);
+    if (t > tmax || (rd.y > 0.0 && p.y > 112.0)) {
+      break;
+    }
+  }
+  if (ground > 0.0) {
+    id = ground;
+    return tmax;
+  }
+  return -1.0;
 }
 
-// The soft pools of light around the bridge lamps, each breathing on its own.
-float ldLampGlow(vec2 p) {
-  float u = p.x - ldBridgeX;
-  if (u < -0.03) {
+vec3 ldNormal(vec3 p, float e) {
+  vec2 k = vec2(1.0, -1.0);
+  return normalize(k.xyy * ldMap(p + k.xyy * e).x + k.yyx * ldMap(p + k.yyx * e).x
+    + k.yxy * ldMap(p + k.yxy * e).x + k.xxx * ldMap(p + k.xxx * e).x);
+}
+
+// Soft shadow toward the floodlights, so buttresses, turrets and the
+// tower's piers throw their shade across the stone.
+float ldShadow(vec3 p) {
+  float s = 1.0;
+  float t = 0.4;
+  for (int i = 0; i < 16; i++) {
+    float h = ldMap(p + ldFlood * t).x;
+    s = min(s, 6.0 * h / t);
+    t += clamp(h, 0.3, 3.0);
+    if (s < 0.02 || t > 12.0) {
+      break;
+    }
+  }
+  return clamp(s, 0.0, 1.0);
+}
+
+float ldOcclusion(vec3 p, vec3 n) {
+  float o = 0.0;
+  float w = 1.0;
+  for (int i = 1; i <= 4; i++) {
+    float h = 0.5 * float(i);
+    o += (h - ldMap(p + n * h).x) * w;
+    w *= 0.6;
+  }
+  return clamp(1.0 - o * 0.45, 0.25, 1.0);
+}
+
+// The dusk: pale gold low in the west behind the palace, rose, then slate
+// blue overhead. The glow sits a little left of the tower.
+vec3 ldSky(vec3 rd) {
+  float h = max(rd.y, 0.0);
+  float g = atan(rd.x, rd.z) - ldGlowAz;
+  vec3 c = mix(vec3(0.98, 0.79, 0.55), vec3(0.66, 0.5, 0.56), smoothstep(0.0, 0.8, abs(g)));
+  c = mix(c, vec3(0.80, 0.60, 0.58), smoothstep(0.04, 0.13, h));
+  c = mix(c, vec3(0.44, 0.42, 0.58), smoothstep(0.1, 0.24, h));
+  c = mix(c, vec3(0.20, 0.24, 0.42), smoothstep(0.2, 0.42, h));
+  c = mix(c, vec3(0.09, 0.11, 0.23), smoothstep(0.4, 0.7, h));
+  float gd = length(vec2(g * 0.7, h * 2.2));
+  c += vec3(1.0, 0.72, 0.42) * (exp(-gd / 0.1) * 0.22 + exp(-gd / 0.32) * 0.14);
+  return c;
+}
+
+// Thin layers of cloud low in the sky, lit from below by the afterglow.
+vec3 ldClouds(vec3 rd, vec3 c) {
+  float h = max(rd.y, 0.0);
+  float az = atan(rd.x, rd.z);
+  float band = smoothstep(0.03, 0.08, h) * smoothstep(0.36, 0.16, h);
+  if (band <= 0.0) {
+    return c;
+  }
+  float n = fbm(vec2(az * 5.0 + ldT * 0.004, log(h + 0.02) * 3.2));
+  float k = smoothstep(0.56, 0.76, n) * band;
+  float warm = exp(-abs(az - ldGlowAz) / 0.6) * smoothstep(0.3, 0.06, h);
+  vec3 lit = mix(vec3(0.46, 0.40, 0.56), vec3(1.0, 0.70, 0.52), warm);
+  return mix(c, lit, k * 0.55);
+}
+
+// A far city low on the horizon wherever the model is open to the sky.
+float ldSkyline(vec3 rd) {
+  float az = atan(rd.x, rd.z);
+  float blk = ldHash(vec2(floor(az * 70.0), 3.0));
+  float north = smoothstep(-0.05, 0.1, az);
+  float spire = step(0.93, ldHash(vec2(floor(az * 220.0), 5.0))) * north * 0.03;
+  return 0.004 + (0.012 + 0.03 * north) * blk * blk + (0.006 + 0.012 * north) * fbm(vec2(az * 8.0, 1.7)) + spire;
+}
+
+// One light seen along a ray: a hard core and a soft halo, hidden when the
+// ray stops in front of it.
+float ldPoint(vec3 ro, vec3 rd, vec3 l, float tEnd, float size) {
+  vec3 v = l - ro;
+  float tp = dot(v, rd);
+  if (tp <= 0.0 || tp > tEnd + 1.5) {
     return 0.0;
   }
-  vec3 lamp = ldLamp(max(u, 0.0));
-  vec2 c = vec2((lamp.x + 0.5) * ldSw, (lamp.y + 0.5) * ldSh);
-  vec2 d = (p - c) * vec2(1.0, 1.3);
-  float pulse = 0.85 + 0.15 * sin(ldT * 0.6 + lamp.z * 40.0);
-  return exp(-length(d) / (0.01 + 0.014 * lamp.z)) * pulse;
+  float d = length(v - rd * tp);
+  float a = d / tp;
+  // At least half a cell across, so far lamps still land on a dot.
+  float core = clamp(size / tp, ldPix * 0.55, ldPix * 0.9);
+  return exp(-pow(a / core, 2.0)) + exp(-a / (ldPix * 1.6)) * 0.14 + exp(-a / (ldPix * 6.0)) * 0.025;
 }
 
-// The air in front of a layer: the dial's glow, the lamps, low mist, and a
-// per-sample dither on the sky and the haze so gradients blend between dot
-// sizes instead of stepping in bands.
-vec4 ldAir(vec2 s, vec2 p, vec4 hit, float depth) {
-  float y = p.y - ldGroundY;
-  if (depth > -0.5) {
-    float halo = ldHalo(p) * (depth > 0.75 ? 1.0 : 0.5);
-    hit.rgb = mix(hit.rgb, vec3(1.0, 0.74, 0.42), clamp(halo * 1.5, 0.0, 0.85));
-    hit.a = max(hit.a, min(hit.a + halo * 0.4, 0.5));
+vec3 ldLamps(vec3 ro, vec3 rd, float tEnd) {
+  float breathe = 0.92 + 0.08 * sin(ldT * 0.7);
+  float g = 0.0;
+  for (int k = 0; k < 8; k++) {
+    float z = 2.0 + LD_SPAN * float(k);
+    g += ldPoint(ro, rd, vec3(LD_BX - 12.6, 14.6, z), tEnd, 0.7);
+    g += ldPoint(ro, rd, vec3(LD_BX + 12.6, 14.6, z), tEnd, 0.7) * 0.45;
   }
-  if (depth > 1.5) {
-    hit.a += (ldHash(s + 0.37) - 0.5) * 0.16;
-  }
-  if (depth > 0.75) {
-    float low = 1.0 - smoothstep(0.0, 0.07, y);
-    float mist = low * smoothstep(0.32, 0.72, fbm(vec2(p.x * 2.6 + ldT * 0.01, y * 26.0)));
-    mist *= clamp(ldFog * 2.0, 0.0, 1.6);
-    hit.rgb = mix(hit.rgb, LD_MIST, min(mist * 0.5, 0.8));
-    hit.a = mix(hit.a, 0.36, min(mist * 0.4, 0.7));
-  }
-  float lamp = ldLampGlow(p);
-  hit.rgb = mix(hit.rgb, vec3(1.0, 0.8, 0.5), clamp(lamp * 0.7, 0.0, 0.8));
-  hit.a += lamp * 0.3;
-  return hit;
-}
-
-// Everything above the water at sample s, without the bridge.
-vec4 ldAbove(vec2 s) {
-  vec2 p = (s + 0.5) * vec2(ldSw, ldSh);
-  float cover;
-  // How far back the hit is: -1 the tower, 0 near, 0.5 the palace, 1 trees, 2 far city, 3 sky.
-  float depth = 0.0;
-  vec4 hit = ldBank(s, p, cover);
-  if (cover < 0.5) {
-    hit = ldTower(s, cover);
-    depth = -1.0;
-  }
-  if (cover < 0.5) {
-    hit = ldPalace(s, p, cover);
-    depth = 0.5;
-  }
-  if (cover < 0.5) {
-    hit = ldTrees(p, cover);
-    depth = 1.0;
-  }
-  if (cover < 0.5) {
-    hit = ldFar(s, p, cover);
-    depth = 2.0;
-  }
-  if (cover < 0.5) {
-    hit = ldSky(s, p);
-    depth = 3.0;
-  }
-  return ldAir(s, p, hit, depth);
-}
-
-// A river cruiser heading downstream: a pale hull, a long glass cabin lit
-// warm between its mullions, and an open top deck. It moves in whole columns.
-vec4 ldBoat(vec2 s, out float cover) {
-  cover = 0.0;
-  if (ldBoatOn < 0.5) {
-    return vec4(0.0);
-  }
-  float len = max(12.0, floor(0.16 / ldSw + 0.5));
-  float travel = ldAspect + 0.5;
-  float x0 = floor((mod(ldT * 0.01 + ldAspect * 0.1 + 0.25, travel) - 0.25) / ldSw);
-  float u = s.x - x0;
-  float r = s.y - ldBoatRow;
-  float hull = max(1.0, floor(0.008 / ldSh + 0.5));
-  float cabin = max(1.0, floor(0.01 / ldSh + 0.5));
-  if (u < 0.0 || u > len - 0.5 || r < 0.0 || r > hull + cabin) {
-    return vec4(0.0);
-  }
-  if (r < hull) {
-    float cut = hull - 1.0 - r;
-    if (u < cut || u > len - 1.0 - cut * 2.0) {
-      return vec4(0.0);
+  // Lamps every 16 m along the palace's river wall: only the two nearest
+  // the ray's closest pass along the wall can show.
+  vec3 w = ro - vec3(0.0, LD_G + 2.2, 180.6);
+  float tl = -dot(w.yz, rd.yz) / max(dot(rd.yz, rd.yz), 1e-4);
+  float lx = (ro.x + rd.x * tl) / 16.0;
+  for (int k = 0; k < 2; k++) {
+    float x = (floor(lx) + float(k)) * 16.0;
+    if (x < -245.0 || x > 12.0) {
+      continue;
     }
-    cover = 1.0;
-    return vec4(0.7, 0.7, 0.82, r < 0.5 ? 0.32 : 0.52);
+    g += ldPoint(ro, rd, vec3(x, LD_G + 2.2, 180.6), tEnd, 0.5) * 0.7;
   }
-  float c0 = floor(len * 0.1);
-  float c1 = floor(len * 0.78);
-  if (u < c0 || u > c1) {
-    return vec4(0.0);
+  // Capped, so a cluster of near lanterns stays gold points, not a white blob.
+  vec3 c = vec3(1.0, 0.8, 0.5) * min(g, 1.0) * breathe;
+  // The lit dials and the Ayrton light warm the air around them.
+  float dial = ldPoint(ro, rd, vec3(LD_TX, LD_G + 56.3, LD_TZ - 6.4), tEnd + 2.0, 0.01);
+  dial += ldPoint(ro, rd, vec3(LD_TX + 6.4, LD_G + 56.3, LD_TZ), tEnd + 2.0, 0.01);
+  c += vec3(1.0, 0.8, 0.5) * dial * 0.55 * (0.95 + 0.05 * sin(ldT * 0.4));
+  c += vec3(1.0, 0.9, 0.7) * ldPoint(ro, rd, vec3(LD_TX, LD_G + 87.2, LD_TZ), tEnd + 2.0, 0.9) * 0.25;
+  if (ldBoatOn > 0.5) {
+    c += vec3(1.0, 0.95, 0.85) * ldPoint(ro, rd, vec3(ldBoatX() + 8.0, 6.5, 125.0), tEnd, 0.35) * 0.7;
   }
-  cover = 1.0;
-  if (r > hull + cabin - 0.5) {
-    return vec4(0.62, 0.62, 0.8, 0.42);
-  }
-  return vec4(1.0, 0.8, 0.5, mod(u - c0, 3.0) < 0.5 ? 0.42 : 0.9);
+  return c;
 }
 
-// The Thames: the boat, then the bridge mirrored about its own footing, then
-// everything above mirrored, darkened and cooled, broken into long ripples
-// that widen towards you. Under the tower and each lamp runs a streak of
-// light broken into dashes that drift down the river.
-vec4 ldWater(vec2 s) {
-  vec2 p = (s + 0.5) * vec2(ldSw, ldSh);
-  float cover;
-  vec4 boat = ldBoat(s, cover);
-  if (cover > 0.5) {
-    return boat;
+// Whether a window in a grid is lit: most stay as they are, a few change
+// every minute or so.
+float ldLit(vec2 id, float odds) {
+  float h = ldHash(id);
+  float era = floor(ldT / 47.0 + h * 9.0);
+  float flip = step(0.93, ldHash(id + era * 7.31));
+  return abs(step(odds, h) - flip);
+}
+
+// A soft band from a to b, widened by the footprint so a row of windows
+// thinner than a cell reads as a dimmer line, not as noise.
+float ldBand(float x, float a, float b, float fp) {
+  return smoothstep(a - fp, a + fp, x) * (1.0 - smoothstep(b - fp, b + fp, x));
+}
+
+vec3 ldSurface(vec3 p, vec3 rd, float t, float id, bool primary) {
+  vec3 n = id > 4.5 && id < 5.5 && p.z > 186.2 ? vec3(0.0, 1.0, 0.0) : ldNormal(p, max(0.02, t * ldPix * 0.25));
+  float fp = t * ldPix * 0.5;
+  // The main floods shine from the south-east; weaker ones from the
+  // north-east keep the north faces from going black.
+  float dif = max(dot(n, ldFlood), 0.0);
+  float fill = max(dot(n, normalize(vec3(0.7, -0.1, -0.7))), 0.0) * 0.32;
+  float sh = 1.0;
+  float ao = 1.0;
+  if (primary) {
+    if (dif > 0.0 && id < 5.5) {
+      sh = ldShadow(p + n * 0.15);
+    }
+    ao = ldOcclusion(p, n);
   }
-  float k = ldWaterY - p.y;
-  float dn = clamp(k / ldWaterY, 0.0, 1.0);
-  float rip = snoise(vec2(p.x * mix(6.0, 2.2, dn) + ldT * 0.015, k * mix(120.0, 34.0, dn) - ldT * 0.42));
-  float rip2 = snoise(vec2(p.x * 2.6 - ldT * 0.01, k * mix(64.0, 20.0, dn) + ldT * 0.3 + 7.0));
-  float sway = rip2 * (0.002 + 0.014 * dn);
-  // Each row of the reflection also slips sideways a little on its own, so
-  // vertical edges above break into short horizontal dashes.
-  float slip = snoise(vec2(p.x * 1.2 + ldT * 0.01, k * 180.0 - ldT * 0.25));
-  float off = floor(sway / ldSw + slip * (1.0 + 2.0 * dn) + 0.5);
-  vec4 hit = vec4(0.0);
-  cover = 0.0;
-  float u = p.x - ldBridgeX;
-  float baseRow = floor(ldBridgeBase(max(u, 0.0)) / ldSh + 0.5);
-  if (u > 0.0 && s.y < baseRow) {
-    vec2 mb = vec2(s.x + off, 2.0 * baseRow - 1.0 - s.y);
-    hit = ldBridge(mb, (mb + 0.5) * vec2(ldSw, ldSh), cover);
-    if (cover > 0.5) {
-      hit = ldAir(mb, (mb + 0.5) * vec2(ldSw, ldSh), hit, 0.0);
+  vec3 amb = mix(vec3(0.07, 0.07, 0.13), vec3(0.20, 0.22, 0.36), n.y * 0.5 + 0.5);
+  vec3 stoneLit = vec3(1.0, 0.70, 0.38);
+  vec3 col;
+  float y = p.y - LD_G;
+  if (id < 1.5) {
+    // The tower: stone up to the belfry, slate and gilding on the spire.
+    vec3 tp = p - vec3(LD_TX, LD_G, LD_TZ);
+    bool front = abs(n.z) > abs(n.x);
+    float u = front ? tp.x : tp.z;
+    float face = front ? -tp.z : tp.x;
+    float flood = (dif * sh + fill) * mix(1.15, 0.8, smoothstep(0.0, 90.0, tp.y));
+    vec3 base = vec3(0.92, 0.80, 0.62);
+    if (tp.y < 50.0) {
+      // Vertical panelling with a string course every 6 m.
+      float panel = 0.8 + 0.2 * cos(u * 6.2832 / 2.4);
+      float course = 1.0 - 0.3 * ldBand(mod(tp.y, 6.0), 0.0, 0.5, fp * 0.5);
+      base *= panel * course;
+      float win = ldBand(abs(u), 0.0, 0.55, fp * 0.4) * ldBand(mod(tp.y, 6.0), 2.0, 4.2, fp * 0.4);
+      float on = ldLit(vec2(floor(tp.y / 6.0), front ? 1.0 : 2.0), 0.6);
+      col = base * (stoneLit * flood * 0.95 + amb) * ao;
+      col = mix(col, mix(vec3(0.08, 0.07, 0.1), vec3(1.0, 0.78, 0.45), on), win * 0.8);
+    } else if (tp.y < 62.5) {
+      float r = length(vec2(u, tp.y - 56.3));
+      float onFace = step(6.15, face);
+      // Gilded surround, then the opal dial with its dark rim and hands.
+      col = vec3(1.0, 0.82, 0.5) * (stoneLit * flood * 1.05 + amb) * ao;
+      if (onFace > 0.5 && r < 3.7) {
+        // Real time: the minute hand turns once an hour.
+        float ang = ldT * 0.000145 + 1.1;
+        vec2 dp = vec2(u * (front ? 1.0 : -1.0), tp.y - 56.3);
+        vec2 mh = vec2(sin(ang * 12.0), cos(ang * 12.0));
+        vec2 hh = vec2(sin(ang), cos(ang));
+        float hm = abs(dp.x * mh.y - dp.y * mh.x) + max(-dot(dp, mh), 0.0) + max(dot(dp, mh) - 3.0, 0.0);
+        float hr = abs(dp.x * hh.y - dp.y * hh.x) + max(-dot(dp, hh), 0.0) + max(dot(dp, hh) - 2.0, 0.0);
+        float hand = max(smoothstep(0.3 + fp, 0.3 - fp, hm), smoothstep(0.35 + fp, 0.35 - fp, hr));
+        float rim = smoothstep(3.0 - fp, 3.2, r);
+        vec3 opal = vec3(1.0, 0.93, 0.72) * (1.25 - 0.25 * r / 3.7);
+        col = mix(opal, vec3(0.18, 0.13, 0.1), max(rim, hand * clamp(0.5 / fp, 0.3, 0.8)));
+      }
+    } else if (tp.y < 73.7) {
+      col = base * (stoneLit * flood + amb) * ao;
+      // Inside the belfry's arches the bells are lit.
+      if (face < 4.7 && abs(n.y) < 0.5) {
+        col = vec3(0.9, 0.55, 0.26) * 0.75;
+      }
+    } else {
+      bool lantern = tp.y > 85.9 && tp.y < 88.5;
+      float gild = ldBand(mod(tp.y - 73.7, 3.2), 0.0, 0.6, fp * 0.5);
+      vec3 slate = mix(vec3(0.16, 0.19, 0.26), vec3(0.95, 0.72, 0.38), gild * 0.7);
+      col = slate * (stoneLit * flood * 0.9 + amb * 1.2);
+      if (lantern) {
+        col = vec3(1.0, 0.9, 0.7);
+      }
+    }
+  } else if (id < 2.5) {
+    // Palace stone, floodlit from the river, with rows of lit windows
+    // between the buttresses.
+    vec3 q = ldPalaceFrame(p);
+    float flood = (dif * sh + fill * 1.4) * mix(1.12, 0.78, smoothstep(0.0, 30.0, q.y));
+    // Warmer and deeper low down where the floods are close, paler above.
+    vec3 stone = mix(vec3(0.95, 0.7, 0.5), vec3(0.9, 0.82, 0.68), smoothstep(4.0, 26.0, q.y));
+    col = stone * (stoneLit * flood + amb) * ao;
+    if (n.z < -0.7 && q.y < 21.0) {
+      float sr = abs(mod(q.x, 6.5) - 3.25);
+      float colm = ldBand(sr, 1.15, 2.55, fp * 0.5);
+      float row = floor(q.y / 5.5);
+      float rowm = ldBand(mod(q.y, 5.5), 1.4, 4.4, fp * 0.5) * step(0.5, row);
+      float on = ldLit(vec2(floor(q.x / 3.25), row), 0.42);
+      vec3 glass = mix(col * vec3(0.4, 0.33, 0.3), vec3(1.0, 0.94, 0.78) * 1.2, on);
+      col = mix(col, glass, colm * rowm * 0.8);
+    }
+  } else if (id < 3.5) {
+    // Slate roofs, cool from the sky with a little light from below.
+    col = vec3(0.16, 0.17, 0.24) * (stoneLit * dif * sh * 0.5 + amb * 1.6) * ao;
+  } else if (id < 4.5) {
+    // The bridge, painted green, lit by its own lamps.
+    float pz = floor((p.z - 2.0) / LD_SPAN + 0.5) * LD_SPAN + 2.0;
+    float lamp = 1.0 / (1.0 + pow(length(vec2(p.z - pz, (p.y - 14.0) * 1.4)) / 6.0, 2.0));
+    vec3 green = vec3(0.3, 0.56, 0.44);
+    col = green * (amb * 1.8 + vec3(1.0, 0.8, 0.55) * (lamp * 1.1 + 0.16)) * ao;
+    if (p.y > 9.7) {
+      // The lamp standards are dark iron under their lanterns.
+      col = green * amb * 0.8;
+    } else if (p.y > 8.3) {
+      col += vec3(0.5, 0.36, 0.2) * lamp;
+    }
+    if (p.y < 5.9 && n.y < 0.2 && abs(p.x - LD_BX) < 12.0) {
+      col *= 0.35;
+    }
+  } else if (id < 5.5) {
+    // The bank and its wall in dark granite, warmed a little by the floods.
+    col = vec3(0.2, 0.19, 0.22) * (amb + stoneLit * 0.18) * ao;
+  } else if (id < 6.5) {
+    float win = ldBand(mod(p.x, 3.0), 0.8, 2.2, fp * 0.5) * ldBand(mod(p.y, 3.6), 1.0, 2.6, fp * 0.5);
+    float on = ldLit(floor(vec2(p.x / 3.0, p.y / 3.6)), 0.7);
+    col = vec3(0.18, 0.18, 0.26) * (amb * 1.3) + vec3(1.0, 0.82, 0.55) * win * on * 0.5;
+  } else {
+    // The cruiser: a pale hull and a row of lit cabin windows.
+    float bx = p.x - ldBoatX();
+    col = vec3(0.6, 0.6, 0.7) * (amb * 1.4);
+    if (p.y > 3.0 && p.y < 4.3 && abs(bx + 1.5) < 10.0) {
+      col = mix(col, vec3(1.0, 0.8, 0.5), 0.85 * ldBand(mod(bx, 1.8), 0.4, 1.4, fp * 0.5));
     }
   }
-  vec2 m = vec2(s.x + off, 2.0 * ldWaterRow - 1.0 - s.y);
-  if (cover < 0.5) {
-    hit = ldBoat(m, cover);
-  }
-  if (cover < 0.5) {
-    hit = ldAbove(m);
-  }
-  float keep = mix(0.85, 0.55, dn);
-  vec3 col = hit.rgb * keep + vec3(0.02, 0.03, 0.08);
-  col = mix(col, col * vec3(0.8, 0.88, 1.12), 0.45);
-  // Long broken reflections: bright parts break into long horizontal
-  // dashes that drift slowly downstream.
-  float dash = smoothstep(-0.1, 0.25, snoise(vec2(p.x * 2.2 + ldT * 0.02, k * mix(90.0, 30.0, dn) - ldT * 0.3)));
-  float tone = hit.a * mix(1.0, 0.8, dn) * mix(0.5, 1.05, dash);
-  // The tower's floodlit gold lies on the water in a long streak.
-  float dx = abs(p.x - ldAxisX);
-  float sw = 0.07 * ldHeight * mix(0.6, 1.1, dn);
-  float gold = exp(-dx * dx / (sw * sw)) * mix(1.0, 0.6, dn) * dash;
-  // And each bridge lamp drops a thin streak below the bridge.
-  vec3 lamp = ldLamp(max(u, 0.0));
-  float lx = abs(p.x - (lamp.x + 0.5) * ldSw);
-  float lw = 0.003 + 0.008 * dn;
-  float below = ldBridgeBase(lamp.z) - p.y;
-  float lampStreak = u > -0.02 && below > 0.0 ? exp(-lx * lx / (lw * lw)) * exp(-below / 0.14) * dash : 0.0;
-  gold = max(gold, lampStreak * 0.9);
-  col = mix(col, vec3(1.0, 0.7, 0.36) * mix(1.0, 0.82, dn), clamp(gold * 1.1, 0.0, 1.0));
-  tone = max(tone, gold * 0.92);
-  // Mist lying on the water near the far bank.
-  float mist = (1.0 - smoothstep(0.0, 0.06, k)) * smoothstep(0.35, 0.75, fbm(vec2(p.x * 2.4 - ldT * 0.008, k * 24.0 + 3.0)));
-  mist *= clamp(ldFog * 2.0, 0.0, 1.6);
-  col = mix(col, LD_MIST * 0.8, min(mist * 0.45, 0.7));
-  // The water is never empty: a faint ripple texture all over, in dots
-  // barely lighter than the paper.
-  tone = max(tone, 0.13 + 0.05 * rip);
-  tone += (ldHash(s + 0.53) - 0.5) * 0.14 * (1.0 - gold);
-  return vec4(col, tone);
+  return col;
 }
 
+// Distance haze toward the horizon's colour in that direction, and the
+// low river mist.
+vec3 ldAir(vec3 col, vec3 rd, float t, float hy) {
+  vec3 horizon = ldSky(vec3(rd.x, 0.012, rd.z)) * 0.85;
+  float haze = 1.0 - exp(-t * (0.0007 + 0.0011 * ldFog));
+  col = mix(col, horizon, haze);
+  float drift = fbm(vec2(atan(rd.x, rd.z) * 9.0 + ldT * 0.01, hy * 0.06 - ldT * 0.004));
+  float mist = ldFog * 0.4 * (1.0 - exp(-t / 300.0)) * exp(-max(hy, 0.0) / 7.0) * (0.25 + 0.9 * drift);
+  return mix(col, horizon * vec3(0.92, 0.9, 1.0), clamp(mist, 0.0, 0.6));
+}
+
+vec3 ldOpen(vec3 rd) {
+  vec3 c = ldClouds(rd, ldSky(rd));
+  if (rd.y < ldSkyline(rd)) {
+    vec3 far = ldSky(vec3(rd.x, 0.02, rd.z)) * vec3(0.5, 0.48, 0.6);
+    vec2 w = floor(vec2(atan(rd.x, rd.z) * 500.0, rd.y * 500.0));
+    far += vec3(1.0, 0.8, 0.5) * step(0.9, ldHash(w)) * 0.3;
+    c = far;
+  }
+  return c;
+}
+
+void ldSetup(vec2 res, float t) {
+  ldT = t;
+  ldAsp = res.x / res.y;
+  float wide = smoothstep(0.6, 1.6, ldAsp);
+  // A normal lens on wide boxes; tall ones widen the view so the tower and
+  // the near palace still fit across.
+  ldK = max(0.98, 0.58 / ldAsp);
+  ldPix = ldK / ascii_samples.y;
+  ldHz = mix(0.31, 0.235, wide);
+  // Turn the camera so the tower stands at the same place in every box.
+  float towerX = mix(0.62, 0.71, wide);
+  float az = atan(LD_TX - LD_CAM.x, LD_TZ - LD_CAM.z);
+  float yaw = az - atan((towerX - 0.5) * ldAsp * ldK);
+  ldFw = vec3(sin(yaw), 0.0, cos(yaw));
+  ldRt = vec3(cos(yaw), 0.0, -sin(yaw));
+  ldGlowAz = az - 0.42;
+  ldFlood = normalize(vec3(-0.42, -0.1, -0.9));
+}
+
+vec3 ldRadiance(vec2 uv) {
+  vec3 rd = normalize(ldFw + ldRt * (uv.x - 0.5) * ldAsp * ldK + vec3(0.0, 1.0, 0.0) * (uv.y - ldHz) * ldK);
+  float tw = rd.y < 0.0 ? -LD_CAM.y / rd.y : 1e5;
+  float id;
+  float th = ldTrace(LD_CAM, rd, min(tw, 1800.0), 110.0, id);
+  vec3 col;
+  float tEnd;
+  if (th > 0.0) {
+    vec3 p = LD_CAM + rd * th;
+    col = ldAir(ldSurface(p, rd, th, id, true), rd, th, p.y);
+    tEnd = th;
+  } else if (tw < 1e4) {
+    // The Thames: the mirrored ray, tipped by slow ripples, gives back a
+    // darker, cooler copy of the scene above.
+    vec3 p = LD_CAM + rd * tw;
+    float near = 1.0 - smoothstep(30.0, 180.0, tw);
+    float r1 = snoise(vec2(p.x * 0.035 + ldT * 0.02, p.z * 0.2 - ldT * 0.32));
+    float r2 = snoise(vec2(p.x * 0.09 - ldT * 0.03, p.z * 0.55 + ldT * 0.45));
+    vec3 n = normalize(vec3((r1 * 0.7 + r2 * 0.6) * 0.03, 1.0, (r1 + r2 * 0.7) * mix(0.012, 0.035, near)));
+    vec3 rr = reflect(rd, n);
+    rr.y = max(rr.y, 0.003);
+    rr = normalize(rr);
+    float rid;
+    float rt = ldTrace(p, rr, 1800.0, 80.0, rid);
+    vec3 refl;
+    if (rt > 0.0) {
+      vec3 q = p + rr * rt;
+      refl = ldAir(ldSurface(q, rr, rt + tw, rid, false), rr, rt, q.y);
+    } else {
+      refl = ldOpen(rr);
+    }
+    refl += ldLamps(p, rr, rt > 0.0 ? rt : 1e5);
+    float fres = 0.32 + 0.68 * pow(1.0 - max(-rd.y, 0.0), 4.0);
+    vec3 deep = vec3(0.025, 0.04, 0.07);
+    col = mix(deep, refl * vec3(0.7, 0.72, 0.82), clamp(fres, 0.0, 0.8));
+    col = ldAir(col, rd, tw, 0.0);
+    tEnd = tw;
+  } else {
+    col = ldOpen(rd);
+    tEnd = 1e5;
+  }
+  return col + ldLamps(LD_CAM, rd, tEnd);
+}
+`;
+
+// The scene's palette, dark to light within each family: night slate,
+// dusk rose, low gold, floodlit stone, stone in shadow, the clock's opal,
+// the river and the bridge's green. Every dot takes the nearest one.
+const PALETTE = [
+  "#0a0f1e",
+  "#10172b",
+  "#161f39",
+  "#1d2848",
+  "#253257",
+  "#2f3d67",
+  "#3b4a78",
+  "#4a5888",
+  "#5c6896",
+  "#6e78a2",
+  "#6c6488",
+  "#84708f",
+  "#9c7c92",
+  "#b68a94",
+  "#cc9a92",
+  "#dcae8c",
+  "#e9c094",
+  "#f3d3a2",
+  "#f8e2b8",
+  "#fdf0d4",
+  "#ffd27a",
+  "#f6c46a",
+  "#eaa94e",
+  "#d18f3e",
+  "#b07534",
+  "#8a5c30",
+  "#644530",
+  "#45332c",
+  "#2c2a42",
+  "#3b3650",
+  "#4c4560",
+  "#5e536a",
+  "#fff4d6",
+  "#ffe6a8",
+  "#fff8ea",
+  "#08121c",
+  "#0f1f2e",
+  "#16293a",
+  "#20364a",
+  "#1d3a33",
+  "#2a5245",
+  "#3b6b58",
+  "#232838",
+  "#2f3446",
+] as const satisfies readonly `#${string}`[];
+
+const glslColor = (hex: string) => {
+  const channel = (at: number) =>
+    (Number.parseInt(hex.slice(at, at + 2), 16) / 255).toFixed(4);
+  return `vec3(${channel(1)}, ${channel(3)}, ${channel(5)})`;
+};
+
+// Unrolled, since GLSL ES 1.00 has no constant arrays.
+const QUANTIZE = `
+vec3 ldQuant(vec3 c) {
+  vec3 best = c;
+  float bd = 1e9;
+  vec3 e;
+  float d;
+${PALETTE.map(
+  (hex) => `  e = c - ${glslColor(hex)};
+  d = dot(e * e, vec3(0.3, 0.5, 0.2));
+  if (d < bd) {
+    bd = d;
+    best = ${glslColor(hex)};
+  }`
+).join("\n")}
+  return best;
+}
+`;
+
+const SHADE = `${SCENE}${QUANTIZE}
 vec2 ldCacheUv = vec2(-1.0);
 float ldCacheT = -1.0;
 vec4 ldCacheValue = vec4(0.0);
 
-vec4 ldScene(vec2 uv, vec2 res, float t) {
+// Brightness sets the dot size, from a fine speck in the darkest sky to a
+// full dot on the lit stone; the colour is lifted so small dots keep their
+// hue, then snapped to the palette.
+vec4 ldShade(vec2 uv, vec2 res, float t) {
   if (uv == ldCacheUv && t == ldCacheT) {
     return ldCacheValue;
   }
-  ldAspect = res.x / res.y;
-  ldSh = 1.0 / res.y;
-  ldSw = ldAspect / max(ascii_samples.x, 1.0);
-  ldT = t;
-  // The tower is taller on tall boxes, so its dial clears a centred headline.
-  ldHeight = mix(0.68, 0.6, smoothstep(0.6, 1.3, ldAspect));
-  vec2 s = floor(vec2(uv.x * ascii_samples.x, uv.y * res.y));
-  // Towards the right in every box, so the middle stays calm for a
-  // headline and the tower stands beside it, with the palace running left.
-  float axis = ldAspect * mix(0.79, 0.76, smoothstep(0.95, 1.4, ldAspect));
-  ldAxis = floor(axis / ldSw);
-  ldAxisX = (ldAxis + 0.5) * ldSw;
-  // The waterline and the ground sit on cell boundaries, so the bank and
-  // its mirror image line up with whole glyphs.
-  float rows = ldSh * ldGrid.y;
-  ldWaterRow = floor(LD_WATER / rows + 0.5) * ldGrid.y;
-  ldWaterY = ldWaterRow * ldSh;
-  ldGroundRow = ldWaterRow + max(1.0, floor(LD_BANK / rows + 0.5)) * ldGrid.y;
-  ldGroundY = ldGroundRow * ldSh;
-  float c2 = max(ldRows(0.52), ldRows(0.5) + 1.0);
-  float c3 = max(ldRows(0.715), c2 + 5.0);
-  ldDialRow = ldGroundRow + floor((c2 + c3) * 0.5);
-  ldDialY = (ldDialRow + 0.5) * ldSh;
-  float stage = ldCols(0.088);
-  ldDialX = (ldAxis + (ldCorner(stage) - 1.0 - stage) * 0.5 + 0.5) * ldSw;
-  ldCentralX = ldAxisX - 0.56;
-  ldVictoriaX = ldAxisX - 1.0;
-  ldPalaceL = ldVictoriaX - 0.07;
-  ldSunX = ldAxisX - 0.7;
-  ldBridgeX = ldAxisX + ldCols(0.08) * ldSw + ldSw;
-  ldBoatRow = floor(0.085 / rows + 0.5) * ldGrid.y;
-
-  float cover;
-  vec4 hit = ldBridge(s, (s + 0.5) * vec2(ldSw, ldSh), cover);
-  if (cover > 0.5) {
-    hit = ldAir(s, (s + 0.5) * vec2(ldSw, ldSh), hit, 0.0);
-  } else {
-    hit = s.y < ldWaterRow ? ldWater(s) : ldAbove(s);
+  ldSetup(res, t);
+  vec3 c = max(ldRadiance(uv), 0.0);
+  // A few stars in the dark top of the sky.
+  vec2 cell = floor(uv * ascii_samples);
+  if (uv.y > ldHz + 0.33 && ldHash(cell + 17.0) > 0.995) {
+    float tw = 0.6 + 0.4 * sin(t * (0.8 + ldHash(cell) * 1.6) + ldHash(cell + 3.0) * 6.28);
+    c = max(c, vec3(0.85, 0.88, 1.0) * tw * smoothstep(ldHz + 0.33, ldHz + 0.5, uv.y));
   }
-  // Intensity dims colour in step and shrinks the dots more gently, so the
-  // shapes keep their place behind text.
-  float tone = clamp(hit.a, 0.0, 1.0) * sqrt(ldIntensity);
+  float peak = max(max(c.r, c.g), c.b);
+  float tone = 0.13 + 0.87 * pow(clamp(peak, 0.0, 1.0), 1.1);
+  vec3 hue = c / pow(max(peak, 0.05), 0.35);
+  vec3 q = ldQuant(clamp(hue, 0.0, 1.0));
   ldCacheUv = uv;
   ldCacheT = t;
-  ldCacheValue = vec4(clamp(hit.rgb, 0.0, 1.0) * ldIntensity, tone);
+  ldCacheValue = vec4(q * ldIntensity, tone * sqrt(ldIntensity));
   return ldCacheValue;
 }
 `;
 
-const FIELD = `${SCENE}
+const FIELD = `${SHADE}
 float field(vec2 uv, vec2 res, float t) {
-  return ldScene(uv, res, t).a;
+  return ldShade(uv, res, t).a;
 }
 `;
 
-const COLOR_FIELD = `${SCENE}
+const COLOR_FIELD = `${SHADE}
 vec3 colorField(vec2 uv, vec2 res, float t) {
-  return ldScene(uv, res, t).rgb;
+  return ldShade(uv, res, t).rgb;
 }
 `;
 
 // Modes that paint the scene's own colours need its dusk paper behind them
 // in both themes; mono and palette keep the theme's paper, or the phosphor's.
-const NIGHT = "#0a1020";
+const NIGHT = "#0a0f1e";
 const NIGHT_MODES: ReadonlySet<ColorMode> = new Set<ColorMode>([
   "truecolor",
   "ansi16",
@@ -961,7 +741,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #111a33 0%, #2a3352 35%, #5a4a58 58%, #7a5e4c 68%, #2a2630 73%, #0f1424 76%, #0a1020 100%)",
+        "linear-gradient(to bottom, #10172b 0%, #253257 30%, #6c6488 55%, #dcae8c 68%, #2c2a42 72%, #10172b 100%)",
     }}
   />
 );
@@ -972,12 +752,12 @@ const clamp = (value: number, min: number, max: number) =>
 export interface LondonProps extends Omit<AsciiSceneProps, "interactive"> {
   /** How strongly it draws, from 0 (faint, for text on top) to 1. Default 1. */
   intensity?: number;
-  /** How much mist drifts in the sky and over the river, from 0 (none) to 1. Default 0.5. */
+  /** How much haze and river mist hang over the scene, from 0 (clear) to 1. Default 0.5. */
   fog?: number;
   /** The river cruiser heading downstream. Default `true`. */
   boat?: boolean;
   /**
-   * Paper behind the glyphs. Default: the scene's dusk blue in `truecolor`,
+   * Paper behind the glyphs. Default: the scene's night blue in `truecolor`,
    * `ansi16` and `duotone`; the theme's paper, or the phosphor's, otherwise.
    */
   paper?: AsciiColor;
@@ -989,6 +769,8 @@ export interface LondonProps extends Omit<AsciiSceneProps, "interactive"> {
   square?: boolean;
   /** In `duotone`, the colour ramp from dark to light. Default `"sodium"`. */
   ramp?: AsciiSceneProps["ramp"];
+  /** Ordered dithering between dot sizes, so the sky's gradient reads as a smooth halftone. Default `"bayer4"` for ramp charsets. */
+  dither?: AsciiSceneProps["dither"];
   /** Shown without WebGL and until the first frame. Default: the dusk as a flat gradient. */
   fallback?: ReactNode;
   /** Ignored: the city never reacts to the pointer. Accepted so galleries can pass it to every scene. */
@@ -996,12 +778,12 @@ export interface LondonProps extends Omit<AsciiSceneProps, "interactive"> {
 }
 
 /**
- * Westminster at dusk across the Thames, painted in dots. The Elizabeth
- * Tower's clock face glows warm beside the gold-lit gothic roofline of the
- * Palace of Westminster, Westminster Bridge carries its lamps across the
- * river, and the Thames breaks the lit palace into long reflections under a
- * misty sky from pale gold to slate blue. Decorative and full-bleed: size
- * it with `className`, usually `absolute inset-0`.
+ * Westminster at dusk across the Thames, modelled in 3D and painted in
+ * dots. The floodlit Elizabeth Tower with its glowing clock faces stands
+ * beside Westminster Bridge, the Palace of Westminster recedes along the
+ * river to the Victoria Tower, and the Thames mirrors it all through slow
+ * ripples under a sky from pale gold to slate blue. Decorative and
+ * full-bleed: size it with `className`, usually `absolute inset-0`.
  */
 export const London = ({
   charset = "dots",
@@ -1011,7 +793,9 @@ export const London = ({
   paper,
   ramp,
   cell = 7,
+  dither,
   square,
+  fps = 24,
   stillTime = 30,
   intensity = 1,
   fog = 0.5,
@@ -1022,7 +806,9 @@ export const London = ({
   ...props
 }: LondonProps) => {
   const mode = colorMode ?? (phosphor ? "mono" : "truecolor");
-  const [gridX, gridY] = resolveCharset(charset, chars).grid;
+  const resolved = resolveCharset(charset, chars);
+  const isRamp = resolved.kind === "ramp";
+  const [gridX, gridY] = resolved.grid;
   return (
     <AsciiShader
       field={FIELD}
@@ -1030,9 +816,6 @@ export const London = ({
       uniforms={{
         ldBoatOn: boat ? 1 : 0,
         ldFog: clamp(fog, 0, 1),
-        // The samples per glyph, so the waterline and the ground land on
-        // whole cells in every charset.
-        ldGrid: [gridX, gridY],
         ldIntensity: clamp(intensity, 0, 1),
       }}
       charset={charset}
@@ -1042,7 +825,9 @@ export const London = ({
       ramp={ramp ?? (mode === "duotone" ? "sodium" : undefined)}
       paper={paper ?? (NIGHT_MODES.has(mode) ? NIGHT : undefined)}
       cell={cell}
+      dither={dither ?? (isRamp ? "bayer4" : "none")}
       square={square ?? gridX * gridY === 1}
+      fps={fps}
       stillTime={stillTime}
       fallback={fallback}
       {...props}

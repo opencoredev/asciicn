@@ -1,6 +1,6 @@
 ---
 title: "London"
-description: "Westminster at dusk in dots: the Elizabeth Tower's clock face glowing warm, the palace roofline lit gold, Westminster Bridge and its lamps, and the Thames holding long broken reflections under a misty gold to slate sky."
+description: "Westminster at dusk in dots, modelled in 3D: the floodlit Elizabeth Tower with its clock faces glowing, the Palace of Westminster receding along the river to the Victoria Tower, Westminster Bridge and its lamps, and the Thames mirroring it all under a pale gold to slate sky."
 ---
 
 import LondonDemo from "@/examples/london-demo";
@@ -36,17 +36,19 @@ export function Hero() {
 }
 ```
 
-The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: small, dim dots in the slate blue at the top of the sky, and larger ones in the pale gold low along the roofline, where the sun has just gone down behind the palace.
+The scene is a 3D model of Westminster, raymarched from a camera on the South Bank just south of Westminster Bridge and then painted in halftone dots. Every dot takes its colour from the scene's palette of about 45 hand-picked colours, and its size from how bright that point is, so the sky reads as fine specks and the floodlit stone as full dots.
 
-The view looks across the Thames at Westminster. The Elizabeth Tower stands to the right, seen a little off square: the face towards the afterglow is lit gold and the narrow face beyond the corner stands in cool slate shadow. The shaft is panelled with recessed windows, a few of them lit. On the clock stage the lit face carries the big dial, an opal face with a dark bronze rim and two hands, and the shadow face a narrower, dimmer one. Above them are the open belfry lit from inside and a slate spire banded in gold. The dial is the brightest thing in the picture and warms the air around it. The Palace of Westminster runs left from the tower's foot, a long gold front of buttresses and lit windows under a dark roof with gold cresting and pinnacles, with the Central Tower's lantern and the Victoria Tower further off. A little evening haze lies over the whole palace and thickens towards its far end, so it stands back from the tower. Westminster Bridge runs from the tower's foot towards you on green arches, its lamps glowing on their standards.
+The Elizabeth Tower stands right of centre, built to its real proportions: a panelled shaft 12 m square, the clock stage with a dial on each face, the open belfry lit from inside, and the iron spire with its corner pinnacles and the Ayrton light, 96 m to the finial. The camera sees it a little off square, so the floodlit east face carries the big glowing dial and the north face beside it stands in shade with a sliver of its own dial. The Palace of Westminster runs left from the tower's foot and recedes along the river: buttresses every few metres, each ending in a pinnacle, rows of windows with a few lit, pavilions with corner turrets, and steep slate roofs, with the Central Tower's spire in the middle and the Victoria Tower at the far end, paler and hazier with distance. Westminster Bridge crosses the river beyond the tower on low arches, its lamp standards receding towards the far bank.
 
-The Thames mirrors all of it, darker and cooler, broken into long dashes that widen towards you. A gold streak lies under the tower and a thin one under each bridge lamp.
+The light is modelled too. Floodlights from the south-east light the river front and the tower's east faces, and the buttresses and piers throw their own shade. Behind it all the sky runs from pale gold low in the west through rose to slate blue overhead, with a few stars. Haze thickens with distance, so the far end of the palace stands back.
 
-Motion is slow: the reflections shimmer, mist drifts along the horizon and over the water, the lamps and the dial breathe softly, a few windows turn on or off every few minutes, the clock hands keep slow time and one river cruiser takes about three minutes to cross a wide box. The pointer does nothing.
+The Thames reflects the scene by tracing the mirrored ray from every point on the water. Slow ripples tip that ray, so the gold of the palace and the tower breaks into long dashes, darker and cooler than the real thing, with a thin streak under each lamp.
 
-The tower stands right of the middle in every box, so a centred headline sits over the calm sky and the palace, with the tower beside it. On a phone the palace fills the left and the tower the right.
+Motion is slow: the ripples move, haze and mist drift, the lamps and the dials breathe softly, a few windows turn on or off every minute or so, the clock hands keep time and one river cruiser passes the palace and goes under the bridge at walking pace. The pointer does nothing.
 
-It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide; `braille` and `quadrants` use text cells unless you ask for square ones. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. In `truecolor`, the default, the scene paints its own dusk paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+The tower stands right of the middle in every box. On a wide screen the headline sits over the sky with the buttons along the gold band above the roofline. On a phone the view widens so the whole tower stays in frame beside the nearest part of the palace.
+
+It draws in `dots` by default on square 7px cells, about 200 across a 1440px screen, with `bayer4` dithering between dot sizes. `square={false}` returns to the usual text cells, twice as tall as wide; `braille` and `quadrants` use text cells unless you ask for square ones. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 `intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 
@@ -54,7 +56,7 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
 
 ### Hero
 
-`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The tower stays right of the text.
+`intensity={0.85}` quiets the scene a little behind a centred headline and two buttons. The headline sits over the sky and the tower stands to its right.
 
 <ComponentPreview src="examples/london-hero.tsx" size="lg" align="stretch">
   <LondonHero />
@@ -62,7 +64,7 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
 
 ### Thick mist
 
-`fog={1}` thickens the mist along the horizon and over the water, and `cell={6}` packs finer dots into a small card. `boat={false}` leaves the river empty.
+`fog={1}` thickens the haze, so the far end of the palace fades, and lays mist along the river. `cell={6}` packs finer dots into a small card and `boat={false}` leaves the river empty.
 
 <ComponentPreview src="examples/london-mist.tsx">
   <LondonMist />
@@ -84,21 +86,21 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
       type: "number",
       default: "0.5",
       description:
-        "How much mist drifts along the horizon and over the water, from 0 (none) to 1.",
+        "How much haze hangs over the city and mist over the river, from 0 (clear) to 1.",
     },
     {
       name: "boat",
       type: "boolean",
       default: "true",
       description:
-        "The river cruiser heading downstream, about three minutes to cross a wide box.",
+        "The river cruiser heading downstream past the palace and under the bridge.",
     },
     {
       name: "paper",
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a dusk blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -175,8 +177,9 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
-      description: "Ordered dithering between neighbouring glyph levels.",
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between dot sizes, so gradients read as a smooth halftone. Ramp charsets only; braille and quadrants default to none.",
     },
     {
       name: "background",
@@ -221,7 +224,7 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
     {
       name: "fps",
       type: "number",
-      default: "30",
+      default: "24",
       description: "Frame rate cap.",
     },
     {
@@ -253,4 +256,4 @@ It draws in `dots` by default on square 7px cells, so the dots lie in an even la
 - It ignores the pointer: no parallax and no hover effect.
 - With reduced motion turned on, it draws one still frame at `stillTime`, with the boat on the river, and stops.
 - It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dusk gradient.
-- The whole city is one shader pass on the GPU. Water samples also draw the mirrored scene, so the river costs about twice as much as the sky. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
+- The whole city is one shader pass on the GPU that raymarches the model for every cell. Water cells trace a second, reflected ray, so the river costs about twice as much as the buildings, and rays that clear every roof stop at once, so the open sky is cheap. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
