@@ -15,6 +15,7 @@
     "kbd-shortcut",
     "skeleton",
     "empty-state",
-    "glyph-trail"
+    "glyph-trail",
+    "not-found"
   ]
 }

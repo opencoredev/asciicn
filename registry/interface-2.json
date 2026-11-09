@@ -68,5 +68,19 @@
         "target": "components/asciicn/skeleton.tsx"
       }
     ]
+  },
+  {
+    "name": "not-found",
+    "type": "registry:component",
+    "title": "Not found",
+    "description": "A 404 page whose code is drawn in sand: gusts wear its edges and grains drift downwind and settle, over a terminal line that echoes the missing path.",
+    "registryDependencies": ["{{REGISTRY_URL}}/ascii-core.json"],
+    "files": [
+      {
+        "path": "components/asciicn/not-found.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/not-found.tsx"
+      }
+    ]
   }
 ]
