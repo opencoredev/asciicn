@@ -16,6 +16,10 @@ interface Run {
   readonly color: string | null;
 }
 
+// The canvases draw the in-between halftone dots as shapes, but the text
+// font has no glyph for them, so text shows their nearest neighbours.
+const TEXT_SAFE: Readonly<Record<string, string>> = { "∙": "·", "⦁": "●" };
+
 // Neighbouring cells rarely share an exact colour; snapping to 16 levels
 // per channel keeps the number of spans small without visible banding.
 const snap = (value: number) => Math.min(255, Math.round(value / 16) * 16);
@@ -28,7 +32,8 @@ const frameRuns = (frame: AsciiFrame): Run[][] => {
     let color: string | null = null;
     for (let column = 0; column < frame.columns; column += 1) {
       const index = row * frame.columns + column;
-      const glyph = frame.glyphs[index] ?? " ";
+      const raw = frame.glyphs[index] ?? " ";
+      const glyph = TEXT_SAFE[raw] ?? raw;
       const { colors } = frame;
       const next =
         glyph !== " " && colors && colors[index * 4 + 3] > 0
@@ -55,10 +60,13 @@ const ADVANCE = 0.586;
 
 export const FramePre = ({
   frame,
+  square = false,
   className,
   style,
 }: {
   frame: AsciiFrame;
+  /** The frame was drawn on square cells: rows sit one glyph width apart. Default `false`. */
+  square?: boolean;
   className?: string;
   style?: CSSProperties;
 }) => (
@@ -71,6 +79,7 @@ export const FramePre = ({
     style={{
       ...style,
       fontSize: `calc(100cqw / ${frame.columns} / ${ADVANCE})`,
+      ...(square ? { lineHeight: ADVANCE } : {}),
     }}
   >
     {frameRuns(frame).map((runs, row) => (

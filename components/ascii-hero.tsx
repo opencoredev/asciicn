@@ -30,7 +30,7 @@ const FADE_MS = 1600;
 // Darkens the middle of the plate, from the headline down to the buttons,
 // so the copy reads over the busiest skyline.
 const SCRIM =
-  "radial-gradient(ellipse var(--scrim-width) 40% at 50% 52%, color-mix(in oklab, var(--background) 92%, transparent) 0%, color-mix(in oklab, var(--background) 84%, transparent) 55%, transparent 100%)";
+  "radial-gradient(ellipse var(--scrim-width) var(--scrim-height) at 50% var(--scrim-y), color-mix(in oklab, var(--background) 92%, transparent) 0%, color-mix(in oklab, var(--background) 84%, transparent) 55%, transparent 100%)";
 
 interface Layer {
   readonly city: BackgroundEntry;
@@ -154,9 +154,10 @@ export const AsciiHero = ({ className }: { className?: string }) => {
           onShown={layer === current ? settle : undefined}
         />
       ))}
-      {/* Wider on phones, where the text column fills the plate. */}
+      {/* Wider and shorter on phones, where the text column fills the
+          width and the scene shows below it. */}
       <div
-        className="absolute inset-0 [--scrim-width:95%] sm:[--scrim-width:50%]"
+        className="absolute inset-0 [--scrim-height:30%] [--scrim-width:95%] [--scrim-y:40%] sm:[--scrim-height:40%] sm:[--scrim-width:50%] sm:[--scrim-y:52%]"
         style={{ background: SCRIM }}
       />
     </div>

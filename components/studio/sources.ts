@@ -236,7 +236,9 @@ const SCENE_SOURCES: readonly SceneSource[] = BACKGROUNDS.flatMap((scene) =>
   isSceneId(scene.id)
     ? [
         {
+          // The painted backgrounds draw 7px square dot cells.
           defaults: {
+            cell: 7,
             charset: scene.charset,
             colorMode: "truecolor",
           } satisfies LookOverrides,

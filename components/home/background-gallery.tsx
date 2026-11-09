@@ -80,7 +80,7 @@ const CopyInstall = ({ source }: { source: StageSource }) => {
 export const BackgroundGallery = () => {
   const { settings, source, update } = useStageSettings(
     {
-      cell: 12,
+      cell: 7,
       charset: null,
       colorId: null,
       fx: new Set(),

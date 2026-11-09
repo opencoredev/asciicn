@@ -41,7 +41,8 @@ const jsxValue = (value: unknown): string => {
 /** JSX that reproduces the stage: only the props that differ from defaults. */
 export const stageJsx = (source: StageSource, settings: StageSettings) => {
   const props: [string, unknown][] = Object.entries(lookProps(settings));
-  if (settings.cell !== 12) {
+  // The backgrounds default to 7px cells, so only another size is written.
+  if (settings.cell !== 7) {
     props.push(["cell", settings.cell]);
   }
   const attributes = props

@@ -27,6 +27,8 @@ export const CityStill = ({
       {still ? (
         <FramePre
           frame={still.frame}
+          // The dot backgrounds draw square cells.
+          square={source.charset === "dots"}
           className="absolute inset-0"
           style={still.paper ? { background: still.paper } : undefined}
         />

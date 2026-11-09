@@ -16,7 +16,7 @@ import type { AsciiSceneProps } from "@/lib/ascii/scene";
  * for the tab's session.
  */
 
-const STORAGE_KEY = "asciicn-city-stills-v2";
+const STORAGE_KEY = "asciicn-city-stills-v3";
 // Gives a city that never draws (no WebGL, a broken chunk) up to this
 // long before the baker moves on.
 const BAKE_TIMEOUT_MS = 5000;
@@ -218,7 +218,7 @@ export const StillBaker = ({
   }
   const { Component } = mounted;
   // In the viewport (so the renderer gets a context) but invisible and
-  // inert. 384×216 at 7px cells is a 91×30 frame: plenty for a card.
+  // inert. 384×216 at 4px square cells is a 96×54 frame: plenty for a card.
   return (
     <div
       aria-hidden
@@ -228,7 +228,7 @@ export const StillBaker = ({
       <Component
         key={mounted.id}
         className="absolute inset-0"
-        cell={7}
+        cell={4}
         animate={false}
         interactive={false}
         handle={handle}

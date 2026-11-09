@@ -134,8 +134,8 @@ export const colorProps = (look: ColorLook): AsciiLook => {
   }
 };
 
-/** Glyph cell heights the stage offers, in CSS px. */
-export const CELL_SIZES = [8, 10, 12, 16] as const;
+/** Glyph cell sizes the stage offers, in CSS px. The backgrounds draw square cells, 7px by default. */
+export const CELL_SIZES = [5, 7, 10, 14] as const;
 export type CellSize = (typeof CELL_SIZES)[number];
 
 export const isCellSize = (value: number): value is CellSize =>
