@@ -1,0 +1,19 @@
+[
+  {
+    "name": "balloon-valley",
+    "type": "registry:component",
+    "title": "Balloon valley",
+    "description": "Sunrise over a river valley in halftone dots: layered hills fading into haze, mist on the valley floor, a river catching the low sun and hot-air balloons hanging at different depths.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/balloon-valley.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/balloon-valley.tsx"
+      }
+    ]
+  }
+]

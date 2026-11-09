@@ -1,0 +1,243 @@
+---
+title: "Balloon valley"
+description: "Sunrise over a river valley in halftone dots: layered hills fading into haze, mist on the valley floor, a river catching the low sun and hot-air balloons hanging at different depths."
+---
+
+import BalloonValleyDemo from "@/examples/balloon-valley-demo";
+import { controls as demoControls } from "@/examples/balloon-valley-controls";
+import BalloonValleyHero from "@/examples/balloon-valley-hero";
+import BalloonValleyDuotone from "@/examples/balloon-valley-duotone";
+
+<ComponentPreview
+  src="examples/balloon-valley-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <BalloonValleyDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="balloon-valley" />
+
+## Usage
+
+```tsx
+import { BalloonValley } from "@/components/asciicn/balloon-valley";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <BalloonValley intensity={0.85} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The sun is coming up behind the farthest ridge, its disc half over the line, with a wide warm glow round it. Four ridges step down towards you and open in a V under the sun. Each is darker than the one behind it, with a lit rim along its crest and haze below it, and mist pools in the low ground of every V. At the bottom, two dark hills frame the valley floor, where the river winds towards you catching the dawn and the sun's glitter.
+
+Five hot-air balloons hang in the sky at different depths. The nearest is large and striped red and gold, lit from the sun's side and glowing through its shaded side. The far ones are smaller and fade into the haze. Two of them rise and sink over a few minutes, and the low one drops behind the ridges and comes back up.
+
+Every cell is a dot. The dot grows with the brightness of its colour, so the dark foreground is a field of small dim dots and the sun is drawn in large bright ones. `bayer4` dithering, the default, mixes neighbouring dot sizes so gradients stay smooth. `square` cells, on by default, lay the dots on an even lattice like a halftone screen, about 200 columns across a 1440px screen at the default 7px cell. In `truecolor`, the default, the scene paints its own sky on a deep indigo paper, so it looks the same in light and dark themes. `duotone` with a `ramp` and `mono` with a `phosphor` read the same scene by tone alone.
+
+The motion is slow: mist drifts along the valley, the last stars twinkle, the river shimmers and its glow breathes, and the balloons bob. Nothing reacts to the pointer.
+
+On wide boxes the sun sits a little right of centre and the balloons keep to the sides and the top, leaving the middle clear for a headline. On tall boxes the ridges close in round the sun and the balloons gather in the upper sky.
+
+## Examples
+
+### Hero
+
+A centred headline and two buttons over the full scene. `intensity={0.85}`, a soft radial shade and a text shadow keep the type readable over the glow.
+
+<ComponentPreview
+  src="examples/balloon-valley-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <BalloonValleyHero />
+</ComponentPreview>
+
+### Duotone print
+
+`colorMode="duotone"` with a four-stop `ramp` draws the valley in plum and peach, like a two-ink print. `cell={6}` adds detail in a smaller card.
+
+<ComponentPreview src="examples/balloon-valley-duotone.tsx">
+  <BalloonValleyDuotone />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the valley draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep indigo; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " ·∙•●". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"infrared"',
+      description: "In duotone mode, the colour ramp from dark to light.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"bayer4"',
+      description:
+        "Ordered dithering between neighbouring dot sizes. The default turns four dots into smooth tone.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels, and its width too with square cells.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true",
+      description:
+        "Square cells, so the dots lie on an even lattice. false uses the font's narrower cells.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the mist, the river and the balloons move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds. At 0 the low balloon is part way up from behind the ridges.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dawn gradient.
+- The whole valley is one shader pass on the GPU, one sample per cell in `dots`. Mist and ridge texture use a few octaves of noise, so it costs a little more than a flat gradient. See [Performance](/docs/engine/performance).
