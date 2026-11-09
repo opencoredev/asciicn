@@ -37,15 +37,15 @@ export function Hero() {
 }
 ```
 
-The view looks west across Minato just after sunset. Tokyo Tower stands right of centre, drawn to the real tower's proportions: legs that flare out over an arch, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna with a red light. It is painted in orange and white bands, and both decks are lit. Mount Fuji stands far off on the left, a pale cone with a snow cap that is warmest on the side facing the sunset. Between them, three layers of towers recede into blue haze: the nearest are darkest and carry the brightest windows, the farthest are a pale band on the horizon.
+The view looks west across Minato just after sunset. Tokyo Tower stands at the right, drawn to the real tower's proportions: legs that flare out over an arch, the Main Deck about 45% of the way up and the smaller Top Deck about 75% up, then the antenna with a red light. It is painted in orange and white bands, and both decks are lit. Mount Fuji stands far off at the left, a pale cone with a snow cap that is warmest on the side facing the sunset. Between them, three layers of towers recede into haze: the nearest are darkest and carry the clearest windows, the farthest sit close to the sky in value, their lights barely there.
 
-The sky runs from gold and orange behind Fuji to violet behind the tower and indigo overhead, where the first stars come out. Windows are a soft field of warm, white and cool lights, lit floor by floor, so no two towers look the same.
+The sky runs from gold and orange behind Fuji to violet over the middle and indigo overhead, where a few stars come out. Most of it is drawn in small, dim dots, so it reads as quiet air. Windows are a soft field of muted warm, white and cool lights, lit floor by floor, set in a violet haze of city glow; only about one in six burns bright.
 
 Motion is slow and sparse: a few windows switch on or off over tens of seconds, the tower's glow breathes, haze drifts along the foot of the middle towers, stars twinkle, and a train glides along the elevated line about every 40 seconds. Nothing responds to the pointer.
 
-It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots lay an even halftone lattice and dot size carries tone: small dots in the night sky and the shadows, large ones in the sunset glow, on the tower and in lit windows. Dots, `braille` and `quadrants` use `blue-noise` dithering, which blends neighbouring sizes without stripes. In `truecolor`, the default, every dot takes the scene's own colour on a night paper, so it looks the same on light and dark pages. In narrow boxes Fuji and the tower move towards the centre, so a phone crop keeps both.
+It draws in `dots` by default on square 7px cells, about 200 columns across a 1440px screen, so the dots lay an even halftone lattice and dot size carries tone: small, dim dots in the night sky, the distance and the shadows, and large bright ones kept for the tower, its glow and the lit snow on Fuji. Dots, `braille` and `quadrants` use `blue-noise` dithering, which blends neighbouring sizes without stripes. In `truecolor`, the default, every dot takes the scene's own colour on a night paper, so it looks the same on light and dark pages. Fuji and the tower stay at about a fifth and four fifths of the width in any box, so a centred headline covers neither, and a phone crop keeps both.
 
-`intensity` dims the colours and shrinks the dots, most of all in the middle band where a headline sits. Lower it to keep text on top easy to read.
+The central band, the middle half of the width from 30% to 65% of the height, holds only sky and haze. `intensity` dims the colours and shrinks the dots, most of all in that band. Lower it to keep text on top easy to read.
 
 ## Examples
 
@@ -59,7 +59,7 @@ Full-bleed behind a centred headline and two buttons. `intensity={0.6}` quiets t
 
 ### In a tall card
 
-In a 9:19 box the composition narrows: Fuji and the tower move towards the centre and both stay in view.
+In a 9:19 box Fuji and the tower keep their places at the edges of the frame, and both stay in view.
 
 <ComponentPreview src="examples/tokyo-tall.tsx">
   <TokyoTall />

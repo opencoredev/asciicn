@@ -1,7 +1,7 @@
 import { Tokyo } from "@/components/asciicn/tokyo";
 
-// A phone-shaped card: in a narrow box Fuji and the tower move in towards
-// the centre, so both stay in the crop.
+// A phone-shaped card: Fuji and the tower keep to the edges of the frame,
+// so both stay in view around a centred headline.
 export default function TokyoTall() {
   return (
     <div className="relative isolate aspect-[9/19] w-56 overflow-hidden rounded-[2rem] border border-white/10 bg-[#070818]">
