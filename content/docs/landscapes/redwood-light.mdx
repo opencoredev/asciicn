@@ -1,0 +1,242 @@
+---
+title: "Redwood light"
+description: "A redwood forest in early morning: giant trunks fading into blue-green haze, golden light shafts slanting onto a fern floor, and slow motes drifting in the light."
+---
+
+import RedwoodLightDemo from "@/examples/redwood-light-demo";
+import { controls as demoControls } from "@/examples/redwood-light-controls";
+import RedwoodLightHero from "@/examples/redwood-light-hero";
+import RedwoodLightSepia from "@/examples/redwood-light-sepia";
+
+<ComponentPreview
+  src="examples/redwood-light-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <RedwoodLightDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="redwood-light" />
+
+## Usage
+
+```tsx
+import { RedwoodLight } from "@/components/asciicn/redwood-light";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <RedwoodLight intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+The view is from the forest floor, looking up. Three giant trunks stand in front, two on the left and one on the right, dark red-brown and furrowed, with a warm rim of light on the side that faces the sun. Behind them two rows of thinner trunks recede into blue-green haze, each row paler and cooler than the one in front. Every trunk leans towards one point high above the middle of the box, so the forest reads as seen from below.
+
+The sun sits behind the canopy, above and right of centre, as a soft halo. Shafts of golden light fan down and to the left from it and land on the fern floor as warm pools. Fern clumps get smaller and hazier towards the far edge of the floor, and a row of fronds crosses the bottom of the box.
+
+The motion is slow. Dust and pollen drift through the shafts and catch the light, each mote fading in and out. The shafts brighten and dim a little, and a thin mist drifts between the far trunks. Nothing reacts to the pointer.
+
+The middle of the box is open haze, so a centred headline sits on calm ground. On tall boxes the giants narrow and move in, and the sun moves to the middle, so a phone still shows the trunks, the light and the floor.
+
+It draws in `dots` by default, at a 9px cell: dot size carries the light and `truecolor` gives every dot its own colour, so even the deepest shade keeps a faint dot. `braille` and `quadrants` draw the same forest in finer dots. In `truecolor`, `ansi16` and `duotone` it paints on its own dark green shade, so it looks the same on the light and dark site themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the scene by tone alone.
+
+`intensity` dims the colours and shrinks the dots together. Around 0.6 the forest falls back behind a headline.
+
+## Examples
+
+### Behind a headline
+
+`intensity={0.6}` keeps the light shafts and the giants but lets a centred headline and two buttons read first.
+
+<ComponentPreview
+  src="examples/redwood-light-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <RedwoodLightHero />
+</ComponentPreview>
+
+### Sepia duotone
+
+`colorMode="duotone"` with `ramp="sodium"` reads the forest by brightness alone, in warm amber like an old print. `mist={false}` leaves the far trunks clear.
+
+<ComponentPreview src="examples/redwood-light-sepia.tsx">
+  <RedwoodLightSepia />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the forest draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "motes",
+      type: "boolean",
+      default: "true",
+      description: "Dust and pollen drifting through the light shafts.",
+    },
+    {
+      name: "mist",
+      type: "boolean",
+      default: "true",
+      description: "The mist drifting between the far trunks.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep green shade; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"sodium"',
+      description:
+        "In duotone mode, the colour ramp from dark to light. The default draws gold on the shade.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "9",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the motes, the shafts and the mist move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "12",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a soft gradient of the scene.
+- The whole forest is one shader pass on the GPU, one sample per cell in `dots`. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
