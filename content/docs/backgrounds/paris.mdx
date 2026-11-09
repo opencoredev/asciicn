@@ -1,6 +1,6 @@
 ---
 title: "Paris"
-description: "Paris at blue hour in dots: the Eiffel Tower lit gold in a soft halo, Haussmann rooftops in blue shadow, the dome of Les Invalides in the last light, and the Seine holding the tower's long golden reflection."
+description: "Paris at a clear blue hour in dots: a cobalt sky over cool stone rooftops and the dome of Les Invalides, and the Eiffel Tower lit gold in a soft halo as the one warm light, its long reflection in the Seine."
 ---
 
 import ParisDemo from "@/examples/paris-demo";
@@ -37,19 +37,19 @@ export function Hero() {
 }
 ```
 
-The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the smallest dots, barely lighter than the paper, in the deep sky and the far water, middle dots through the violet, mauve and rose-gold afterglow along the rooftops, and the biggest dots kept for the tower, its beacon and its reflection.
+The whole frame is painted in halftone dots. Each dot takes its own colour, and its size carries the light: the smallest dots, barely lighter than the paper, in the deep sky and the far water, middle dots in the luminous cobalt band along the rooftops, and the biggest dots kept for the tower, its beacon and its reflection. The light is a clear, cool blue hour with no sunset colour: the sky runs from cobalt at the horizon to ink blue, the stone city is grey-blue, and the gold tower is the only warm note.
 
 The Eiffel Tower is drawn to its real proportions: four splayed legs with the great arch between them, the first floor, the curved taper to the second floor, the long third stage to the top floor, and the antenna. Its lattice is lit gold, warmer at the feet and paler near the top, inside a soft amber halo. At the tip the beacon turns slowly and swells about every eleven seconds.
 
-On the far bank, Haussmann blocks stand in blue shadow either side of the Champ de Mars, their walls unevenly shaded, with windows lit in loose clusters, zinc mansards whose ridges catch the sky, dormers and chimney stacks. Plane trees flank the tower's feet. Behind the roofs, the gilded dome of Les Invalides catches the last light on the side facing the afterglow, and a hazy far skyline fades into low mist.
+On the far bank, Haussmann blocks stand in blue shadow either side of the Champ de Mars, their walls unevenly shaded, with cool white windows lit in loose clusters, zinc mansards whose ridges catch the sky, dormers and chimney stacks. Plane trees flank the tower's feet. Behind the roofs, the dome of Les Invalides takes a pale silver sheen on the side facing the brightest sky, and a hazy far skyline fades into low mist.
 
-The Seine mirrors all of it, darker and cooler, broken into ripples that widen towards you. Under the tower runs a long golden reflection that shimmers as the ripples drift. Lamps stand along the quay.
+The Seine mirrors all of it, darker and cooler, broken into ripples that widen towards you. Under the tower runs a long golden reflection that shimmers as the ripples drift. Cool white lamps stand along the quay.
 
 Motion is slow: the reflection shimmers, the beacon glows, a few windows turn on or off every few minutes, thin clouds drift, stars twinkle faintly, and one bateau-mouche takes about three minutes to cross a wide box. The pointer does nothing.
 
 On wide boxes the tower sits right of centre, so the middle stays calm for a headline. On tall boxes it stands in the middle, with the dome at the left edge.
 
-It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the lit parts (the tower, the afterglow, windows and the reflection) and leave the dark sky empty. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
+It draws in `dots` by default on square 7px cells, so the dots lie in an even lattice, about 200 across a 1440px screen. `square={false}` returns to the usual text cells, twice as tall as wide. Other ramp charsets such as `standard` or `dense` read the same tones as typed glyphs. `braille` and `quadrants` light a dot only above half tone, so they keep the lit parts (the tower, the cobalt horizon, windows and the reflection) and leave the dark sky empty. In `truecolor`, the default, the scene paints its own night blue paper in both themes. `mono` with a `phosphor` and `duotone` with a `ramp` read the same scene by tone alone.
 
 `intensity` dims the colours in step and shrinks the dots more gently, so the shapes keep their place behind text.
 

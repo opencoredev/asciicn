@@ -246,13 +246,14 @@ float parisAfter(vec2 p) {
   return exp(-d * d);
 }
 
-// The sky from the horizon up: rose gold, mauve, violet, then deep blue.
+// The sky from the horizon up: a clear blue hour with no sunset colour,
+// luminous cobalt low down, deepening through ultramarine to ink blue.
 vec3 parisSkyRamp(float h) {
-  vec3 c = mix(vec3(1.0, 0.76, 0.52), vec3(0.98, 0.6, 0.52), smoothstep(0.06, 0.2, h));
-  c = mix(c, vec3(0.78, 0.5, 0.64), smoothstep(0.18, 0.34, h));
-  c = mix(c, vec3(0.4, 0.36, 0.62), smoothstep(0.3, 0.5, h));
-  c = mix(c, vec3(0.16, 0.19, 0.4), smoothstep(0.42, 0.72, h));
-  return mix(c, vec3(0.09, 0.11, 0.25), smoothstep(0.68, 1.0, h));
+  vec3 c = mix(vec3(0.55, 0.72, 1.0), vec3(0.36, 0.56, 1.0), smoothstep(0.06, 0.2, h));
+  c = mix(c, vec3(0.22, 0.38, 0.88), smoothstep(0.18, 0.36, h));
+  c = mix(c, vec3(0.13, 0.22, 0.6), smoothstep(0.32, 0.55, h));
+  c = mix(c, vec3(0.08, 0.12, 0.34), smoothstep(0.5, 0.78, h));
+  return mix(c, vec3(0.05, 0.07, 0.2), smoothstep(0.75, 1.0, h));
 }
 
 // The sky, with thin clouds lit pink from below and a few faint stars high up.
@@ -262,13 +263,14 @@ vec4 parisSky(vec2 s, vec2 p) {
   // Away from the afterglow the colours run cooler, as if a little higher.
   float hc = h + 0.1 * (1.0 - glow);
   vec3 col = parisSkyRamp(hc);
-  col = mix(col, vec3(1.0, 0.8, 0.55), 0.4 * glow * exp(-h * 10.0));
+  // Where the sun went down the horizon is a paler, clearer blue.
+  col = mix(col, vec3(0.7, 0.84, 1.0), 0.35 * glow * exp(-h * 10.0));
   // Dot size follows the light: middle rose dots low down, the smallest
   // dots in a blue close to the paper high up, so the deep sky reads as
   // quiet air and the big dots stay with the tower.
   // A narrow, full band right over the roofs silhouettes them; above it
   // the dots thin out quickly into the quiet dark.
-  float tone = 0.1 + 0.48 * exp(-max(hc - 0.2, 0.0) * 6.0) + 0.1 * glow * exp(-h * 5.0);
+  float tone = 0.1 + 0.52 * exp(-max(hc - 0.2, 0.0) * 5.5) + 0.12 * glow * exp(-h * 5.0);
   // High up, most cells drop to nothing, so the dark sky is sparse air.
   if (parisHash(s + 71.0) < 0.55 * smoothstep(0.35, 0.7, h)) {
     tone = 0.0;
@@ -278,7 +280,7 @@ vec4 parisSky(vec2 s, vec2 p) {
   float c = fbm(cp + vec2(3.1, 1.7));
   float band = smoothstep(0.16, 0.26, h) * (1.0 - smoothstep(0.44, 0.6, h));
   float cloud = smoothstep(0.5, 0.72, c) * band;
-  vec3 cloudCol = mix(vec3(1.0, 0.66, 0.6), vec3(0.58, 0.5, 0.8), smoothstep(0.1, 0.42, h));
+  vec3 cloudCol = mix(vec3(0.62, 0.74, 0.96), vec3(0.3, 0.4, 0.74), smoothstep(0.1, 0.42, h));
   col = mix(col, cloudCol, cloud * 0.75);
   tone += cloud * 0.08;
   // Stars only where the sky is dark, and only a few.
@@ -309,7 +311,7 @@ vec4 parisFar(vec2 s, vec2 p, out float cover) {
   }
   cover = 1.0;
   float glow = parisAfter(p);
-  vec3 haze = mix(vec3(0.46, 0.4, 0.66), vec3(0.78, 0.52, 0.62), glow * 0.6);
+  vec3 haze = mix(vec3(0.36, 0.48, 0.78), vec3(0.5, 0.64, 0.92), glow * 0.6);
   vec3 col = mix(haze * 0.82, haze, smoothstep(0.0, hgt, y));
   // Haze: a shade below the sky behind it, closest to it at the roofline,
   // so the far city is only a soft step in the afterglow, not a band.
@@ -318,7 +320,7 @@ vec4 parisFar(vec2 s, vec2 p, out float cover) {
   col = mix(mix(col, sky.rgb, 0.55), sky.rgb, edge * 0.5);
   float tone = sky.a * mix(0.72, 0.9, edge);
   if (parisHash(s + 51.0) > 0.975 && y < hgt - 0.006) {
-    col = vec3(0.95, 0.7, 0.5);
+    col = vec3(0.82, 0.88, 1.0);
     tone = 0.7;
   }
   return vec4(col, tone);
@@ -342,8 +344,8 @@ vec4 parisDome(vec2 s, vec2 p, out float cover) {
   float tone = 0.0;
   // The sun side, 0 facing away to 1 facing it.
   float facing = 0.0;
-  vec3 stoneDark = vec3(0.3, 0.28, 0.54);
-  vec3 stoneLit = vec3(1.0, 0.72, 0.56);
+  vec3 stoneDark = vec3(0.2, 0.26, 0.48);
+  vec3 stoneLit = vec3(0.62, 0.74, 0.96);
   if (v < 0.36) {
     w = 0.3;
     facing = 0.5 + 0.5 * side * dx / (w * d);
@@ -351,8 +353,8 @@ vec4 parisDome(vec2 s, vec2 p, out float cover) {
     tone = 0.36;
     vec2 cs = s - vec2(floor(parisDomeX / parisSw), parisGroundRow);
     if (mod(cs.x, 2.0) > 0.5 && mod(cs.y, 2.0) > 0.5 && v < 0.32 && parisLit(cs + 300.0, 0.3) > 0.5) {
-      col = vec3(1.0, 0.72, 0.42);
-      tone = 0.5;
+      col = vec3(0.84, 0.9, 1.0);
+      tone = 0.46;
     }
   } else if (v < 0.42) {
     // A shallow pediment over the pavilion.
@@ -377,30 +379,32 @@ vec4 parisDome(vec2 s, vec2 p, out float cover) {
     w = 0.175 * sqrt(max(0.0, 1.0 - e * e));
     float nx = clamp(dx / max(w * d, 1e-4), -1.0, 1.0);
     float lit = clamp(0.55 + 0.5 * side * nx + 0.25 * e, 0.0, 1.0);
-    col = mix(vec3(0.52, 0.38, 0.46), vec3(1.0, 0.8, 0.44), lit);
+    // The gilding reads as a cool sheen in this light, a touch of pale gold
+    // only on the ribs that face the bright horizon.
+    col = mix(vec3(0.24, 0.3, 0.52), vec3(0.74, 0.82, 0.98), lit);
     // Gilded ribs down the dome.
     float rib = abs(fract(asin(nx) * 2.6 + 0.5) - 0.5);
     tone = rib < 0.14 ? mix(0.6, 1.0, lit) : mix(0.42, 0.66, lit);
     // A bright rim where the dome meets the sky.
     if (abs(dx) > w * d - parisSw * 1.5 || v > 0.84 - parisSh / d * 1.5) {
       tone = 0.95;
-      col = mix(col, vec3(1.0, 0.86, 0.58), 0.5);
+      col = mix(col, vec3(0.86, 0.92, 1.0), 0.5);
     }
   } else if (v < 0.92) {
     w = 0.034;
-    col = mix(vec3(0.5, 0.4, 0.42), vec3(1.0, 0.8, 0.46), clamp(0.5 + side * dx / (w * d), 0.0, 1.0));
+    col = mix(vec3(0.3, 0.36, 0.58), vec3(0.8, 0.86, 1.0), clamp(0.5 + side * dx / (w * d), 0.0, 1.0));
     tone = 0.62;
   } else {
     w = 0.014 * (1.0 - v) / 0.08;
-    col = vec3(1.0, 0.8, 0.48);
-    tone = 0.55;
+    col = vec3(0.86, 0.9, 1.0);
+    tone = 0.5;
   }
   if (abs(dx) > max(w * d, parisSw * 0.5)) {
     return vec4(0.0);
   }
   cover = 1.0;
   // A little haze: it stands further off than the blocks.
-  return vec4(mix(col, vec3(0.5, 0.44, 0.66), 0.12), tone);
+  return vec4(mix(col, vec3(0.4, 0.52, 0.82), 0.12), tone);
 }
 
 // Facade and mansard heights of block id, in box heights. None where the
@@ -443,16 +447,17 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
         if (mod(s.x, 2.0) > 0.5) {
           return vec4(0.0);
         }
-        return vec4(0.62, 0.42, 0.5, 0.4);
+        return vec4(0.4, 0.48, 0.72, 0.34);
       }
-      vec3 brick = mix(vec3(0.17, 0.19, 0.4), vec3(0.62, 0.42, 0.52), 0.35 * glow);
+      vec3 brick = mix(vec3(0.14, 0.18, 0.36), vec3(0.4, 0.5, 0.78), 0.35 * glow);
       return vec4(u < parisSw * 1.2 ? brick * 1.5 : brick, 0.3);
     }
   }
   if (b.x <= 0.0 || y >= top) {
     return vec4(0.0);
   }
-  vec3 lamp = vec3(1.0, 0.72, 0.38);
+  // Windows burn a cool white; the tower stays the only warm light.
+  vec3 lamp = vec3(0.8, 0.88, 1.0);
   float sy = y - b.x;
   float col0 = floor(id * bw / parisSw);
   float cx = s.x - col0;
@@ -465,13 +470,13 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
     }
     cover = 1.0;
     float k = sy / b.y;
-    vec3 zinc = mix(vec3(0.2, 0.25, 0.5), vec3(0.36, 0.4, 0.7), k);
-    zinc = mix(zinc, vec3(0.7, 0.52, 0.66), 0.25 * glow);
+    vec3 zinc = mix(vec3(0.16, 0.22, 0.42), vec3(0.32, 0.42, 0.68), k);
+    zinc = mix(zinc, vec3(0.5, 0.62, 0.9), 0.25 * glow);
     // The ridge catches the sky; the cornice under it is pale stone.
     if (sy > b.y - parisSh * 1.5) {
       // Broken along its length, so it never reads as a ruled line.
       float catchLight = 0.3 + 0.18 * parisHash(vec2(s.x, id) + 23.0);
-      return vec4(mix(vec3(0.5, 0.52, 0.78), vec3(0.95, 0.7, 0.66), 0.4 * glow), catchLight);
+      return vec4(mix(vec3(0.46, 0.56, 0.82), vec3(0.7, 0.82, 1.0), 0.4 * glow), catchLight);
     }
     if (sy < parisSh) {
       return vec4(0.36, 0.36, 0.6, 0.3);
@@ -492,9 +497,9 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
   // slow mottle so no two stretches of wall read the same.
   float facing = clamp(0.5 + 0.5 * sign(parisSunX - p.x) * (u / bw - 0.5) * -2.0, 0.0, 1.0);
   float mottle = fbm(vec2(p.x * 18.0, y * 40.0) + id * 3.1);
-  vec3 wall = mix(vec3(0.1, 0.12, 0.3), vec3(0.22, 0.24, 0.48), smoothstep(0.0, b.x, y));
+  vec3 wall = mix(vec3(0.09, 0.13, 0.26), vec3(0.22, 0.28, 0.44), smoothstep(0.0, b.x, y));
   wall *= 0.85 + 0.3 * parisHash(vec2(id, 6.6)) + 0.25 * facing;
-  wall = mix(wall, vec3(0.42, 0.3, 0.46), 0.25 * glow);
+  wall = mix(wall, vec3(0.32, 0.4, 0.6), 0.25 * glow);
   float wallTone = 0.14 + 0.16 * smoothstep(0.35, 0.7, mottle) + 0.06 * facing;
   if (fr > nrows - 1.5) {
     // The cornice, catching a little sky.
@@ -506,7 +511,7 @@ vec4 parisBlocks(vec2 s, vec2 p, out float cover) {
   if (bay && mod(fr, 2.0) > 0.5) {
     float cluster = smoothstep(0.45, 0.65, fbm(vec2(s.x * 0.09, fr * 0.35) + id * 7.7));
     float chance = mix(0.06, 0.65, cluster) * (fr < 1.5 ? 1.2 : 1.0);
-    vec3 tint = parisHash(vec2(s.x, fr) + 41.0) > 0.86 ? vec3(0.78, 0.84, 1.0) : lamp;
+    vec3 tint = parisHash(vec2(s.x, fr) + 41.0) > 0.8 ? vec3(0.96, 0.9, 0.78) : lamp;
     float on = parisLit(vec2(s.x, fr + id * 13.0), chance);
     float bright = 0.55 + 0.25 * parisHash(vec2(s.x, fr) + 9.0);
     return vec4(mix(wall * 0.7, tint, on), mix(wallTone * 0.7, bright, on));
@@ -552,7 +557,7 @@ vec4 parisQuay(vec2 s, vec2 p, out float cover) {
   if (hasLamp && s.x == lampCol && ry >= 0.0 && ry < 3.5) {
     cover = 1.0;
     if (ry > 2.5) {
-      return vec4(1.0, 0.86, 0.58, 1.0);
+      return vec4(0.86, 0.92, 1.0, 0.9);
     }
     return vec4(0.3, 0.3, 0.5, 0.28);
   }
@@ -637,8 +642,11 @@ vec4 parisAbove(vec2 s) {
   // size, so the iron still stands clear of its glow.
   if (depth > -0.5) {
     float halo = parisHalo(p) * (depth > 0.5 ? 1.0 : 0.45);
-    hit.rgb = mix(hit.rgb, vec3(0.94, 0.6, 0.3), clamp(halo * 1.4, 0.0, 0.8));
-    hit.a = max(hit.a, min(hit.a + halo * 0.7, 0.64));
+    // Amber outright rather than a blend, which would turn grey against
+    // the blue; the halo shows in dot size instead.
+    vec3 amber = mix(vec3(0.6, 0.34, 0.16), vec3(0.86, 0.52, 0.24), smoothstep(0.1, 0.45, halo));
+    hit.rgb = mix(hit.rgb, amber, smoothstep(0.04, 0.2, halo) * 0.92);
+    hit.a = max(hit.a, min(hit.a + halo * 0.55, 0.5));
   }
   // The sky and the haze are dithered per sample, so their gradients blend
   // between dot sizes instead of stepping in bands; the tower stays crisp.
@@ -649,11 +657,11 @@ vec4 parisAbove(vec2 s) {
   // Mist lying low over the far bank, drifting slowly.
   if (depth > 0.5) {
     float mist = (1.0 - smoothstep(0.0, 0.05, y)) * smoothstep(0.35, 0.75, fbm(vec2(p.x * 3.0 + parisT * 0.01, y * 30.0)));
-    hit.rgb = mix(hit.rgb, vec3(0.66, 0.54, 0.7), mist * 0.5);
+    hit.rgb = mix(hit.rgb, vec3(0.46, 0.58, 0.86), mist * 0.5);
     hit.a = mix(hit.a, 0.3, mist * 0.4);
   }
   float lampGlow = parisLampGlow(p);
-  hit.rgb = mix(hit.rgb, vec3(1.0, 0.78, 0.48), lampGlow * 0.6);
+  hit.rgb = mix(hit.rgb, vec3(0.74, 0.84, 1.0), lampGlow * 0.5);
   hit.a += lampGlow * 0.25;
   float beacon = parisBeacon(p);
   hit.rgb = mix(hit.rgb, vec3(1.0, 0.94, 0.8), clamp(beacon, 0.0, 0.9));
@@ -698,7 +706,7 @@ vec4 parisBoat(vec2 s, out float cover) {
   if (r > hull + cabin - 0.5) {
     return vec4(0.6, 0.62, 0.84, 0.4);
   }
-  return vec4(1.0, 0.78, 0.46, mod(u - c0, 3.0) < 0.5 ? 0.4 : 0.9);
+  return vec4(0.84, 0.9, 1.0, mod(u - c0, 3.0) < 0.5 ? 0.36 : 0.8);
 }
 
 // The Seine: the boat, then everything above mirrored, darkened and cooled,
@@ -813,7 +821,7 @@ const FALLBACK = (
     className="absolute inset-0"
     style={{
       background:
-        "linear-gradient(to bottom, #070c26 0%, #0c1238 40%, #2a1e3c 68%, #3a2434 74%, #0a0e26 76%, #060a1f 100%)",
+        "linear-gradient(to bottom, #060a1e 0%, #0d1a4a 40%, #22408c 68%, #3a5cb0 74%, #0a1028 76%, #050817 100%)",
     }}
   />
 );
@@ -844,10 +852,10 @@ export interface ParisProps extends Omit<AsciiSceneProps, "interactive"> {
 }
 
 /**
- * Paris at blue hour, painted in dots. The Eiffel Tower stands lit gold in a
- * soft halo over the Seine, which carries its long golden reflection, between
- * Haussmann rooftops in blue shadow and the dome of Les Invalides catching
- * the last light, under a sky running from rose gold to deep blue.
+ * Paris at a clear blue hour, painted in dots. The Eiffel Tower stands lit
+ * gold in a soft halo over the Seine, which carries its long golden
+ * reflection: the one warm light among cool grey-blue Haussmann rooftops and
+ * the dome of Les Invalides, under a sky running from cobalt to ink blue.
  * Decorative and full-bleed: size it with `className`, usually
  * `absolute inset-0`.
  */
