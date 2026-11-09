@@ -4,7 +4,8 @@
  * frame drawn by one lines up with the same frame drawn by another.
  *
  * `cell` is always the cell height in CSS pixels, read from `--ascii-cell`
- * when a component doesn't set it. The width follows the font's advance.
+ * when a component doesn't set it. The width follows the font's advance,
+ * or matches the height for `square` cells.
  */
 
 /** Cell height when `--ascii-cell` is unset, in CSS pixels. */
@@ -70,20 +71,26 @@ const measureAdvance = (font: string): number => {
 /**
  * Metrics for a cell `cell` CSS pixels tall in `font`. Both sides snap to
  * whole device pixels, so every cell on the canvas is the same size and
- * glyph edges stay sharp.
+ * glyph edges stay sharp. `square` cells are as wide as they are tall:
+ * text glyphs sit centred with room around them, and the round dots of
+ * the `dots` charset (drawn as shapes, sized by the cell) form an even
+ * lattice instead of rows twice as far apart as their columns.
  */
 export const measureCell = ({
   cell = DEFAULT_CELL,
   font = DEFAULT_FONT,
   dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1,
+  square = false,
 }: {
   cell?: number;
   font?: string;
   dpr?: number;
+  /** Cells as wide as they are tall, for an even lattice of dot glyphs. */
+  square?: boolean;
 } = {}): CellMetrics => {
   const height = Math.max(2, cell);
   const fontSize = height / LINE_HEIGHT;
-  const width = fontSize * measureAdvance(font);
+  const width = square ? height : fontSize * measureAdvance(font);
   const deviceHeight = Math.max(1, Math.round(height * dpr));
   const deviceWidth = Math.max(1, Math.round(width * dpr));
   return {

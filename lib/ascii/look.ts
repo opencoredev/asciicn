@@ -90,6 +90,12 @@ export interface AsciiLook {
   dither?: "none" | DitherMatrix;
   /** `"transparent"` draws glyphs only, so the page shows between them. */
   background?: "paper" | "transparent";
+  /**
+   * Cells as wide as they are tall, so `dots` lays an even halftone
+   * lattice instead of rows. Meant for ramps of round glyphs; Braille and
+   * quadrants stretch. `cell` then sets both sides. Default `false`.
+   */
+  square?: boolean;
   /** CRT post effects. */
   fx?: PostFx;
 }
