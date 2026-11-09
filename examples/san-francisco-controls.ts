@@ -9,7 +9,7 @@ import { select, slider, toggle } from "@/lib/preview-controls";
 // Knobs for the San Francisco main demo, shared by the page and the demo.
 
 export const charset = select({
-  default: "quadrants",
+  default: "dots",
   id: "charset",
   label: "Charset",
   options: CHARSET_NAMES,
@@ -46,7 +46,7 @@ export const intensity = slider({
 });
 
 export const fog = slider({
-  default: 0.5,
+  default: 0.6,
   id: "fog",
   label: "Fog",
   max: 1,
@@ -55,7 +55,7 @@ export const fog = slider({
 });
 
 export const traffic = slider({
-  default: 0.5,
+  default: 0.2,
   id: "traffic",
   label: "Traffic",
   max: 1,
@@ -64,13 +64,19 @@ export const traffic = slider({
 });
 
 export const cell = slider({
-  default: 9,
+  default: 7,
   id: "cell",
   label: "Cell",
   max: 16,
-  min: 6,
+  min: 5,
   step: 1,
   unit: "px",
+});
+
+export const boat = toggle({
+  default: true,
+  id: "boat",
+  label: "Boat",
 });
 
 export const animate = toggle({
@@ -88,6 +94,7 @@ export const controls = [
   intensity,
   fog,
   traffic,
+  boat,
   cell,
   animate,
 ];

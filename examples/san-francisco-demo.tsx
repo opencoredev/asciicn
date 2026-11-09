@@ -15,6 +15,7 @@ export default function SanFranciscoDemo() {
       intensity={usePreviewValue(knobs.intensity)}
       fog={usePreviewValue(knobs.fog)}
       traffic={usePreviewValue(knobs.traffic)}
+      boat={usePreviewValue(knobs.boat)}
       cell={usePreviewValue(knobs.cell)}
       animate={usePreviewValue(knobs.animate)}
       className="absolute inset-0"

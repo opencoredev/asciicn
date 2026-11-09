@@ -1,6 +1,6 @@
 ---
 title: "San Francisco"
-description: "The Golden Gate Bridge at night: orange towers with stepped portals, the main cable dipping to the deck, the Marin Headlands, a low fog bank and the downtown skyline with the Transamerica Pyramid and Salesforce Tower."
+description: "The Golden Gate Bridge at blue hour in halftone dots: Art Deco towers in International Orange catching the last light, fog rolling under the deck and over the Marin Headlands, city lights on the far shore and the bay mirroring the afterglow."
 ---
 
 import SanFranciscoDemo from "@/examples/san-francisco-demo";
@@ -28,29 +28,31 @@ import { SanFrancisco } from "@/components/asciicn/san-francisco";
 
 export function Hero() {
   return (
-    <section className="relative isolate min-h-[480px]">
-      <SanFrancisco intensity={0.6} className="absolute inset-0 -z-10" />
+    <section className="relative isolate flex min-h-[480px] flex-col items-center justify-center text-white">
+      <SanFrancisco intensity={0.7} className="absolute inset-0 -z-10" />
       <h1>Your headline</h1>
     </section>
   );
 }
 ```
 
-The view is from the ocean side at night, looking in through the Golden Gate. The bridge fills the middle: two towers in International Orange, each with four stepped portals above the deck and X bracing below it, standing on concrete piers. The main cable runs from one anchorage up over both towers and dips almost to the road at mid-span, with a suspender every few columns. Under the deck runs the stiffening truss, with amber lamps along the rail. The Marin Headlands rise on the left, and the downtown skyline stands far off on the right, with the Transamerica Pyramid and its spire and the Salesforce Tower with its lit crown.
+The view is side on across the water at blue hour, just after sunset. The bridge fills the middle: two Art Deco towers in International Orange, each with two legs, four portal struts above the deck, stepped tops and X bracing below the deck, standing on concrete piers. The main cable hangs from saddle to saddle and dips almost to the road at mid-span, with a suspender every third column, and the side spans run down to the anchorages. The Marin Headlands rise on the left, the low hills of the Presidio sit on the right, and a thin far shore runs along the horizon with the city's lights on it.
 
-Nothing built moves, and the pointer has no effect. What changes is slow: a few cars cross the deck as single dots of light, white one way and red the other. The red beacons on the tower tops pulse once every 1.8 seconds. City windows switch on and off a few at a time. The stars brighten and dim, the reflections in the water break and rejoin, and a low fog bank lies behind the bridge on the Marin side, drifting a few box widths an hour.
+The whole frame is painted. The sky runs from deep blue at the top through mauve to a warm afterglow low behind the bridge, with thin streaks of high cloud. A bank of fog lies under the deck and piles up against the headlands, lit warm on top and blue grey underneath. The bay below mirrors all of it, and the afterglow lays a path of glints on the water.
 
-The towers move apart as the box gets wider and keep their height, so a phone screen still shows the whole span. Edges, cables and suspenders are snapped to the sample grid, so they come out as clean lines of glyphs.
+Nothing built moves, and the pointer has no effect. The motion is slow: the fog drifts east under the deck, ripples break the reflections into streaks, the red aircraft lights on the tower tops blink softly out of step with each other, a few stars twinkle, and one boat crosses the bay every few minutes.
 
-It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, and `standard` and `dense` draw the same scene in letters and symbols. In `truecolor` mode, also the default, the bridge is orange against a dark sky; on a light paper the colours are deepened so they still read. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp` such as `ember` or `glacier`.
+The towers move apart as the box gets wider and keep their height, so a phone screen still shows the whole span. Tower legs, struts, the cable and the suspenders are laid out on whole cells, so they come out as clean lines of dots at any size.
 
-`fog` sets how high the bank rises against the headlands, from none at 0. `traffic` sets how many cars cross, up to six. `intensity` thins every glyph at once. Lower it to around 0.5 under a headline so the text on top stays easy to read.
+It draws in `dots` by default, on square 7px cells so the dots lay an even halftone lattice, with `bayer4` dithering so the dot sizes blend into smooth gradients. In `truecolor` mode, also the default, every dot takes its own colour and the scene paints its own dusk behind them, so it looks the same on light and dark pages. `braille` and `standard` draw the same scene in other glyphs; Braille and quadrants keep their usual tall cells. In `mono` mode every glyph takes the ink or a `phosphor`, and in `duotone` mode the scene runs through a `ramp`, `ember` by default.
+
+`fog` sets how thick the bank is, from none at 0. `traffic` sets how many cars cross the deck as single dots of light, up to six. `boat={false}` takes the boat off the water. `intensity` thins every dot at once. Around 0.7 keeps the bridge clear behind a headline; lower it under body text.
 
 ## Examples
 
 ### Behind a headline
 
-`intensity={0.55}` keeps the bridge recognisable but quiet, so the headline at the top reads first.
+The bridge full-bleed behind a centred headline and two buttons, at `intensity={0.7}`. The scene stays dark in both themes, so the copy on top is white.
 
 <ComponentPreview
   src="examples/san-francisco-hero.tsx"
@@ -86,27 +88,33 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
     {
       name: "fog",
       type: "number",
-      default: "0.5",
+      default: "0.6",
       description:
-        "How high the fog bank behind the bridge rises against the headlands, from 0 (none) to 1.",
+        "How thick the fog bank under the deck and over the headlands is, from 0 (none) to 1.",
     },
     {
       name: "traffic",
       type: "number",
-      default: "0.5",
+      default: "0.2",
       description: "How many cars cross the bridge, from 0 (none) to 1 (six).",
+    },
+    {
+      name: "boat",
+      type: "boolean",
+      default: "true",
+      description: "The boat crossing the bay.",
     },
     {
       name: "paper",
       type: "AsciiColor",
-      default: '"--ascii-paper"',
+      default: "the scene's dusk, or the theme's paper",
       description:
-        "The surface behind the glyphs. Ignored when a phosphor brings its own glass.",
+        "The surface behind the glyphs. truecolor, ansi16 and duotone paint the scene's own dusk; mono and palette keep the theme's paper. Ignored when a phosphor brings its own glass.",
     },
     {
       name: "charset",
       type: "CharsetName",
-      default: '"quadrants"',
+      default: '"dots"',
       description: "Which glyphs draw the tones. See Charsets.",
     },
     {
@@ -132,7 +140,7 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: "–",
+      default: '"ember" in duotone',
       description: "In duotone mode, the colour ramp from dark to light.",
     },
     {
@@ -170,8 +178,9 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
     {
       name: "dither",
       type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
-      default: '"none"',
-      description: "Ordered dithering between neighbouring glyph levels.",
+      default: '"bayer4", or "none" in braille and quadrants',
+      description:
+        "Ordered dithering between neighbouring glyph levels. On dots it keeps the sky a smooth gradient.",
     },
     {
       name: "background",
@@ -190,8 +199,16 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
     {
       name: "cell",
       type: "number",
-      default: "9",
-      description: "Height of one glyph cell in CSS pixels.",
+      default: "7",
+      description:
+        "Height of one glyph cell in CSS pixels. With square cells it sets the width too.",
+    },
+    {
+      name: "square",
+      type: "boolean",
+      default: "true, or false in braille and quadrants",
+      description:
+        "Cells as wide as they are tall, so the dots lay an even halftone lattice instead of rows.",
     },
     {
       name: "speed",
@@ -209,20 +226,20 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
     {
       name: "fps",
       type: "number",
-      default: "30",
+      default: "24",
       description: "Frame rate cap.",
     },
     {
       name: "stillTime",
       type: "number",
-      default: "12",
+      default: "20",
       description:
         "The moment drawn when motion is off or reduced, in seconds.",
     },
     {
       name: "fallback",
       type: "ReactNode",
-      default: "a night gradient",
+      default: "a blue-hour gradient",
       description: "Shown without WebGL and until the first frame.",
     },
     {
@@ -246,4 +263,4 @@ It draws in `quadrants` by default, at a 9px cell. `braille` gives finer lines, 
 - It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
 - With reduced motion turned on, it draws one still frame at `stillTime` and stops.
 - It pauses when scrolled out of view or when the tab is hidden. Without WebGL it shows a CSS gradient in the scene's colours.
-- The whole scene is drawn on the GPU in one pass. In `braille` and `quadrants` each cell takes the colour of its brightest dot, so a cable or suspender one dot thick stays orange. The colour pass reads every dot of the cell to do that, so these two charsets cost more per frame than the others. See [Performance](/docs/engine/performance).
+- The whole scene is drawn on the GPU in one pass, and the water reads the scene above it a second time for the reflection. See [Performance](/docs/engine/performance).

@@ -93,9 +93,9 @@ export const CITIES: readonly CityEntry[] = [
     title: "Dubai",
   },
   {
-    charset: "quadrants",
+    charset: "dots",
     description:
-      "The Golden Gate Bridge at night: orange towers with stepped portals, the main cable dipping to the deck, the Marin Headlands, a low fog bank and the downtown skyline with the Transamerica Pyramid and Salesforce Tower.",
+      "The Golden Gate Bridge at blue hour in halftone dots: Art Deco towers in International Orange catching the last light, fog rolling under the deck and over the Marin Headlands, city lights on the far shore and the bay mirroring the afterglow.",
     id: "san-francisco",
     load: async () => {
       const { SanFrancisco } =
