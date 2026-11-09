@@ -1,0 +1,19 @@
+[
+  {
+    "name": "rice-terraces",
+    "type": "registry:component",
+    "title": "Rice terraces",
+    "description": "Flooded rice terraces at dawn, each pool mirroring the pink and gold sky, with mist drifting through the valley below far blue ridges.",
+    "registryDependencies": [
+      "{{REGISTRY_URL}}/ascii-core.json",
+      "{{REGISTRY_URL}}/ascii-shader.json"
+    ],
+    "files": [
+      {
+        "path": "components/asciicn/rice-terraces.tsx",
+        "type": "registry:component",
+        "target": "components/asciicn/rice-terraces.tsx"
+      }
+    ]
+  }
+]

@@ -1,0 +1,245 @@
+---
+title: "Rice terraces"
+description: "Flooded rice terraces at dawn, each pool mirroring the pink and gold sky, with mist drifting through the valley below far blue ridges."
+---
+
+import RiceTerracesDemo from "@/examples/rice-terraces-demo";
+import { controls as demoControls } from "@/examples/rice-terraces-controls";
+import RiceTerracesHero from "@/examples/rice-terraces-hero";
+import RiceTerracesBanner from "@/examples/rice-terraces-banner";
+
+<ComponentPreview
+  src="examples/rice-terraces-demo.tsx"
+  size="full"
+  align="stretch"
+  controls={demoControls}
+>
+  <RiceTerracesDemo />
+</ComponentPreview>
+
+## Installation
+
+<InstallBlock name="rice-terraces" />
+
+## Usage
+
+```tsx
+import { RiceTerraces } from "@/components/asciicn/rice-terraces";
+
+export function Hero() {
+  return (
+    <section className="relative isolate min-h-[480px]">
+      <RiceTerraces intensity={0.6} className="absolute inset-0 -z-10" />
+      <h1>Your headline</h1>
+    </section>
+  );
+}
+```
+
+A terraced hillside fills the foreground. Its crest is high on the left and falls away to the right, with a line of trees along the top. The terraces run almost level, bow down over a spur and thin out as they climb, so the near ones are wide and the far ones narrow. Each is a dark earthen wall with a flooded pool behind it. The pools mirror the sky at the angle they see it: the near ones the rose overhead, the far ones the gold at the horizon. So the hill reads as stacked ribbons of light.
+
+Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot, warming to gold under the sun. Three ridges step back into lavender haze, each lighter than the one in front. The sun stands just above them in a soft glow.
+
+Every cell carries a dot. The `dots` charset draws `·`, `•` and `●`, so the dot's size carries its tone: walls and the night sky overhead are fine points, the ridges are mid dots, and the water, mist and sun are full dots. In `truecolor`, the default, each dot takes its own colour.
+
+The motion is slow. Mist drifts through the valley, the pools shimmer, the sun glitters on the water below it, a few last stars twinkle, and one pale egret glides across the sky every few minutes.
+
+On wide boxes the sun sits right of centre, so the middle stays calm for a headline. On tall boxes it stands in the middle, with the hill on the left and the terraces across the bottom.
+
+The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`, so it looks the same on light and dark pages. `mono` with a `phosphor` reads it by tone alone.
+
+`intensity` dims the scene: colours fade in step with it, and the dots shrink more slowly.
+
+## Examples
+
+### Hero
+
+`intensity={0.6}` sets the hillside back so a centred headline and two buttons read first.
+
+<ComponentPreview
+  src="examples/rice-terraces-hero.tsx"
+  size="lg"
+  align="stretch"
+>
+  <RiceTerracesHero />
+</ComponentPreview>
+
+### Banner
+
+`cell={6}` draws finer dots, so the terraces keep their steps in a wide strip only 224px tall. `bird={false}` leaves only the mist and the water moving.
+
+<ComponentPreview src="examples/rice-terraces-banner.tsx">
+  <RiceTerracesBanner />
+</ComponentPreview>
+
+## Props
+
+<PropsTable
+  rows={[
+    {
+      name: "intensity",
+      type: "number",
+      default: "1",
+      description:
+        "How strongly the scene draws, from 0 to 1. Lower it to keep text on top readable.",
+    },
+    {
+      name: "bird",
+      type: "boolean",
+      default: "true",
+      description: "The one bird gliding slowly across the sky.",
+    },
+    {
+      name: "paper",
+      type: "AsciiColor",
+      default: "–",
+      description:
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
+    },
+    {
+      name: "fallback",
+      type: "ReactNode",
+      default: "a gradient",
+      description: "Shown without WebGL and until the first frame.",
+    },
+    {
+      name: "charset",
+      type: "CharsetName",
+      default: '"dots"',
+      description: "Which glyphs draw the tones. See Charsets.",
+    },
+    {
+      name: "chars",
+      type: "string",
+      default: "–",
+      description:
+        'A custom ramp from empty to dense, such as " .oO@". Wins over charset.',
+    },
+    {
+      name: "colorMode",
+      type: '"mono" | "truecolor" | "ansi16" | "duotone" | "palette"',
+      default: '"truecolor"',
+      description:
+        "How glyphs are coloured. truecolor paints the scene's own colours; mono uses one ink or a phosphor; duotone runs tone through a ramp.",
+    },
+    {
+      name: "phosphor",
+      type: '"p1" | "p3" | "ibm" | "blueprint"',
+      default: "–",
+      description:
+        "A CRT ink and glass. Setting one switches the default colour mode to mono.",
+    },
+    {
+      name: "ramp",
+      type: "RampName | string[]",
+      default: '"outrun"',
+      description:
+        "In duotone mode, the colour ramp from dark to light. The default runs indigo through rose to gold.",
+    },
+    {
+      name: "ansi",
+      type: '"vga" | "xterm"',
+      default: '"vga"',
+      description: "In ansi16 mode, which 16-colour table.",
+    },
+    {
+      name: "grade",
+      type: "Grade",
+      default: "–",
+      description:
+        "Brightness, contrast, gamma and saturation applied to tones before glyphs are picked.",
+    },
+    {
+      name: "invert",
+      type: "boolean",
+      default: "false",
+      description: "Dense glyphs for dark tones instead of bright ones.",
+    },
+    {
+      name: "threshold",
+      type: "number",
+      default: "0.5",
+      description: "Braille and quadrants: the tone that lights a dot.",
+    },
+    {
+      name: "edgeThreshold",
+      type: "number",
+      default: "0.22",
+      description:
+        "Edge charset: how strong a change in tone must be to draw - / | or \\.",
+    },
+    {
+      name: "dither",
+      type: '"none" | "bayer2" | "bayer4" | "bayer8" | "blue-noise"',
+      default: '"none"',
+      description: "Ordered dithering between neighbouring glyph levels.",
+    },
+    {
+      name: "background",
+      type: '"paper" | "transparent"',
+      default: '"paper"',
+      description:
+        '"transparent" draws the glyphs only, over your own surface.',
+    },
+    {
+      name: "fx",
+      type: "PostFx",
+      default: "–",
+      description:
+        "CRT finish: scanlines, bloom, curvature, glitch, flicker and vignette, each 0 to 1.",
+    },
+    {
+      name: "cell",
+      type: "number",
+      default: "10",
+      description: "Height of one glyph cell in CSS pixels.",
+    },
+    {
+      name: "speed",
+      type: "number",
+      default: "1",
+      description: "How fast the mist, the water and the bird move.",
+    },
+    {
+      name: "animate",
+      type: "boolean",
+      default: "true",
+      description:
+        "false stops the motion: a still frame if it starts off, the current frame if it was moving.",
+    },
+    {
+      name: "fps",
+      type: "number",
+      default: "30",
+      description: "Frame rate cap.",
+    },
+    {
+      name: "stillTime",
+      type: "number",
+      default: "0",
+      description:
+        "The moment drawn when motion is off or reduced, in seconds. At 0 the bird is a quarter of the way across.",
+    },
+    {
+      name: "handle",
+      type: "RefObject<AsciiHandle | null>",
+      default: "–",
+      description:
+        "Filled with a handle that reads back the current frame, for export to text, ANSI, SVG or PNG.",
+    },
+    {
+      name: "className",
+      type: "string",
+      default: "–",
+      description: "Size and position. The background fills this box.",
+    },
+  ]}
+/>
+
+## Notes
+
+- It is decorative and hidden from assistive technology. Put real text on top of it, not inside it.
+- It ignores the pointer: no parallax and no hover effect.
+- With reduced motion turned on, it draws one still frame at `stillTime` and stops.
+- It pauses when scrolled out of view or when the tab is hidden, and releases its WebGL context when far offscreen. Without WebGL it shows a flat dawn gradient.
+- The whole scene is one shader pass on the GPU, one sample per cell in `dots`. `braille` samples eight times per cell and `quadrants` four. See [Performance](/docs/engine/performance).
