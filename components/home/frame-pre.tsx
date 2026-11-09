@@ -60,13 +60,10 @@ const ADVANCE = 0.586;
 
 export const FramePre = ({
   frame,
-  square = false,
   className,
   style,
 }: {
   frame: AsciiFrame;
-  /** The frame was drawn on square cells: rows sit one glyph width apart. Default `false`. */
-  square?: boolean;
   className?: string;
   style?: CSSProperties;
 }) => (
@@ -79,7 +76,6 @@ export const FramePre = ({
     style={{
       ...style,
       fontSize: `calc(100cqw / ${frame.columns} / ${ADVANCE})`,
-      ...(square ? { lineHeight: ADVANCE } : {}),
     }}
   >
     {frameRuns(frame).map((runs, row) => (

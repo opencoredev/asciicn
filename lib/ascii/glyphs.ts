@@ -173,8 +173,8 @@ for (let mask = 1; mask < 256; mask += 1) {
 define(String.fromCodePoint(BRAILLE_BASE), []);
 
 // Halftone dots, smallest to largest.
-define("·", [dot(0.5, 0.5, 0.11)]);
-define("∙", [dot(0.5, 0.5, 0.16)]);
+define("·", [dot(0.5, 0.5, 0.07)]);
+define("∙", [dot(0.5, 0.5, 0.13)]);
 define("•", [dot(0.5, 0.5, 0.24)]);
 define("⦁", [dot(0.5, 0.5, 0.33)]);
 define("●", [dot(0.5, 0.5, 0.42)]);
