@@ -195,6 +195,7 @@ vec3 colorField(vec2 uv, vec2 res, float t) {
 - `field` and `colorField` compile into one shader. Shared geometry goes in a helper; the engine keeps one copy of a helper that appears word for word in both strings.
 - `oklch` gives even, controllable hues; `spectrum` is fully saturated and goes thin on white (yellow and cyan vanish). Mix in theme ink for light mode: `mix(spectrum(h), paletteColor(0.0).rgb, 0.25)`.
 - Without `colorField`, `palette` mode maps tone to the palette and `duotone` to the ramp.
+- To paint a whole picture (a landscape or a city), paint the colour first and read the tone back from it, in one cached function both fields call. [scenes.md](scenes.md) shows how.
 
 | Colour                            | GLSL body                                                                                     |
 | --------------------------------- | --------------------------------------------------------------------------------------------- |

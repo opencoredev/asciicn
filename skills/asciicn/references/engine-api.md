@@ -24,6 +24,7 @@ Both renderers, and every component and background, take the same look props (`A
 | `edgeThreshold` | `number`                                                      | `edge`: Sobel strength that draws `- / \| \`. Default 0.22                                                                                      |
 | `dither`        | `"none" \| "bayer2" \| "bayer4" \| "bayer8" \| "blue-noise"`  | Ordered dithering between glyph levels, for smooth gradients with few glyphs                                                                    |
 | `background`    | `"paper" \| "transparent"`                                    | `"transparent"` draws glyphs only, so the page shows between them                                                                               |
+| `square`        | `boolean`                                                     | Cells as wide as tall (`cell` sets both sides), so `dots` lies on an even lattice. Braille and quadrants stretch on it. Default `false`         |
 | `fx`            | `PostFx`                                                      | CRT effects, each 0 to 1: `scanlines`, `bloom`, `curvature`, `glitch`, `flicker`, `vignette`. `CRT_FX` is a full preset, `NO_FX` turns them off |
 
 Shared runtime props: `cell` (glyph cell height in CSS px, default `--ascii-cell`), `speed` (time multiplier, default 1), `animate` (`false` holds a still frame), `fps` (cap), `stillTime` (seconds drawn when motion is off or reduced), `fallback` (shown until the first frame) and `handle` (a ref filled with an `AsciiHandle` for export).

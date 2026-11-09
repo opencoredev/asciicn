@@ -29,10 +29,27 @@ A charset is the set of glyphs a renderer draws tones with. Every component that
 | `cp437`     | IBM PC symbols, `·` to `█`             | 1                | DOS-era texture                                   |
 | `petscii`   | Commodore lines and blocks             | 1                | Retro computer screens                            |
 | `katakana`  | Half-width katakana and digits         | 1                | Signage, glyph streams                            |
-| `dots`      | `" ·∙•⦁●"`                             | 1                | Halftone print                                    |
+| `dots`      | `" ·∙•⦁●"`, five sizes                 | 1                | Halftone print and painted scenes                 |
 | `edge`      | `- / \ \|` on edges, `standard` inside | 1                | Line drawings and outlines                        |
 
 Ramps are ordered by how much ink each glyph puts on the cell in a typical monospace font, so they read correctly even where coverage can't be measured, such as in an `AsciiPre` rendered on the server. `CHARSET_NAMES` lists the ids in picker order and `CHARSETS[id]` holds each set's label, kind, glyphs and sample grid.
+
+## Halftone dots
+
+`dots` draws five round dots after the empty cell, from geometry rather than the font, so they are round in every font. Their radii are 0.07, 0.13, 0.24, 0.33 and 0.42 of the cell. The two smallest are specks: a dark sky drawn with them reads as quiet air, and the large dots stay for the light. With `dither` set, a tone between two sizes mixes them in a fixed pattern, so gradients don't band.
+
+Set `square` with `dots`. Default cells are about twice as tall as wide, so the rows of dots sit twice as far apart as the columns and a picture reads as stripes. Square cells lay the dots on an even lattice. See [Cell metrics](/docs/engine/cell-metrics#square-cells) and [Painted scenes](/docs/engine/painted-scenes).
+
+```tsx
+<AsciiShader
+  field={FIELD}
+  colorField={COLOR_FIELD}
+  charset="dots"
+  square
+  cell={7}
+  dither="bayer4"
+/>
+```
 
 ## Sub-cell charsets
 

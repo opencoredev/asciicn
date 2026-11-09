@@ -17,7 +17,7 @@ import { gzipSync } from "node:zlib";
 export const SKILL_NAME = "asciicn";
 
 export const SKILL_DESCRIPTION =
-  "Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app: city skylines, 3D scenes, seeded shader fields, terminal UI, loaders, text effects, image and video to ASCII, and .txt/.ans/.svg/.png/.webm export. When to use: the user asks for ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, or code imports lib/ascii or components/asciicn.";
+  "Build ASCII art, ANSI art and text-mode visuals with the asciicn engine (WebGL2 glyph shader and Canvas2D grids) in a React or shadcn/ui app: painted halftone backgrounds of landscapes and cities, 3D scenes, seeded shader fields, terminal UI, loaders, text effects, image and video to ASCII, and .txt/.ans/.svg/.png/.webm export. When to use: the user asks for ASCII, ANSI, Braille, CP437, PETSCII, katakana rain, halftone glyphs, a terminal or CRT look, or code imports lib/ascii or components/asciicn.";
 
 const ROOT = process.cwd();
 const SKILL_DIR = path.join(ROOT, "skills", SKILL_NAME);
@@ -26,14 +26,18 @@ const DOCS_DIR = path.join(ROOT, "content", "docs");
 
 const EXAMPLES_FILE = "references/examples.md";
 
-/** Example groups in docs order, keyed by the start of their fragment's name. */
+/**
+ * Example groups in docs order, keyed by the start of their fragment's name.
+ * `docs` is the docs folder that holds the group's pages.
+ */
 const GROUPS = [
-  { id: "cities", title: "City skylines" },
-  { id: "scenes", title: "3D and scenes" },
-  { id: "fields", title: "Shaders and fields" },
-  { id: "images", title: "Media and filters" },
-  { id: "text", title: "Text and typography" },
-  { id: "interface", title: "Terminal and UI" },
+  { docs: "backgrounds", id: "cities", title: "City backgrounds" },
+  { docs: "landscapes", id: "landscapes", title: "Painted landscapes" },
+  { docs: "scenes", id: "scenes", title: "3D and scenes" },
+  { docs: "fields", id: "fields", title: "Shaders and fields" },
+  { docs: "images", id: "images", title: "Media and filters" },
+  { docs: "text", id: "text", title: "Text and typography" },
+  { docs: "interface", id: "interface", title: "Terminal and UI" },
 ] as const;
 
 interface FragmentItem {
@@ -77,8 +81,8 @@ export const skillFiles = (): string[] =>
 /** The docs folder that holds `name`'s page, wherever its fragment lives. */
 const docsGroupOf = (name: string): string | undefined =>
   GROUPS.find((group) =>
-    existsSync(path.join(DOCS_DIR, group.id, `${name}.mdx`))
-  )?.id;
+    existsSync(path.join(DOCS_DIR, group.docs, `${name}.mdx`))
+  )?.docs;
 
 const examplesMarkdown = (): string => {
   const fragments = readdirSync(REGISTRY_DIR).filter((file) =>

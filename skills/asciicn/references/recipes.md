@@ -456,7 +456,7 @@ export const AsciiPhoto = ({
 
 ## A full background with colour, CRT and the pointer
 
-Combine a `field`, a `colorField`, CRT effects and pointer parallax into a full animated piece. This is how the city backgrounds in the registry are built; read one (`components/asciicn/tokyo.tsx`) for a larger example.
+Combine a `field`, a `colorField`, CRT effects and pointer parallax into a full animated piece. For a background that is a picture of a place (a landscape, a city), follow [scenes.md](scenes.md) instead: the city and landscape backgrounds are painted halftone scenes with calm motion and no pointer response.
 
 ```tsx
 "use client";

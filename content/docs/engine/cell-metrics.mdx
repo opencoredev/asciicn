@@ -5,7 +5,7 @@ description: "How big one glyph cell is, how it stays sharp on every screen, and
 
 import EngineCell from "@/examples/engine-cell";
 
-Every renderer lays glyphs on a grid of cells. A cell is as tall as one line of text and as wide as one glyph advance in the font, so it is about twice as tall as it is wide. Its height sets the grain: small cells read as texture, large ones as type.
+Every renderer lays glyphs on a grid of cells. A cell is as tall as one line of text and as wide as one glyph advance in the font, so it is about twice as tall as it is wide, unless you ask for [square cells](#square-cells). Its height sets the grain: small cells read as texture, large ones as type.
 
 <ComponentPreview src="examples/engine-cell.tsx" size="lg" align="stretch">
   <EngineCell />
@@ -28,6 +28,16 @@ To size one component, pass `cell`. It wins over the variable:
 ```
 
 The font size is the cell height divided by 1.2, the line height glyphs are set at, so a 12px cell sets glyphs at 10px. The width follows the font: most monospace fonts advance 0.6em, which makes a 12px cell 6px wide.
+
+## Square cells
+
+Pass `square` to make cells as wide as they are tall. `cell` then sets both sides, so `cell={7}` is a 7x7 px cell and about 200 columns across a 1440px screen.
+
+```tsx
+<AsciiShader field={FIELD} charset="dots" square cell={7} />
+```
+
+Square cells are for ramps of round glyphs, above all `dots`: the dots lie on an even halftone lattice instead of rows twice as far apart as their columns. Text glyphs sit centred with room around them. Braille and quadrants stretch to fill the square, so leave `square` off for them. Fields don't change: `res.x / res.y` is still the box's true aspect ratio, and `res.y` still counts sample rows. Both `AsciiShader` and `AsciiGrid` take `square`, and `measureCell({ square: true })` returns the square metrics.
 
 ## The font
 

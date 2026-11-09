@@ -14,8 +14,10 @@ The charset decides what the picture is made of; the colour mode decides how it 
 | `cp437`     | 1x1              | `·•○◘♠♣♥♦▲▼☺☻░▒▓█`                     | DOS, BBS and retro-PC moods                                                  | Corporate UI                                 |
 | `petscii`   | 1x1              | `╱╲─│╭╮●◆▄▌█`                          | Commodore 64 moods, playful retro                                            | Photos                                       |
 | `katakana`  | 1x1              | `ｱｳｴｵｶｷｼﾂｿﾝ` and digits                | Signage, glyph streams                                                       | Anything that should read as calm            |
-| `dots`      | 1x1              | ` ·∙•⦁●`                               | Halftone print, newsprint, soft glows                                        | Text-like art                                |
+| `dots`      | 1x1              | ` ·∙•⦁●`, five sizes                   | Halftone print, painted scenes and backgrounds (with `square`), soft glows   | Text-like art                                |
 | `edge`      | 1x1              | `- / \| \` on edges, `standard` inside | Line drawings, outlines of a photo or a 3D shape, blueprints                 | Flat fields with no edges                    |
+
+`dots` draws five round dots from geometry, not the font, in radii of 0.07, 0.13, 0.24, 0.33 and 0.42 of the cell. The first two are specks: use tones up to about 0.25 for quiet sky and shadow that reads as air, and save the large dots for light. Set `square` with it, so cells are as wide as tall and the dots lie on an even lattice; on default cells (about twice as tall as wide) the rows sit twice as far apart as the columns and the picture reads as stripes. `square` is for ramps of round glyphs; Braille and quadrants stretch on it. [scenes.md](scenes.md) builds whole pictures this way.
 
 Custom ramps: `chars=" .oO@"` (empty to dense, at least two glyphs) wins over `charset`. Use a custom ramp for a brand ("` -=≡`" for a minimal look, `" 01"` for binary). Order glyphs by how much ink they show in the font, or the tones will jump.
 
@@ -59,4 +61,5 @@ Duotone ramps: `mainframe`, `sodium`, `heliograph`, `infrared`, `outrun`, `orchi
 | Fire, a nebula, a sunset              | `dense` or `blocks`   | `truecolor` with a `colorField`         |
 | A blueprint or technical drawing      | `edge`                | `mono` with `blueprint`                 |
 | Newsprint or a halftone portrait      | `dots`                | `mono`, `invert` on light pages         |
+| A painted landscape or city scene     | `dots` with `square`  | `truecolor` with a `colorField`         |
 | Retro game or BBS screen              | `cp437` or `petscii`  | `ansi16`                                |
