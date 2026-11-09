@@ -1,6 +1,6 @@
 ---
 title: "Rice terraces"
-description: "Flooded rice terraces at dawn, each pool mirroring the pink and gold sky, with mist drifting through the valley below far blue ridges."
+description: "Flooded rice terraces at a fresh dawn: silver-blue fields between dark earthen banks with lit grassy tops, mist in the valley and far ridges fading into haze."
 ---
 
 import RiceTerracesDemo from "@/examples/rice-terraces-demo";
@@ -36,17 +36,17 @@ export function Hero() {
 }
 ```
 
-A terraced hillside fills the foreground. Its crest is high on the left and falls away to the right, with a line of trees along the top. The terraces wrap the hill: they climb with the crest, bow toward you over each spur and tuck back into each gully, and no two are the same width. Each basin is a dark earthen wall, a narrow lip of water that catches the light where it meets the wall, and a darker pool behind that deepens toward the wall above. The lips mirror the sky at the angle they see it, rose near you and gold farther up, and burn brightest in the sun's glitter path.
+A terraced hillside fills the middle ground. Its crest is high on the left and falls away to the right, with a line of trees along the top. The terraces wrap the hill: they climb with the crest, bow toward you over each spur and tuck back into each gully, and no two are the same width. Each level is a flooded field, then the dark earthen retaining wall of the level above, then that wall's top edge, where grass catches the low sun in green-gold. Bunds split each level into separate fields. Each field mirrors the sky at its own angle, blue near you and silver farther up, darkens along its far edge where it reflects the wall above, and glitters where it lies under the sun. A few fields are planted with young rice instead.
 
-Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot. Three ridges step back with ragged crests. Faces turned to the sun take its rose light, faces turned away keep the shadow, and each layer is paler and finer than the one in front. The sun stands high on the right in a soft glow.
+In front of it a darker ridge crosses the bottom of the frame, with a few trees and tufts of grass in silhouette against the fields. Behind it a second terraced hill sits back in the haze, and mist fills the valley at its foot. Three ridges step back, each with less detail, lower contrast and smaller dots than the one in front, and their crests dissolve into a slate and silver sky. The sun stands high on the right in a soft cream glow.
 
-Most of the frame is quiet, and it gets quieter with distance. The sky is sparse specks, thinning toward the zenith; the far ridges are fainter still, and their crests dissolve into the sky. Walls and shadowed faces are fine points only a little lighter than the paper. Large bright dots are kept for the sun, its glitter path and the lips of the near pools, so near and far separate at a glance. The `dots` charset draws `·`, `•` and `●`, so a dot's size carries its tone, and in `truecolor`, the default, each dot takes its own colour. Cells are square by default, 7px each way, so the dots lie on an even lattice like a halftone screen. `square={false}` uses the font's tall cells instead.
+Most of the frame is quiet. The sky is sparse specks, thinning toward the zenith. Walls, shadowed faces and the front ridge are fine points only a little lighter than the paper. Large bright dots are kept for the sun, its glitter, the lit bank tops and the near fields, so near and far separate at a glance. The `dots` charset draws `·`, `•` and `●`, so a dot's size carries its tone, and in `truecolor`, the default, each dot takes its own colour. Cells are square by default, 7px each way, so the dots lie on an even lattice like a halftone screen. `square={false}` uses the font's tall cells instead.
 
-The motion is slow. Mist drifts through the valley, the pools shimmer, the sun glitters on the water below it, a few last stars twinkle, and one pale egret glides across the sky every few minutes.
+The motion is slow. Mist drifts through the valley, the fields shimmer, the sun glitters on the water below it, a few last stars twinkle, and one pale egret glides across the sky every few minutes.
 
 The middle of the frame is mist and far ridges in low contrast, so a centred headline sits on calm ground. On wide boxes the sun stands in the upper right; on tall boxes it rises above the headline, with the terraces below it.
 
-The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`, so it looks the same on light and dark pages. `mono` with a `phosphor` reads it by tone alone.
+The scene paints its own deep slate paper in `truecolor`, `ansi16` and `duotone`, so it looks the same on light and dark pages. `mono` with a `phosphor` reads it by tone alone.
 
 `intensity` dims the scene: colours fade in step with it, and the dots shrink more slowly.
 
@@ -101,7 +101,7 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
       type: "AsciiColor",
       default: "–",
       description:
-        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a night blue; mono and palette use the theme's paper or the phosphor's.",
+        "The surface behind the glyphs. Without it, truecolor, ansi16 and duotone sit on a deep slate; mono and palette use the theme's paper or the phosphor's.",
     },
     {
       name: "fallback",
@@ -139,9 +139,9 @@ The scene paints its own night-blue paper in `truecolor`, `ansi16` and `duotone`
     {
       name: "ramp",
       type: "RampName | string[]",
-      default: '"outrun"',
+      default: '"heliograph"',
       description:
-        "In duotone mode, the colour ramp from dark to light. The default runs indigo through rose to gold.",
+        "In duotone mode, the colour ramp from dark to light. The default runs slate through blue to silver.",
     },
     {
       name: "ansi",
