@@ -78,15 +78,24 @@ vec4 rtSky(vec2 s, vec2 p) {
   float warm = 0.6 + 0.4 * rtSunward(p, 0.7);
   vec3 c = mix(RT_ZENITH, rtSkyRamp(y), warm * (1.0 - 0.2 * v));
   c = mix(c, RT_GOLD, clamp(halo * 0.8, 0.0, 1.0));
-  // Fine points overhead, a little larger along the glow.
-  float tone = 0.08 + 0.06 * (1.0 - v) + 0.3 * exp(-v / 0.2) * warm + 0.5 * halo;
+  // Faint specks overhead, a little larger along the glow. Only the sun's
+  // tight core grows the dots; the wide bloom is colour alone.
+  vec2 sd = (p - vec2(rtSunX, rtSunY)) * vec2(0.6, 1.0);
+  float core = exp(-length(sd) / 0.05);
+  // The glow above the ridges is a soft wash of small dots, warmest under the sun.
+  float tone = 0.05 + 0.1 * exp(-v / 0.2) * warm + 0.1 * exp(-v / 0.12) * rtSunward(p, 0.45) + 0.12 * halo + 0.55 * core;
   // Thin clouds, lit only where the sun reaches them.
   float band = smoothstep(0.72, 0.8, y) * (1.0 - smoothstep(0.9, 0.97, y));
   float n = fbm(vec2(x * 1.2 + rtT * 0.004, y * 12.0));
   float cloud = smoothstep(0.55, 0.75, n) * band;
   float lit = clamp(rtSunward(p, 0.45) + halo, 0.0, 1.0);
   c = mix(c, mix(RT_MAUVE, RT_PEACH, lit), cloud * (0.35 + 0.5 * lit));
-  tone += cloud * (0.08 + 0.3 * lit);
+  tone += cloud * (0.03 + 0.16 * lit);
+  // The sky thins toward the zenith: many cells there are left empty.
+  float keep = mix(1.0, 0.4, smoothstep(0.15, 0.85, v)) + core + cloud;
+  if (rtHash(s + 5.3) > keep) {
+    tone = 0.0;
+  }
   // A few last stars high up, fading into the dawn.
   float h = rtHash(s + 17.0);
   if (v > 0.6 && h > 0.996) {
@@ -130,7 +139,7 @@ vec4 rtMountain(vec2 p, float top, float seed, float base, float amp, vec3 shade
   float lit = smoothstep(-0.1, 1.1, 0.5 - slope * toward * 1.6 + 0.2 * gully);
   lit = mix(lit, 0.4, far * 0.5);
   lit *= 0.45 + 0.55 * rtSunward(p, 0.9);
-  vec3 face = mix(shade, mix(RT_MAUVE, RT_PEACH, lit), lit * 0.6);
+  vec3 face = mix(shade, mix(RT_MAUVE, RT_PEACH, lit), lit * (0.75 - 0.3 * far));
   // A thin rim of light on the crest, only close to the sun.
   // Narrower on tall boxes, so no bright edge crosses a phone's headline.
   float rim = (1.0 - smoothstep(0.0, 1.2 * rtSh, depth)) * rtSunward(p, 0.35 * clamp(rtAspect / 1.6, 0.3, 1.0));
@@ -139,7 +148,18 @@ vec4 rtMountain(vec2 p, float top, float seed, float base, float amp, vec3 shade
   float foot = smoothstep(0.03, 0.14, depth);
   vec3 air = mix(rtSkyRamp(top + 0.02), RT_MIST, 0.5);
   face = mix(face, air, clamp(far * 0.55 + foot * 0.35, 0.0, 0.85));
-  float tone = mix(0.3 + 0.3 * lit, 0.24 + 0.1 * lit, far) + rim * 0.4 + foot * 0.08;
+  float tone = mix(0.22 + 0.24 * lit, 0.12 + 0.05 * lit, far) + rim * 0.3 + foot * 0.05;
+  // Soft crests: over the top rows cells thin out at random, wider on the
+  // far layers, so distant edges dissolve into the sky instead of cutting it.
+  float edge = smoothstep(0.0, (2.5 + 4.0 * far) * rtSh, depth);
+  float h = rtHash(floor(p / vec2(rtSw, rtSh)) + seed);
+  if (h > edge + rim) {
+    tone *= 0.35;
+  }
+  // Far layers are sparse: some cells hold nothing at all.
+  if (h < far * 0.3 * (1.0 - rim)) {
+    tone = 0.0;
+  }
   return vec4(face, tone);
 }
 
@@ -236,8 +256,9 @@ vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, f
     c = mix(c, RT_SUN, glint);
     c *= 1.0 - 0.2 * shade;
     c = mix(c, rtMistColor(p), haze);
-    float tone = 0.82 + 0.2 * sunPath + 0.1 * glint - 0.1 * shade;
-    return vec4(c, mix(tone, 0.36, haze));
+    // Full dots for the near lips; higher up the slope they shrink a step.
+    float tone = 0.82 + 0.2 * sunPath + 0.1 * glint - 0.1 * shade - 0.2 * smoothstep(0.36, 0.6, bandY) * (1.0 - sunPath);
+    return vec4(c, mix(tone, 0.15, haze));
   }
   // The body: the same sky, darker, deepening toward the far wall's mirror.
   float deep = smoothstep(0.35, 1.0, f);
@@ -247,7 +268,7 @@ vec4 rtTerraces(vec2 s, vec2 p, vec4 bows, float top, float count, float haze, f
   c = mix(c, rtMistColor(p) * 0.8, haze);
   float tone = 0.46 - 0.18 * deep + 0.5 * glint - 0.08 * shade;
   tone += 0.03 * sin(p.x * 70.0 / max(rtAspect, 0.9) + rtT * 0.5 + k * 1.7);
-  return vec4(c, mix(tone, 0.2, haze));
+  return vec4(c, mix(tone, 0.1, haze));
 }
 
 // Clumps of trees along a crest: how far above the ground their tops reach.
@@ -346,7 +367,7 @@ vec4 rtScene(vec2 uv, vec2 res, float t) {
     // low in contrast so the middle of the frame stays calm.
     float m = rtMist(p, 0.28, 0.44);
     hit.rgb = mix(hit.rgb, rtMistColor(p), m * 0.8);
-    hit.a = mix(hit.a, 0.42 + 0.25 * rtSunward(p, 0.3), m * 0.8);
+    hit.a = mix(hit.a, 0.24 + 0.22 * rtSunward(p, 0.3), m * 0.8);
   }
 
   // Intensity dims colour everywhere but shrinks the dots only gently, so
