@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
 
@@ -8,8 +9,9 @@ import {
   useInView,
   usePrefersReducedMotion,
 } from "@/lib/ascii";
+import type { AsciiColor } from "@/lib/ascii";
 import type { AsciiSceneProps } from "@/lib/ascii/scene";
-import { HERO_BACKGROUNDS } from "@/lib/backgrounds";
+import { BACKGROUNDS, HERO_BACKGROUNDS } from "@/lib/backgrounds";
 import type { BackgroundEntry } from "@/lib/backgrounds";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +34,39 @@ const HOLD_MS = 20_000;
  * on an empty plate while the scene's code loads. Made with the hero's own
  * scene at 1440x900 and 390x844; the tall one matches its portrait framing.
  */
-const POSTERS: Readonly<Record<string, { wide: string; tall: string }>> = {
+const POSTERS: Readonly<
+  Record<string, Readonly<Record<Theme, { wide: string; tall: string }>>>
+> = {
   "san-francisco": {
-    tall: "/hero/san-francisco-tall.webp",
-    wide: "/hero/san-francisco-wide.webp",
+    dark: {
+      tall: "/hero/san-francisco-tall.webp",
+      wide: "/hero/san-francisco-wide.webp",
+    },
+    light: {
+      tall: "/hero/san-francisco-light-tall.webp",
+      wide: "/hero/san-francisco-light-wide.webp",
+    },
   },
 };
+
+type Theme = "dark" | "light";
+
+// The night skylines are drawn as dark shapes against lit windows, so on
+// light paper they fall apart. The light theme keeps the scenes that read
+// as a print: San Francisco on the site's paper, and Balloon valley, which
+// is a light scene already.
+const LIGHT_HERO: readonly BackgroundEntry[] = [
+  "san-francisco",
+  "balloon-valley",
+].flatMap((id) => BACKGROUNDS.filter((entry) => entry.id === id));
+
+const heroList = (theme: Theme) =>
+  theme === "light" ? LIGHT_HERO : HERO_BACKGROUNDS;
+
+type HeroScene = ComponentType<AsciiSceneProps & { paper?: AsciiColor }>;
+
+/** Scenes that take the theme's paper in the light theme. */
+const ON_LIGHT_PAPER: ReadonlySet<string> = new Set(["san-francisco"]);
 
 // The scene switches to its portrait framing below this width-to-height ratio.
 const PORTRAIT_QUERY = "(max-aspect-ratio: 85/100)";
@@ -54,25 +83,24 @@ interface Layer {
   readonly key: number;
 }
 
-const firstCity = (): BackgroundEntry | undefined => HERO_BACKGROUNDS[0];
-
-const nextCity = (city: BackgroundEntry): BackgroundEntry | undefined =>
-  HERO_BACKGROUNDS[
-    (HERO_BACKGROUNDS.indexOf(city) + 1) % HERO_BACKGROUNDS.length
-  ];
+const nextCity = (
+  list: readonly BackgroundEntry[],
+  city: BackgroundEntry
+): BackgroundEntry | undefined => list[(list.indexOf(city) + 1) % list.length];
 
 /** One city, invisible until its chunk loads, then faded in. */
 const CityLayer = ({
   city,
+  paper,
   onShown,
 }: {
   city: BackgroundEntry;
+  /** Overrides the scene's own paper. */
+  paper?: string;
   /** Called once the city is fully faded in. */
   onShown?: () => void;
 }) => {
-  const [Scene, setScene] = useState<ComponentType<AsciiSceneProps> | null>(
-    null
-  );
+  const [Scene, setScene] = useState<HeroScene | null>(null);
   const shown = useRef(onShown);
 
   useEffect(() => {
@@ -85,7 +113,9 @@ const CityLayer = ({
       try {
         const loaded = await city.load();
         if (live) {
-          setScene(() => loaded);
+          // Every background takes its own paper; the shared scene props
+          // just don't declare it.
+          setScene(() => loaded as HeroScene);
         }
       } catch {
         // A failed chunk leaves the plate (or the previous city) showing.
@@ -113,45 +143,47 @@ const CityLayer = ({
       )}
       style={{ transitionDuration: `${FADE_MS}ms` }}
     >
-      {Scene ? <Scene className="absolute inset-0" /> : null}
+      {Scene ? <Scene className="absolute inset-0" paper={paper} /> : null}
     </div>
   );
 };
 
-export const AsciiHero = ({ className }: { className?: string }) => {
-  const rootRef = useRef<HTMLDivElement>(null);
+const HeroScenes = ({
+  theme,
+  rootRef,
+}: {
+  theme: Theme;
+  rootRef: React.RefObject<HTMLDivElement | null>;
+}) => {
   const inView = useInView(rootRef, { rootMargin: "0px" });
   const visible = useDocumentVisible();
   const reducedMotion = usePrefersReducedMotion();
+  const list = heroList(theme);
   const [layers, setLayers] = useState<readonly Layer[]>(() => {
-    const city = firstCity();
+    const [city] = list;
     return city ? [{ city, key: 0 }] : [];
   });
   const [settled, setSettled] = useState(false);
   const [posterGone, setPosterGone] = useState(false);
   const current = layers.at(-1);
-  const poster = layers[0] ? POSTERS[layers[0].city.id] : undefined;
+  const poster = layers[0] ? POSTERS[layers[0].city.id]?.[theme] : undefined;
 
   const rotating =
-    settled &&
-    !reducedMotion &&
-    inView &&
-    visible &&
-    HERO_BACKGROUNDS.length > 1;
+    settled && !reducedMotion && inView && visible && list.length > 1;
 
   useEffect(() => {
     if (!rotating || !current) {
       return;
     }
     const id = window.setTimeout(() => {
-      const city = nextCity(current.city);
+      const city = nextCity(list, current.city);
       if (city) {
         setSettled(false);
         setLayers((previous) => [...previous, { city, key: current.key + 1 }]);
       }
     }, HOLD_MS);
     return () => window.clearTimeout(id);
-  }, [rotating, current]);
+  }, [rotating, current, list]);
 
   // Once the newest city covers the plate, the ones under it can go.
   const settle = () => {
@@ -161,11 +193,7 @@ export const AsciiHero = ({ className }: { className?: string }) => {
   };
 
   return (
-    <div
-      ref={rootRef}
-      aria-hidden="true"
-      className={cn("ascii-hero absolute inset-0", className)}
-    >
+    <>
       {poster && !posterGone ? (
         <picture>
           <source media={PORTRAIT_QUERY} srcSet={poster.tall} />
@@ -183,9 +211,65 @@ export const AsciiHero = ({ className }: { className?: string }) => {
         <CityLayer
           key={layer.key}
           city={layer.city}
+          paper={
+            theme === "light" && ON_LIGHT_PAPER.has(layer.city.id)
+              ? "--ascii-paper"
+              : undefined
+          }
           onShown={layer === current ? settle : undefined}
         />
       ))}
+    </>
+  );
+};
+
+const ThemedPosters = () => {
+  const first = POSTERS[HERO_BACKGROUNDS[0]?.id ?? ""];
+  if (!first) {
+    return null;
+  }
+  return (["light", "dark"] as const).map((variant) => (
+    <picture
+      key={variant}
+      className={variant === "dark" ? "hidden dark:block" : "dark:hidden"}
+    >
+      <source media={PORTRAIT_QUERY} srcSet={first[variant].tall} />
+      {/* oxlint-disable-next-line nextjs/no-img-element -- a fixed-size still under the live scene, needed before hydration */}
+      <img
+        src={first[variant].wide}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 size-full object-cover"
+      />
+    </picture>
+  ));
+};
+
+/**
+ * The server doesn't know the theme, so before hydration both posters are
+ * in the page and CSS shows the one for the theme on <html>. After it, the
+ * scenes for the resolved theme take over, and a theme switch starts that
+ * theme's rotation from its first scene.
+ */
+export const AsciiHero = ({ className }: { className?: string }) => {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const theme: Theme | undefined =
+    resolvedTheme === "light" || resolvedTheme === "dark"
+      ? resolvedTheme
+      : undefined;
+  return (
+    <div
+      ref={rootRef}
+      aria-hidden="true"
+      className={cn("ascii-hero absolute inset-0", className)}
+    >
+      {theme ? (
+        <HeroScenes key={theme} theme={theme} rootRef={rootRef} />
+      ) : (
+        <ThemedPosters />
+      )}
       {/* Wider and shorter on phones, where the text column fills the
           width and the scene shows below it. */}
       <div
