@@ -13,6 +13,8 @@ It installs with the shadcn CLI as plain source you own, and works with Claude C
 
 [Read the installation guide](<content/docs/(root)/installation.mdx>) · [Write your own effect](content/docs/engine/write-your-own.mdx) · [Live site](https://asciicn.dev)
 
+> Huge shoutout to [ascii.rest](https://ascii.rest) by bas3line. A lot of asciicn's look, especially the painted backgrounds, was inspired by their work. Go check it out.
+
 - An ASCII engine (`lib/ascii`): a WebGL2 shader for anything that moves, a Canvas2D grid for 3D meshes and simulations, an image and video sampler, and `.txt`, `.ans`, `.svg`, `.png` and `.webm` export
 - An agent skill that teaches your agent to write fields, paint a background scene, place an effect on a page and check it in light, dark and reduced motion
 - 64 components across backgrounds, 3D scenes, shader fields, text, media and terminal UI, each a starting point to install and edit
